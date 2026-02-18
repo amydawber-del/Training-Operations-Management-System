@@ -367,7 +367,11 @@
     font-weight: 600;
   }
   .status-new { background: var(--white-smoke); color: #c0303d; }
+  .status-unassigned { background: var(--white-smoke); color: #c0303d; }
   .status-assigned { background: var(--brand-accent--cream); color: #8a5a2a; }
+  .status-booked { background: var(--accent-blue--50); color: #2147f4; }
+  .status-pending { background: var(--brand--secondary--lightgreen); color: #1a6a40; }
+  .status-cancelled { background: #f0f0f0; color: #999; text-decoration: line-through; }
   .status-complete { background: var(--success-green); color: #2a7a26; }
 
   /* ASSIGN CONTROLS */
@@ -864,9 +868,11 @@
       <div class="filter-bar">
         <select class="filter-select" id="filterStatus" onchange="renderAllBookings()">
           <option value="">All Statuses</option>
-          <option value="New">New</option>
+          <option value="Unassigned">Unassigned</option>
           <option value="Assigned">Assigned</option>
-          <option value="Complete">Complete</option>
+          <option value="Booked">Booked</option>
+          <option value="Pending">Pending</option>
+          <option value="Cancelled">Cancelled</option>
         </select>
         <select class="filter-select" id="filterTrainer" onchange="renderAllBookings()">
           <option value="">All Trainers</option>
@@ -1241,7 +1247,7 @@ function renderUnassigned() {
   const now = new Date();
   const year = now.getFullYear();
   const unassigned = allData.filter(r => {
-    if (r.status === 'Complete') return false;
+    if (['Booked','Cancelled','Complete'].includes(r.status)) return false;
     if (r.trainer && r.trainer.trim()) return false;
     if (r.date && r.date < new Date('2026-01-01')) return false;
     return true;
@@ -1597,11 +1603,58 @@ function renderAllBookings() {
       '<td><div style="display:flex;align-items:center;gap:4px;"><span style="color:var(--text--dark--30);font-size:12px;">£</span>' +
         '<input type="number" id="inp-value-' + r.rowIndex + '" value="' + (r.revenue||'') + '" placeholder="0" min="0" step="50" ' +
         'style="width:80px;border:1px solid var(--light-grey);border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;color:#333;"></div></td>' +
-      '<td><span class="status-badge status-' + (r.status||'new').toLowerCase() + '">' + (r.status||'New') + '</span></td>' +
+      '<td>' +
+        '<select class="status-select" id="sel-status-' + r.rowIndex + '" +
+        '" onchange="quickStatusUpdate(' + r.rowIndex + ')" style="border:1px solid var(--light-grey);border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;color:#333;background:#fff;">' +
+        '<option value="Unassigned"' + ((r.status||'Unassigned')==='Unassigned'?' selected':'') + '>Unassigned</option>' +
+        '<option value="Assigned"' + (r.status==='Assigned'?' selected':'') + '>Assigned</option>' +
+        '<option value="Booked"' + (r.status==='Booked'?' selected':'') + '>Booked</option>' +
+        '<option value="Pending"' + (r.status==='Pending'?' selected':'') + '>Pending</option>' +
+        '<option value="Cancelled"' + (r.status==='Cancelled'?' selected':'') + '>Cancelled</option>' +
+        '</select>' +
+        '</td>' +
       '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.notes) + '">' + (esc(r.notes)||'—') + '</td>' +
       '<td><button class="btn btn-primary btn-sm" id="save-btn-' + r.rowIndex + '" onclick="saveRowEdit(' + r.rowIndex + ')">Save</button></td>' +
       '</tr>';
   }).join('');
+}
+
+
+// Quick status update — fires immediately when dropdown changes
+async function quickStatusUpdate(rowIndex) {
+  const statusSel = document.getElementById('sel-status-' + rowIndex);
+  const newStatus = statusSel ? statusSel.value : '';
+  if (!newStatus) return;
+
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.status = newStatus;
+
+  // Style the select to reflect status
+  const colours = {
+    'Unassigned': { bg: '#fde8eb', color: '#c0303d' },
+    'Assigned':   { bg: '#f5ede5', color: '#8a5a2a' },
+    'Booked':     { bg: '#b8caff', color: '#2147f4' },
+    'Pending':    { bg: '#beffd8', color: '#1a6a40' },
+    'Cancelled':  { bg: '#f0f0f0', color: '#999'    }
+  };
+  const c = colours[newStatus] || {};
+  if (statusSel) {
+    statusSel.style.background = c.bg || '#fff';
+    statusSel.style.color = c.color || '#333';
+    statusSel.style.borderColor = c.color || 'var(--light-grey)';
+  }
+
+  // Push status to Apps Script
+  try {
+    await fetch(
+      APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus),
+      { mode: 'cors' }
+    );
+  } catch(e) {}
+
+  // Refresh unassigned panel so cancelled/booked drop off
+  renderUnassigned();
+  renderTrainerWorkload();
 }
 
 async function saveRowEdit(rowIndex) {
@@ -1619,8 +1672,9 @@ async function saveRowEdit(rowIndex) {
   if (row) {
     row.trainer = newTrainer;
     row.revenue = newValue;
-    if (newTrainer && row.status === 'New') row.status = 'Assigned';
-    if (!newTrainer) row.status = 'New';
+    const statusSel = document.getElementById('sel-status-' + rowIndex);
+    const newStatus = statusSel ? statusSel.value : (newTrainer ? 'Assigned' : 'Unassigned');
+    row.status = newStatus;
   }
 
   try {
