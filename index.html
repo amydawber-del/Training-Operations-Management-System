@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Street Training Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --text--dark--50: #19191e;
+    --brand--black: #242326;
+    --text--dark--40: #4c4d57;
+    --text--dark--30: #777989;
+    --card-light-grey: #f8f8f8;
+    --text--white--30: #979797;
+    --text--light--40: #b2b2b2;
+    --accent--blue--300: #527dff;
+    --accent-blue--200: #7a9cff;
+    --text--dark--20: #a8aabb;
+    --action-primary-blue: #2147f4;
+    --light-grey: #ccc;
+    --text-dark-10: #dfe0ec;
+    --ui--underline--light-grey: #e5e5e5;
+    --success-green: #bde4b9;
+    --brand--yellow: #f1c238;
+    --brand-accent--mandarin-light: #f6be9d;
+    --accent-blue--100: #a3baff;
+    --brand-accent--dusty-red-light: #f9b4bc;
+    --brand--secondary--lightgreen: #beffd8;
+    --accent-blue--50: #b8caff;
+    --white-smoke: #fde8eb;
+    --brand-accent--cream: #f5ede5;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    color: #333;
+    background-color: #fff;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--brand--black);
+    color: #fff;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid #3a3a3a;
+  }
+
+  /* HAMBURGER */
+  .hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .hamburger-btn:hover { background: rgba(255,255,255,0.1); }
+  .hamburger-btn span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #fff;
+    border-radius: 1px;
+    transition: all 0.2s;
+  }
+  .hamburger-btn.open span:nth-child(1) { transform: rotate(45deg) translate(4px, 4px); }
+  .hamburger-btn.open span:nth-child(2) { opacity: 0; }
+  .hamburger-btn.open span:nth-child(3) { transform: rotate(-45deg) translate(4px, -4px); }
+
+  /* STREET LOGO */
+  .street-logo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+  }
+  .street-logo-mark {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    line-height: 1;
+  }
+  .street-logo-mark .logo-dot { color: var(--brand--yellow); }
+  .street-logo-sub {
+    font-size: 9px;
+    color: var(--text--light--40);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: -0.2px;
+    flex: 1;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .refresh-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: Arial, sans-serif;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.2); }
+
+  .last-updated {
+    font-size: 11px;
+    color: var(--text--light--40);
+  }
+
+  /* SIDE NAV DRAWER */
+  .nav-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .nav-overlay.open { opacity: 1; pointer-events: all; }
+
+  .nav-drawer {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    background: var(--brand--black);
+    z-index: 201;
+    transition: left 0.22s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+  }
+  .nav-drawer.open { left: 0; }
+
+  .nav-drawer-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+  }
+  .nav-drawer-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text--light--40);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .nav-close {
+    background: none;
+    border: none;
+    color: var(--text--light--40);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .nav-close:hover { color: #fff; }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text--dark--30);
+    padding: 16px 20px 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.12s, color 0.12s;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    border-left-color: var(--accent--blue--300);
+  }
+  .nav-item.active {
+    background: rgba(33, 71, 244, 0.15);
+    color: var(--accent-blue--200);
+    border-left-color: var(--action-primary-blue);
+  }
+  .nav-item-icon { font-size: 15px; width: 20px; text-align: center; }
+
+  .nav-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 8px 20px;
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* LOADING */
+  .loading-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--action-primary-blue), var(--accent--blue--300));
+    animation: loading 1.2s ease infinite;
+    display: none;
+  }
+  .loading-bar.active { display: block; }
+  @keyframes loading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+  }
+
+  /* SECTION */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text--dark--50);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .badge {
+    background: var(--brand-accent--dusty-red-light);
+    color: #c0303d;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+  }
+  .section-title .badge.green {
+    background: var(--success-green);
+    color: #2a7a26;
+  }
+
+  /* NEW REQUESTS PANEL */
+  .requests-panel {
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 4px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .requests-panel-header {
+    background: var(--card-light-grey);
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .requests-panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .alert-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e53935;
+    animation: pulse-dot 1.5s ease infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead tr {
+    background: var(--card-light-grey);
+  }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text--dark--30);
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    color: var(--text--dark--40);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  .option-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .opt-1 { background: var(--accent-blue--50); color: #2147f4; }
+  .opt-2 { background: var(--brand-accent--cream); color: #8a5a2a; }
+  .opt-3 { background: var(--brand-accent--mandarin-light); color: #a04010; }
+  .opt-4 { background: var(--success-green); color: #2a7a26; }
+  .opt-5 { background: var(--brand--secondary--lightgreen); color: #1a6a40; }
+
+  .status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .status-new { background: var(--white-smoke); color: #c0303d; }
+  .status-unassigned { background: var(--white-smoke); color: #c0303d; }
+  .status-assigned { background: var(--brand-accent--cream); color: #8a5a2a; }
+  .status-booked { background: var(--accent-blue--50); color: #2147f4; }
+  .status-pending { background: var(--brand--secondary--lightgreen); color: #1a6a40; }
+  .status-cancelled { background: #f0f0f0; color: #999; text-decoration: line-through; }
+  .status-complete { background: var(--success-green); color: #2a7a26; }
+
+  /* ASSIGN CONTROLS */
+  .assign-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .suggested-trainer {
+    font-size: 11px;
+    color: var(--action-primary-blue);
+    background: rgba(33,71,244,0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  select.trainer-select {
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+    color: #333;
+    background: #fff;
+    cursor: pointer;
+  }
+  select.trainer-select:focus { outline: none; border-color: var(--action-primary-blue); }
+
+  .btn {
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+    border: none;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-primary {
+    background: var(--action-primary-blue);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #1a39d4; }
+  .btn-primary:disabled { background: var(--text--dark--20); cursor: not-allowed; }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--light-grey);
+    color: var(--text--dark--30);
+  }
+  .btn-ghost:hover { background: var(--card-light-grey); color: #333; }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 4px;
+    padding: 16px 20px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .kpi-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text--dark--30);
+    margin-bottom: 8px;
+  }
+  .kpi-card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text--dark--50);
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+  .kpi-card-sub {
+    font-size: 11px;
+    color: var(--text--dark--30);
+    margin-top: 4px;
+  }
+  .kpi-card-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+  .delta-up { background: var(--success-green); color: #2a7a26; }
+  .delta-down { background: var(--white-smoke); color: #c0303d; }
+  .kpi-accent-left {
+    border-left: 3px solid var(--action-primary-blue);
+    padding-left: 14px;
+  }
+  .kpi-accent-yellow { border-left-color: var(--brand--yellow); }
+  .kpi-accent-green { border-left-color: #4caf50; }
+  .kpi-accent-orange { border-left-color: #ff7043; }
+
+  /* CHARTS GRID */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 4px;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text--dark--50);
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-size: 11px;
+    color: var(--text--dark--30);
+    margin-bottom: 16px;
+  }
+  .chart-container { position: relative; }
+
+  /* TRAINER WORKLOAD */
+  .trainer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .trainer-card {
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 4px;
+    padding: 14px 16px;
+    background: #fff;
+  }
+  .trainer-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text--dark--50);
+    margin-bottom: 10px;
+  }
+  .trainer-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text--dark--30);
+    margin-bottom: 4px;
+  }
+  .trainer-stat-val { font-weight: 600; color: var(--text--dark--40); }
+  .workload-bar-wrap {
+    height: 4px;
+    background: var(--ui--underline--light-grey);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .workload-bar {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--action-primary-blue);
+    transition: width 0.4s ease;
+  }
+  .workload-bar.busy { background: #ff7043; }
+  .workload-bar.medium { background: var(--brand--yellow); }
+
+  .suggested-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--brand--secondary--lightgreen);
+    color: #1a6a40;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 6px;
+  }
+
+  /* ALL BOOKINGS TABLE */
+  .all-bookings {
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 4px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text--dark--30);
+  }
+  .empty-state-icon { font-size: 32px; margin-bottom: 8px; }
+  .empty-state-text { font-size: 13px; }
+
+  /* TOAST */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    background: var(--brand--black);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    animation: slideIn 0.2s ease;
+    border-left: 3px solid var(--action-primary-blue);
+  }
+  .toast.success { border-left-color: #4caf50; }
+  .toast.error { border-left-color: #e53935; }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* MONTH VS CARDS */
+  .compare-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .compare-card {
+    background: var(--card-light-grey);
+    border-radius: 4px;
+    padding: 12px 14px;
+    text-align: center;
+  }
+  .compare-card-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text--dark--30); margin-bottom: 4px; }
+  .compare-card-value { font-size: 22px; font-weight: 700; color: var(--text--dark--50); }
+
+  /* SPINNER */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--text-dark-10);
+    border-top-color: var(--action-primary-blue);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--ui--underline--light-grey);
+    background: var(--card-light-grey);
+    font-size: 12px;
+    color: var(--text--dark--30);
+  }
+  .page-btn {
+    background: #fff;
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    transition: background 0.12s;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--card-light-grey); }
+  .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  select.filter-select, input.filter-input {
+    border: 1px solid var(--light-grey);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: Arial, sans-serif;
+    color: #333;
+    background: #fff;
+  }
+  select.filter-select:focus, input.filter-input:focus { outline: none; border-color: var(--action-primary-blue); }
+
+  .data-note {
+    font-size: 11px;
+    color: var(--text--dark--20);
+    padding: 8px 16px;
+    background: var(--card-light-grey);
+    border-top: 1px solid var(--ui--underline--light-grey);
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV OVERLAY -->
+<div class="nav-overlay" id="navOverlay" onclick="closeNav()"></div>
+
+<!-- SIDE DRAWER -->
+<nav class="nav-drawer" id="navDrawer">
+  <div class="nav-drawer-header">
+    <span class="nav-drawer-title">Navigation</span>
+    <button class="nav-close" onclick="closeNav()">✕</button>
+  </div>
+  <div class="nav-section-label">Dashboard</div>
+  <a href="#" class="nav-item active" onclick="closeNav()">
+    <span class="nav-item-icon">📊</span> Training Dashboard
+  </a>
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Tools</div>
+  <a href="https://amydawber-del.github.io/TrainingCSAT/dashboard.html" class="nav-item" target="_blank">
+    <span class="nav-item-icon">⭐</span> Training Feedback Dashboard
+  </a>
+  <a href="https://amydawber-del.github.io/TilTracker/" class="nav-item" target="_blank">
+    <span class="nav-item-icon">📚</span> TIL Tracker
+  </a>
+  <a href="https://amydawber-del.github.io/TrainingCSAT/" class="nav-item" target="_blank">
+    <span class="nav-item-icon">📋</span> Client Feedback Survey
+  </a>
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Resources</div>
+  <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank">
+    <span class="nav-item-icon">📄</span> Bookings Spreadsheet
+  </a>
+  <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-s3SWoPSaIanCZLMLYNnVmu3NU-LY4Lm7Db12gHLv6LzVuQ/viewform" class="nav-item" target="_blank">
+    <span class="nav-item-icon">📝</span> Training Request Form
+  </a>
+</nav>
+
+<!-- HEADER -->
+<header class="header">
+  <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleNav()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <a href="#" class="street-logo">
+    <div>
+      <div class="street-logo-mark">STREET<span class="logo-dot">.</span><span style="font-size:9px;font-weight:400;letter-spacing:0;">CO.UK</span></div>
+    </div>
+  </a>
+
+  <div class="header-title">Training Dashboard</div>
+
+  <div class="header-right">
+    <span class="last-updated" id="lastUpdated">—</span>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="loading-bar" id="loadingBar"></div>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- TRAINER WORKLOAD -->
+  <div style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">👤 Trainer Workload</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Last 30 days + upcoming</span>
+    </div>
+    <div class="trainer-grid" id="trainerGrid">
+      <div class="kpi-card" style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">Loading trainer data...</div>
+    </div>
+  </div>
+
+  <!-- NEW REQUESTS SECTION -->
+  <div style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">
+        🔔 Unassigned Requests
+        <span class="badge" id="unassignedBadge">0</span>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" id="searchInput" type="text" placeholder="Search client, option..." oninput="filterRequests()" style="width:200px;">
+      </div>
+    </div>
+
+    <div class="requests-panel">
+      <div class="requests-panel-header">
+        <div class="requests-panel-header-left">
+          <div class="alert-dot" id="alertDot" style="display:none;"></div>
+          <span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">New training requests awaiting trainer assignment</span>
+        </div>
+        <span style="font-size:11px;color:var(--text--dark--30);">Round-robin suggestion shown in blue</span>
+      </div>
+      <div class="table-wrap">
+        <table id="newRequestsTable">
+          <thead>
+            <tr>
+              <th>Submitted</th>
+              <th>Company</th>
+              <th>Contact</th>
+              <th>Training Option</th>
+              <th>Booked Date</th>
+              <th>Attendees</th>
+              <th>Value</th>
+              <th>Suggested Trainer</th>
+              <th>Assign To</th>
+              <th>Status</th>
+              <th>Save</th>
+            </tr>
+          </thead>
+          <tbody id="newRequestsBody">
+            <tr><td colspan="11"><div class="empty-state"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEEDS ACTION PANEL -->
+  <div style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title" style="color:#8a5a2a;">
+        ⚠️ Needs Action — Assigned &amp; Pending
+        <span class="badge" id="actionBadge" style="background:var(--brand-accent--mandarin-light);color:#a04010;">0</span>
+      </div>
+      <span style="font-size:11px;color:var(--text--dark--30);">These need to be confirmed as Booked or marked Cancelled</span>
+    </div>
+    <div class="requests-panel" style="border-color:var(--brand-accent--mandarin-light);">
+      <div class="requests-panel-header" style="background:var(--brand-accent--cream);">
+        <div class="requests-panel-header-left">
+          <div class="alert-dot" id="actionDot" style="display:none;background:#f59e0b;"></div>
+          <span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">Assigned or pending bookings awaiting confirmation</span>
+        </div>
+        <span style="font-size:11px;color:var(--text--dark--30);">Update status directly from this panel</span>
+      </div>
+      <div class="table-wrap">
+        <table id="actionRequestsTable">
+          <thead>
+            <tr>
+              <th>Submitted</th>
+              <th>Company</th>
+              <th>Contact</th>
+              <th>Training Option</th>
+              <th>Booked Date</th>
+              <th>Value</th>
+              <th>Trainer</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="actionRequestsBody">
+            <tr><td colspan="8"><div class="empty-state"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div style="margin-bottom:16px;">
+    <div class="section-title" style="margin-bottom:14px;">📈 Performance Overview</div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-accent-left">
+      <div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
+      <div class="kpi-card-value" id="kpiRevYear">£—</div>
+      <div class="kpi-card-sub">Exc. VAT</div>
+    </div>
+    <div class="kpi-card kpi-accent-left kpi-accent-yellow">
+      <div class="kpi-card-label">Revenue This Month <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
+      <div class="kpi-card-value" id="kpiRevMonth">£—</div>
+      <div id="kpiRevMonthDelta"></div>
+    </div>
+    <div class="kpi-card kpi-accent-left kpi-accent-green">
+      <div class="kpi-card-label">Avg Training Fee (Year) <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
+      <div class="kpi-card-value" id="kpiAvgFee">£—</div>
+      <div class="kpi-card-sub">Per booking</div>
+    </div>
+    <div class="kpi-card kpi-accent-left kpi-accent-orange">
+      <div class="kpi-card-label">Training Days This Year</div>
+      <div class="kpi-card-value" id="kpiDaysYear">—</div>
+      <div class="kpi-card-sub" id="kpiDaysMonth">— this month</div>
+    </div>
+    <div class="kpi-card kpi-accent-left" style="border-left-color:#9c27b0;">
+      <div class="kpi-card-label">Total Bookings (Year)</div>
+      <div class="kpi-card-value" id="kpiBookingsYear">—</div>
+      <div class="kpi-card-sub" id="kpiBookingsMonth">— this month</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Monthly Revenue</div>
+      <div class="chart-subtitle">This year vs last year (exc. VAT)</div>
+      <div class="chart-container" style="height:240px;">
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Month Comparison</div>
+      <div class="chart-subtitle">This month vs last month</div>
+      <div class="compare-cards">
+        <div class="compare-card">
+          <div class="compare-card-label" id="thisMonthLabel">This Month</div>
+          <div class="compare-card-value" id="thisMonthRev">£—</div>
+        </div>
+        <div class="compare-card">
+          <div class="compare-card-label" id="lastMonthLabel">Last Month</div>
+          <div class="compare-card-value" id="lastMonthRev">£—</div>
+        </div>
+      </div>
+      <div class="chart-container" style="height:150px;">
+        <canvas id="optionChart"></canvas>
+      </div>
+      <div class="chart-subtitle" style="margin-top:10px;margin-bottom:0;">Bookings by training option (this year)</div>
+    </div>
+  </div>
+
+  <!-- ALL BOOKINGS -->
+  <div>
+    <div class="section-header">
+      <div class="section-title">
+        📋 All Bookings
+        <span class="badge green" id="allBadge">0</span>
+      </div>
+      <div class="filter-bar">
+        <select class="filter-select" id="filterStatus" onchange="renderAllBookings()">
+          <option value="">All Statuses</option>
+          <option value="Unassigned">Unassigned</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Booked">Booked</option>
+          <option value="Pending">Pending</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+        <select class="filter-select" id="filterTrainer" onchange="renderAllBookings()">
+          <option value="">All Trainers</option>
+        </select>
+        <select class="filter-select" id="filterOption" onchange="renderAllBookings()">
+          <option value="">All Options</option>
+          <option value="1">Option 1</option>
+          <option value="2">Option 2</option>
+          <option value="3">Option 3</option>
+          <option value="4">Option 4</option>
+          <option value="5">Option 5</option>
+        </select>
+      </div>
+    </div>
+    <div class="all-bookings">
+      <div class="table-wrap">
+        <table id="allBookingsTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Company</th>
+              <th>Contact</th>
+              <th>Option</th>
+              <th>Attendees</th>
+              <th>Trainer</th>
+              <th>Value</th>
+              <th>Status</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="allBookingsBody">
+            <tr><td colspan="9"><div class="empty-state"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="paginationBar">
+        <button class="page-btn" id="prevBtn" onclick="changePage(-1)">← Prev</button>
+        <span id="pageInfo">Page 1</span>
+        <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next →</button>
+        <span style="margin-left:auto;" id="rowCount"></span>
+      </div>
+      <div class="data-note">Data pulled from Google Sheets via Apps Script. Click Refresh to get latest data.</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// =============================================
+// CONFIG
+// =============================================
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCvBhFSPyyoaVsui0DCxvGQQa0V7e_UCJ5LfqvcSysTHTFlNRcx4ewlET5TyouJ0ZYow/exec';
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSvPvb_WzFGr6SKflZEob3RFpuh44lKckD4DcsoAXxKUwtYBGCtGGEqA9YkSnvBKh3pQc9nwdbfh9B2/pub?gid=1792679763&single=true&output=csv';
+
+// Training option prices (exc. VAT)
+const OPTION_PRICES = { '1': 0, '2': 1100, '3': 1850, '4': 1000, '5': 220 };
+const OPTION_LABELS = {
+  '1': 'On Demand + Help Centre',
+  '2': 'Personalised 1 Day',
+  '3': 'Personalised 2 Day',
+  '4': 'Accounting + Go Live',
+  '5': 'Live HQ Session'
+};
+const OPTION_DAYS = { '1': 0, '2': 1, '3': 2, '4': 1, '5': 1 };
+
+// Trainers — update these to match your actual team
+const TRAINERS = ['Amy', 'Max', 'Jess'];
+
+// =============================================
+// STATE
+// =============================================
+let allData = [];
+let currentPage = 1;
+const PAGE_SIZE = 15;
+let revenueChart = null;
+let optionChart = null;
+
+// =============================================
+// NAV
+// =============================================
+function toggleNav() {
+  const drawer = document.getElementById('navDrawer');
+  const overlay = document.getElementById('navOverlay');
+  const btn = document.getElementById('hamburgerBtn');
+  const isOpen = drawer.classList.contains('open');
+  if (isOpen) { closeNav(); } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+function closeNav() {
+  document.getElementById('navDrawer').classList.remove('open');
+  document.getElementById('navOverlay').classList.remove('open');
+  document.getElementById('hamburgerBtn').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNav(); });
+
+// =============================================
+// TOAST
+// =============================================
+function showToast(msg, type = '') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// =============================================
+// LOADING
+// =============================================
+function setLoading(on) {
+  document.getElementById('loadingBar').classList.toggle('active', on);
+}
+
+// =============================================
+// DATA FETCHING
+// =============================================
+async function loadData() {
+  setLoading(true);
+  try {
+    // Try Apps Script first
+    const res = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=getData', 8000);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data) {
+        allData = parseAppsScriptData(json.data);
+        processData();
+        document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+        setLoading(false);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: try CSV
+  try {
+    const res = await fetchWithTimeout(CSV_URL, 8000);
+    if (res.ok) {
+      const text = await res.text();
+      allData = parseCSV(text);
+      processData();
+      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+      setLoading(false);
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback: demo data
+  allData = generateDemoData();
+  processData();
+  document.getElementById('lastUpdated').textContent = 'Demo data (connect your sheet)';
+  showToast('Using demo data — connect Apps Script for live data', '');
+  setLoading(false);
+}
+
+function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal, mode: 'cors' });
+}
+
+// Parse Apps Script JSON response
+// Expected: { data: [ [col1, col2, ...], ... ] } where row 0 is headers
+function parseAppsScriptData(rows) {
+  if (!rows || rows.length < 2) return [];
+  const headers = rows[0].map(h => String(h).trim().toLowerCase());
+  return rows.slice(1).map((row, i) => {
+    const obj = {};
+    headers.forEach((h, j) => { obj[h] = row[j] || ''; });
+    return normaliseRow(obj, i + 2); // +2 for header row + 1-indexed
+  }).filter(r => r.company || r.contact);
+}
+
+// Parse CSV text
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = parseCSVRow(lines[0]).map(h => h.trim().toLowerCase());
+  return lines.slice(1).map((line, i) => {
+    const vals = parseCSVRow(line);
+    const obj = {};
+    headers.forEach((h, j) => { obj[h] = (vals[j] || '').trim(); });
+    return normaliseRow(obj, i + 2);
+  }).filter(r => r.company || r.contact);
+}
+
+function parseCSVRow(line) {
+  const result = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// Normalise a row object into our standard shape
+// Column names guessed from common Google Form exports — adjust if needed
+function normaliseRow(obj, rowIndex) {
+  const get = (...keys) => {
+    for (const k of keys) {
+      for (const ok of Object.keys(obj)) {
+        if (ok.includes(k)) return obj[ok];
+      }
+    }
+    return '';
+  };
+
+  const timestamp = get('timestamp', 'date', 'time');
+  const company = get('company / business name', 'company name', 'company', 'organisation', 'business', 'agency');
+  const contact = get('client stakeholder name', 'stakeholder', 'authorising training', 'contact', 'name', 'your name');
+  const email = get('email');
+  const optionRaw = get('what type of training', 'training option', 'type of training', 'option', 'training type', 'package');
+  const bookedDate = get('booked date', 'booking date', 'date of training', 'preferred date', 'date', 'when');
+  const preferredDate = bookedDate;
+  const attendees = get('attendees', 'delegates', 'number of');
+  const trainer = get('trainer', 'assigned', 'assigned trainer');
+  const status = get('status');
+  const notes = get('notes', 'additional', 'comments');
+  const invoiceValue = get('invoice value', 'invoice', 'value', 'fee', 'cost', 'price');
+
+  // Extract option number
+  let option = '2';
+  const om = String(optionRaw).match(/(\d)/);
+  if (om) option = om[1];
+  else if (String(optionRaw).toLowerCase().includes('1 day')) option = '2';
+  else if (String(optionRaw).toLowerCase().includes('2 day')) option = '3';
+  else if (String(optionRaw).toLowerCase().includes('account')) option = '4';
+  else if (String(optionRaw).toLowerCase().includes('hq')) option = '5';
+
+  const numAttendees = parseInt(attendees) || 1;
+  const basePrice = parseInt(OPTION_PRICES[option]) || 0;
+
+  // Use Invoice Value from sheet (col U) if present, else fall back to option price
+  const parsedInvoice = invoiceValue ? parseFloat(String(invoiceValue).replace(/[£,\s]/g, '')) : NaN;
+  const revenue = !isNaN(parsedInvoice) && parsedInvoice > 0
+    ? parsedInvoice
+    : (option === '5' ? basePrice * numAttendees : basePrice);
+
+  const parsedDate = parseDate(timestamp || preferredDate);
+
+  return {
+    rowIndex,
+    timestamp: timestamp || '',
+    date: parsedDate,
+    company: company || obj['company name'] || '',
+    contact: contact || '',
+    email: email || '',
+    option,
+    optionLabel: OPTION_LABELS[option] || `Option ${option}`,
+    preferredDate: preferredDate || '',
+    attendees: numAttendees,
+    trainer: trainer || '',
+    status: status || (trainer ? 'Assigned' : 'New'),
+    notes: notes || '',
+    bookedOn: get('booked on', 'booked on date', 'date booked') || '',
+    revenue
+  };
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+// =============================================
+// DEMO DATA GENERATOR
+// =============================================
+function generateDemoData() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const lastYear = year - 1;
+  const rows = [];
+  let rowIdx = 2;
+
+  const companies = ['Acorn Estates', 'Bridgewater Properties', 'Chapman & Co', 'Dalton Lettings',
+    'Elara Homes', 'Foxcroft Realty', 'Grange Lettings', 'Harfield & Sons',
+    'Ivory Keys Properties', 'Jameson Estate Agents', 'Keystone Lettings', 'Lakewood Homes'];
+  const contacts = ['James Wilson', 'Sarah Brown', 'Michael Davies', 'Emma Jones',
+    'Oliver Smith', 'Charlotte Taylor', 'Harry White', 'Amelia Harris',
+    'George Clark', 'Lily Walker', 'Noah Robinson', 'Sophia Lewis'];
+
+  // This year - spread across months up to now
+  for (let m = 0; m <= now.getMonth(); m++) {
+    const count = 3 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < count; i++) {
+      const day = 1 + Math.floor(Math.random() * 28);
+      const dateObj = new Date(year, m, day);
+      if (dateObj > now) continue;
+      const opt = ['2','2','3','3','4','5','1'][Math.floor(Math.random() * 7)];
+      const compIdx = (m * 3 + i) % companies.length;
+      const trainerIdx = Math.floor(Math.random() * TRAINERS.length);
+      const isNew = (m === now.getMonth() && i >= 2);
+      const numAtt = opt === '5' ? (2 + Math.floor(Math.random() * 4)) : 1;
+      rows.push({
+        rowIndex: rowIdx++,
+        timestamp: dateObj.toISOString(),
+        date: dateObj,
+        company: companies[compIdx],
+        contact: contacts[compIdx],
+        email: contacts[compIdx].toLowerCase().replace(' ','.')+`@${companies[compIdx].toLowerCase().replace(/[^a-z]/g,'')}.com`,
+        option: opt,
+        optionLabel: OPTION_LABELS[opt],
+        preferredDate: new Date(year, m, day + 14).toLocaleDateString('en-GB'),
+        attendees: numAtt,
+        trainer: isNew ? '' : TRAINERS[trainerIdx],
+        status: isNew ? 'New' : (Math.random() > 0.3 ? 'Complete' : 'Assigned'),
+        notes: '',
+        revenue: opt === '5' ? OPTION_PRICES[opt] * numAtt : OPTION_PRICES[opt]
+      });
+    }
+  }
+
+  // Last year data (for chart comparison)
+  for (let m = 0; m < 12; m++) {
+    const count = 2 + Math.floor(Math.random() * 4);
+    for (let i = 0; i < count; i++) {
+      const day = 1 + Math.floor(Math.random() * 28);
+      const dateObj = new Date(lastYear, m, day);
+      const opt = ['2','2','3','4','5'][Math.floor(Math.random() * 5)];
+      const compIdx = (m * 2 + i) % companies.length;
+      const trainerIdx = Math.floor(Math.random() * TRAINERS.length);
+      const numAtt = opt === '5' ? (2 + Math.floor(Math.random() * 3)) : 1;
+      rows.push({
+        rowIndex: rowIdx++,
+        timestamp: dateObj.toISOString(),
+        date: dateObj,
+        company: companies[compIdx] + ' (LY)',
+        contact: contacts[compIdx],
+        email: '',
+        option: opt,
+        optionLabel: OPTION_LABELS[opt],
+        preferredDate: '',
+        attendees: numAtt,
+        trainer: TRAINERS[trainerIdx],
+        status: 'Complete',
+        notes: '',
+        revenue: opt === '5' ? OPTION_PRICES[opt] * numAtt : OPTION_PRICES[opt]
+      });
+    }
+  }
+
+  return rows;
+}
+
+// =============================================
+// PROCESS & RENDER
+// =============================================
+function processData() {
+  renderUnassigned();
+  renderActionPanel();
+  renderKPIs();
+  renderCharts();
+  renderTrainerWorkload();
+  renderAllBookings();
+  populateTrainerFilter();
+}
+
+// =============================================
+// UNASSIGNED REQUESTS
+// =============================================
+function renderUnassigned() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const unassigned = allData.filter(r => {
+    if (['Booked','Cancelled','Complete'].includes(r.status)) return false;
+    if (r.trainer && r.trainer.trim()) return false;
+    if (r.date && r.date < new Date('2026-01-01')) return false;
+    return true;
+  });
+
+  const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const filtered = search
+    ? unassigned.filter(r => (r.company + r.contact + r.option + r.optionLabel).toLowerCase().includes(search))
+    : unassigned;
+
+  document.getElementById('unassignedBadge').textContent = filtered.length;
+  document.getElementById('alertDot').style.display = filtered.length > 0 ? 'block' : 'none';
+
+  const suggested = getSuggestedTrainer();
+  const tbody = document.getElementById('newRequestsBody');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">
+      <div class="empty-state-icon">✅</div>
+      <div class="empty-state-text">No unassigned requests — all up to date!</div>
+    </div></td></tr>\`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => `
+    <tr id="req-row-${r.rowIndex}">
+      <td style="white-space:nowrap;">${formatDate(r.date || r.timestamp)}</td>
+      <td><strong>${esc(r.company)}</strong></td>
+      <td>${esc(r.contact)}<br><span style="color:var(--text--dark--30);font-size:11px;">${esc(r.email)}</span></td>
+      <td><span class="option-badge opt-${r.option}">Opt ${r.option} — ${esc(r.optionLabel)}</span></td>
+      <td style="white-space:nowrap;">${esc(r.preferredDate) || '—'}</td>
+      <td>${r.attendees}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="color:var(--text--dark--30);font-size:12px;">£</span>
+          <input type="number" id="req-value-${r.rowIndex}" value="${r.revenue || ''}" placeholder="0" min="0" step="50"
+            oninput="onReqValueInput(${r.rowIndex})"
+            style="width:80px;border:1px solid var(--light-grey);border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;color:#333;">
+        </div>
+      </td>
+      <td><span class="suggested-trainer">⚡ ${suggested}</span></td>
+      <td>
+        <select class="trainer-select" id="select-${r.rowIndex}" onchange="onReqTrainerChange(${r.rowIndex})">
+          <option value="" selected>— Leave unassigned —</option>
+          ${TRAINERS.map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <select id="req-status-${r.rowIndex}" style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:100px;"
+          onchange="applyReqStatusStyle(${r.rowIndex})">
+          <option value="Assigned">Assigned</option>
+          <option value="Booked">Booked</option>
+          <option value="Pending">Pending</option>
+          <option value="Cancelled" selected>Cancelled</option>
+        </select>
+      </td>
+      <td>
+        <button class="btn btn-primary btn-sm" id="req-save-${r.rowIndex}" onclick="saveUnassigned(${r.rowIndex})">Save</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Apply status colours after render — default to Cancelled style since no trainer selected yet
+  filtered.forEach(r => applyReqStatusStyle(r.rowIndex));
+}
+
+function filterRequests() { renderUnassigned(); }
+
+function getSuggestedTrainer() {
+  // Count assignments in last 30 days + upcoming
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+
+  const counts = {};
+  TRAINERS.forEach(t => { counts[t] = 0; });
+  allData.forEach(r => {
+    if (r.trainer && counts.hasOwnProperty(r.trainer)) {
+      if (!r.date || r.date >= cutoff) counts[r.trainer]++;
+    }
+  });
+
+  // Return trainer with fewest recent assignments
+  return TRAINERS.reduce((a, b) => counts[a] <= counts[b] ? a : b);
+}
+
+// Update allData value immediately as user types in unassigned panel
+function onReqValueInput(rowIndex) {
+  const inp = document.getElementById('req-value-' + rowIndex);
+  const newValue = parseFloat(inp ? inp.value : 0) || 0;
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.revenue = newValue;
+}
+
+// Apply colour to status dropdown in unassigned panel
+function applyReqStatusStyle(rowIndex) {
+  const sel = document.getElementById('req-status-' + rowIndex);
+  if (!sel) return;
+  applyStatusStyle(sel, sel.value);
+}
+
+// When trainer changes in unassigned panel, suggest appropriate status
+function onReqTrainerChange(rowIndex) {
+  const trainerSel = document.getElementById('select-' + rowIndex);
+  const statusSel  = document.getElementById('req-status-' + rowIndex);
+  if (!statusSel) return;
+
+  if (trainerSel && trainerSel.value) {
+    // Trainer selected — suggest Assigned
+    statusSel.value = 'Assigned';
+  } else {
+    // No trainer — suggest Cancelled
+    statusSel.value = 'Cancelled';
+  }
+  applyReqStatusStyle(rowIndex);
+}
+
+async function saveUnassigned(rowIndex) {
+  const trainerSel = document.getElementById('select-' + rowIndex);
+  const statusSel  = document.getElementById('req-status-' + rowIndex);
+  const valueInp   = document.getElementById('req-value-' + rowIndex);
+  const btn        = document.getElementById('req-save-' + rowIndex);
+
+  const trainer  = trainerSel ? trainerSel.value : '';
+  const newStatus = statusSel ? statusSel.value : 'Assigned';
+  const newValue  = valueInp ? (parseFloat(valueInp.value) || 0) : 0;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  // Update local data
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) {
+    row.trainer = trainer;
+    row.status  = newStatus;
+    if (newValue > 0) row.revenue = newValue;
+  }
+
+  // Build URL with all changed fields
+  let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex
+    + '&status=' + encodeURIComponent(newStatus);
+  if (trainer) url += '&trainer=' + encodeURIComponent(trainer);
+  if (newValue > 0) url += '&value=' + newValue;
+
+  try {
+    const res  = await fetch(url, { mode: 'cors' });
+    const json = await res.json();
+    showToast(json.success ? '✓ Saved' : '✓ Saved locally (sync sheet manually)', json.success ? 'success' : '');
+  } catch(e) {
+    showToast('✓ Saved locally (sync sheet manually)', '');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Save';
+
+  renderUnassigned();
+  renderActionPanel();
+  renderTrainerWorkload();
+  renderAllBookings();
+  renderKPIs();
+}
+
+// =============================================
+// KPIs
+// =============================================
+function renderKPIs() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const lastMonth = month === 0 ? 11 : month - 1;
+  const lastMonthYear = month === 0 ? year - 1 : year;
+
+  const thisYearRows = allData.filter(r => r.date && r.date.getFullYear() === year && r.option !== '1' && r.status === 'Booked');
+  const thisMonthRows = allData.filter(r => r.date && r.date.getFullYear() === year && r.date.getMonth() === month && r.option !== '1' && r.status === 'Booked');
+  const lastMonthRows = allData.filter(r => r.date && r.date.getFullYear() === lastMonthYear && r.date.getMonth() === lastMonth && r.option !== '1' && r.status === 'Booked');
+
+  const revYear = thisYearRows.reduce((s,r) => s + r.revenue, 0);
+  const revMonth = thisMonthRows.reduce((s,r) => s + r.revenue, 0);
+  const revLastMonth = lastMonthRows.reduce((s,r) => s + r.revenue, 0);
+  const avgFee = thisYearRows.length ? Math.round(revYear / thisYearRows.filter(r=>r.revenue>0).length) : 0;
+
+  // Training days
+  const daysYear = thisYearRows.reduce((s,r) => s + (OPTION_DAYS[r.option] || 0), 0);
+  const daysMonth = thisMonthRows.reduce((s,r) => s + (OPTION_DAYS[r.option] || 0), 0);
+
+  document.getElementById('kpiRevYear').textContent = '£' + revYear.toLocaleString();
+  document.getElementById('kpiRevMonth').textContent = '£' + revMonth.toLocaleString();
+  document.getElementById('kpiAvgFee').textContent = avgFee ? '£' + avgFee.toLocaleString() : '—';
+  document.getElementById('kpiDaysYear').textContent = daysYear;
+  document.getElementById('kpiDaysMonth').textContent = daysMonth + ' this month';
+  document.getElementById('kpiBookingsYear').textContent = thisYearRows.length;
+  document.getElementById('kpiBookingsMonth').textContent = thisMonthRows.length + ' this month';
+
+  // Delta
+  const deltaEl = document.getElementById('kpiRevMonthDelta');
+  if (revLastMonth > 0) {
+    const pct = Math.round(((revMonth - revLastMonth) / revLastMonth) * 100);
+    const up = pct >= 0;
+    deltaEl.innerHTML = `<span class="kpi-card-delta ${up?'delta-up':'delta-down'}">${up?'▲':'▼'} ${Math.abs(pct)}% vs last month</span>`;
+  }
+
+  // Month labels
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('thisMonthLabel').textContent = MONTHS[month];
+  document.getElementById('lastMonthLabel').textContent = MONTHS[lastMonth];
+  document.getElementById('thisMonthRev').textContent = '£' + revMonth.toLocaleString();
+  document.getElementById('lastMonthRev').textContent = '£' + revLastMonth.toLocaleString();
+}
+
+// =============================================
+// CHARTS
+// =============================================
+function renderCharts() {
+  renderRevenueChart();
+  renderOptionChart();
+}
+
+function renderRevenueChart() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const lastYear = year - 1;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const thisYearByMonth = Array(12).fill(0);
+  const lastYearByMonth = Array(12).fill(0);
+
+  allData.forEach(r => {
+    if (!r.date || r.option === '1') return;
+    const y = r.date.getFullYear();
+    const m = r.date.getMonth();
+    if (y === year) thisYearByMonth[m] += r.revenue;
+    else if (y === lastYear) lastYearByMonth[m] += r.revenue;
+  });
+
+  const ctx = document.getElementById('revenueChart').getContext('2d');
+  if (revenueChart) revenueChart.destroy();
+
+  revenueChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: MONTHS,
+      datasets: [
+        {
+          label: String(year),
+          data: thisYearByMonth,
+          backgroundColor: 'rgba(33,71,244,0.7)',
+          borderRadius: 3,
+          borderSkipped: false,
+        },
+        {
+          label: String(lastYear),
+          data: lastYearByMonth,
+          backgroundColor: 'rgba(163,186,255,0.5)',
+          borderRadius: 3,
+          borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { font: { family: 'Arial', size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` £${ctx.parsed.y.toLocaleString()}`
+          },
+          bodyFont: { family: 'Arial', size: 12 }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family:'Arial', size:11 } } },
+        y: {
+          ticks: {
+            font: { family:'Arial', size:11 },
+            callback: v => '£' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v)
+          },
+          grid: { color: '#f0f0f0' }
+        }
+      }
+    }
+  });
+}
+
+function renderOptionChart() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const counts = {'1':0,'2':0,'3':0,'4':0,'5':0};
+  allData.filter(r => r.date && r.date.getFullYear() === year).forEach(r => { if (counts[r.option] !== undefined) counts[r.option]++; });
+
+  const ctx = document.getElementById('optionChart').getContext('2d');
+  if (optionChart) optionChart.destroy();
+
+  optionChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Opt 1','Opt 2','Opt 3','Opt 4','Opt 5'],
+      datasets: [{
+        data: [counts['1'],counts['2'],counts['3'],counts['4'],counts['5']],
+        backgroundColor: ['#b8caff','#2147f4','#f6be9d','#bde4b9','#beffd8'],
+        borderWidth: 1,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font:{family:'Arial',size:10}, boxWidth:10, padding:8 } },
+        tooltip: { bodyFont:{family:'Arial',size:11} }
+      },
+      cutout: '60%'
+    }
+  });
+}
+
+// =============================================
+// TRAINER WORKLOAD
+// =============================================
+function renderTrainerWorkload() {
+  const now = new Date();
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const future = new Date(); future.setDate(future.getDate() + 30);
+
+  const suggested = getSuggestedTrainer();
+  const counts = {};
+  const upcoming = {};
+  TRAINERS.forEach(t => { counts[t] = 0; upcoming[t] = 0; });
+
+  allData.forEach(r => {
+    if (r.trainer && counts.hasOwnProperty(r.trainer)) {
+      if (r.date) {
+        if (r.date >= cutoff && r.date <= today) counts[r.trainer]++;
+        if (r.date >= today && r.date <= future) upcoming[r.trainer]++;
+      } else {
+        counts[r.trainer]++;
+      }
+    }
+  });
+
+  const maxCount = Math.max(...Object.values(counts), 1);
+  const grid = document.getElementById('trainerGrid');
+
+  grid.innerHTML = TRAINERS.map(t => {
+    const pct = Math.round((counts[t] / maxCount) * 100);
+    const barClass = pct > 75 ? 'busy' : pct > 40 ? 'medium' : '';
+    const isSuggested = t === suggested;
+    return `
+      <div class="trainer-card">
+        <div class="trainer-name">${t}</div>
+        <div class="trainer-stat">
+          <span>Last 30 days</span>
+          <span class="trainer-stat-val">${counts[t]}</span>
+        </div>
+        <div class="trainer-stat">
+          <span>Upcoming (30d)</span>
+          <span class="trainer-stat-val">${upcoming[t]}</span>
+        </div>
+        <div class="workload-bar-wrap">
+          <div class="workload-bar ${barClass}" style="width:${pct}%"></div>
+        </div>
+        ${isSuggested ? '<div class="suggested-tag">⚡ Next in rotation</div>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+
+// =============================================
+// NEEDS ACTION PANEL (Assigned + Pending)
+// =============================================
+function renderActionPanel() {
+  const actionRows = allData.filter(r => {
+    if (!r.date || r.date < new Date('2026-01-01')) return false;
+    return r.status === 'Assigned' || r.status === 'Pending';
+  });
+
+  document.getElementById('actionBadge').textContent = actionRows.length;
+  const dot = document.getElementById('actionDot');
+  dot.style.display = actionRows.length > 0 ? 'block' : 'none';
+
+  const tbody = document.getElementById('actionRequestsBody');
+
+  if (actionRows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">'
+      + '<div class="empty-state-icon">✅</div>'
+      + '<div class="empty-state-text">Nothing needs action right now</div>'
+      + '</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = actionRows.map(r => {
+    const status = r.status || 'Assigned';
+    const statuses = ['Assigned', 'Booked', 'Pending', 'Cancelled'];
+    const opts = statuses.map(s =>
+      '<option value="' + s + '"' + (status === s ? ' selected' : '') + '>' + s + '</option>'
+    ).join('');
+
+    return '<tr id="action-row-' + r.rowIndex + '">'
+      + '<td style="white-space:nowrap;">' + formatDate(r.date || r.timestamp) + '</td>'
+      + '<td><strong>' + esc(r.company) + '</strong></td>'
+      + '<td>' + esc(r.contact) + '</td>'
+      + '<td><span class="option-badge opt-' + r.option + '">Opt ' + r.option + '</span></td>'
+      + '<td style="white-space:nowrap;">' + (esc(r.preferredDate) || '—') + '</td>'
+      + '<td style="font-weight:600;">' + (r.revenue ? '£' + r.revenue.toLocaleString() : '—') + '</td>'
+      + '<td>' + (esc(r.trainer) || '<span style="color:var(--text--dark--20)">—</span>') + '</td>'
+      + '<td>'
+        + '<select id="action-status-' + r.rowIndex + '" '
+        + 'onchange="onActionStatusChange(' + r.rowIndex + ')" '
+        + 'style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;'
+        + 'font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:100px;">'
+        + opts
+        + '</select>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // Apply colours
+  actionRows.forEach(r => {
+    const sel = document.getElementById('action-status-' + r.rowIndex);
+    if (sel) applyStatusStyle(sel, r.status || 'Assigned');
+  });
+}
+
+async function onActionStatusChange(rowIndex) {
+  const sel = document.getElementById('action-status-' + rowIndex);
+  const newStatus = sel ? sel.value : '';
+  if (!newStatus) return;
+
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.status = newStatus;
+  if (sel) applyStatusStyle(sel, newStatus);
+
+  // Also sync status dropdown in main table if visible
+  const mainSel = document.getElementById('sel-status-' + rowIndex);
+  if (mainSel) { mainSel.value = newStatus; applyStatusStyle(mainSel, newStatus); }
+
+  // Show inline date picker in action panel row if Booked
+  const actionDateWrap = document.getElementById('action-date-wrap-' + rowIndex);
+  if (actionDateWrap) actionDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
+
+  // Also show/hide in main bookings table
+  const mainDateWrap = document.getElementById('booked-date-wrap-' + rowIndex);
+  if (mainDateWrap) mainDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
+
+  let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus);
+  showToast('Status → ' + newStatus, 'success');
+  try { await fetch(url, { mode: 'cors' }); } catch(e) {}
+
+  renderActionPanel();
+  renderUnassigned();
+  renderKPIs();
+  renderCharts();
+}
+
+// Fires when booked-on date picked from action panel
+async function onActionBookedDateChange(rowIndex) {
+  const dateInp = document.getElementById('action-booked-date-' + rowIndex);
+  const bookedOn = dateInp ? dateInp.value : '';
+
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.bookedOn = bookedOn;
+
+  // Sync to main table date input if present
+  const mainInp = document.getElementById('inp-booked-date-' + rowIndex);
+  if (mainInp) mainInp.value = bookedOn;
+
+  showToast('Booked on date saved', 'success');
+  try {
+    await fetch(APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&bookedOn=' + encodeURIComponent(bookedOn), { mode: 'cors' });
+  } catch(e) {}
+}
+
+// =============================================
+// ALL BOOKINGS TABLE
+// =============================================
+
+const STATUS_COLOURS = {
+  'Unassigned': { bg: '#fde8eb', color: '#c0303d', border: '#c0303d' },
+  'Assigned':   { bg: '#f5ede5', color: '#8a5a2a', border: '#8a5a2a' },
+  'Booked':     { bg: '#b8caff', color: '#2147f4', border: '#2147f4' },
+  'Pending':    { bg: '#beffd8', color: '#1a6a40', border: '#1a6a40' },
+  'Cancelled':  { bg: '#f0f0f0', color: '#999',    border: '#ccc'    }
+};
+
+function applyStatusStyle(sel, status) {
+  const c = STATUS_COLOURS[status] || {};
+  sel.style.background   = c.bg     || '#fff';
+  sel.style.color        = c.color  || '#333';
+  sel.style.borderColor  = c.border || 'var(--light-grey)';
+  sel.style.fontWeight   = '600';
+}
+
+function buildStatusSelect(rowIndex, current, bookedOn) {
+  const statuses = ['Unassigned','Assigned','Booked','Pending','Cancelled'];
+  const opts = statuses.map(s =>
+    '<option value="' + s + '"' + (current === s ? ' selected' : '') + '>' + s + '</option>'
+  ).join('');
+  const showDate = current === 'Booked';
+  const dateVal  = bookedOn || '';
+  return '<div style="display:flex;flex-direction:column;gap:5px;">'
+    + '<select id="sel-status-' + rowIndex + '" '
+    + 'onchange="onStatusChange(' + rowIndex + ')" '
+    + 'style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;'
+    + 'font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:100px;">'
+    + opts + '</select>'
+    + '<div id="booked-date-wrap-' + rowIndex + '" style="display:' + (showDate ? 'flex' : 'none') + ';align-items:center;gap:4px;">'
+    + '<input type="date" id="inp-booked-date-' + rowIndex + '" value="' + dateVal + '" '
+    + 'onchange="onBookedDateChange(' + rowIndex + ')" '
+    + 'style="border:1px solid #2147f4;border-radius:4px;padding:3px 6px;font-size:11px;'
+    + 'font-family:Arial,sans-serif;color:#2147f4;background:#f0f4ff;width:130px;" '
+    + 'placeholder="Booked on date">'
+    + '</div>'
+    + '</div>';
+}
+
+function renderAllBookings() {
+  const statusF  = document.getElementById('filterStatus')?.value  || '';
+  const trainerF = document.getElementById('filterTrainer')?.value || '';
+  const optionF  = document.getElementById('filterOption')?.value  || '';
+
+  let filtered = allData.filter(r => {
+    if (statusF  && r.status  !== statusF)  return false;
+    if (trainerF && r.trainer !== trainerF) return false;
+    if (optionF  && r.option  !== optionF)  return false;
+    return true;
+  });
+
+  // Sort: Unassigned first (excluding Booked/Cancelled), then everything else newest-first
+  filtered.sort((a, b) => {
+    const aTop = (!a.status || a.status === 'Unassigned');
+    const bTop = (!b.status || b.status === 'Unassigned');
+    if (aTop && !bTop) return -1;
+    if (!aTop && bTop) return 1;
+    return (b.date || 0) - (a.date || 0);
+  });
+
+  document.getElementById('allBadge').textContent  = filtered.length;
+  document.getElementById('rowCount').textContent  = filtered.length + ' records';
+
+  const total = Math.ceil(filtered.length / PAGE_SIZE);
+  if (currentPage > total) currentPage = 1;
+  const page = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  document.getElementById('prevBtn').disabled  = currentPage <= 1;
+  document.getElementById('nextBtn').disabled  = currentPage >= total;
+  document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + (total || 1);
+
+  const tbody = document.getElementById('allBookingsBody');
+
+  if (page.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">'
+      + '<div class="empty-state-icon">📭</div>'
+      + '<div class="empty-state-text">No records match your filters</div>'
+      + '</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = page.map(r => {
+    const trainerOpts = '<option value="">Unassigned</option>'
+      + TRAINERS.map(t => '<option value="' + t + '"' + (r.trainer === t ? ' selected' : '') + '>' + t + '</option>').join('');
+
+    const status = r.status || 'Unassigned';
+
+    return '<tr id="book-row-' + r.rowIndex + '">'
+      + '<td style="white-space:nowrap;">' + formatDate(r.date || r.timestamp) + '</td>'
+      + '<td><strong>' + esc(r.company) + '</strong></td>'
+      + '<td>' + esc(r.contact) + '</td>'
+      + '<td><span class="option-badge opt-' + r.option + '">Opt ' + r.option + '</span></td>'
+      + '<td>' + r.attendees + '</td>'
+      + '<td>'
+        + '<select id="sel-trainer-' + r.rowIndex + '" '
+        + 'onchange="onTrainerChange(' + r.rowIndex + ')" '
+        + 'style="min-width:90px;border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;">'
+        + trainerOpts
+        + '</select>'
+      + '</td>'
+      + '<td>'
+        + '<div style="display:flex;align-items:center;gap:4px;">'
+        + '<span style="color:var(--text--dark--30);font-size:12px;">£</span>'
+        + '<input type="number" id="inp-value-' + r.rowIndex + '" '
+        + 'value="' + (r.revenue || '') + '" placeholder="0" min="0" step="50" '
+        + 'oninput="onValueInput(' + r.rowIndex + ')" '
+        + 'style="width:80px;border:1px solid #ccc;border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;color:#333;">'
+        + '</div>'
+      + '</td>'
+      + '<td>' + buildStatusSelect(r.rowIndex, status, r.bookedOn || '') + '</td>'
+      + '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.notes) + '">' + (esc(r.notes) || '—') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // Apply colour styling to all status dropdowns after render
+  page.forEach(r => {
+    const sel = document.getElementById('sel-status-' + r.rowIndex);
+    if (sel) applyStatusStyle(sel, r.status || 'Unassigned');
+  });
+}
+
+// Fires immediately when status dropdown changes
+async function onStatusChange(rowIndex) {
+  const sel = document.getElementById('sel-status-' + rowIndex);
+  const newStatus = sel ? sel.value : '';
+  if (!newStatus) return;
+
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.status = newStatus;
+  if (sel) applyStatusStyle(sel, newStatus);
+
+  // Show/hide booked-on date picker
+  const dateWrap = document.getElementById('booked-date-wrap-' + rowIndex);
+  if (dateWrap) dateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
+
+  // If switching away from Booked, clear the date
+  if (newStatus !== 'Booked') {
+    const dateInp = document.getElementById('inp-booked-date-' + rowIndex);
+    if (dateInp) dateInp.value = '';
+    if (row) row.bookedOn = '';
+  }
+
+  // Build URL — include bookedOn date if Booked and date already set
+  let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus);
+  if (newStatus === 'Booked') {
+    const dateInp = document.getElementById('inp-booked-date-' + rowIndex);
+    if (dateInp && dateInp.value) url += '&bookedOn=' + encodeURIComponent(dateInp.value);
+  }
+
+  showToast('Status → ' + newStatus, 'success');
+  try { await fetch(url, { mode: 'cors' }); } catch(e) {}
+
+  renderUnassigned();
+  renderActionPanel();
+  renderTrainerWorkload();
+  renderKPIs();
+  renderCharts();
+}
+
+// Fires when booked-on date is picked
+async function onBookedDateChange(rowIndex) {
+  const dateInp = document.getElementById('inp-booked-date-' + rowIndex);
+  const bookedOn = dateInp ? dateInp.value : '';
+
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.bookedOn = bookedOn;
+
+  showToast('Booked on date saved', 'success');
+  try {
+    await fetch(APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&bookedOn=' + encodeURIComponent(bookedOn), { mode: 'cors' });
+  } catch(e) {}
+}
+
+// Fires when trainer dropdown changes — auto-saves immediately
+async function onTrainerChange(rowIndex) {
+  const sel = document.getElementById('sel-trainer-' + rowIndex);
+  const newTrainer = sel ? sel.value : '';
+
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) {
+    row.trainer = newTrainer;
+    if (newTrainer && (!row.status || row.status === 'Unassigned')) {
+      row.status = 'Assigned';
+      // Update status dropdown to match
+      const statusSel = document.getElementById('sel-status-' + rowIndex);
+      if (statusSel) { statusSel.value = 'Assigned'; applyStatusStyle(statusSel, 'Assigned'); }
+    }
+    if (!newTrainer) {
+      row.status = 'Unassigned';
+      const statusSel = document.getElementById('sel-status-' + rowIndex);
+      if (statusSel) { statusSel.value = 'Unassigned'; applyStatusStyle(statusSel, 'Unassigned'); }
+    }
+  }
+
+  showToast('Trainer → ' + (newTrainer || 'Unassigned'), 'success');
+
+  try {
+    await fetch(APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex
+      + '&trainer=' + encodeURIComponent(newTrainer)
+      + '&status=' + encodeURIComponent(row ? row.status : 'Assigned'),
+      { mode: 'cors' });
+  } catch(e) {}
+
+  renderUnassigned();
+  renderActionPanel();
+  renderTrainerWorkload();
+}
+
+// Fires when value input changes — auto-saves immediately
+// Debounce timers for value saves
+const _valueSaveTimers = {};
+
+function onValueInput(rowIndex) {
+  const inp = document.getElementById('inp-value-' + rowIndex);
+  const newValue = parseFloat(inp ? inp.value : 0) || 0;
+
+  // Update allData immediately so re-renders use the correct value
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row) row.revenue = newValue;
+
+  // Debounce: wait 800ms after last keystroke before saving to sheet
+  clearTimeout(_valueSaveTimers[rowIndex]);
+  _valueSaveTimers[rowIndex] = setTimeout(async () => {
+    showToast('Value → £' + newValue.toLocaleString(), 'success');
+    try {
+      await fetch(APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&value=' + newValue, { mode: 'cors' });
+    } catch(e) {}
+    renderKPIs();
+    renderCharts();
+  }, 800);
+}
+
+function populateTrainerFilter() {
+  const sel = document.getElementById('filterTrainer');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Trainers</option>' +
+    TRAINERS.map(t => `<option value="${t}" ${t===current?'selected':''}>${t}</option>`).join('');
+}
+
+function changePage(dir) {
+  currentPage += dir;
+  renderAllBookings();
+}
+
+// =============================================
+// UTILS
+// =============================================
+function formatDate(d) {
+  if (!d) return '—';
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d).slice(0,10) || '—';
+  return dt.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// =============================================
+// INIT
+// =============================================
+loadData();
+// Auto-refresh every 5 minutes
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
