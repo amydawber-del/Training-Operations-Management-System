@@ -1494,21 +1494,13 @@ async function loadData() {
   setLoading(true);
   document.getElementById('lastUpdated').textContent = 'Loading…';
 
-  // ── Hard 10-second timeout on every fetch — ALWAYS resolves ──────────────
-  async function _fetch(url, ms) {
-    const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms);
-    try {
-      const res = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timer);
-      return res;
-    } catch(e) {
-      clearTimeout(timer);
-      throw e;
-    }
+  // Timeout via Promise.race (no AbortController - avoids Google redirect CORS issues)
+  function fetchWithRace(url, ms) {
+    var req = fetch(url);
+    var tout = new Promise(function(_, rej) { setTimeout(function() { rej(new Error('Timeout')); }, ms); });
+    return Promise.race([req, tout]);
   }
 
-  // ── Safely run processData and always clear loading ───────────────────────
   function finish(data, label) {
     allData = applyOverrides(data);
     try { processData(); } catch(e) { console.error('[Dashboard] processData error:', e); }
@@ -1517,78 +1509,103 @@ async function loadData() {
     try { applyPermissions(); } catch(e) {}
   }
 
-  // ── 1. Apps Script (10s timeout) ──────────────────────────────────────────
+  // 1. Apps Script
   try {
     document.getElementById('lastUpdated').textContent = 'Connecting to sheet…';
-    const res  = await _fetch(APPS_SCRIPT_URL + '?action=getData', 10000);
-    const text = await res.text();
-    console.log('[Dashboard] Apps Script response start:', text.slice(0, 100));
+    var res  = await fetchWithRace(APPS_SCRIPT_URL + '?action=getData', 15000);
+    var text = await res.text();
+    console.log('[Dashboard] Raw (first 150):', text.slice(0, 150));
 
-    if (text && text.trim().startsWith('{')) {
-      const json = JSON.parse(text);
-      if (json && json.data && json.data.length >= 1) {
-        const parsed = parseAppsScriptData(json.data);
-        console.log('[Dashboard] Parsed', parsed.length, 'rows from Apps Script');
-        finish(parsed, '✓ Live — ' + parsed.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'));
+    if (text && text.trim().charAt(0) === '{') {
+      var json = JSON.parse(text);
+      console.log('[Dashboard] success:', json.success, '| data rows:', json.data ? json.data.length : 'none');
+      // Accept data regardless of success flag - older scripts may omit it
+      var hasData = json && json.data && json.data.length >= 1;
+      console.log('[Dashboard] hasData:', hasData, '| success:', json && json.success, '| data length:', json && json.data && json.data.length);
+      if (hasData) {
+        var parsed = parseAppsScriptData(json.data);
+        console.log('[Dashboard] Parsed rows:', parsed.length);
+        if (parsed.length > 0) {
+          finish(parsed, '✓ Live — ' + parsed.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'));
+          return;
+        }
+        finish([], '⚠ Connected but 0 rows parsed — check console (F12)');
+        showToast('Sheet connected but 0 rows parsed. Open console (F12) for [Parse] debug info.', 'error');
         return;
       }
-      if (json && json.error) {
-        console.warn('[Dashboard] Apps Script error:', json.error);
-        document.getElementById('lastUpdated').textContent = '⚠ Sheet error: ' + json.error;
-      }
-    } else if (text.includes('<!DOCTYPE') || text.includes('<html')) {
-      console.warn('[Dashboard] Got HTML — Apps Script needs redeploying (Deploy → New Deployment → Anyone)');
-      document.getElementById('lastUpdated').textContent = '⚠ Auth error — redeploy Apps Script';
+      if (json && json.error) { console.warn('[Dashboard] error:', json.error); }
+    } else if (text && text.indexOf('<html') >= 0) {
+      document.getElementById('lastUpdated').textContent = '⚠ Auth error — redeploy Apps Script as Anyone';
     }
   } catch(e) {
-    const reason = e.name === 'AbortError' ? 'Timed out (10s)' : e.message;
-    console.warn('[Dashboard] Apps Script fetch failed:', reason);
+    console.warn('[Dashboard] Apps Script failed:', e.message);
     document.getElementById('lastUpdated').textContent = '⚠ Apps Script unreachable — trying CSV…';
   }
 
-  // ── 2. CSV fallback (10s timeout) ─────────────────────────────────────────
+  // 2. CSV fallback
   try {
     document.getElementById('lastUpdated').textContent = 'Trying CSV fallback…';
-    const res2  = await _fetch(CSV_URL, 10000);
-    const text2 = await res2.text();
-
-    if (text2 && text2.length > 200 && text2.includes(',')) {
-      const parsed2 = parseCSV(text2);
-      console.log('[Dashboard] Parsed', parsed2.length, 'rows from CSV');
+    var res2  = await fetchWithRace(CSV_URL, 12000);
+    var text2 = await res2.text();
+    if (text2 && text2.length > 200 && text2.indexOf(',') >= 0) {
+      var parsed2 = parseCSV(text2);
       if (parsed2.length > 0) {
         finish(parsed2, '⚠ CSV mode — ' + parsed2.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'));
-        showToast('Loaded via CSV. Some features limited — check Apps Script deployment.', '');
+        showToast('Loaded via CSV. Check Apps Script deployment.', '');
         return;
       }
     }
   } catch(e) {
-    const reason = e.name === 'AbortError' ? 'Timed out' : e.message;
-    console.warn('[Dashboard] CSV failed:', reason);
+    console.warn('[Dashboard] CSV failed:', e.message);
   }
 
-  // ── 3. Demo data — always succeeds ────────────────────────────────────────
-  console.warn('[Dashboard] Both sources failed — using demo data');
+  // 3. Demo fallback
+  console.warn('[Dashboard] All sources failed');
   finish(generateDemoData(), '⚠ Demo data — sheet unreachable');
-  showToast('Could not reach the sheet. Showing demo data. Click 🔍 Test to diagnose.', 'error');
+  showToast('Could not reach the sheet. Showing demo data. Click Test to diagnose.', 'error');
 }
-
-
-function fetchWithTimeout(url, ms) {
-  const ctrl = new AbortController();
-  setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, { signal: ctrl.signal, redirect: 'follow' });
-}
-
-// Parse Apps Script JSON response
-// Expected: { data: [ [col1, col2, ...], ... ] } where row 0 is headers
+// Parse Apps Script JSON response — handles both formats:
+//   A) array-of-arrays: [ [header1,header2,...], [val1,val2,...], ... ]
+//   B) array-of-objects: [ {col1:val1, col2:val2}, ... ]
 function parseAppsScriptData(rows) {
-  if (!rows || rows.length < 2) return [];
-  const headers = rows[0].map(h => String(h).trim().toLowerCase());
-  return rows.slice(1).map((row, i) => {
-    const obj = {};
-    headers.forEach((h, j) => { obj[h] = row[j] || ''; });
-    return normaliseRow(obj, i + 2); // +2 for header row + 1-indexed
-  }).filter(r => r.company || r.contact);
+  if (!rows || rows.length < 1) { console.warn('[Parse] No rows'); return []; }
+
+  // Detect format
+  const first = rows[0];
+  let result = [];
+
+  if (Array.isArray(first)) {
+    // Format A: first row is headers
+    const headers = first.map(function(h) { return String(h).trim().toLowerCase(); });
+    console.log('[Parse] Format A (2D array). Headers:', headers.slice(0, 5));
+    result = rows.slice(1).map(function(row, i) {
+      var obj = {};
+      headers.forEach(function(h, j) { obj[h] = (row[j] !== undefined && row[j] !== null) ? String(row[j]) : ''; });
+      return normaliseRow(obj, i + 2);
+    });
+  } else if (typeof first === 'object' && first !== null) {
+    // Format B: array of objects — keys are already column names
+    console.log('[Parse] Format B (objects). Keys:', Object.keys(first).slice(0, 5));
+    result = rows.map(function(row, i) {
+      var obj = {};
+      Object.keys(row).forEach(function(k) { obj[k.trim().toLowerCase()] = String(row[k] || ''); });
+      return normaliseRow(obj, i + 2);
+    });
+  } else {
+    console.warn('[Parse] Unknown data format, first item:', typeof first);
+    return [];
+  }
+
+  var filtered = result.filter(function(r) { return r.company || r.contact; });
+  console.log('[Parse] Total rows:', result.length, '| After company/contact filter:', filtered.length);
+  if (filtered.length === 0 && result.length > 0) {
+    // Log first row to debug field mapping
+    console.warn('[Parse] All rows filtered — first raw object keys:', result[0] ? Object.keys(result[0]).join(', ') : 'none');
+    console.warn('[Parse] First normalised row:', JSON.stringify(result[0]));
+    // Return ALL rows unfiltered so something shows rather than demo data
+    return result;
+  }
+  return filtered;
 }
 
 // Parse CSV text
