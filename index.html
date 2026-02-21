@@ -1619,9 +1619,10 @@ function parseCSVRow(line) {
 }
 
 // Normalise a row object into our standard shape
-// Column names guessed from common Google Form exports — adjust if needed
+// Column names matched to the actual Street booking form headers
 function normaliseRow(obj, rowIndex) {
-  // Exact match first, then partial — prevents greedy matches like 'date' hitting 'booked date'
+  // Exact match first (case-insensitive keys are already lowercased by parseAppsScriptData/parseCSV),
+  // then partial fallback for resilience.
   const get = (...keys) => {
     for (const k of keys) {
       for (const ok of Object.keys(obj)) {
@@ -1636,20 +1637,27 @@ function normaliseRow(obj, rowIndex) {
     return '';
   };
 
-  const timestamp = get('timestamp');
-  // Keys ordered from most-specific to least-specific to avoid greedy partial matches
-  const company     = get('company / business name:', 'company / business name', 'company name', 'company', 'organisation', 'business', 'agency');
-  const contact     = get('client stakeholder name and phone number (authorising training)', 'client stakeholder name', 'stakeholder', 'authorising training', 'contact', 'name');
-  const email       = get('email address', 'email');
-  const optionRaw   = get('what type of training are you interested in?', 'what type of training', 'training option', 'type of training', 'option', 'training type', 'package');
+  // ── Map exact Street form column headers ─────────────────────────────────
+  const status       = get('status');
+  const timestamp    = get('timestamp');
+  const email        = get('email address', 'email');
+  const contact      = get('client stakeholder name and phone number (authorising training)',
+                           'client stakeholder name', 'stakeholder', 'contact', 'name');
   const preferredDate = get('preferred training date(s)', 'preferred training date', 'preferred date');
-  const attendees   = get('attendees', 'delegates', 'number of');
-  const trainer     = get('assigned trainer', 'trainer');
-  const status      = get('status');
-  const notes       = get('are there specific features or workflows', 'specific features', 'notes', 'additional', 'comments');
+  const optionRaw    = get('what type of training are you interested in?',
+                           'what type of training', 'training option', 'type of training', 'option');
+  const attendees    = get('attendees', 'delegates', 'number of attendees');
+  const company      = get('company / business name:', 'company / business name',
+                           'company name', 'company', 'organisation', 'business');
   const invoiceValue = get('invoice value', 'invoice');
+  const trainer      = get('assigned trainer', 'trainer');
+  const bookedOnRaw  = get('booked on date', 'booked on', 'date booked');
+  const notes        = get('are there specific features or workflows you want to cover? (e.g., sales progression, lettings compliance, accounting, reporting)',
+                           'are there specific features', 'specific features', 'notes', 'additional', 'comments');
+  const referredBy   = get('referred by', 'referred');
+  const goLiveDate   = get('to help us plan your onboarding and training schedule', 'target go-live', 'go-live date', 'go live');
 
-  // Extract option — keyword checks FIRST, digit match only as last resort
+  // ── Option detection: keywords first, digit match last resort ────────────
   let option = '2';
   const _optL = String(optionRaw).toLowerCase();
   if (_optL.includes('account') || _optL.includes('go-live') || _optL.includes('go live') || _optL.includes('lettings accounting')) {
@@ -1663,37 +1671,45 @@ function normaliseRow(obj, rowIndex) {
   } else if (_optL.includes('1 day') || _optL.includes('1/2 day') || _optL.includes('personalised') || _optL.includes('in office')) {
     option = '2';
   } else {
-    // Last resort: look for explicit "option N" pattern only
     const optNumMatch = String(optionRaw).match(/option\s*([1-5])/i);
     if (optNumMatch) option = optNumMatch[1];
   }
 
   const numAttendees = parseInt(attendees) || 1;
-  const basePrice = parseInt(OPTION_PRICES[option]) || 0;
+  const basePrice    = parseInt(OPTION_PRICES[option]) || 0;
 
-  // Use Invoice Value from sheet (col U) if present, else fall back to option price
-  const parsedInvoice = invoiceValue ? parseFloat(String(invoiceValue).replace(/[£,\s]/g, '')) : NaN;
+  // Invoice value: strip £, commas, spaces — fall back to option price
+  const parsedInvoice = invoiceValue
+    ? parseFloat(String(invoiceValue).replace(/[£,\s]/g, '')) : NaN;
   const revenue = !isNaN(parsedInvoice) && parsedInvoice > 0
     ? parsedInvoice
     : (option === '5' ? basePrice * numAttendees : basePrice);
 
-  const parsedDate = parseDate(timestamp || preferredDate);
+  // Use timestamp as primary date, preferred date as fallback
+  const parsedDate = parseDate(timestamp) || parseDate(preferredDate);
+
+  // Derive status: use sheet value if present, else infer
+  const normStatus = status
+    ? status.trim()
+    : (trainer ? 'Assigned' : 'Unassigned');
 
   return {
     rowIndex,
     timestamp: timestamp || '',
-    date: parsedDate,
-    company: company || obj['company name'] || '',
-    contact: contact || '',
-    email: email || '',
+    date:      parsedDate,
+    company:   company || '',
+    contact:   contact || '',
+    email:     email   || '',
     option,
-    optionLabel: OPTION_LABELS[option] || `Option ${option}`,
+    optionLabel:   OPTION_LABELS[option] || 'Option ' + option,
     preferredDate: preferredDate || '',
-    attendees: numAttendees,
-    trainer: trainer || '',
-    status: status || (trainer ? 'Assigned' : 'Unassigned'),
-    notes: notes || '',
-    bookedOn: formatDateInput(get('booked on date', 'booked on', 'date booked')) || '',
+    attendees:     numAttendees,
+    trainer:       trainer || '',
+    status:        normStatus,
+    notes:         notes   || '',
+    referredBy:    referredBy || '',
+    goLiveDate:    goLiveDate || '',
+    bookedOn:      formatDateInput(bookedOnRaw) || '',
     revenue
   };
 }
@@ -1819,8 +1835,8 @@ function renderUnassigned() {
     if (['Booked','Cancelled','Complete'].includes(r.status)) return false;
     // Hide if trainer assigned (they go to Needs Action panel)
     if (r.trainer && r.trainer.trim()) return false;
-    // Hide old records
-    if (r.date && r.date < new Date('2026-01-01')) return false;
+    // Hide very old records (before 2024)
+    if (r.date && r.date < new Date('2024-01-01')) return false;
     return true;
   });
 
@@ -2188,7 +2204,7 @@ function renderTrainerWorkload() {
 // =============================================
 function renderActionPanel() {
   const actionRows = allData.filter(r => {
-    if (!r.date || r.date < new Date('2026-01-01')) return false;
+    if (!r.date || r.date < new Date('2024-01-01')) return false;
     return r.status === 'Assigned' || r.status === 'Pending';
   });
 
