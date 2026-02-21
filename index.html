@@ -1519,6 +1519,93 @@
     border: 1px solid #e0e8ff;
   }
 
+
+  /* ── SHADOW / PREVIEW MODE ────────────────────────────────────── */
+  .shadow-banner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 950;
+    background: linear-gradient(90deg, #7c3aed, #5b21b6);
+    color: #fff;
+    padding: 9px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    box-shadow: 0 2px 12px rgba(124,58,237,0.4);
+    letter-spacing: 0.2px;
+  }
+  .shadow-banner.active {
+    display: flex;
+  }
+  .shadow-banner-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .shadow-banner-pill {
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .shadow-banner-name {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .shadow-banner-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .shadow-exit-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    color: #fff;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    transition: background 0.12s;
+    letter-spacing: 0.3px;
+  }
+  .shadow-exit-btn:hover { background: rgba(255,255,255,0.28); }
+  .shadow-save-btn {
+    background: #fff;
+    border: none;
+    color: #5b21b6;
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    transition: background 0.12s;
+    letter-spacing: 0.3px;
+  }
+  .shadow-save-btn:hover { background: #ede9fe; }
+
+  /* Push main content down when banner active */
+  body.shadow-mode .header,
+  body.shadow-mode .loading-bar,
+  body.shadow-mode .main {
+    margin-top: 37px;
+  }
+
+  /* Dim & flash the perm toggles being previewed */
+  .shadow-perm-row {
+    background: #fdf4ff;
+    border-radius: 4px;
+  }
+
 </style>
 </head>
 <body>
@@ -1577,6 +1664,21 @@
     <div style="margin-top:10px;">
       <button class="pin-back-btn" onclick="pinBack()">← Back to user select</button>
     </div>
+  </div>
+</div>
+
+
+<!-- SHADOW MODE BANNER -->
+<div class="shadow-banner" id="shadowBanner">
+  <div class="shadow-banner-left">
+    <span class="shadow-banner-pill">👁 Preview Mode</span>
+    <span>Viewing dashboard as</span>
+    <span class="shadow-banner-name" id="shadowBannerName">—</span>
+  </div>
+  <div class="shadow-banner-right">
+    <span style="font-size:11px;opacity:0.75;">Changes to permissions apply live — exit to save</span>
+    <button class="shadow-exit-btn" onclick="exitShadowMode()">← Exit Preview</button>
+    <button class="shadow-save-btn" onclick="saveShadowAndExit()">✓ Save &amp; Back to Edit</button>
   </div>
 </div>
 
@@ -3496,8 +3598,12 @@ function renderTrainerModalList() {
 function editTrainerPerms(name) {
   const user = USERS.find(u => u.name === name);
   if (!user) return;
-  // Open a quick edit perm modal — reuse the same permissions panel concept
-  const perms = user.permissions || {};
+
+  // Use livePerms if we're returning from a shadow session for this user
+  const perms = (_shadowState.targetName === name && _shadowState.livePerms)
+    ? _shadowState.livePerms
+    : (user.permissions || {});
+
   const groups = {};
   Object.entries(ALL_PERMISSIONS).forEach(([key, meta]) => {
     if (!groups[meta.group]) groups[meta.group] = [];
@@ -3508,20 +3614,44 @@ function editTrainerPerms(name) {
       <div class="perm-section-title">${group}</div>
       ${ps.map(p => `
         <div class="perm-row">
-          <div class="perm-row-left"><div class="perm-row-label">${p.label}</div><div class="perm-row-desc">${p.desc}</div></div>
+          <div class="perm-row-left">
+            <div class="perm-row-label">${p.label}</div>
+            <div class="perm-row-desc">${p.desc}</div>
+          </div>
           <label class="perm-toggle">
-            <input type="checkbox" id="ep-${esc(name)}-${p.key}" ${perms[p.key] ? 'checked' : ''}>
+            <input type="checkbox" id="ep-${esc(name)}-${p.key}"
+              ${perms[p.key] ? 'checked' : ''}
+              onchange="onPermToggleEdit('${esc(name)}', '${p.key}', this.checked)">
             <span class="perm-toggle-slider"></span>
           </label>
         </div>
       `).join('')}
     </div>
   `).join('');
+
   const win = document.getElementById('editPermOverlay');
   document.getElementById('editPermName').textContent = name;
   document.getElementById('editPermBody').innerHTML = html;
   document.getElementById('editPermSaveBtn').onclick = () => saveEditedPerms(name);
+
+  // Update Preview button label
+  const btnName = document.getElementById('shadowBtnName');
+  if (btnName) btnName.textContent = name;
+
+  // Hide preview button for self (admin previewing themselves is pointless)
+  const cur = getCurrentUser();
+  const previewBtn = document.getElementById('shadowPreviewBtn');
+  if (previewBtn) previewBtn.style.display = (cur && cur.name === name) ? 'none' : '';
+
   win.classList.add('open');
+}
+
+// Called on every toggle change inside the edit modal
+function onPermToggleEdit(name, key, checked) {
+  // If we're currently in shadow mode for this user, live-update the preview
+  onShadowPermToggle(name, key, checked);
+  // Also clear any preset highlight
+  document.querySelectorAll('.perm-preset-btn').forEach(btn => btn.classList.remove('active'));
 }
 
 function closeEditPermModal() { document.getElementById('editPermOverlay').classList.remove('open'); }
@@ -4553,6 +4683,107 @@ function updateHeaderUser(name) {
   if (logoutBtn) { logoutBtn.style.display = ''; }
 }
 
+
+// =============================================
+// SHADOW / PREVIEW MODE
+// =============================================
+let _shadowState = {
+  active:       false,
+  targetName:   null,    // user being previewed
+  adminUser:    null,    // actual logged-in admin
+  livePerms:    null,    // current perm object being edited
+};
+
+// Called from "Preview as X" button inside editTrainerPerms modal
+function enterShadowMode() {
+  const name = document.getElementById('editPermName').textContent;
+  if (!name || name === '—') return;
+
+  // Snapshot current toggle state from the modal as the live perms to preview
+  const livePerms = {};
+  Object.keys(ALL_PERMISSIONS).forEach(key => {
+    const cb = document.getElementById('ep-' + name + '-' + key);
+    if (cb) livePerms[key] = cb.checked;
+  });
+
+  _shadowState = {
+    active:     true,
+    targetName: name,
+    adminUser:  getCurrentUser(),
+    livePerms,
+  };
+
+  // Close modals & trainer modal
+  closeEditPermModal();
+  document.getElementById('trainerModalOverlay').classList.remove('open');
+
+  // Temporarily swap the current user session to the shadow user
+  const shadowUser = { ...USERS.find(u => u.name === name), permissions: livePerms };
+  setCurrentUser(shadowUser);
+
+  // Show banner
+  document.getElementById('shadowBannerName').textContent = name;
+  document.getElementById('shadowBanner').classList.add('active');
+  document.body.classList.add('shadow-mode');
+
+  // Apply the preview permissions to the UI
+  applyPermissions();
+  showToast('👁 Previewing as ' + name, '');
+}
+
+// Live-update the preview when a toggle changes inside the modal
+function onShadowPermToggle(name, key, checked) {
+  if (!_shadowState.active || _shadowState.targetName !== name) return;
+  _shadowState.livePerms[key] = checked;
+  const shadowUser = { ...USERS.find(u => u.name === name), permissions: { ..._shadowState.livePerms } };
+  setCurrentUser(shadowUser);
+  applyPermissions();
+}
+
+// Exit preview — restore admin session, re-open edit modal
+function exitShadowMode() {
+  if (!_shadowState.active) return;
+  const targetName = _shadowState.targetName;
+
+  // Restore admin
+  setCurrentUser(_shadowState.adminUser);
+  document.getElementById('shadowBanner').classList.remove('active');
+  document.body.classList.remove('shadow-mode');
+  _shadowState.active = false;
+
+  applyPermissions();
+
+  // Re-open edit modal with whatever the current livePerms are
+  editTrainerPerms(targetName);
+}
+
+// Save the current livePerms as the real permissions and exit shadow
+function saveShadowAndExit() {
+  if (!_shadowState.active) return;
+  const targetName = _shadowState.targetName;
+  const livePerms  = { ..._shadowState.livePerms };
+
+  // Persist to USERS
+  const user = USERS.find(u => u.name === targetName);
+  if (user) {
+    user.permissions = livePerms;
+    saveUsers(USERS);
+  }
+
+  // Restore admin session
+  setCurrentUser(_shadowState.adminUser);
+  document.getElementById('shadowBanner').classList.remove('active');
+  document.body.classList.remove('shadow-mode');
+  _shadowState.active = false;
+
+  applyPermissions();
+  logActivity('trainer', null, 'Permissions updated for ' + targetName + ' via preview', '');
+  showToast('✓ Permissions saved for ' + targetName, 'success');
+
+  // Re-open edit modal to confirm the saved state
+  editTrainerPerms(targetName);
+}
+
 // =============================================
 // LOGIN SYSTEM
 // =============================================
@@ -4741,7 +4972,7 @@ setInterval(loadData, 5 * 60 * 1000);
 
 <!-- EDIT PERMISSIONS MODAL -->
 <div class="username-modal-overlay" id="editPermOverlay" style="z-index:800;">
-  <div class="username-modal" style="width:480px;max-width:96vw;padding:0;text-align:left;border-radius:10px;overflow:hidden;">
+  <div class="username-modal" style="width:520px;max-width:96vw;padding:0;text-align:left;border-radius:10px;overflow:hidden;">
     <div style="padding:18px 22px 14px;background:var(--text--dark--50);color:#fff;display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div style="font-size:14px;font-weight:700;">Edit Permissions</div>
@@ -4749,7 +4980,14 @@ setInterval(loadData, 5 * 60 * 1000);
       </div>
       <button onclick="closeEditPermModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;cursor:pointer;padding:5px 9px;border-radius:4px;font-size:16px;">✕</button>
     </div>
-    <div id="editPermBody" style="padding:16px 20px;max-height:380px;overflow-y:auto;"></div>
+    <div style="padding:10px 20px;background:#f6f8ff;border-bottom:1px solid #e0e8ff;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:12px;color:var(--text--dark--40);flex:1;">Adjust toggles below, then preview the dashboard exactly as this user would see it.</span>
+      <button class="btn" id="shadowPreviewBtn" onclick="enterShadowMode()"
+        style="background:#7c3aed;color:#fff;border:none;font-size:12px;padding:6px 14px;gap:6px;">
+        👁 Preview as <span id="shadowBtnName">—</span>
+      </button>
+    </div>
+    <div id="editPermBody" style="padding:16px 20px;max-height:340px;overflow-y:auto;"></div>
     <div style="padding:12px 20px;border-top:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey);display:flex;justify-content:flex-end;gap:8px;">
       <button class="btn btn-ghost" onclick="closeEditPermModal()">Cancel</button>
       <button class="btn btn-primary" id="editPermSaveBtn">Save Permissions</button>
