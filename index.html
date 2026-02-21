@@ -902,6 +902,33 @@
     background: var(--accent-blue--50);
     color: var(--action-primary-blue);
   }
+
+  /* Reassign modal overlay */
+  #reassignModalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  #reassignModalOverlay.open { opacity: 1; pointer-events: all; }
+  .reassign-enquiry-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    font-size: 12px;
+  }
+  .reassign-enquiry-row:last-child { border-bottom: none; }
+  .reassign-enquiry-company { font-weight: 600; color: var(--text--dark--50); flex: 1; }
+  .reassign-enquiry-status { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: #fde8eb; color: #c0303d; }
+
 </style>
 </head>
 <body>
@@ -1216,6 +1243,35 @@
   </div>
 </div>
 
+
+<!-- REASSIGN TRAINER MODAL -->
+<div class="modal-overlay" id="reassignModalOverlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header" style="background:#fef3f2;border-bottom:1px solid #fecaca;">
+      <span class="modal-title" style="color:#c0303d;">⚠️ Trainer Has Active Enquiries</span>
+    </div>
+    <div class="modal-body">
+      <div id="reassignWarningText" style="font-size:13px;color:var(--text--dark--50);margin-bottom:16px;line-height:1.5;"></div>
+      <div style="background:var(--card-light-grey);border-radius:6px;padding:12px;margin-bottom:16px;">
+        <div id="reassignEnquiryList" style="font-size:12px;max-height:180px;overflow-y:auto;"></div>
+      </div>
+      <div style="margin-bottom:6px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text--dark--40);display:block;margin-bottom:6px;">Reassign all enquiries to:</label>
+        <select id="reassignTargetSelect" style="width:100%;border:1px solid var(--ui--underline--light-grey);border-radius:6px;padding:8px 10px;font-size:13px;font-family:Arial,sans-serif;background:#fff;">
+          <option value="">— Select a trainer —</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey);">
+      <button class="btn btn-ghost" onclick="closeReassignModal()">Cancel</button>
+      <button class="btn" id="confirmReassignBtn"
+        onclick="confirmReassignAndDelete()"
+        style="background:#c0303d;color:#fff;border:none;">
+        Reassign &amp; Remove Trainer
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- KPI DETAIL MODAL -->
 <div class="kpi-modal-overlay" id="kpiModalOverlay" onclick="closeKpiModal(event)">
@@ -2574,8 +2630,90 @@ function addTrainer() {
   showToast('✓ ' + name + ' added', 'success');
 }
 
+// Which trainer is pending deletion (held while reassign modal is open)
+let _pendingDeleteTrainer = null;
+
 function deleteTrainer(name) {
-  if (!confirm('Remove ' + name + ' from the trainer list?')) return;
+  // Check if this trainer has any active (non-Cancelled) enquiries
+  const assigned = allData.filter(r => r.trainer === name && r.status !== 'Cancelled');
+
+  if (assigned.length === 0) {
+    // Safe to delete directly — no open enquiries
+    if (!confirm('Remove ' + name + ' from the trainer list? They have no active enquiries.')) return;
+    _executeTrainerDelete(name);
+    return;
+  }
+
+  // HARD BLOCK — show reassignment modal instead
+  _pendingDeleteTrainer = name;
+
+  const others = TRAINERS.filter(t => t !== name);
+  const sel = document.getElementById('reassignTargetSelect');
+  sel.innerHTML = '<option value="">— Select a trainer —</option>'
+    + others.map(t => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
+  sel.value = '';
+
+  document.getElementById('reassignWarningText').innerHTML =
+    '<strong>' + esc(name) + '</strong> is currently assigned to <strong>' + assigned.length
+    + ' active enquir' + (assigned.length === 1 ? 'y' : 'ies') + '</strong>. '
+    + 'You must reassign them before this trainer can be removed.';
+
+  document.getElementById('reassignEnquiryList').innerHTML = assigned.map(r => {
+    const statusColours = {
+      'Assigned': { bg: '#f5ede5', color: '#8a5a2a' },
+      'Booked':   { bg: '#b8caff', color: '#2147f4' },
+      'Pending':  { bg: '#beffd8', color: '#1a6a40' },
+      'Unassigned': { bg: '#fde8eb', color: '#c0303d' },
+    };
+    const sc = statusColours[r.status] || { bg: '#f0f0f0', color: '#999' };
+    return '<div class="reassign-enquiry-row">'
+      + '<span class="reassign-enquiry-company">' + esc(r.company) + '</span>'
+      + '<span style="font-size:11px;color:var(--text--dark--30);">' + (r.optionLabel ? 'Opt ' + r.option : '') + '</span>'
+      + '<span style="font-size:11px;padding:2px 7px;border-radius:10px;background:' + sc.bg + ';color:' + sc.color + ';font-weight:600;">' + esc(r.status) + '</span>'
+      + '</div>';
+  }).join('');
+
+  document.getElementById('reassignModalOverlay').classList.add('open');
+}
+
+function closeReassignModal() {
+  document.getElementById('reassignModalOverlay').classList.remove('open');
+  _pendingDeleteTrainer = null;
+}
+
+async function confirmReassignAndDelete() {
+  const newTrainer = document.getElementById('reassignTargetSelect').value;
+  if (!newTrainer) {
+    showToast('Please select a trainer to reassign to', 'error');
+    document.getElementById('reassignTargetSelect').focus();
+    return;
+  }
+
+  const name = _pendingDeleteTrainer;
+  if (!name) return;
+
+  const btn = document.getElementById('confirmReassignBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  // Reassign all active enquiries to new trainer in local data
+  const toReassign = allData.filter(r => r.trainer === name && r.status !== 'Cancelled');
+  const savePromises = toReassign.map(async r => {
+    r.trainer = newTrainer;
+    saveOverride(r.rowIndex, { trainer: newTrainer });
+    const url = APPS_SCRIPT_URL + '?action=assign&row=' + r.rowIndex + '&trainer=' + encodeURIComponent(newTrainer);
+    try { await fetch(url, { method: 'GET', redirect: 'follow', mode: 'no-cors' }); } catch(e) {}
+  });
+
+  await Promise.all(savePromises);
+
+  // Now safe to delete
+  _executeTrainerDelete(name);
+  closeReassignModal();
+  showToast('✓ ' + toReassign.length + ' enquir' + (toReassign.length === 1 ? 'y' : 'ies') + ' reassigned to ' + newTrainer + ', ' + name + ' removed', 'success');
+}
+
+function _executeTrainerDelete(name) {
   TRAINERS = TRAINERS.filter(t => t !== name);
   saveTrainers(TRAINERS);
   renderTrainerModalList();
@@ -2583,7 +2721,10 @@ function deleteTrainer(name) {
   populateTrainerFilter();
   renderAllBookings();
   renderUnassigned();
-  showToast(name + ' removed', '');
+  renderActionPanel();
+  if (!document.getElementById('reassignModalOverlay').classList.contains('open')) {
+    showToast(name + ' removed', '');
+  }
 }
 
 
