@@ -4422,7 +4422,7 @@ function _pinSubmit() {
       savePin(targetUser.name, pin);
       _pinSuccess();
     } else {
-      _pinError('Passcodes don't match — try again');
+      _pinError("Passcodes don't match — try again");
       _pinState.firstEntry = '';
       setTimeout(() => { _pinState.mode = 'setup'; _updatePinUI(); }, 800);
     }
@@ -4456,7 +4456,7 @@ function _pinSubmit() {
         document.getElementById('loginScreen').classList.remove('hidden');
       }
     } else {
-      _pinError('Passcodes don't match — try again');
+      _pinError("Passcodes don't match — try again");
       _pinState.firstEntry = '';
       setTimeout(() => { _pinState.mode = 'change-new'; _updatePinUI(); }, 800);
     }
@@ -4474,7 +4474,7 @@ function _pinSubmit() {
       showToast('✓ Passcode reset for ' + _pinState.adminTarget, 'success');
       logActivity('meta', null, 'Admin reset passcode for ' + _pinState.adminTarget, 'Reset by ' + (getCurrentUser() ? getCurrentUser().name : 'Admin'));
     } else {
-      _pinError('Passcodes don't match — try again');
+      _pinError("Passcodes don't match — try again");
       _pinState.firstEntry = '';
       setTimeout(() => { _pinState.mode = 'admin-reset'; _updatePinUI(); }, 800);
     }
