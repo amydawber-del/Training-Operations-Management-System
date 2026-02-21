@@ -929,6 +929,275 @@
   .reassign-enquiry-company { font-weight: 600; color: var(--text--dark--50); flex: 1; }
   .reassign-enquiry-status { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: #fde8eb; color: #c0303d; }
 
+
+  /* ── ACTIVITY FEED ──────────────────────────────────────────── */
+  .activity-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 5px;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: Arial, sans-serif;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .activity-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  .activity-btn-dot {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    border: 2px solid var(--text--dark--50);
+    display: none;
+  }
+  .activity-btn-dot.visible { display: block; }
+
+  .activity-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 380px;
+    max-width: 95vw;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 32px rgba(0,0,0,0.18);
+    z-index: 600;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  }
+  .activity-panel.open { transform: translateX(0); }
+
+  .activity-panel-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 599;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .activity-panel-overlay.open { opacity: 1; pointer-events: all; }
+
+  .activity-panel-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--text--dark--50);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .activity-panel-title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  .activity-panel-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    margin-top: 2px;
+  }
+  .activity-close {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 5px 9px;
+    border-radius: 4px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .activity-close:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+  .activity-user-bar {
+    padding: 12px 16px;
+    background: #f6f8ff;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .activity-user-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--action-primary-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .activity-user-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text--dark--50);
+    flex: 1;
+  }
+  .activity-user-change {
+    font-size: 11px;
+    color: var(--action-primary-blue);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .activity-user-change:hover { color: #1538c7; }
+
+  .activity-toolbar {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  .activity-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text--dark--30);
+  }
+  .activity-clear-btn {
+    font-size: 11px;
+    color: #c0303d;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    transition: background 0.12s;
+  }
+  .activity-clear-btn:hover { background: #fde8eb; }
+
+  .activity-feed-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .activity-empty {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text--dark--30);
+    font-size: 13px;
+  }
+  .activity-empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+  .activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.1s;
+  }
+  .activity-item:hover { background: #fafbff; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .activity-item-body { flex: 1; min-width: 0; }
+  .activity-item-text {
+    font-size: 12px;
+    color: var(--text--dark--50);
+    line-height: 1.45;
+  }
+  .activity-item-text strong { color: var(--text--dark--50); }
+  .activity-item-text .act-company {
+    color: var(--action-primary-blue);
+    font-weight: 600;
+  }
+  .activity-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .activity-item-user {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text--dark--30);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  .activity-item-time {
+    font-size: 10px;
+    color: var(--text--dark--20);
+  }
+  .activity-date-divider {
+    padding: 6px 16px 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text--dark--20);
+    background: var(--card-light-grey);
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    border-top: 1px solid var(--ui--underline--light-grey);
+  }
+
+  /* User name prompt modal */
+  .username-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .username-modal-overlay.open { opacity: 1; pointer-events: all; }
+  .username-modal {
+    background: #fff;
+    border-radius: 10px;
+    width: 360px;
+    max-width: 94vw;
+    padding: 28px 28px 22px;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+    text-align: center;
+  }
+  .username-modal-icon { font-size: 36px; margin-bottom: 10px; }
+  .username-modal-title { font-size: 17px; font-weight: 700; color: var(--text--dark--50); margin-bottom: 6px; }
+  .username-modal-sub { font-size: 12px; color: var(--text--dark--30); margin-bottom: 20px; line-height: 1.5; }
+  .username-modal input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1.5px solid var(--ui--underline--light-grey);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    color: var(--text--dark--50);
+    margin-bottom: 14px;
+    transition: border-color 0.15s;
+  }
+  .username-modal input:focus { outline: none; border-color: var(--action-primary-blue); }
+
 </style>
 </head>
 <body>
@@ -983,6 +1252,10 @@
 
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">—</span>
+    <button class="activity-btn" onclick="openActivityPanel()" title="Activity Feed" id="activityNavBtn">
+      <span>🕐</span> Activity
+      <span class="activity-btn-dot" id="activityBtnDot"></span>
+    </button>
     <button class="refresh-btn" onclick="testConnection(this)" style="background:rgba(255,200,0,0.15);border-color:rgba(255,200,0,0.3);">🔍 Test</button>
     <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
   </div>
@@ -1894,6 +2167,14 @@ async function onUaField(rowIndex) {
     showToast('✓ Saved locally', '');
   }
 
+  // Log to activity feed
+  const _uaRow = allData.find(r => r.rowIndex === rowIndex);
+  const _uaCo  = _uaRow ? _uaRow.company : 'Row ' + rowIndex;
+  if (trainer)   logActivity('trainer', _uaCo, 'Trainer assigned to "' + newStatus + '"', 'Assigned to ' + trainer);
+  else           logActivity('status',  _uaCo, 'Status set to "' + newStatus + '"', '');
+  if (newValue)  logActivity('value',   _uaCo, 'Value set to £' + newValue.toLocaleString(), '');
+  if (bookedOn)  logActivity('date',    _uaCo, 'Booked date set', bookedOn);
+
   // Re-render other panels so counts stay accurate
   renderActionPanel();
   renderTrainerWorkload();
@@ -2269,6 +2550,13 @@ async function onActField(rowIndex) {
     showToast('✓ Saved locally', '');
   }
 
+  // Log to activity feed
+  const _actRow = allData.find(r => r.rowIndex === rowIndex);
+  const _actCo  = _actRow ? _actRow.company : 'Row ' + rowIndex;
+  logActivity('status', _actCo, 'Status updated to "' + newStatus + '"', trainer ? 'Trainer: ' + trainer : '');
+  if (newValue)  logActivity('value',   _actCo, 'Value updated to £' + newValue.toLocaleString(), '');
+  if (bookedOn)  logActivity('date',    _actCo, 'Booked date updated', bookedOn);
+
   renderUnassigned();
   renderTrainerWorkload();
   renderKPIs();
@@ -2446,9 +2734,11 @@ async function onStatusChange(rowIndex) {
   if (!newStatus) return;
 
   const row = allData.find(r => r.rowIndex === rowIndex);
+  const co  = row ? row.company : 'Row ' + rowIndex;
   if (row) row.status = newStatus;
   if (sel) applyStatusStyle(sel, newStatus);
   saveOverride(rowIndex, { status: newStatus });
+  logActivity('status', co, 'Status changed to "' + newStatus + '"', '');
 
   // Show/hide booked-on date picker
   const dateWrap = document.getElementById('booked-date-wrap-' + rowIndex);
@@ -2627,6 +2917,7 @@ function addTrainer() {
   populateTrainerFilter();
   renderAllBookings();
   renderUnassigned();
+  logActivity('trainer_added', null, 'Trainer added: ' + name, '');
   showToast('✓ ' + name + ' added', 'success');
 }
 
@@ -2710,6 +3001,7 @@ async function confirmReassignAndDelete() {
   // Now safe to delete
   _executeTrainerDelete(name);
   closeReassignModal();
+  logActivity('reassign', null, toReassign.length + ' enquir' + (toReassign.length === 1 ? 'y' : 'ies') + ' reassigned from ' + name + ' → ' + newTrainer, name + ' removed from trainer list');
   showToast('✓ ' + toReassign.length + ' enquir' + (toReassign.length === 1 ? 'y' : 'ies') + ' reassigned to ' + newTrainer + ', ' + name + ' removed', 'success');
 }
 
@@ -2722,6 +3014,7 @@ function _executeTrainerDelete(name) {
   renderAllBookings();
   renderUnassigned();
   renderActionPanel();
+  logActivity('trainer_removed', null, 'Trainer removed: ' + name, '');
   if (!document.getElementById('reassignModalOverlay').classList.contains('open')) {
     showToast(name + ' removed', '');
   }
@@ -3156,12 +3449,229 @@ function openChartOptionModal(optKey, rows, year) {
     ) + trainerBreakdown;
 }
 
+
+// =============================================
+// ACTIVITY FEED
+// =============================================
+const ACTIVITY_KEY = 'streetDashboardActivity';
+const USERNAME_KEY  = 'streetDashboardUser';
+const MAX_ACTIVITY  = 200; // keep last 200 events
+
+const ACTIVITY_ICONS = {
+  status:   { icon: '🔄', bg: '#eef1ff', color: '#2147f4' },
+  trainer:  { icon: '👤', bg: '#f5ede5', color: '#8a5a2a' },
+  value:    { icon: '£',  bg: '#f0fdf4', color: '#1a6a40' },
+  date:     { icon: '📅', bg: '#f6f8ff', color: '#2147f4' },
+  trainer_added:   { icon: '➕', bg: '#f0fdf4', color: '#1a6a40' },
+  trainer_removed: { icon: '✕',  bg: '#fde8eb', color: '#c0303d' },
+  reassign: { icon: '↔',  bg: '#f5ede5', color: '#8a5a2a' },
+  refresh:  { icon: '↻',  bg: '#f6f8ff', color: '#2147f4' },
+};
+
+function getUsername() {
+  return localStorage.getItem(USERNAME_KEY) || '';
+}
+
+function initActivityFeed() {
+  const name = getUsername();
+  if (!name) {
+    promptUsername(false);
+  } else {
+    updateUserDisplay(name);
+  }
+  renderActivityFeed();
+}
+
+function promptUsername(isChange = false) {
+  const overlay = document.getElementById('usernameModalOverlay');
+  const inp     = document.getElementById('usernameInput');
+  if (isChange) {
+    inp.value = getUsername();
+    // Close activity panel while prompting
+    closeActivityPanel();
+  } else {
+    inp.value = '';
+  }
+  overlay.classList.add('open');
+  setTimeout(() => inp.focus(), 120);
+}
+
+function saveUsername() {
+  const inp  = document.getElementById('usernameInput');
+  const name = (inp.value || '').trim();
+  if (!name) { inp.focus(); return; }
+  localStorage.setItem(USERNAME_KEY, name);
+  document.getElementById('usernameModalOverlay').classList.remove('open');
+  updateUserDisplay(name);
+  logActivity('meta', null, 'Signed in as ' + name, '');
+  renderActivityFeed();
+}
+
+function updateUserDisplay(name) {
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const avatarEl = document.getElementById('activityAvatar');
+  const nameEl   = document.getElementById('activityUserDisplay');
+  if (avatarEl) avatarEl.textContent = initials;
+  if (nameEl)   nameEl.textContent   = name;
+}
+
+function getActivityLog() {
+  try {
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveActivityLog(log) {
+  try {
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log.slice(0, MAX_ACTIVITY)));
+  } catch(e) {}
+}
+
+/**
+ * logActivity(type, company, description, detail)
+ * type: 'status' | 'trainer' | 'value' | 'date' | 'trainer_added' | 'trainer_removed' | 'reassign' | 'refresh' | 'meta'
+ */
+function logActivity(type, company, description, detail) {
+  const log = getActivityLog();
+  log.unshift({
+    id: Date.now() + Math.random(),
+    type,
+    company:     company || null,
+    description,
+    detail:      detail || '',
+    user:        getUsername() || 'Unknown',
+    timestamp:   new Date().toISOString(),
+  });
+  saveActivityLog(log);
+  renderActivityFeed();
+  // Flash the dot on the activity button
+  const dot = document.getElementById('activityBtnDot');
+  if (dot) {
+    dot.classList.add('visible');
+    clearTimeout(dot._clearTimer);
+    dot._clearTimer = setTimeout(() => dot.classList.remove('visible'), 8000);
+  }
+}
+
+function clearActivityLog() {
+  if (!confirm('Clear the entire activity log? This cannot be undone.')) return;
+  localStorage.removeItem(ACTIVITY_KEY);
+  renderActivityFeed();
+  showToast('Activity log cleared', '');
+}
+
+function openActivityPanel() {
+  document.getElementById('activityPanel').classList.add('open');
+  document.getElementById('activityPanelOverlay').classList.add('open');
+  document.getElementById('activityBtnDot').classList.remove('visible');
+  renderActivityFeed();
+}
+
+function closeActivityPanel() {
+  document.getElementById('activityPanel').classList.remove('open');
+  document.getElementById('activityPanelOverlay').classList.remove('open');
+}
+
+function renderActivityFeed() {
+  const log   = getActivityLog();
+  const body  = document.getElementById('activityFeedBody');
+  const count = document.getElementById('activityCount');
+  if (!body) return;
+
+  if (count) count.textContent = log.length + ' event' + (log.length !== 1 ? 's' : '');
+
+  if (log.length === 0) {
+    body.innerHTML = '<div class="activity-empty"><div class="activity-empty-icon">📋</div>No activity yet — changes you make will appear here</div>';
+    return;
+  }
+
+  // Group by calendar date
+  let lastDate = null;
+  body.innerHTML = log.map(item => {
+    const ts   = new Date(item.timestamp);
+    const dateKey = ts.toDateString();
+    let divider = '';
+    if (dateKey !== lastDate) {
+      lastDate = dateKey;
+      const isToday = dateKey === new Date().toDateString();
+      const isYest  = dateKey === new Date(Date.now()-86400000).toDateString();
+      const label   = isToday ? 'Today' : isYest ? 'Yesterday'
+        : ts.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+      divider = `<div class="activity-date-divider">${label}</div>`;
+    }
+
+    const meta   = ACTIVITY_ICONS[item.type] || ACTIVITY_ICONS.status;
+    const timeStr = ts.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const companyBit = item.company
+      ? `<span class="act-company">${esc(item.company)}</span> — ` : '';
+
+    return divider + `<div class="activity-item">
+      <div class="activity-item-icon" style="background:${meta.bg};color:${meta.color};font-size:${item.type==='value'?'11px':'14px'};font-weight:700;">
+        ${meta.icon}
+      </div>
+      <div class="activity-item-body">
+        <div class="activity-item-text">${companyBit}${esc(item.description)}${item.detail ? '<br><span style="color:var(--text--dark--30);font-size:11px;">'+esc(item.detail)+'</span>' : ''}</div>
+        <div class="activity-item-meta">
+          <span class="activity-item-user">${esc(item.user)}</span>
+          <span class="activity-item-time">${timeStr}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Escape for activity log display (already have esc() globally)
+
 // =============================================
 // INIT
 // =============================================
+initActivityFeed();
 loadData();
 // Auto-refresh every 5 minutes
 setInterval(loadData, 5 * 60 * 1000);
 </script>
+
+<!-- ACTIVITY PANEL OVERLAY -->
+<div class="activity-panel-overlay" id="activityPanelOverlay" onclick="closeActivityPanel()"></div>
+
+<!-- ACTIVITY PANEL -->
+<div class="activity-panel" id="activityPanel">
+  <div class="activity-panel-header">
+    <div>
+      <div class="activity-panel-title">🕐 Activity Feed</div>
+      <div class="activity-panel-sub">All changes made on this dashboard</div>
+    </div>
+    <button class="activity-close" onclick="closeActivityPanel()">✕</button>
+  </div>
+  <div class="activity-user-bar">
+    <div class="activity-user-avatar" id="activityAvatar">?</div>
+    <div class="activity-user-name" id="activityUserDisplay">Not set</div>
+    <span class="activity-user-change" onclick="promptUsername(true)">Change</span>
+  </div>
+  <div class="activity-toolbar">
+    <span class="activity-count" id="activityCount">0 events</span>
+    <button class="activity-clear-btn" onclick="clearActivityLog()">🗑 Clear log</button>
+  </div>
+  <div class="activity-feed-body" id="activityFeedBody">
+    <div class="activity-empty">
+      <div class="activity-empty-icon">📋</div>
+      No activity yet — changes you make will appear here
+    </div>
+  </div>
+</div>
+
+<!-- USERNAME PROMPT MODAL -->
+<div class="username-modal-overlay" id="usernameModalOverlay">
+  <div class="username-modal">
+    <div class="username-modal-icon">👤</div>
+    <div class="username-modal-title">Who are you?</div>
+    <div class="username-modal-sub">Your name will be recorded in the activity feed whenever you make a change to the dashboard.</div>
+    <input type="text" id="usernameInput" placeholder="Enter your name…" maxlength="40"
+      onkeydown="if(event.key==='Enter') saveUsername()">
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="saveUsername()">Set Name &amp; Continue</button>
+  </div>
+</div>
+
 </body>
 </html>
