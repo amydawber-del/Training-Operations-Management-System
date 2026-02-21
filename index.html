@@ -1650,14 +1650,17 @@
     transition: background 0.12s;
   }
   .cal-nav-btn:hover { background: rgba(255,255,255,0.22); }
+  /* DOW header row — flex with fixed 1/7 columns */
   .cal-dow-row {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    display: flex;
     width: 100%;
+    box-sizing: border-box;
     background: var(--card-light-grey);
     border-bottom: 1px solid var(--ui--underline--light-grey);
   }
   .cal-dow {
+    flex: 0 0 calc(100% / 7);
+    width: calc(100% / 7);
     text-align: center;
     font-size: 10px;
     font-weight: 700;
@@ -1665,27 +1668,29 @@
     padding: 6px 0;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    box-sizing: border-box;
     overflow: hidden;
   }
+  /* Days grid — flex wrap with fixed 1/7 cells */
   .cal-days {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     width: 100%;
-    border-left: 1px solid #f3f4f6;
+    box-sizing: border-box;
     border-top: 1px solid #f3f4f6;
+    border-left: 1px solid #f3f4f6;
   }
   .cal-day {
-    position: relative;
-    min-height: 88px;
+    flex: 0 0 calc(100% / 7);
+    width: calc(100% / 7);
+    box-sizing: border-box;
+    min-height: 90px;
     padding: 5px 4px 4px;
     border-right: 1px solid #f3f4f6;
     border-bottom: 1px solid #f3f4f6;
     cursor: default;
     transition: background 0.1s;
-    overflow: hidden;
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
+    overflow: hidden;      /* clip any overflowing content */
   }
   .cal-day:hover:not(.cal-day-empty) { background: #f6f8ff; }
   .cal-day-empty { background: #fafafa; }
@@ -1710,20 +1715,21 @@
     margin-bottom: 3px;
   }
   .cal-day-past { opacity: 0.5; }
+  /* Events — constrained to parent cell width */
   .cal-event {
     display: block;
-    width: 100%;
-    box-sizing: border-box;
     font-size: 9px;
     font-weight: 600;
-    padding: 2px 4px;
+    padding: 2px 5px;
     border-radius: 3px;
     margin-bottom: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
+    /* Use max-width so it never expands the cell */
     max-width: 100%;
+    box-sizing: border-box;
   }
   .cal-event-booking  { background: #b8caff; color: #1838c0; }
   .cal-event-blocked  { background: #fde8eb; color: #c0303d; }
