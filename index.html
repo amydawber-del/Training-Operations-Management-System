@@ -881,25 +881,18 @@
   /* Make KPI cards look clickable */
   .kpi-card.clickable {
     cursor: pointer;
-    transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
+    transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
     border: 1px solid var(--ui--underline--light-grey);
     position: relative;
   }
   .kpi-card.clickable:hover {
-    box-shadow: 0 4px 16px rgba(33,71,244,0.12);
-    transform: translateY(-1px);
-    border-color: rgba(33,71,244,0.3);
+    box-shadow: 0 4px 16px rgba(33,71,244,0.10);
+    border-color: rgba(33,71,244,0.35);
+    background: #f6f8ff;
   }
-  .kpi-card.clickable::after {
-    content: '↗';
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    font-size: 12px;
-    color: var(--text--dark--20);
-    transition: color 0.12s;
+  .kpi-card.clickable:active {
+    background: #eef1ff;
   }
-  .kpi-card.clickable:hover::after { color: var(--action-primary-blue); }
   .trainer-pill {
     display: inline-block;
     padding: 2px 8px;
@@ -1872,6 +1865,12 @@ async function saveUnassigned(rowIndex) {
 // =============================================
 // KPIs
 // =============================================
+function kpiDate(r) {
+  // Use Booked On Date (col W) as primary; fall back to submission date
+  if (r.bookedOn) { const d = parseDate(r.bookedOn); if (d && !isNaN(d)) return d; }
+  return r.date || null;
+}
+
 function renderKPIs() {
   const now = new Date();
   const year = now.getFullYear();
@@ -1879,9 +1878,9 @@ function renderKPIs() {
   const lastMonth = month === 0 ? 11 : month - 1;
   const lastMonthYear = month === 0 ? year - 1 : year;
 
-  const thisYearRows = allData.filter(r => r.date && r.date.getFullYear() === year && r.option !== '1' && r.status === 'Booked');
-  const thisMonthRows = allData.filter(r => r.date && r.date.getFullYear() === year && r.date.getMonth() === month && r.option !== '1' && r.status === 'Booked');
-  const lastMonthRows = allData.filter(r => r.date && r.date.getFullYear() === lastMonthYear && r.date.getMonth() === lastMonth && r.option !== '1' && r.status === 'Booked');
+  const thisYearRows  = allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === year && r.option !== '1' && r.status === 'Booked'; });
+  const thisMonthRows = allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === year && d.getMonth() === month && r.option !== '1' && r.status === 'Booked'; });
+  const lastMonthRows = allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === lastMonthYear && d.getMonth() === lastMonth && r.option !== '1' && r.status === 'Booked'; });
 
   const revYear = thisYearRows.reduce((s,r) => s + r.revenue, 0);
   const revMonth = thisMonthRows.reduce((s,r) => s + r.revenue, 0);
@@ -1934,9 +1933,11 @@ function renderRevenueChart() {
   const lastYearByMonth = Array(12).fill(0);
 
   allData.forEach(r => {
-    if (!r.date || r.option === '1') return;
-    const y = r.date.getFullYear();
-    const m = r.date.getMonth();
+    if (r.option === '1') return;
+    const d = kpiDate(r);
+    if (!d) return;
+    const y = d.getFullYear();
+    const m = d.getMonth();
     if (y === year) thisYearByMonth[m] += r.revenue;
     else if (y === lastYear) lastYearByMonth[m] += r.revenue;
   });
@@ -2525,16 +2526,16 @@ function openKpiModal(type) {
   const lastMonth = month === 0 ? 11 : month - 1;
   const lastMonthYear = month === 0 ? year - 1 : year;
 
-  // Base datasets
-  const bookedYear  = allData.filter(r => r.date && r.date.getFullYear() === year && r.option !== '1' && r.status === 'Booked');
-  const bookedMonth = allData.filter(r => r.date && r.date.getFullYear() === year && r.date.getMonth() === month && r.option !== '1' && r.status === 'Booked');
-  const bookedLast  = allData.filter(r => r.date && r.date.getFullYear() === lastMonthYear && r.date.getMonth() === lastMonth && r.option !== '1' && r.status === 'Booked');
+  // Base datasets — keyed on Booked On Date (col W) with submission date fallback
+  const bookedYear  = allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === year && r.option !== '1' && r.status === 'Booked'; });
+  const bookedMonth = allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === year && d.getMonth() === month && r.option !== '1' && r.status === 'Booked'; });
+  const bookedLast  = allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === lastMonthYear && d.getMonth() === lastMonth && r.option !== '1' && r.status === 'Booked'; });
 
   const configs = {
 
     // ── Total Revenue This Year ──────────────────────────────────────────────
     revYear: () => {
-      const rows = [...bookedYear].sort((a,b) => (b.date||0) - (a.date||0));
+      const rows = [...bookedYear].sort((a,b) => (kpiDate(b)||0) - (kpiDate(a)||0));
       const total = rows.reduce((s,r) => s+r.revenue, 0);
       const byTrainer = {};
       const byOption  = {};
@@ -2542,7 +2543,7 @@ function openKpiModal(type) {
       rows.forEach(r => {
         byTrainer[r.trainer||'Unassigned'] = (byTrainer[r.trainer||'Unassigned']||0) + r.revenue;
         byOption[r.optionLabel||r.option]  = (byOption[r.optionLabel||r.option]||0) + r.revenue;
-        if (r.date) byMonth[r.date.getMonth()] += r.revenue;
+        const md = kpiDate(r); if (md) byMonth[md.getMonth()] += r.revenue;
       });
       const topTrainer = Object.entries(byTrainer).sort((a,b)=>b[1]-a[1])[0];
       const topMonth   = byMonth.indexOf(Math.max(...byMonth));
@@ -2557,9 +2558,9 @@ function openKpiModal(type) {
           { label: 'Best month', value: MONTHS_SHORT[topMonth], sub: '£' + byMonth[topMonth].toLocaleString() },
           { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? '£' + topTrainer[1].toLocaleString() : '' },
         ],
-        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th>Days</th><th style="text-align:right;">Revenue</th></tr>',
+        head: '<tr><th>Booked Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th>Days</th><th style="text-align:right;">Revenue</th></tr>',
         body: rows.map(r => `<tr>
-          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
           <td><strong>${esc(r.company)}</strong></td>
           <td>${esc(r.contact)||'—'}</td>
           <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
@@ -2576,7 +2577,7 @@ function openKpiModal(type) {
 
     // ── Revenue This Month ───────────────────────────────────────────────────
     revMonth: () => {
-      const rows = [...bookedMonth].sort((a,b) => (b.date||0) - (a.date||0));
+      const rows = [...bookedMonth].sort((a,b) => (kpiDate(b)||0) - (kpiDate(a)||0));
       const total = rows.reduce((s,r) => s+r.revenue, 0);
       const totalLast = bookedLast.reduce((s,r) => s+r.revenue, 0);
       const pctChange = totalLast > 0 ? Math.round(((total - totalLast) / totalLast) * 100) : null;
@@ -2594,11 +2595,11 @@ function openKpiModal(type) {
           { label: 'vs Last month', value: pctChange !== null ? (pctChange >= 0 ? '▲ +' : '▼ ') + pctChange + '%' : '—', sub: pctChange >= 0 ? 'improvement' : 'decline' },
           { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? '£' + topTrainer[1].toLocaleString() : '' },
         ],
-        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:right;">Revenue</th></tr>',
+        head: '<tr><th>Booked Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:right;">Revenue</th></tr>',
         body: rows.length === 0
           ? '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text--dark--30);">No booked sessions this month yet</td></tr>'
           : rows.map(r => `<tr>
-          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
           <td><strong>${esc(r.company)}</strong></td>
           <td>${esc(r.contact)||'—'}</td>
           <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
@@ -2638,7 +2639,7 @@ function openKpiModal(type) {
           return `<tr>
             <td><strong>${esc(r.company)}</strong></td>
             <td>${esc(r.contact)||'—'}</td>
-            <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+            <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
             <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
             <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
             <td style="text-align:right;" class="col-money">£${r.revenue.toLocaleString()}</td>
@@ -2650,7 +2651,7 @@ function openKpiModal(type) {
 
     // ── Training Days ────────────────────────────────────────────────────────
     days: () => {
-      const rows = [...bookedYear].sort((a,b) => (b.date||0) - (a.date||0));
+      const rows = [...bookedYear].sort((a,b) => (kpiDate(b)||0) - (kpiDate(a)||0));
       const totalDays = rows.reduce((s,r) => s + (OPTION_DAYS[r.option]||0), 0);
       const monthDays = bookedMonth.reduce((s,r) => s + (OPTION_DAYS[r.option]||0), 0);
       const byTrainer = {};
@@ -2673,9 +2674,9 @@ function openKpiModal(type) {
           { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? topTrainer[1].days + ' days' : '' },
           { label: 'Avg days / booking', value: rows.length ? (totalDays / rows.length).toFixed(1) : '—', sub: 'per session' },
         ],
-        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:center;">Days</th><th style="text-align:right;">Revenue</th></tr>',
+        head: '<tr><th>Booked Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:center;">Days</th><th style="text-align:right;">Revenue</th></tr>',
         body: rows.map(r => `<tr>
-          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
           <td><strong>${esc(r.company)}</strong></td>
           <td>${esc(r.contact)||'—'}</td>
           <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
@@ -2693,7 +2694,7 @@ function openKpiModal(type) {
 
     // ── Total Bookings ───────────────────────────────────────────────────────
     bookings: () => {
-      const rows = [...bookedYear].sort((a,b) => (b.date||0) - (a.date||0));
+      const rows = [...bookedYear].sort((a,b) => (kpiDate(b)||0) - (kpiDate(a)||0));
       const byOption = {};
       const byTrainer = {};
       const byMonth = Array(12).fill(0);
@@ -2701,7 +2702,7 @@ function openKpiModal(type) {
         byOption[r.optionLabel||r.option] = (byOption[r.optionLabel||r.option]||0) + 1;
         const t = r.trainer || 'Unassigned';
         byTrainer[t] = (byTrainer[t]||0) + 1;
-        if (r.date) byMonth[r.date.getMonth()]++;
+        const bmd = kpiDate(r); if (bmd) byMonth[bmd.getMonth()]++;
       });
       const topOption  = Object.entries(byOption).sort((a,b)=>b[1]-a[1])[0];
       const topTrainer = Object.entries(byTrainer).sort((a,b)=>b[1]-a[1])[0];
@@ -2717,9 +2718,9 @@ function openKpiModal(type) {
           { label: 'Busiest month', value: MONTHS_SHORT[busyMonth], sub: byMonth[busyMonth] + ' bookings' },
           { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? topTrainer[1] + ' bookings' : '' },
         ],
-        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Email</th><th>Option</th><th>Trainer</th><th>Days</th><th style="text-align:right;">Revenue</th></tr>',
+        head: '<tr><th>Booked Date</th><th>Company</th><th>Contact</th><th>Email</th><th>Option</th><th>Trainer</th><th>Days</th><th style="text-align:right;">Revenue</th></tr>',
         body: rows.map(r => `<tr>
-          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
           <td><strong>${esc(r.company)}</strong></td>
           <td>${esc(r.contact)||'—'}</td>
           <td style="font-size:11px;color:var(--text--dark--30);">${esc(r.email)||'—'}</td>
