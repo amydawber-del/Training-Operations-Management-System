@@ -1945,6 +1945,18 @@ function renderRevenueChart() {
   const ctx = document.getElementById('revenueChart').getContext('2d');
   if (revenueChart) revenueChart.destroy();
 
+  // Store per-month row lists so onClick can reference them
+  const thisYearRowsByMonth  = Array.from({length:12}, () => []);
+  const lastYearRowsByMonth  = Array.from({length:12}, () => []);
+  allData.forEach(r => {
+    if (r.option === '1') return;
+    const d = kpiDate(r);
+    if (!d) return;
+    const y = d.getFullYear(), m = d.getMonth();
+    if (y === year)     thisYearRowsByMonth[m].push(r);
+    else if (y === lastYear) lastYearRowsByMonth[m].push(r);
+  });
+
   revenueChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -1954,6 +1966,7 @@ function renderRevenueChart() {
           label: String(year),
           data: thisYearByMonth,
           backgroundColor: 'rgba(33,71,244,0.7)',
+          hoverBackgroundColor: 'rgba(33,71,244,1)',
           borderRadius: 3,
           borderSkipped: false,
         },
@@ -1961,6 +1974,7 @@ function renderRevenueChart() {
           label: String(lastYear),
           data: lastYearByMonth,
           backgroundColor: 'rgba(163,186,255,0.5)',
+          hoverBackgroundColor: 'rgba(163,186,255,0.9)',
           borderRadius: 3,
           borderSkipped: false,
         }
@@ -1969,11 +1983,25 @@ function renderRevenueChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const el = els[0];
+        const monthIdx = el.index;
+        const isThisYear = el.datasetIndex === 0;
+        openChartMonthModal(
+          monthIdx,
+          isThisYear ? year : lastYear,
+          isThisYear ? thisYearRowsByMonth[monthIdx] : lastYearRowsByMonth[monthIdx],
+          isThisYear ? lastYearRowsByMonth[monthIdx] : thisYearRowsByMonth[monthIdx],
+          isThisYear ? lastYear : year
+        );
+      },
       plugins: {
         legend: { labels: { font: { family: 'Arial', size: 11 }, boxWidth: 12 } },
         tooltip: {
           callbacks: {
-            label: ctx => ` £${ctx.parsed.y.toLocaleString()}`
+            label: ctx => ` £${ctx.parsed.y.toLocaleString()} — click for detail`
           },
           bodyFont: { family: 'Arial', size: 12 }
         }
@@ -1996,28 +2024,43 @@ function renderOptionChart() {
   const now = new Date();
   const year = now.getFullYear();
   const counts = {'1':0,'2':0,'3':0,'4':0,'5':0};
-  allData.filter(r => r.date && r.date.getFullYear() === year).forEach(r => { if (counts[r.option] !== undefined) counts[r.option]++; });
+  const optionRowMap = {'1':[],'2':[],'3':[],'4':[],'5':[]};
+  allData.filter(r => { const d = kpiDate(r); return d && d.getFullYear() === year; }).forEach(r => {
+    if (counts[r.option] !== undefined) { counts[r.option]++; optionRowMap[r.option].push(r); }
+  });
 
   const ctx = document.getElementById('optionChart').getContext('2d');
   if (optionChart) optionChart.destroy();
 
+  const optionKeys = ['1','2','3','4','5'];
+
   optionChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Opt 1','Opt 2','Opt 3','Opt 4','Opt 5'],
+      labels: ['Opt 1 — On Demand','Opt 2 — 1 Day','Opt 3 — 2 Day','Opt 4 — Accounting','Opt 5 — HQ Session'],
       datasets: [{
         data: [counts['1'],counts['2'],counts['3'],counts['4'],counts['5']],
         backgroundColor: ['#b8caff','#2147f4','#f6be9d','#bde4b9','#beffd8'],
-        borderWidth: 1,
+        hoverBackgroundColor: ['#93aaff','#1538c7','#f0a06e','#9dd898','#9dffca'],
+        borderWidth: 2,
         borderColor: '#fff'
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      onClick: (e, els) => {
+        if (!els.length) return;
+        const optKey = optionKeys[els[0].index];
+        openChartOptionModal(optKey, optionRowMap[optKey], year);
+      },
       plugins: {
         legend: { position: 'bottom', labels: { font:{family:'Arial',size:10}, boxWidth:10, padding:8 } },
-        tooltip: { bodyFont:{family:'Arial',size:11} }
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.parsed} bookings — click for detail` },
+          bodyFont:{family:'Arial',size:11}
+        }
       },
       cutout: '60%'
     }
@@ -2767,6 +2810,176 @@ document.addEventListener('keydown', e => {
     document.getElementById('kpiModalOverlay').classList.remove('open');
   }
 });
+
+
+// =============================================
+// CHART CLICK MODALS
+// =============================================
+
+function openChartMonthModal(monthIdx, clickedYear, rows, compareRows, compareYear) {
+  const overlay = document.getElementById('kpiModalOverlay');
+  overlay.classList.add('open');
+
+  const MONTHS_FULL_LOCAL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const sorted = [...rows].sort((a,b) => (kpiDate(b)||0) - (kpiDate(a)||0));
+  const total  = sorted.reduce((s,r) => s+r.revenue, 0);
+  const compareTotal = compareRows.reduce((s,r) => s+r.revenue, 0);
+  const pctChange = compareTotal > 0 ? Math.round(((total - compareTotal) / compareTotal) * 100) : null;
+
+  // Breakdown by trainer
+  const byTrainer = {};
+  sorted.forEach(r => {
+    const t = r.trainer || 'Unassigned';
+    if (!byTrainer[t]) byTrainer[t] = { count: 0, revenue: 0 };
+    byTrainer[t].count++;
+    byTrainer[t].revenue += r.revenue;
+  });
+  const topTrainer = Object.entries(byTrainer).sort((a,b) => b[1].revenue - a[1].revenue)[0];
+
+  // Breakdown by option
+  const byOption = {};
+  sorted.forEach(r => {
+    const lbl = r.optionLabel || ('Option ' + r.option);
+    if (!byOption[lbl]) byOption[lbl] = { count: 0, revenue: 0 };
+    byOption[lbl].count++;
+    byOption[lbl].revenue += r.revenue;
+  });
+
+  document.getElementById('kpiModalTitle').textContent    = MONTHS_FULL_LOCAL[monthIdx] + ' ' + clickedYear + ' — Revenue Breakdown';
+  document.getElementById('kpiModalSubtitle').textContent = 'Booked sessions with training date in ' + MONTHS_FULL_LOCAL[monthIdx] + ' ' + clickedYear + '. Click bars on the chart to explore any month.';
+  document.getElementById('kpiModalHeadline').textContent = '£' + total.toLocaleString();
+
+  document.getElementById('kpiModalStats').innerHTML = [
+    { label: 'Bookings', value: sorted.length, sub: MONTHS_S[monthIdx] + ' ' + clickedYear },
+    { label: compareYear + ' (same month)', value: '£' + compareTotal.toLocaleString(), sub: compareRows.length + ' bookings' },
+    { label: 'Year-on-year', value: pctChange !== null ? (pctChange >= 0 ? '▲ +' : '▼ ') + Math.abs(pctChange) + '%' : (compareTotal === 0 ? 'No prior data' : '—'), sub: pctChange !== null ? (pctChange >= 0 ? 'up vs ' : 'down vs ') + compareYear : '' },
+    { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? '£' + topTrainer[1].revenue.toLocaleString() + ' · ' + topTrainer[1].count + ' sessions' : '' },
+  ].map(s => `<div class="kpi-modal-stat">
+    <span class="kpi-modal-stat-label">${s.label}</span>
+    <span class="kpi-modal-stat-value">${s.value}</span>
+    ${s.sub ? '<span class="kpi-modal-stat-sub">'+s.sub+'</span>' : ''}
+  </div>`).join('');
+
+  // Option summary mini-table above main table
+  const optSummaryRows = Object.entries(byOption).sort((a,b) => b[1].revenue-a[1].revenue)
+    .map(([lbl, v]) => `<tr>
+      <td>${esc(lbl)}</td>
+      <td style="text-align:center;">${v.count}</td>
+      <td style="text-align:right;font-weight:600;">£${v.revenue.toLocaleString()}</td>
+    </tr>`).join('');
+
+  // Compare section rows
+  const compareSection = compareRows.length > 0 ? `
+    <tr style="background:var(--card-light-grey);">
+      <td colspan="7" style="padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text--dark--30);">
+        ↔ ${MONTHS_S[monthIdx]} ${compareYear} — for comparison (${compareRows.length} booking${compareRows.length!==1?'s':''}, £${compareTotal.toLocaleString()})
+      </td>
+    </tr>` +
+    [...compareRows].sort((a,b) => (kpiDate(b)||0)-(kpiDate(a)||0)).map(r => `<tr style="opacity:0.7;">
+      <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
+      <td><strong>${esc(r.company)}</strong></td>
+      <td>${esc(r.contact)||'—'}</td>
+      <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+      <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+      <td style="text-align:center;">${OPTION_DAYS[r.option]||0}d</td>
+      <td style="text-align:right;font-weight:600;">£${r.revenue.toLocaleString()}</td>
+    </tr>`).join('') : '';
+
+  document.getElementById('kpiModalTableHead').innerHTML =
+    '<tr><th>Booked Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:center;">Days</th><th style="text-align:right;">Revenue</th></tr>';
+
+  document.getElementById('kpiModalTableBody').innerHTML =
+    (sorted.length === 0
+      ? `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text--dark--30);">No booked sessions in ${MONTHS_FULL_LOCAL[monthIdx]} ${clickedYear}</td></tr>`
+      : sorted.map(r => `<tr>
+          <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
+          <td><strong>${esc(r.company)}</strong></td>
+          <td>${esc(r.contact)||'—'}</td>
+          <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+          <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+          <td style="text-align:center;">${OPTION_DAYS[r.option]||0}d</td>
+          <td style="text-align:right;font-weight:600;">£${r.revenue.toLocaleString()}</td>
+        </tr>`).join('') +
+        `<tr style="background:var(--card-light-grey);font-weight:700;">
+          <td colspan="6" style="text-align:right;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text--dark--30);">${MONTHS_S[monthIdx]} ${clickedYear} Total</td>
+          <td style="text-align:right;font-size:15px;">£${total.toLocaleString()}</td>
+        </tr>`
+    ) + compareSection;
+}
+
+function openChartOptionModal(optKey, rows, year) {
+  const overlay = document.getElementById('kpiModalOverlay');
+  overlay.classList.add('open');
+
+  const sorted  = [...rows].sort((a,b) => (kpiDate(b)||0) - (kpiDate(a)||0));
+  const total   = sorted.reduce((s,r) => s+r.revenue, 0);
+  const label   = OPTION_LABELS[optKey] || ('Option ' + optKey);
+  const days    = sorted.reduce((s,r) => s + (OPTION_DAYS[r.option]||0), 0);
+
+  const byTrainer = {};
+  sorted.forEach(r => {
+    const t = r.trainer || 'Unassigned';
+    if (!byTrainer[t]) byTrainer[t] = { count: 0, revenue: 0 };
+    byTrainer[t].count++;
+    byTrainer[t].revenue += r.revenue;
+  });
+  const byTrainerSorted = Object.entries(byTrainer).sort((a,b) => b[1].count - a[1].count);
+  const topTrainer = byTrainerSorted[0];
+  const avgFee = sorted.filter(r=>r.revenue>0).length
+    ? Math.round(total / sorted.filter(r=>r.revenue>0).length) : 0;
+
+  document.getElementById('kpiModalTitle').textContent    = 'Option ' + optKey + ' — ' + label;
+  document.getElementById('kpiModalSubtitle').textContent = 'All bookings for this training option in ' + year + '. Click a different segment to switch option.';
+  document.getElementById('kpiModalHeadline').textContent = sorted.length + ' booking' + (sorted.length !== 1 ? 's' : '');
+
+  document.getElementById('kpiModalStats').innerHTML = [
+    { label: 'Total revenue', value: '£' + total.toLocaleString(), sub: 'exc. VAT' },
+    { label: 'Training days', value: days + 'd', sub: (OPTION_DAYS[optKey]||0) + ' day' + ((OPTION_DAYS[optKey]||0)!==1?'s':'') + ' per session' },
+    { label: 'Avg fee', value: avgFee ? '£' + avgFee.toLocaleString() : '—', sub: 'per booking' },
+    { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? topTrainer[1].count + ' session' + (topTrainer[1].count!==1?'s':'') : '' },
+  ].map(s => `<div class="kpi-modal-stat">
+    <span class="kpi-modal-stat-label">${s.label}</span>
+    <span class="kpi-modal-stat-value">${s.value}</span>
+    ${s.sub ? '<span class="kpi-modal-stat-sub">'+s.sub+'</span>' : ''}
+  </div>`).join('');
+
+  // Trainer breakdown rows
+  const trainerBreakdown = byTrainerSorted.length > 0 ? `
+    <tr style="background:var(--card-light-grey);">
+      <td colspan="6" style="padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--text--dark--30);">
+        Trainer Breakdown
+      </td>
+    </tr>` + byTrainerSorted.map(([name, v]) => {
+      const pct = sorted.length ? Math.round((v.count/sorted.length)*100) : 0;
+      return `<tr style="background:#fafbff;">
+        <td colspan="3"><span class="trainer-pill">${esc(name)}</span></td>
+        <td>${v.count} session${v.count!==1?'s':''} (${pct}%)</td>
+        <td colspan="2" style="text-align:right;font-weight:600;">£${v.revenue.toLocaleString()}</td>
+      </tr>`;
+    }).join('') : '';
+
+  document.getElementById('kpiModalTableHead').innerHTML =
+    '<tr><th>Booked Date</th><th>Company</th><th>Contact</th><th>Status</th><th>Trainer</th><th style="text-align:right;">Revenue</th></tr>';
+
+  document.getElementById('kpiModalTableBody').innerHTML =
+    (sorted.length === 0
+      ? `<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text--dark--30);">No bookings for this option in ${year}</td></tr>`
+      : sorted.map(r => `<tr>
+          <td style="white-space:nowrap;">${formatDate(kpiDate(r))}</td>
+          <td><strong>${esc(r.company)}</strong></td>
+          <td>${esc(r.contact)||'—'}</td>
+          <td><span class="status-badge status-${(r.status||'').toLowerCase()}">${esc(r.status)||'—'}</span></td>
+          <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+          <td style="text-align:right;font-weight:600;">£${r.revenue.toLocaleString()}</td>
+        </tr>`).join('') +
+        `<tr style="background:var(--card-light-grey);font-weight:700;">
+          <td colspan="5" style="text-align:right;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text--dark--30);">Total</td>
+          <td style="text-align:right;font-size:15px;">£${total.toLocaleString()}</td>
+        </tr>`
+    ) + trainerBreakdown;
+}
 
 // =============================================
 // INIT
