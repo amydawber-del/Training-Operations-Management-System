@@ -1418,6 +1418,107 @@
     font-weight: 600;
   }
 
+
+  /* ── PIN PAD ──────────────────────────────────────────────────── */
+  .pin-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #0d1526 0%, #1a2a4a 50%, #0d1526 100%);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+  }
+  .pin-screen.hidden { display: none; }
+  .pin-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 32px 32px 26px;
+    width: 340px;
+    max-width: 96vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    text-align: center;
+  }
+  .pin-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--action-primary-blue);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+  }
+  .pin-user-name { font-size: 18px; font-weight: 700; color: var(--text--dark--50); margin-bottom: 4px; }
+  .pin-label { font-size: 13px; color: var(--text--dark--30); margin-bottom: 20px; }
+  .pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #ccc;
+    background: transparent;
+    transition: all 0.15s;
+  }
+  .pin-dot.filled { background: var(--action-primary-blue); border-color: var(--action-primary-blue); }
+  .pin-dot.error  { background: #c0303d; border-color: #c0303d; }
+  .pin-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .pin-key {
+    padding: 14px 0;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text--dark--50);
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    transition: background 0.1s, border-color 0.1s, transform 0.08s;
+    user-select: none;
+  }
+  .pin-key:hover  { background: #f0f4ff; border-color: var(--action-primary-blue); }
+  .pin-key:active { transform: scale(0.94); background: #e0e8ff; }
+  .pin-key.wide   { grid-column: span 1; }
+  .pin-key.del    { font-size: 15px; color: #888; }
+  .pin-error-msg  { font-size: 12px; color: #c0303d; min-height: 18px; margin-bottom: 6px; }
+  .pin-back-btn {
+    background: none;
+    border: none;
+    color: var(--text--dark--30);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.12s;
+    text-decoration: underline;
+  }
+  .pin-back-btn:hover { color: var(--action-primary-blue); }
+  .pin-setup-info {
+    font-size: 11px;
+    color: var(--text--dark--30);
+    margin-bottom: 18px;
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: #f6f8ff;
+    border-radius: 6px;
+    border: 1px solid #e0e8ff;
+  }
+
 </style>
 </head>
 <body>
@@ -1437,6 +1538,44 @@
     </div>
     <div style="text-align:center;font-size:11px;color:var(--text--dark--20);margin-top:8px;">
       Permissions are managed in the Trainer settings
+    </div>
+  </div>
+</div>
+
+<!-- PIN ENTRY SCREEN -->
+<div class="pin-screen hidden" id="pinScreen">
+  <div class="pin-card">
+    <div class="pin-avatar" id="pinAvatar">?</div>
+    <div class="pin-user-name" id="pinUserName">—</div>
+    <div class="pin-label" id="pinLabel">Enter your 4-digit passcode</div>
+    <div id="pinSetupInfo" class="pin-setup-info" style="display:none;">
+      Choose a 4-digit passcode to protect your account.<br>You'll need this every time you log in.
+    </div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-error-msg" id="pinError"></div>
+    <div class="pin-keypad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key" onclick="pinKey('0')" style="grid-column:2;">0</button>
+      <button class="pin-key del" onclick="pinDel()">⌫</button>
+    </div>
+    <div id="pinForgotWrap" style="margin-top:4px;">
+      <button class="pin-back-btn" onclick="pinForgot()">Forgot passcode?</button>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="pin-back-btn" onclick="pinBack()">← Back to user select</button>
     </div>
   </div>
 </div>
@@ -1487,9 +1626,16 @@
 
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">—</span>
+    <div id="headerUserChip" style="display:none;align-items:center;gap:7px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px 4px 6px;">
+      <div id="headerUserAvatar" style="width:24px;height:24px;border-radius:50%;background:var(--action-primary-blue);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">?</div>
+      <span id="headerUserName" style="font-size:12px;font-weight:600;color:#ddd;">—</span>
+    </div>
     <button class="activity-btn" onclick="openActivityPanel()" title="Activity Feed" id="activityNavBtn">
       <span>🕐</span> Activity
       <span class="activity-btn-dot" id="activityBtnDot"></span>
+    </button>
+    <button class="activity-btn" onclick="logout()" id="logoutBtn" style="display:none;border-color:rgba(192,48,61,0.4);color:#f88;background:rgba(192,48,61,0.15);" title="Log out">
+      ⏏ Log out
     </button>
     <button class="refresh-btn" onclick="testConnection(this)" style="background:rgba(255,200,0,0.15);border-color:rgba(255,200,0,0.3);">🔍 Test</button>
     <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
@@ -3288,16 +3434,22 @@ function renderTrainerModalList() {
     if (p.edit_status || p.edit_trainer || p.edit_value) return { label: 'Editor', cls: 'editor' };
     return { label: 'View Only', cls: 'viewer' };
   };
+  const curUser = getCurrentUser();
   list.innerHTML = USERS.map(u => {
     const role = roleLabel(u);
-    const isSelf = getCurrentUser() && getCurrentUser().name === u.name;
-    return `<div class="trainer-list-item" style="align-items:center;gap:10px;">
+    const isSelf = curUser && curUser.name === u.name;
+    const isAdmin = curUser && curUser.permissions && curUser.permissions.manage_trainers;
+    const pinSet = hasPin(u.name);
+    return `<div class="trainer-list-item" style="align-items:center;gap:8px;flex-wrap:wrap;">
       <div class="activity-user-avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0;background:var(--action-primary-blue);">
         ${u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
       </div>
-      <span style="flex:1;font-size:13px;font-weight:600;color:var(--text--dark--50);">${esc(u.name)}${isSelf ? ' <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">(you)</span>' : ''}</span>
+      <span style="flex:1;min-width:80px;font-size:13px;font-weight:600;color:var(--text--dark--50);">${esc(u.name)}${isSelf ? ' <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">(you)</span>' : ''}</span>
       <span class="login-user-badge ${role.cls}">${role.label}</span>
-      <button class="perm-preset-btn" style="padding:4px 10px;font-size:11px;flex:none;min-width:60px;" onclick="editTrainerPerms('${esc(u.name)}')">Edit</button>
+      <span style="font-size:10px;color:${pinSet ? '#1a6a40' : '#c0303d'};font-weight:600;">${pinSet ? '🔒 PIN set' : '⚠ No PIN'}</span>
+      ${isSelf ? `<button class="perm-preset-btn" style="padding:4px 8px;font-size:11px;flex:none;" onclick="changeSelfPin()">Change PIN</button>` : ''}
+      ${isAdmin && !isSelf ? `<button class="perm-preset-btn" style="padding:4px 8px;font-size:11px;flex:none;color:#8a5a2a;border-color:#e0b87a;" onclick="adminResetPin('${esc(u.name)}')">Reset PIN</button>` : ''}
+      <button class="perm-preset-btn" style="padding:4px 10px;font-size:11px;flex:none;" onclick="editTrainerPerms('${esc(u.name)}')">Edit</button>
       <button class="trainer-delete-btn" onclick="deleteTrainer('${esc(u.name)}')" title="Remove trainer">✕</button>
     </div>`;
   }).join('');
@@ -4080,6 +4232,290 @@ function renderActivityFeed() {
 
 
 // =============================================
+// PIN / PASSCODE SYSTEM
+// =============================================
+const PIN_KEY = 'streetDashboardPins_v1'; // { [name]: hashedPin }
+
+// Simple hash — not cryptographic, just obfuscation in localStorage
+function hashPin(pin) {
+  let h = 0;
+  for (let i = 0; i < pin.length; i++) h = (Math.imul(31, h) + pin.charCodeAt(i)) | 0;
+  return 'p' + Math.abs(h).toString(36) + pin.length;
+}
+
+function getPins() {
+  try { return JSON.parse(localStorage.getItem(PIN_KEY) || '{}'); } catch(e) { return {}; }
+}
+
+function savePin(name, pin) {
+  const pins = getPins();
+  pins[name] = hashPin(pin);
+  localStorage.setItem(PIN_KEY, JSON.stringify(pins));
+}
+
+function verifyPin(name, pin) {
+  const pins = getPins();
+  return pins[name] && pins[name] === hashPin(pin);
+}
+
+function hasPin(name) {
+  const pins = getPins();
+  return !!pins[name];
+}
+
+function removePin(name) {
+  const pins = getPins();
+  delete pins[name];
+  localStorage.setItem(PIN_KEY, JSON.stringify(pins));
+}
+
+// ── PIN state machine ──────────────────────────────────────────────────────
+// modes: 'enter' | 'setup' | 'setup-confirm' | 'change-old' | 'change-new' | 'change-confirm' | 'admin-reset'
+let _pinState = {
+  mode:        'enter',
+  targetUser:  null,    // user object being authenticated
+  digits:      [],
+  firstEntry:  '',      // for setup confirm step
+  adminTarget: null,    // for admin resetting another user's pin
+};
+
+function openPinScreen(userName, mode = 'enter') {
+  const user = USERS.find(u => u.name === userName);
+  if (!user) return;
+
+  _pinState = { mode, targetUser: user, digits: [], firstEntry: '', adminTarget: null };
+
+  // Populate UI
+  const initials = userName.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('pinAvatar').textContent = initials;
+  document.getElementById('pinUserName').textContent = userName;
+
+  _updatePinUI();
+
+  document.getElementById('pinScreen').classList.remove('hidden');
+  document.getElementById('loginScreen').classList.add('hidden');
+}
+
+function closePinScreen() {
+  document.getElementById('pinScreen').classList.add('hidden');
+}
+
+function _updatePinUI() {
+  const { mode } = _pinState;
+  const labels = {
+    'enter':          'Enter your 4-digit passcode',
+    'setup':          'Create a 4-digit passcode',
+    'setup-confirm':  'Confirm your passcode',
+    'change-old':     'Enter your current passcode',
+    'change-new':     'Enter your new passcode',
+    'change-confirm': 'Confirm your new passcode',
+    'admin-reset':    'Set new passcode for ' + (_pinState.adminTarget || ''),
+    'admin-confirm':  'Confirm new passcode for ' + (_pinState.adminTarget || ''),
+  };
+  document.getElementById('pinLabel').textContent = labels[mode] || 'Enter passcode';
+  document.getElementById('pinSetupInfo').style.display = mode === 'setup' ? 'block' : 'none';
+  document.getElementById('pinForgotWrap').style.display = (mode === 'enter') ? 'block' : 'none';
+  document.getElementById('pinError').textContent = '';
+  _refreshDots();
+}
+
+function _refreshDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.toggle('filled', i < _pinState.digits.length);
+    dot.classList.remove('error');
+  }
+}
+
+function pinKey(digit) {
+  if (_pinState.digits.length >= 4) return;
+  _pinState.digits.push(digit);
+  _refreshDots();
+  if (_pinState.digits.length === 4) {
+    setTimeout(_pinSubmit, 120); // tiny delay so last dot shows
+  }
+}
+
+function pinDel() {
+  _pinState.digits.pop();
+  _refreshDots();
+  document.getElementById('pinError').textContent = '';
+}
+
+function pinBack() {
+  closePinScreen();
+  renderLoginScreen();
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+function _pinError(msg) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.add('error');
+    dot.classList.remove('filled');
+  }
+  document.getElementById('pinError').textContent = msg;
+  // Shake then clear
+  setTimeout(() => {
+    _pinState.digits = [];
+    _refreshDots();
+  }, 700);
+}
+
+function _pinSubmit() {
+  const pin    = _pinState.digits.join('');
+  const { mode, targetUser } = _pinState;
+
+  if (mode === 'enter') {
+    if (verifyPin(targetUser.name, pin)) {
+      _pinSuccess();
+    } else {
+      _pinError('Incorrect passcode — try again');
+    }
+  }
+  else if (mode === 'setup') {
+    _pinState.firstEntry = pin;
+    _pinState.digits = [];
+    _pinState.mode = 'setup-confirm';
+    _updatePinUI();
+  }
+  else if (mode === 'setup-confirm') {
+    if (pin === _pinState.firstEntry) {
+      savePin(targetUser.name, pin);
+      _pinSuccess();
+    } else {
+      _pinError('Passcodes don't match — try again');
+      _pinState.firstEntry = '';
+      setTimeout(() => { _pinState.mode = 'setup'; _updatePinUI(); }, 800);
+    }
+  }
+  else if (mode === 'change-old') {
+    if (verifyPin(targetUser.name, pin)) {
+      _pinState.digits = [];
+      _pinState.mode = 'change-new';
+      _updatePinUI();
+    } else {
+      _pinError('Incorrect current passcode');
+    }
+  }
+  else if (mode === 'change-new') {
+    _pinState.firstEntry = pin;
+    _pinState.digits = [];
+    _pinState.mode = 'change-confirm';
+    _updatePinUI();
+  }
+  else if (mode === 'change-confirm') {
+    if (pin === _pinState.firstEntry) {
+      savePin(targetUser.name, pin);
+      closePinScreen();
+      showToast('✓ Passcode updated for ' + targetUser.name, 'success');
+      logActivity('meta', null, 'Passcode changed for ' + targetUser.name, '');
+      // Return to dashboard or login
+      if (getCurrentUser()) {
+        // Was already logged in (changing own PIN from settings)
+      } else {
+        renderLoginScreen();
+        document.getElementById('loginScreen').classList.remove('hidden');
+      }
+    } else {
+      _pinError('Passcodes don't match — try again');
+      _pinState.firstEntry = '';
+      setTimeout(() => { _pinState.mode = 'change-new'; _updatePinUI(); }, 800);
+    }
+  }
+  else if (mode === 'admin-reset') {
+    _pinState.firstEntry = pin;
+    _pinState.digits = [];
+    _pinState.mode = 'admin-confirm';
+    _updatePinUI();
+  }
+  else if (mode === 'admin-confirm') {
+    if (pin === _pinState.firstEntry) {
+      savePin(_pinState.adminTarget, pin);
+      closePinScreen();
+      showToast('✓ Passcode reset for ' + _pinState.adminTarget, 'success');
+      logActivity('meta', null, 'Admin reset passcode for ' + _pinState.adminTarget, 'Reset by ' + (getCurrentUser() ? getCurrentUser().name : 'Admin'));
+    } else {
+      _pinError('Passcodes don't match — try again');
+      _pinState.firstEntry = '';
+      setTimeout(() => { _pinState.mode = 'admin-reset'; _updatePinUI(); }, 800);
+    }
+  }
+}
+
+function _pinSuccess() {
+  closePinScreen();
+  const user = _pinState.targetUser;
+  setCurrentUser(user);
+  hideLoginScreen();
+  applyPermissions();
+  updateHeaderUser(user.name);
+  updateUserDisplay(user.name);
+  logActivity('meta', null, user.name + ' logged in', '');
+  renderActivityFeed();
+}
+
+function pinForgot() {
+  const name = _pinState.targetUser ? _pinState.targetUser.name : '';
+  // Check if there's an admin who can reset
+  const admins = USERS.filter(u => u.permissions && u.permissions.manage_trainers && u.name !== name);
+  if (admins.length > 0) {
+    const adminNames = admins.map(a => a.name).join(', ');
+    if (confirm('Your passcode has been forgotten.\n\nAn admin (' + adminNames + ') can reset it for you in Manage Trainers.\n\nPress OK to go back to the user select screen.')) {
+      pinBack();
+    }
+  } else {
+    if (confirm('No admin is available to reset your passcode.\n\nReset passcode for ' + name + '?')) {
+      _pinState.firstEntry = '';
+      _pinState.digits = [];
+      _pinState.mode = 'setup';
+      _updatePinUI();
+    }
+  }
+}
+
+// Called by admin from Manage Trainers modal to reset another user's PIN
+
+function changeSelfPin() {
+  const cur = getCurrentUser();
+  if (!cur) return;
+  document.getElementById('trainerModalOverlay').classList.remove('open');
+  const mode = hasPin(cur.name) ? 'change-old' : 'setup';
+  openPinScreen(cur.name, mode);
+}
+
+function adminResetPin(targetName) {
+  const cur = getCurrentUser();
+  if (!cur || !cur.permissions.manage_trainers) {
+    showToast('Only admins can reset passcodes', 'error');
+    return;
+  }
+  _pinState = { mode: 'admin-reset', targetUser: cur, digits: [], firstEntry: '', adminTarget: targetName };
+  document.getElementById('pinAvatar').textContent = targetName.slice(0,2).toUpperCase();
+  document.getElementById('pinUserName').textContent = 'Reset for: ' + targetName;
+  document.getElementById('pinSetupInfo').style.display = 'block';
+  document.getElementById('pinSetupInfo').textContent = 'You are resetting the passcode for ' + targetName + '. They will use this new passcode next time they log in.';
+  document.getElementById('pinForgotWrap').style.display = 'none';
+  document.getElementById('pinLabel').textContent = 'Set new passcode for ' + targetName;
+  document.getElementById('pinError').textContent = '';
+  _refreshDots();
+  // Close trainer modal while PIN entry happens
+  document.getElementById('trainerModalOverlay').classList.remove('open');
+  document.getElementById('pinScreen').classList.remove('hidden');
+}
+
+function updateHeaderUser(name) {
+  const chip   = document.getElementById('headerUserChip');
+  const avatar = document.getElementById('headerUserAvatar');
+  const nameEl = document.getElementById('headerUserName');
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (chip)    { chip.style.display = 'flex'; }
+  if (avatar)  { avatar.textContent = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+  if (nameEl)  { nameEl.textContent = name; }
+  if (logoutBtn) { logoutBtn.style.display = ''; }
+}
+
+// =============================================
 // LOGIN SYSTEM
 // =============================================
 function showLoginScreen() {
@@ -4119,22 +4555,31 @@ function renderLoginScreen() {
 function loginAs(name) {
   const user = USERS.find(u => u.name === name);
   if (!user) return;
-  setCurrentUser(user);
-  hideLoginScreen();
-  applyPermissions();
-  updateUserDisplay(name);
-  logActivity('meta', null, name + ' logged in', '');
-  renderActivityFeed();
+  if (!hasPin(name)) {
+    // First time — route to PIN setup
+    openPinScreen(name, 'setup');
+  } else {
+    // Has PIN — route to PIN entry
+    openPinScreen(name, 'enter');
+  }
 }
 
 function logout() {
+  const cur = getCurrentUser();
+  const name = cur ? cur.name : '';
   localStorage.removeItem(SESSION_KEY);
   localStorage.removeItem('streetDashboardUser');
+  // Hide header user chip + logout button
+  const chip = document.getElementById('headerUserChip');
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (chip) chip.style.display = 'none';
+  if (logoutBtn) logoutBtn.style.display = 'none';
+  // Close panels
+  closeActivityPanel();
   // Re-render login
   renderLoginScreen();
   showLoginScreen();
-  // Hide activity panel if open
-  closeActivityPanel();
+  if (name) logActivity('meta', null, name + ' logged out', '');
 }
 
 // =============================================
@@ -4200,8 +4645,8 @@ renderLoginScreen();
 
 const _sessionUser = getCurrentUser();
 if (_sessionUser) {
-  // Already logged in from a previous session
   hideLoginScreen();
+  updateHeaderUser(_sessionUser.name);
   initActivityFeed();
   applyPermissions();
 } else {
@@ -4229,7 +4674,7 @@ setInterval(loadData, 5 * 60 * 1000);
   <div class="activity-user-bar">
     <div class="activity-user-avatar" id="activityAvatar">?</div>
     <div class="activity-user-name" id="activityUserDisplay">Not set</div>
-    <span class="activity-user-change" onclick="logout()" style="color:#c0303d;">⏏ Log out</span>
+    <button onclick="changeSelfPin()" style="font-size:11px;background:none;border:none;color:var(--action-primary-blue);cursor:pointer;font-family:Arial,sans-serif;padding:0;text-decoration:underline;">Change PIN</button>
   </div>
   <div class="activity-toolbar">
     <span class="activity-count" id="activityCount">0 events</span>
