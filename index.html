@@ -2819,8 +2819,8 @@ function setLoading(on) {
 
 
 // Quick connection test
-async function testConnection() {
-  const btn = event.target;
+async function testConnection(btn) {
+  btn = btn || event && event.target;
   btn.textContent = '⏳ Testing…';
   btn.disabled = true;
   try {
@@ -2881,87 +2881,79 @@ async function loadData() {
   setLoading(true);
   document.getElementById('lastUpdated').textContent = 'Loading…';
 
-  // Safety net — never leave spinners forever
-  const safetyTimer = setTimeout(() => {
-    if (allData.length === 0) {
-      allData = applyOverrides(generateDemoData());
-      processData();
-      document.getElementById('lastUpdated').textContent = '⚠ Timed out';
-      showToast('Sheet unreachable. Click 🔍 Test to diagnose.', 'error');
-      setLoading(false);
+  // ── Fetch with hard 10-second timeout ──────────────────────────
+  async function fetchWithTimeout(url, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      return res;
+    } catch(e) {
+      clearTimeout(timer);
+      throw e;
     }
-  }, 14000);
+  }
 
-  // ── 1. Apps Script ──
+  // ── Helper: finish load with data ──────────────────────────────
+  function finish(data, label, isLive) {
+    allData = applyOverrides(data);
+    processData();
+    document.getElementById('lastUpdated').textContent = label;
+    setLoading(false);
+    if (isLive) applyPermissions();
+  }
+
+  // ── 1. Try Apps Script ─────────────────────────────────────────
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
+    document.getElementById('lastUpdated').textContent = 'Connecting to sheet…';
+    const res  = await fetchWithTimeout(APPS_SCRIPT_URL + '?action=getData', 10000);
     const text = await res.text();
-    console.log('[Dashboard] Raw response length:', text.length, '| starts with:', text.slice(0,30));
+    console.log('[Dashboard] Response start:', text.slice(0, 80));
 
     if (text && text.trim().startsWith('{')) {
-      let json;
-      try { json = JSON.parse(text); } catch(pe) {
-        console.error('[Dashboard] JSON parse error:', pe.message);
-      }
+      const json = JSON.parse(text);
 
-      if (json && json.error) {
-        showToast('Sheet error: ' + json.error, 'error');
-        document.getElementById('lastUpdated').textContent = '⚠ Error — ' + json.error;
-      }
-
-      if (json && json.data && json.data.length >= 1) {
-        clearTimeout(safetyTimer);
-        allData = applyOverrides(parseAppsScriptData(json.data));
-        console.log('[Dashboard] Parsed rows:', allData.length, '| Sample company:', allData[0] && allData[0].company);
-        processData();
-        const rowCount = allData.length;
-        document.getElementById('lastUpdated').textContent = '✓ Live — ' + rowCount + ' rows — ' + new Date().toLocaleTimeString();
-        setLoading(false);
-        return;
-      } else if (json) {
-        console.warn('[Dashboard] json.data missing or empty. json.success:', json.success, 'json.rows:', json.rows);
-        document.getElementById('lastUpdated').textContent = '⚠ Empty response from sheet';
-      }
-    } else {
-      console.warn('[Dashboard] Apps Script returned non-JSON:', text.slice(0, 300));
-      // Check if it's an HTML error page (auth redirect etc.)
-      if (text.includes('<html') || text.includes('<!DOCTYPE')) {
-        showToast('Apps Script returned HTML — check deployment permissions (Who has access: Anyone)', 'error');
-        document.getElementById('lastUpdated').textContent = '⚠ Auth error — redeploy script';
-        clearTimeout(safetyTimer);
-        setLoading(false);
+      if (json.error) {
+        console.warn('[Dashboard] Apps Script error:', json.error);
+        // Fall through to CSV
+      } else if (json.data && json.data.length >= 1) {
+        const parsed = parseAppsScriptData(json.data);
+        console.log('[Dashboard] Parsed', parsed.length, 'rows from Apps Script');
+        finish(parsed, '✓ Live — ' + parsed.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'), true);
         return;
       }
+    } else if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+      console.warn('[Dashboard] Got HTML — Apps Script needs redeploying');
+      // Fall through to CSV
     }
   } catch(e) {
-    console.warn('[Dashboard] Apps Script fetch failed:', e.message);
-    document.getElementById('lastUpdated').textContent = '⚠ Fetch failed: ' + e.message;
+    console.warn('[Dashboard] Apps Script failed:', e.name === 'AbortError' ? 'Timed out after 10s' : e.message);
   }
 
-  // ── 2. CSV fallback ──
+  // ── 2. CSV fallback ────────────────────────────────────────────
   try {
-    const res2 = await fetch(CSV_URL);
+    document.getElementById('lastUpdated').textContent = 'Trying CSV fallback…';
+    const res2  = await fetchWithTimeout(CSV_URL, 10000);
     const text2 = await res2.text();
-    if (text2 && text2.length > 100 && text2.includes(',')) {
-      clearTimeout(safetyTimer);
-      allData = applyOverrides(parseCSV(text2));
-      processData();
-      document.getElementById('lastUpdated').textContent = '⚠ CSV — ' + new Date().toLocaleTimeString();
-      showToast('Loaded via CSV. Apps Script write-back may not work — check deployment.', '');
-      setLoading(false);
-      return;
+
+    if (text2 && text2.length > 200 && text2.includes(',')) {
+      const parsed2 = parseCSV(text2);
+      console.log('[Dashboard] Parsed', parsed2.length, 'rows from CSV');
+      if (parsed2.length > 0) {
+        finish(parsed2, '⚠ CSV mode — ' + parsed2.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'), false);
+        showToast('Loaded via CSV. To enable full write-back, redeploy the Apps Script.', '');
+        return;
+      }
     }
   } catch(e) {
-    console.warn('CSV failed:', e.message);
+    console.warn('[Dashboard] CSV failed:', e.name === 'AbortError' ? 'Timed out' : e.message);
   }
 
-  // ── 3. Demo data ──
-  clearTimeout(safetyTimer);
-  allData = applyOverrides(generateDemoData());
-  processData();
-  document.getElementById('lastUpdated').textContent = '⚠ Demo data';
-  showToast('Cannot reach sheet. Click 🔍 Test to diagnose.', 'error');
-  setLoading(false);
+  // ── 3. Demo data — always succeeds ────────────────────────────
+  console.warn('[Dashboard] Falling back to demo data');
+  finish(generateDemoData(), '⚠ Demo data — sheet unreachable', false);
+  showToast('Could not reach the sheet. Showing demo data. Check the 🔍 Test button.', 'error');
 }
 
 
