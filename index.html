@@ -2821,25 +2821,50 @@ function setLoading(on) {
 // Quick connection test
 async function testConnection() {
   const btn = event.target;
-  btn.textContent = '⏳…';
+  btn.textContent = '⏳ Testing…';
   btn.disabled = true;
   try {
     const url = APPS_SCRIPT_URL + '?action=getData';
     const res = await fetch(url);
     const text = await res.text();
     const isJSON = text.trim().startsWith('{');
-    let info = 'Status: ' + res.status + '\nIs JSON: ' + isJSON;
-    if (isJSON) {
-      const json = JSON.parse(text);
-      info += '\nRows: ' + (json.data ? json.data.length : 'none');
-      info += '\nSuccess: ' + json.success;
-      if (json.error) info += '\nError: ' + json.error;
+    let lines = ['── Connection Test ──',
+      'HTTP status: ' + res.status];
+
+    if (!isJSON) {
+      if (text.includes('<html') || text.includes('<!DOCTYPE')) {
+        lines.push('❌ Got HTML back — this usually means the script needs redeploying');
+        lines.push('   Fix: Apps Script → Deploy → New Deployment');
+        lines.push('   Make sure "Who has access" = Anyone');
+      } else {
+        lines.push('❌ Non-JSON response:');
+        lines.push(text.slice(0, 300));
+      }
     } else {
-      info += '\nResponse (first 200 chars):\n' + text.slice(0, 200);
+      let json;
+      try { json = JSON.parse(text); } catch(pe) { lines.push('❌ JSON parse error: ' + pe.message); }
+      if (json) {
+        lines.push('✓ JSON received');
+        lines.push('success: ' + json.success);
+        lines.push('Total rows (incl header): ' + (json.data ? json.data.length : 0));
+        lines.push('Data rows: ' + (json.data ? Math.max(0, json.data.length - 1) : 0));
+        lines.push('Columns: ' + json.cols);
+        if (json.error) lines.push('❌ Error: ' + json.error);
+        if (json.data && json.data.length > 1) {
+          const firstRow = json.data[1]; // first data row (index 1, header is index 0)
+          lines.push('');
+          lines.push('── First data row sample ──');
+          lines.push('Col A (Status): "' + firstRow[0] + '"');
+          lines.push('Col B (Timestamp): "' + firstRow[1] + '"');
+          lines.push('Col N (Company): "' + firstRow[13] + '"');
+          lines.push('Col V (Trainer): "' + firstRow[21] + '"');
+          lines.push('Col W (Booked Date): "' + firstRow[22] + '"');
+        }
+      }
     }
-    alert(info);
+    alert(lines.join('\n'));
   } catch(e) {
-    alert('FAILED: ' + e.message + '\n\nMake sure Apps Script is deployed as:\n• Execute as: Me\n• Who has access: Anyone');
+    alert('❌ FAILED: ' + e.message + '\n\nMake sure Apps Script is deployed as:\n• Execute as: Me\n• Who has access: Anyone');
   }
   btn.textContent = '🔍 Test';
   btn.disabled = false;
@@ -2864,22 +2889,46 @@ async function loadData() {
   try {
     const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
     const text = await res.text();
+    console.log('[Dashboard] Raw response length:', text.length, '| starts with:', text.slice(0,30));
+
     if (text && text.trim().startsWith('{')) {
-      const json = JSON.parse(text);
-      if (json && json.data && json.data.length > 1) {
+      let json;
+      try { json = JSON.parse(text); } catch(pe) {
+        console.error('[Dashboard] JSON parse error:', pe.message);
+      }
+
+      if (json && json.error) {
+        showToast('Sheet error: ' + json.error, 'error');
+        document.getElementById('lastUpdated').textContent = '⚠ Error — ' + json.error;
+      }
+
+      if (json && json.data && json.data.length >= 1) {
         clearTimeout(safetyTimer);
         allData = applyOverrides(parseAppsScriptData(json.data));
+        console.log('[Dashboard] Parsed rows:', allData.length, '| Sample company:', allData[0] && allData[0].company);
         processData();
-        document.getElementById('lastUpdated').textContent = '✓ Live — ' + new Date().toLocaleTimeString();
+        const rowCount = allData.length;
+        document.getElementById('lastUpdated').textContent = '✓ Live — ' + rowCount + ' rows — ' + new Date().toLocaleTimeString();
+        setLoading(false);
+        return;
+      } else if (json) {
+        console.warn('[Dashboard] json.data missing or empty. json.success:', json.success, 'json.rows:', json.rows);
+        document.getElementById('lastUpdated').textContent = '⚠ Empty response from sheet';
+      }
+    } else {
+      console.warn('[Dashboard] Apps Script returned non-JSON:', text.slice(0, 300));
+      // Check if it's an HTML error page (auth redirect etc.)
+      if (text.includes('<html') || text.includes('<!DOCTYPE')) {
+        showToast('Apps Script returned HTML — check deployment permissions (Who has access: Anyone)', 'error');
+        document.getElementById('lastUpdated').textContent = '⚠ Auth error — redeploy script';
+        clearTimeout(safetyTimer);
         setLoading(false);
         return;
       }
-      if (json && json.error) showToast('Sheet error: ' + json.error, 'error');
-    } else {
-      console.warn('Apps Script non-JSON response:', text.slice(0, 150));
     }
   } catch(e) {
-    console.warn('Apps Script failed:', e.message);
+    console.warn('[Dashboard] Apps Script fetch failed:', e.message);
+    document.getElementById('lastUpdated').textContent = '⚠ Fetch failed: ' + e.message;
   }
 
   // ── 2. CSV fallback ──
@@ -2920,10 +2969,17 @@ function fetchWithTimeout(url, ms) {
 function parseAppsScriptData(rows) {
   if (!rows || rows.length < 2) return [];
   // Skip header row (row[0]), parse from row[1] onward
-  // Row index is 1-based sheet row (row 2 = first data row)
-  return rows.slice(1).map((row, i) => {
-    return parseRowByIndex(row, i + 2);
-  }).filter(r => r.company || r.contact || r.status);
+  const parsed = rows.slice(1).map((row, i) => parseRowByIndex(row, i + 2));
+  // Keep any row that has at least a timestamp, company, contact, OR a trainer assigned
+  // (status alone is unreliable as new submissions may have no status yet)
+  const filtered = parsed.filter(r => r.timestamp || r.company || r.contact || r.trainer);
+  console.log('[Dashboard] Rows from sheet:', rows.length - 1, '→ after filter:', filtered.length);
+  if (filtered.length === 0 && parsed.length > 0) {
+    // Safety fallback: if filter dropped everything, log the first row raw to help diagnose
+    console.warn('[Dashboard] All rows filtered! First raw row:', JSON.stringify(rows[1]));
+    console.warn('[Dashboard] First parsed row:', JSON.stringify(parsed[0]));
+  }
+  return filtered;
 }
 
 // Parse a row array using exact column positions (0-indexed)
@@ -3023,7 +3079,7 @@ function parseCSV(text) {
   return lines.slice(1).map((line, i) => {
     const vals = parseCSVRow(line).map(v => v.trim());
     return parseRowByIndex(vals, i + 2);
-  }).filter(r => r.company || r.contact || r.status);
+  }).filter(r => r.timestamp || r.company || r.contact || r.trainer);
 }
 
 function parseCSVRow(line) {
