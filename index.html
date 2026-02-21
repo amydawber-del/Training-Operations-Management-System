@@ -1820,6 +1820,40 @@
   }
   .cal-legend-label { font-size: 11px; color: var(--text--dark--40); }
 
+
+  /* Nav jump links (on-page sections) */
+  .nav-jump-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 20px;
+    font-size: 12px;
+    color: var(--text--dark--40);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: Arial, sans-serif;
+  }
+  .nav-jump-item:hover {
+    background: rgba(33,71,244,0.06);
+    color: var(--action-primary-blue);
+  }
+  .nav-jump-icon { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; }
+  .nav-jump-label { flex: 1; }
+  .nav-jump-arrow { font-size: 10px; color: var(--text--dark--20); }
+  .nav-section-label-sub {
+    padding: 8px 20px 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text--dark--20);
+  }
+
 </style>
 </head>
 <body>
@@ -1901,27 +1935,66 @@
     <span class="nav-drawer-title">Navigation</span>
     <button class="nav-close" onclick="closeNav()">✕</button>
   </div>
+
+  <!-- Dashboard home -->
   <div class="nav-section-label">Dashboard</div>
   <a href="#" class="nav-item active" onclick="closeNav()">
     <span class="nav-item-icon">📊</span> Training Dashboard
   </a>
+
+  <!-- Jump to section links -->
+  <div class="nav-divider"></div>
+  <div class="nav-section-label-sub">Jump to section</div>
+  <button class="nav-jump-item" id="navJumpWorkload" onclick="scrollToSection('sectionWorkload')">
+    <span class="nav-jump-icon">👤</span>
+    <span class="nav-jump-label">Trainer Workload</span>
+    <span class="nav-jump-arrow">↓</span>
+  </button>
+  <button class="nav-jump-item" id="navJumpUnassigned" onclick="scrollToSection('sectionUnassigned')">
+    <span class="nav-jump-icon">🔔</span>
+    <span class="nav-jump-label">Unassigned Requests</span>
+    <span class="nav-jump-arrow">↓</span>
+  </button>
+  <button class="nav-jump-item" id="navJumpCalendar" onclick="scrollToSection('calSection')">
+    <span class="nav-jump-icon">📅</span>
+    <span class="nav-jump-label">Training Calendar</span>
+    <span class="nav-jump-arrow">↓</span>
+  </button>
+  <button class="nav-jump-item" id="navJumpNeedsAction" onclick="scrollToSection('sectionNeedsAction')">
+    <span class="nav-jump-icon">⚠️</span>
+    <span class="nav-jump-label">Needs Action</span>
+    <span class="nav-jump-arrow">↓</span>
+  </button>
+  <button class="nav-jump-item" id="navJumpPerformance" onclick="scrollToSection('sectionPerformance')">
+    <span class="nav-jump-icon">📈</span>
+    <span class="nav-jump-label">Performance Review</span>
+    <span class="nav-jump-arrow">↓</span>
+  </button>
+  <button class="nav-jump-item" id="navJumpAllBookings" onclick="scrollToSection('sectionAllBookings')">
+    <span class="nav-jump-icon">📋</span>
+    <span class="nav-jump-label">All Bookings</span>
+    <span class="nav-jump-arrow">↓</span>
+  </button>
+
+  <!-- External tools (permission-gated) -->
   <div class="nav-divider"></div>
   <div class="nav-section-label">Tools</div>
-  <a href="https://amydawber-del.github.io/TrainingCSAT/dashboard.html" class="nav-item" target="_blank">
+  <a href="https://amydawber-del.github.io/TrainingCSAT/dashboard.html" class="nav-item" target="_blank" id="navFeedback">
     <span class="nav-item-icon">⭐</span> Training Feedback Dashboard
   </a>
-  <a href="https://amydawber-del.github.io/TilTracker/" class="nav-item" target="_blank">
+  <a href="https://amydawber-del.github.io/TilTracker/" class="nav-item" target="_blank" id="navTil">
     <span class="nav-item-icon">📚</span> TIL Tracker
   </a>
-  <a href="https://amydawber-del.github.io/TrainingCSAT/" class="nav-item" target="_blank">
+  <a href="https://amydawber-del.github.io/TrainingCSAT/" class="nav-item" target="_blank" id="navSurvey">
     <span class="nav-item-icon">📋</span> Client Feedback Survey
   </a>
+
   <div class="nav-divider"></div>
   <div class="nav-section-label">Resources</div>
-  <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank">
+  <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank" id="navSpreadsheet">
     <span class="nav-item-icon">📄</span> Bookings Spreadsheet
   </a>
-  <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-s3SWoPSaIanCZLMLYNnVmu3NU-LY4Lm7Db12gHLv6LzVuQ/viewform" class="nav-item" target="_blank">
+  <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-s3SWoPSaIanCZLMLYNnVmu3NU-LY4Lm7Db12gHLv6LzVuQ/viewform" class="nav-item" target="_blank" id="navRequestForm">
     <span class="nav-item-icon">📝</span> Training Request Form
   </a>
 </nav>
@@ -1964,7 +2037,7 @@
 <main class="main">
 
   <!-- TRAINER WORKLOAD -->
-  <div style="margin-bottom:24px;">
+  <div id="sectionWorkload" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title">👤 Trainer Workload</div>
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1974,6 +2047,112 @@
     </div>
     <div class="trainer-grid" id="trainerGrid">
       <div class="kpi-card" style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">Loading trainer data...</div>
+    </div>
+  </div>
+
+  <!-- NEW REQUESTS SECTION -->
+  <div id="sectionUnassigned" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">
+        🔔 Unassigned Requests
+        <span class="badge" id="unassignedBadge">0</span>
+      </div>
+      <div class="filter-bar">
+        <input class="filter-input" id="searchInput" type="text" placeholder="Search client, option..." oninput="filterRequests()" style="width:200px;">
+      </div>
+    </div>
+
+    <div class="requests-panel">
+      <div class="requests-panel-header">
+        <div class="requests-panel-header-left">
+          <div class="alert-dot" id="alertDot" style="display:none;"></div>
+          <span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">New training requests awaiting trainer assignment</span>
+        </div>
+        <span style="font-size:11px;color:var(--text--dark--30);">Round-robin suggestion shown in blue</span>
+      </div>
+      <div class="table-wrap">
+        <table id="newRequestsTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Company</th>
+              <th>Contact</th>
+              <th>Option</th>
+              <th>Trainer</th>
+              <th>Value</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="newRequestsBody">
+            <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- CALENDAR SECTION -->
+  <div class="cal-section" id="calSection">
+    <div class="section-header">
+      <div class="section-title">📅 Training Calendar</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;color:var(--text--dark--30);" id="calGcalStatus">
+          <span id="calGcalDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>
+          Calendar not connected
+        </span>
+        <button class="refresh-btn" onclick="loadCalendarData(true)" style="font-size:11px;">↻ Sync Calendar</button>
+        <button class="refresh-btn" onclick="openCalSettings()" style="font-size:11px;background:rgba(33,71,244,0.1);border-color:rgba(33,71,244,0.3);color:var(--action-primary-blue);">⚙ Calendar Settings</button>
+      </div>
+    </div>
+
+    <div class="cal-grid">
+      <!-- Month view -->
+      <div class="cal-month-card">
+        <div class="cal-month-header">
+          <button class="cal-nav-btn" onclick="calChangeMonth(-1)">‹</button>
+          <div class="cal-month-title" id="calMonthTitle">—</div>
+          <button class="cal-nav-btn" onclick="calChangeMonth(1)">›</button>
+        </div>
+        <div class="cal-filter-row">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div class="cal-legend-dot" style="background:#b8caff;"></div>
+            <span class="cal-legend-label">Bookings</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div class="cal-legend-dot" style="background:#beffd8;"></div>
+            <span class="cal-legend-label">Google Calendar</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div class="cal-legend-dot" style="background:#fde8eb;"></div>
+            <span class="cal-legend-label">Blocked / Busy</span>
+          </div>
+          <div style="margin-left:auto;">
+            <select id="calFilterTrainer" onchange="renderCalendar()"
+              style="font-size:11px;border:1px solid var(--ui--underline--light-grey);border-radius:4px;padding:3px 7px;font-family:Arial,sans-serif;background:#fff;">
+              <option value="">All Trainers</option>
+            </select>
+          </div>
+        </div>
+        <div class="cal-dow-row">
+          <div class="cal-dow">Mon</div><div class="cal-dow">Tue</div>
+          <div class="cal-dow">Wed</div><div class="cal-dow">Thu</div>
+          <div class="cal-dow">Fri</div><div class="cal-dow">Sat</div>
+          <div class="cal-dow">Sun</div>
+        </div>
+        <div class="cal-days" id="calDays"></div>
+      </div>
+
+      <!-- Upcoming sidebar -->
+      <div class="cal-upcoming-card">
+        <div class="cal-upcoming-header">
+          <span>Upcoming Sessions</span>
+          <span id="calUpcomingCount" style="font-size:10px;color:var(--text--dark--30);">—</span>
+        </div>
+        <div class="cal-upcoming-body" id="calUpcomingBody">
+          <div class="cal-upcoming-empty">Loading...</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2041,49 +2220,8 @@
     </div>
   </div>
 
-  <!-- NEW REQUESTS SECTION -->
-  <div style="margin-bottom:24px;">
-    <div class="section-header">
-      <div class="section-title">
-        🔔 Unassigned Requests
-        <span class="badge" id="unassignedBadge">0</span>
-      </div>
-      <div class="filter-bar">
-        <input class="filter-input" id="searchInput" type="text" placeholder="Search client, option..." oninput="filterRequests()" style="width:200px;">
-      </div>
-    </div>
-
-    <div class="requests-panel">
-      <div class="requests-panel-header">
-        <div class="requests-panel-header-left">
-          <div class="alert-dot" id="alertDot" style="display:none;"></div>
-          <span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">New training requests awaiting trainer assignment</span>
-        </div>
-        <span style="font-size:11px;color:var(--text--dark--30);">Round-robin suggestion shown in blue</span>
-      </div>
-      <div class="table-wrap">
-        <table id="newRequestsTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Company</th>
-              <th>Contact</th>
-              <th>Option</th>
-              <th>Trainer</th>
-              <th>Value</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="newRequestsBody">
-            <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
   <!-- NEEDS ACTION PANEL -->
-  <div style="margin-bottom:24px;">
+  <div id="sectionNeedsAction" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title" style="color:#8a5a2a;">
         ⚠️ Needs Action — Assigned &amp; Pending
@@ -2121,7 +2259,7 @@
   </div>
 
   <!-- KPI CARDS -->
-  <div style="margin-bottom:16px;">
+  <div id="sectionPerformance" style="margin-bottom:16px;">
     <div class="section-title" style="margin-bottom:14px;">📈 Performance Overview</div>
   </div>
   <div class="kpi-grid">
@@ -2182,7 +2320,7 @@
   </div>
 
   <!-- ALL BOOKINGS -->
-  <div>
+  <div id="sectionAllBookings">
     <div class="section-header" style="flex-wrap:wrap;gap:10px;">
       <div class="section-title">
         📋 All Bookings
@@ -2377,27 +2515,71 @@ const USERS_KEY   = 'streetDashboardUsers_v2';
 const SESSION_KEY = 'streetDashboardSession';
 
 const ALL_PERMISSIONS = {
-  edit_status:       { label: 'Edit Booking Status',     desc: 'Change status of any booking',             group: 'Bookings'   },
-  edit_trainer:      { label: 'Edit Trainer Assignment', desc: 'Assign or change the trainer on a booking', group: 'Bookings'   },
-  edit_value:        { label: 'Edit Invoice Value',      desc: 'Change the £ value of any booking',         group: 'Bookings'   },
-  edit_booked_date:  { label: 'Edit Booked Date',        desc: 'Set or change the confirmed training date', group: 'Bookings'   },
-  manage_trainers:   { label: 'Manage Trainers',         desc: 'Add, remove and edit trainer permissions',  group: 'Admin'      },
-  reassign_trainers: { label: 'Reassign Enquiries',      desc: 'Bulk-reassign enquiries between trainers',  group: 'Admin'      },
-  clear_activity:    { label: 'Clear Activity Log',      desc: 'Permanently delete the activity feed',      group: 'Admin'      },
-  refresh_data:      { label: 'Refresh Data',            desc: 'Reload data from Google Sheets',            group: 'Admin'      },
-  view_kpis:         { label: 'View Performance KPIs',  desc: 'See revenue, bookings and training days',    group: 'Analytics'  },
-  view_charts:       { label: 'View Charts',             desc: 'Monthly revenue and option charts',         group: 'Analytics'  },
-  view_activity:     { label: 'View Activity Feed',      desc: 'See the log of all dashboard changes',      group: 'Analytics'  },
+  // ── Bookings (editing data) ───────────────────────────────────
+  edit_status:          { label: 'Edit Booking Status',        desc: 'Change status on any booking',                         group: 'Bookings'   },
+  edit_trainer:         { label: 'Edit Trainer Assignment',    desc: 'Assign or change the trainer on a booking',            group: 'Bookings'   },
+  edit_value:           { label: 'Edit Invoice Value',         desc: 'Change the £ value of any booking',                    group: 'Bookings'   },
+  edit_booked_date:     { label: 'Edit Booked Date',           desc: 'Set or change the confirmed training date',            group: 'Bookings'   },
+  // ── Dashboard sections ────────────────────────────────────────
+  view_workload:        { label: 'View Trainer Workload',      desc: 'See trainer workload cards and availability',          group: 'Sections'   },
+  view_calendar:        { label: 'View Training Calendar',     desc: 'See the training calendar and sync Google Calendar',   group: 'Sections'   },
+  view_unassigned:      { label: 'View Unassigned Requests',   desc: 'See and action new unassigned booking requests',       group: 'Sections'   },
+  view_needs_action:    { label: 'View Needs Action',          desc: 'See assigned/pending bookings awaiting confirmation',  group: 'Sections'   },
+  view_performance:     { label: 'View Performance Overview',  desc: 'See KPI cards and revenue charts',                    group: 'Sections'   },
+  view_all_bookings:    { label: 'View All Bookings',          desc: 'See and filter the full bookings table',               group: 'Sections'   },
+  // ── Admin ─────────────────────────────────────────────────────
+  manage_trainers:      { label: 'Manage Trainers',            desc: 'Add, remove trainers and edit their permissions',      group: 'Admin'      },
+  reassign_trainers:    { label: 'Reassign Enquiries',         desc: 'Bulk-reassign enquiries between trainers',             group: 'Admin'      },
+  refresh_data:         { label: 'Refresh Data',               desc: 'Reload data from Google Sheets',                      group: 'Admin'      },
+  clear_activity:       { label: 'Clear Activity Log',         desc: 'Permanently delete the activity feed history',         group: 'Admin'      },
+  view_activity:        { label: 'View Activity Feed',         desc: 'See the log of all dashboard changes',                 group: 'Admin'      },
+  // ── Navigation (external tools) ──────────────────────────────
+  nav_feedback:         { label: 'Training Feedback Dashboard', desc: 'Access to Training CSAT/Feedback Dashboard link',    group: 'Navigation' },
+  nav_til:              { label: 'TIL Tracker',                desc: 'Access to TIL Tracker link',                          group: 'Navigation' },
+  nav_survey:           { label: 'Client Feedback Survey',     desc: 'Access to Client Feedback Survey link',               group: 'Navigation' },
+  nav_spreadsheet:      { label: 'Bookings Spreadsheet',       desc: 'Access to Google Sheets bookings spreadsheet',        group: 'Navigation' },
+  nav_request_form:     { label: 'Training Request Form',      desc: 'Access to the training request form link',            group: 'Navigation' },
 };
 
 const PERMISSION_PRESETS = {
-  admin:  { edit_status:true, edit_trainer:true, edit_value:true, edit_booked_date:true, manage_trainers:true,  reassign_trainers:true,  clear_activity:true,  refresh_data:true,  view_kpis:true, view_charts:true, view_activity:true  },
-  editor: { edit_status:true, edit_trainer:true, edit_value:true, edit_booked_date:true, manage_trainers:false, reassign_trainers:true,  clear_activity:false, refresh_data:true,  view_kpis:true, view_charts:true, view_activity:true  },
-  viewer: { edit_status:false,edit_trainer:false,edit_value:false,edit_booked_date:false,manage_trainers:false, reassign_trainers:false, clear_activity:false, refresh_data:false, view_kpis:true, view_charts:true, view_activity:true  },
+  // Admin — everything on
+  admin: {
+    edit_status:true,  edit_trainer:true,    edit_value:true,    edit_booked_date:true,
+    view_workload:true, view_calendar:true,  view_unassigned:true, view_needs_action:true,
+    view_performance:true, view_all_bookings:true,
+    manage_trainers:true, reassign_trainers:true, refresh_data:true,
+    clear_activity:true, view_activity:true,
+    nav_feedback:true, nav_til:true, nav_survey:true, nav_spreadsheet:true, nav_request_form:true,
+  },
+  // Editor — full booking access, no admin controls, all sections, tools access
+  editor: {
+    edit_status:true,  edit_trainer:true,    edit_value:true,    edit_booked_date:true,
+    view_workload:true, view_calendar:true,  view_unassigned:true, view_needs_action:true,
+    view_performance:true, view_all_bookings:true,
+    manage_trainers:false, reassign_trainers:true, refresh_data:true,
+    clear_activity:false, view_activity:true,
+    nav_feedback:true, nav_til:true, nav_survey:true, nav_spreadsheet:true, nav_request_form:true,
+  },
+  // Viewer — read-only dashboard only, can access request form
+  viewer: {
+    edit_status:false, edit_trainer:false,   edit_value:false,   edit_booked_date:false,
+    view_workload:false, view_calendar:false, view_unassigned:false, view_needs_action:false,
+    view_performance:false, view_all_bookings:false,
+    manage_trainers:false, reassign_trainers:false, refresh_data:false,
+    clear_activity:false, view_activity:false,
+    nav_feedback:false, nav_til:false, nav_survey:false, nav_spreadsheet:false, nav_request_form:true,
+  },
 };
 
-// Bookings-only preset for Max
-const BOOKINGS_ONLY_PRESET = { edit_status:true, edit_trainer:true, edit_value:true, edit_booked_date:true, manage_trainers:false, reassign_trainers:false, clear_activity:false, refresh_data:false, view_kpis:false, view_charts:false, view_activity:false };
+// Max — bookings group (editor-level on sections + editing, no admin, no analytics nav)
+const BOOKINGS_ONLY_PRESET = {
+  edit_status:true,  edit_trainer:true,    edit_value:true,    edit_booked_date:true,
+  view_workload:true, view_calendar:true,  view_unassigned:true, view_needs_action:true,
+  view_performance:false, view_all_bookings:true,
+  manage_trainers:false, reassign_trainers:true, refresh_data:true,
+  clear_activity:false, view_activity:false,
+  nav_feedback:true, nav_til:true, nav_survey:false, nav_spreadsheet:false, nav_request_form:true,
+};
 
 function getUsers() {
   let users = [];
@@ -2412,7 +2594,7 @@ function getUsers() {
     amy = { name: 'Amy', permissions: {} };
     users.unshift(amy);
   }
-  amy.permissions = { ...PERMISSION_PRESETS.admin }; // always force all perms on
+  amy.permissions = { ...PERMISSION_PRESETS.admin }; // always force all perms on — includes all new section/nav perms
 
   // Always enforce Max exists with bookings-only
   let max = users.find(u => u.name === 'Max');
@@ -5143,44 +5325,112 @@ function applyPermissions() {
   const u = getCurrentUser();
   if (!u) return;
 
-  const canEditBookings   = hasPerm('edit_status') || hasPerm('edit_trainer') || hasPerm('edit_value') || hasPerm('edit_booked_date');
-  const canManageTrainers = hasPerm('manage_trainers');
-  const canRefresh        = hasPerm('refresh_data');
-  const canViewKPIs       = hasPerm('view_kpis');
-  const canViewCharts     = hasPerm('view_charts');
-  const canViewActivity   = hasPerm('view_activity');
-  const canClearActivity  = hasPerm('clear_activity');
+  // ── helper: show/hide element by ID ───────────────────────────
+  function setVisible(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('perm-hidden', !show);
+  }
 
+  // ── read all permissions ───────────────────────────────────────
+  const canEditStatus      = hasPerm('edit_status');
+  const canEditTrainer     = hasPerm('edit_trainer');
+  const canEditValue       = hasPerm('edit_value');
+  const canEditDate        = hasPerm('edit_booked_date');
+  const canManageTrainers  = hasPerm('manage_trainers');
+  const canReassign        = hasPerm('reassign_trainers');
+  const canRefresh         = hasPerm('refresh_data');
+  const canClearActivity   = hasPerm('clear_activity');
+  const canViewActivity    = hasPerm('view_activity');
+  const canViewWorkload    = hasPerm('view_workload');
+  const canViewCalendar    = hasPerm('view_calendar');
+  const canViewUnassigned  = hasPerm('view_unassigned');
+  const canViewNeedsAction = hasPerm('view_needs_action');
+  const canViewPerformance = hasPerm('view_performance');
+  const canViewAllBookings = hasPerm('view_all_bookings');
+  const canNavFeedback     = hasPerm('nav_feedback');
+  const canNavTil          = hasPerm('nav_til');
+  const canNavSurvey       = hasPerm('nav_survey');
+  const canNavSpreadsheet  = hasPerm('nav_spreadsheet');
+  const canNavRequestForm  = hasPerm('nav_request_form');
+
+  // ── SECTIONS ──────────────────────────────────────────────────
+  setVisible('sectionWorkload',   canViewWorkload);
+  setVisible('calSection',        canViewCalendar);
+  setVisible('sectionUnassigned', canViewUnassigned);
+  setVisible('sectionNeedsAction',canViewNeedsAction);
+  setVisible('sectionAllBookings',canViewAllBookings);
+
+  // Performance: both the KPI title div and the kpi-grid + charts-grid
+  const perfSection = document.getElementById('sectionPerformance');
+  if (perfSection) perfSection.classList.toggle('perm-hidden', !canViewPerformance);
+  const kpiGrid = document.querySelector('.kpi-grid');
+  if (kpiGrid) kpiGrid.classList.toggle('perm-hidden', !canViewPerformance);
+  const chartsGrid = document.querySelector('.charts-grid');
+  if (chartsGrid) chartsGrid.classList.toggle('perm-hidden', !canViewPerformance);
+
+  // ── NAV JUMP LINKS (hide if section is hidden) ─────────────────
+  setVisible('navJumpWorkload',    canViewWorkload);
+  setVisible('navJumpCalendar',    canViewCalendar);
+  setVisible('navJumpUnassigned',  canViewUnassigned);
+  setVisible('navJumpNeedsAction', canViewNeedsAction);
+  setVisible('navJumpPerformance', canViewPerformance);
+  setVisible('navJumpAllBookings', canViewAllBookings);
+
+  // ── EXTERNAL NAVIGATION LINKS ─────────────────────────────────
+  setVisible('navFeedback',    canNavFeedback);
+  setVisible('navTil',         canNavTil);
+  setVisible('navSurvey',      canNavSurvey);
+  setVisible('navSpreadsheet', canNavSpreadsheet);
+  setVisible('navRequestForm', canNavRequestForm);
+
+  // ── ADMIN CONTROLS ────────────────────────────────────────────
   // Manage Trainers button
   const manageBtn = document.querySelector('button[onclick="openTrainerModal()"]');
-  if (manageBtn) {
-    manageBtn.style.display = canManageTrainers ? '' : 'none';
-  }
+  if (manageBtn) manageBtn.style.display = canManageTrainers ? '' : 'none';
 
   // Refresh + Test buttons
   document.querySelectorAll('.refresh-btn').forEach(btn => {
-    if (btn.textContent.includes('Refresh') || btn.textContent.includes('Test')) {
+    const txt = btn.textContent || '';
+    if (txt.includes('Refresh') || txt.includes('Test') || txt.includes('↻')) {
       btn.classList.toggle('perm-hidden', !canRefresh);
     }
   });
 
-  // KPI section
-  const kpiGrid = document.querySelector('.kpi-grid');
-  if (kpiGrid) kpiGrid.classList.toggle('perm-hidden', !canViewKPIs);
-  const kpiTitle = [...document.querySelectorAll('.section-title')].find(el => el.textContent.includes('Performance Overview'));
-  if (kpiTitle) kpiTitle.parentElement.classList.toggle('perm-hidden', !canViewKPIs);
+  // Sync Calendar button (needs calendar perm too)
+  document.querySelectorAll('.refresh-btn').forEach(btn => {
+    if ((btn.textContent||'').includes('Sync Calendar') || (btn.textContent||'').includes('⚙ Calendar')) {
+      btn.classList.toggle('perm-hidden', !canViewCalendar);
+    }
+  });
 
-  // Charts section
-  const chartsGrid = document.querySelector('.charts-grid');
-  if (chartsGrid) chartsGrid.classList.toggle('perm-hidden', !canViewCharts);
-
-  // Activity button
+  // Activity feed button
   const actBtn = document.getElementById('activityNavBtn');
   if (actBtn) actBtn.classList.toggle('perm-hidden', !canViewActivity);
 
-  // Update user display in activity panel
+  // ── INLINE EDITING — hide controls if no permission ──────────
+  // Status dropdowns
+  document.querySelectorAll('select[data-perm="status"]').forEach(el => {
+    el.disabled = !canEditStatus;
+    el.style.opacity = canEditStatus ? '' : '0.5';
+    el.style.pointerEvents = canEditStatus ? '' : 'none';
+  });
+
+  // Update user display
   const cur = getCurrentUser();
   if (cur) updateUserDisplay(cur.name);
+}
+
+// ── Smooth-scroll to a dashboard section ──────────────────────────
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  closeNav();
+  const headerHeight = document.querySelector('.header')?.offsetHeight || 60;
+  const shadowBanner = document.getElementById('shadowBanner');
+  const bannerHeight = (shadowBanner && shadowBanner.classList.contains('active')) ? shadowBanner.offsetHeight : 0;
+  const offset = headerHeight + bannerHeight + 12;
+  const top = el.getBoundingClientRect().top + window.scrollY - offset;
+  window.scrollTo({ top, behavior: 'smooth' });
 }
 
 // =============================================
