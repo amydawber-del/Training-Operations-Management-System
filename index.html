@@ -1492,78 +1492,80 @@ async function testConnection() {
 
 async function loadData() {
   setLoading(true);
-  document.getElementById('lastUpdated').textContent = 'Loading…';
-
-  // Timeout via Promise.race (no AbortController - avoids Google redirect CORS issues)
-  function fetchWithRace(url, ms) {
-    var req = fetch(url);
-    var tout = new Promise(function(_, rej) { setTimeout(function() { rej(new Error('Timeout')); }, ms); });
-    return Promise.race([req, tout]);
-  }
+  var statusEl = document.getElementById('lastUpdated');
+  statusEl.textContent = 'Connecting to sheet…';
 
   function finish(data, label) {
     allData = applyOverrides(data);
-    try { processData(); } catch(e) { console.error('[Dashboard] processData error:', e); }
-    document.getElementById('lastUpdated').textContent = label;
+    try { processData(); } catch(ex) { console.error('[Dashboard] processData error:', ex); }
+    statusEl.textContent = label;
     setLoading(false);
-    try { applyPermissions(); } catch(e) {}
+    try { applyPermissions(); } catch(ex) {}
   }
 
-  // 1. Apps Script
+  // ── 1. Apps Script — bare fetch, identical to the Test button ──────────────
   try {
-    document.getElementById('lastUpdated').textContent = 'Connecting to sheet…';
-    var res  = await fetchWithRace(APPS_SCRIPT_URL + '?action=getData', 15000);
+    var res  = await fetch(APPS_SCRIPT_URL + '?action=getData');
     var text = await res.text();
-    console.log('[Dashboard] Raw (first 150):', text.slice(0, 150));
+    console.log('[Dashboard] HTTP status:', res.status, '| First 200 chars:', text.slice(0, 200));
 
     if (text && text.trim().charAt(0) === '{') {
       var json = JSON.parse(text);
-      console.log('[Dashboard] success:', json.success, '| data rows:', json.data ? json.data.length : 'none');
-      // Accept data regardless of success flag - older scripts may omit it
-      var hasData = json && json.data && json.data.length >= 1;
-      console.log('[Dashboard] hasData:', hasData, '| success:', json && json.success, '| data length:', json && json.data && json.data.length);
-      if (hasData) {
+      console.log('[Dashboard] JSON keys:', Object.keys(json));
+      console.log('[Dashboard] success:', json.success, '| data length:', json.data ? json.data.length : 'none');
+
+      if (json && json.data && json.data.length >= 1) {
         var parsed = parseAppsScriptData(json.data);
-        console.log('[Dashboard] Parsed rows:', parsed.length);
+        console.log('[Dashboard] Normalised rows:', parsed.length);
         if (parsed.length > 0) {
-          finish(parsed, '✓ Live — ' + parsed.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'));
+          finish(parsed, '\u2713 Live \u2014 ' + parsed.length + ' rows \u2014 ' + new Date().toLocaleTimeString('en-GB'));
           return;
         }
-        finish([], '⚠ Connected but 0 rows parsed — check console (F12)');
-        showToast('Sheet connected but 0 rows parsed. Open console (F12) for [Parse] debug info.', 'error');
+        // Got data but parsed 0 rows — show the raw header so we can debug
+        var headers = Array.isArray(json.data[0]) ? json.data[0] : Object.keys(json.data[0]);
+        console.warn('[Dashboard] 0 rows parsed. Headers found:', headers);
+        statusEl.textContent = '\u26a0 0 rows parsed \u2014 headers: ' + headers.slice(0,4).join(' | ');
+        finish([], '\u26a0 Connected but 0 rows parsed');
+        showToast('Connected (73 rows) but 0 parsed. Check console (F12) \u2192 [Dashboard] logs.', 'error');
         return;
       }
-      if (json && json.error) { console.warn('[Dashboard] error:', json.error); }
-    } else if (text && text.indexOf('<html') >= 0) {
-      document.getElementById('lastUpdated').textContent = '⚠ Auth error — redeploy Apps Script as Anyone';
+      if (json.error) {
+        statusEl.textContent = '\u26a0 Sheet error: ' + json.error;
+        console.warn('[Dashboard] Sheet error:', json.error);
+      }
+    } else {
+      // Not JSON — log what we got
+      console.warn('[Dashboard] Non-JSON response. First 300 chars:', text.slice(0, 300));
+      statusEl.textContent = '\u26a0 Unexpected response (not JSON) \u2014 see console (F12)';
     }
   } catch(e) {
-    console.warn('[Dashboard] Apps Script failed:', e.message);
-    document.getElementById('lastUpdated').textContent = '⚠ Apps Script unreachable — trying CSV…';
+    console.warn('[Dashboard] fetch threw:', e.name, e.message);
+    statusEl.textContent = '\u26a0 Fetch error: ' + e.message + ' \u2014 trying CSV…';
   }
 
-  // 2. CSV fallback
+  // ── 2. CSV fallback ─────────────────────────────────────────────────────────
   try {
-    document.getElementById('lastUpdated').textContent = 'Trying CSV fallback…';
-    var res2  = await fetchWithRace(CSV_URL, 12000);
+    statusEl.textContent = 'Trying CSV fallback…';
+    var res2  = await fetch(CSV_URL);
     var text2 = await res2.text();
-    if (text2 && text2.length > 200 && text2.indexOf(',') >= 0) {
+    if (text2 && text2.length > 100 && text2.indexOf(',') >= 0) {
       var parsed2 = parseCSV(text2);
       if (parsed2.length > 0) {
-        finish(parsed2, '⚠ CSV mode — ' + parsed2.length + ' rows — ' + new Date().toLocaleTimeString('en-GB'));
+        finish(parsed2, '\u26a0 CSV mode \u2014 ' + parsed2.length + ' rows \u2014 ' + new Date().toLocaleTimeString('en-GB'));
         showToast('Loaded via CSV. Check Apps Script deployment.', '');
         return;
       }
     }
-  } catch(e) {
-    console.warn('[Dashboard] CSV failed:', e.message);
+  } catch(e2) {
+    console.warn('[Dashboard] CSV failed:', e2.message);
   }
 
-  // 3. Demo fallback
-  console.warn('[Dashboard] All sources failed');
-  finish(generateDemoData(), '⚠ Demo data — sheet unreachable');
+  // ── 3. Demo fallback ────────────────────────────────────────────────────────
+  console.warn('[Dashboard] All sources failed \u2014 using demo data');
+  finish(generateDemoData(), '\u26a0 Demo data \u2014 sheet unreachable');
   showToast('Could not reach the sheet. Showing demo data. Click Test to diagnose.', 'error');
 }
+
 // Parse Apps Script JSON response — handles both formats:
 //   A) array-of-arrays: [ [header1,header2,...], [val1,val2,...], ... ]
 //   B) array-of-objects: [ {col1:val1, col2:val2}, ... ]
@@ -3351,7 +3353,14 @@ function updateCalStatus(connected, err) {
   }
 }
 
-function getCalSettings() { try { return JSON.parse(localStorage.getItem(CAL_KEY) || '{}'); } catch(e) { return {}; } }
+const DEFAULT_CALENDAR_ID = 'c_3fd39a8ba7d9ea4668342113318a617caa454a9711a6dc697448fedc4467f3cd@group.calendar.google.com';
+function getCalSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CAL_KEY) || '{}');
+    if (!s.calendarId) s.calendarId = DEFAULT_CALENDAR_ID;
+    return s;
+  } catch(e) { return { calendarId: DEFAULT_CALENDAR_ID }; }
+}
 function saveCalSettings_() { localStorage.setItem(CAL_KEY, JSON.stringify(_calSettings)); }
 
 function openCalSettings() {
