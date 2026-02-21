@@ -2800,25 +2800,111 @@ function fetchWithTimeout(url, ms) {
 // Expected: { data: [ [col1, col2, ...], ... ] } where row 0 is headers
 function parseAppsScriptData(rows) {
   if (!rows || rows.length < 2) return [];
-  const headers = rows[0].map(h => String(h).trim().toLowerCase());
+  // Skip header row (row[0]), parse from row[1] onward
+  // Row index is 1-based sheet row (row 2 = first data row)
   return rows.slice(1).map((row, i) => {
-    const obj = {};
-    headers.forEach((h, j) => { obj[h] = row[j] || ''; });
-    return normaliseRow(obj, i + 2); // +2 for header row + 1-indexed
-  }).filter(r => r.company || r.contact);
+    return parseRowByIndex(row, i + 2);
+  }).filter(r => r.company || r.contact || r.status);
 }
 
-// Parse CSV text
+// Parse a row array using exact column positions (0-indexed)
+// Column order confirmed by user:
+// A(0)=Status, B(1)=Timestamp, C(2)=Email, D(3)=Contact/Phone,
+// E(4)=Preferred Date, F(5)=Training Type, G(6)=Areas,
+// H(7)=Specific Features, I(8)=Attendees, J(9)=Location,
+// K(10)=Parking, L(11)=Venue Setup, M(12)=Score,
+// N(13)=Company Name, O(14)=Team Familiarity, P(15)=Priorities,
+// Q(16)=Post-Training Support, R(17)=Anything Else,
+// S(18)=Go-Live Date, T(19)=Referred By,
+// U(20)=Invoice Value, V(21)=Assigned Trainer, W(22)=Booked On Date
+function parseRowByIndex(row, rowIndex) {
+  const c = (i) => (row[i] !== undefined && row[i] !== null) ? String(row[i]).trim() : '';
+
+  const status      = c(0);
+  const timestamp   = c(1);
+  const email       = c(2);
+  const contact     = c(3);
+  const preferredDate = c(4);
+  const optionRaw   = c(5);
+  const areas       = c(6);
+  const notes       = c(7);
+  const attendees   = c(8);
+  const location    = c(9);
+  // c(10) = parking, c(11) = venue setup, c(12) = score
+  const score       = c(12);
+  const company     = c(13);
+  // c(14) = familiarity, c(15) = priorities, c(16) = post support
+  // c(17) = anything else, c(18) = go-live date, c(19) = referred by
+  const goLiveDate  = c(18);
+  const referredBy  = c(19);
+  const invoiceValue = c(20);
+  const trainer     = c(21);
+  const bookedOnRaw = c(22);
+
+  // Map training type answer to option number
+  let option = '2';
+  const optLower = optionRaw.toLowerCase();
+  if (optLower.includes('on demand') || optLower.includes('help centre') || optLower.includes('video')) {
+    option = '1';
+  } else if (optLower.includes('account') || optLower.includes('go-live') || optLower.includes('go live')) {
+    option = '4';
+  } else if (optLower.includes('hq') || optLower.includes('manchester') || optLower.includes('live training')) {
+    option = '5';
+  } else if (optLower.includes('2 day') || optLower.includes('2 days') || optLower.includes('two day')) {
+    option = '3';
+  } else if (optLower.includes('1 day') || optLower.includes('one day') || optLower.includes('personalised')) {
+    option = '2';
+  } else {
+    const om = optionRaw.match(/(\d)/);
+    if (om) option = om[1];
+  }
+
+  const numAttendees = parseInt(attendees) || 1;
+  const basePrice    = parseInt(OPTION_PRICES[option]) || 0;
+
+  // Invoice value — strip £ signs and commas
+  const parsedInvoice = parseFloat(String(invoiceValue).replace(/[£,\s]/g, ''));
+  const revenue = (!isNaN(parsedInvoice) && parsedInvoice > 0)
+    ? parsedInvoice
+    : (option === '5' ? basePrice * numAttendees : basePrice);
+
+  // Dates
+  const parsedDate = parseDate(timestamp || preferredDate);
+  const bookedOn   = formatDateInput(bookedOnRaw);
+
+  return {
+    rowIndex,
+    timestamp,
+    date:         parsedDate,
+    company:      company || '',
+    contact:      contact || '',
+    email:        email   || '',
+    option,
+    optionLabel:  OPTION_LABELS[option] || 'Option ' + option,
+    preferredDate,
+    attendees:    numAttendees,
+    location:     location || '',
+    areas:        areas   || '',
+    notes:        notes   || '',
+    score:        score   || '',
+    goLiveDate:   goLiveDate  || '',
+    referredBy:   referredBy  || '',
+    trainer:      trainer || '',
+    status:       status  || (trainer ? 'Assigned' : 'Unassigned'),
+    bookedOn,
+    revenue
+  };
+}
+
+// Parse CSV text — uses same index-based column map as Apps Script parser
 function parseCSV(text) {
   const lines = text.split('\n').filter(l => l.trim());
   if (lines.length < 2) return [];
-  const headers = parseCSVRow(lines[0]).map(h => h.trim().toLowerCase());
+  // Skip header row, parse data rows by column index
   return lines.slice(1).map((line, i) => {
-    const vals = parseCSVRow(line);
-    const obj = {};
-    headers.forEach((h, j) => { obj[h] = (vals[j] || '').trim(); });
-    return normaliseRow(obj, i + 2);
-  }).filter(r => r.company || r.contact);
+    const vals = parseCSVRow(line).map(v => v.trim());
+    return parseRowByIndex(vals, i + 2);
+  }).filter(r => r.company || r.contact || r.status);
 }
 
 function parseCSVRow(line) {
