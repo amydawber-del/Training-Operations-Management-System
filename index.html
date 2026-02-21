@@ -2020,15 +2020,33 @@ const PERMISSION_PRESETS = {
 const BOOKINGS_ONLY_PRESET = { edit_status:true, edit_trainer:true, edit_value:true, edit_booked_date:true, manage_trainers:false, reassign_trainers:false, clear_activity:false, refresh_data:false, view_kpis:false, view_charts:false, view_activity:false };
 
 function getUsers() {
+  let users = [];
   try {
     const saved = JSON.parse(localStorage.getItem(USERS_KEY) || 'null');
-    if (Array.isArray(saved) && saved.length) return saved;
+    if (Array.isArray(saved)) users = saved;
   } catch(e) {}
-  // Default seed users — Amy = full admin, Max = bookings only
-  return [
-    { name: 'Amy', permissions: { ...PERMISSION_PRESETS.admin } },
-    { name: 'Max', permissions: { ...BOOKINGS_ONLY_PRESET }     },
-  ];
+
+  // Always enforce Amy exists with full admin — no matter what localStorage holds
+  let amy = users.find(u => u.name === 'Amy');
+  if (!amy) {
+    amy = { name: 'Amy', permissions: {} };
+    users.unshift(amy);
+  }
+  amy.permissions = { ...PERMISSION_PRESETS.admin }; // always force all perms on
+
+  // Always enforce Max exists with bookings-only
+  let max = users.find(u => u.name === 'Max');
+  if (!max) {
+    max = { name: 'Max', permissions: {} };
+    const amyIdx = users.findIndex(u => u.name === 'Amy');
+    users.splice(amyIdx + 1, 0, max);
+  }
+  max.permissions = { ...BOOKINGS_ONLY_PRESET }; // always force bookings-only
+
+  // Persist so next call reads correctly
+  try { localStorage.setItem(USERS_KEY, JSON.stringify(users)); } catch(e) {}
+
+  return users;
 }
 
 function saveUsers(arr) {
