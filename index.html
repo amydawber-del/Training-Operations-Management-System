@@ -2058,29 +2058,49 @@ function syncTrainersFromUsers() {
   TRAINERS = USERS.map(u => u.name);
 }
 
-// Migration: ensure Amy = full admin, Max = bookings-only, in case old data exists
+// Migration: always enforce Amy = full admin, Max = bookings-only.
+// Adds them if missing. Refreshes any active session for these users.
 function migrateUsers() {
   let changed = false;
-  const amy = USERS.find(u => u.name === 'Amy');
-  if (amy) {
+
+  // ── Amy: must exist with ALL permissions on ───────────────────
+  let amy = USERS.find(u => u.name === 'Amy');
+  if (!amy) {
+    USERS.unshift({ name: 'Amy', permissions: { ...PERMISSION_PRESETS.admin } });
+    changed = true;
+  } else {
     const allOn = Object.keys(PERMISSION_PRESETS.admin).every(k => amy.permissions[k] === true);
-    if (!allOn) { amy.permissions = { ...PERMISSION_PRESETS.admin }; changed = true; }
+    if (!allOn) {
+      amy.permissions = { ...PERMISSION_PRESETS.admin };
+      changed = true;
+    }
   }
-  const max = USERS.find(u => u.name === 'Max');
-  if (max) {
-    // Max should have bookings group only
-    const expected = { ...BOOKINGS_ONLY_PRESET };
-    const correct = Object.keys(expected).every(k => max.permissions[k] === expected[k]);
-    if (!correct) { max.permissions = { ...BOOKINGS_ONLY_PRESET }; changed = true; }
+
+  // ── Max: must exist with Bookings group only ──────────────────
+  let max = USERS.find(u => u.name === 'Max');
+  if (!max) {
+    // Insert Max after Amy
+    const amyIdx = USERS.findIndex(u => u.name === 'Amy');
+    USERS.splice(amyIdx + 1, 0, { name: 'Max', permissions: { ...BOOKINGS_ONLY_PRESET } });
+    changed = true;
+  } else {
+    const correct = Object.keys(BOOKINGS_ONLY_PRESET).every(k => max.permissions[k] === BOOKINGS_ONLY_PRESET[k]);
+    if (!correct) {
+      max.permissions = { ...BOOKINGS_ONLY_PRESET };
+      changed = true;
+    }
   }
+
   if (changed) {
     saveUsers(USERS);
-    // If current user is Amy or Max, refresh their session with updated perms
-    const cur = getCurrentUser();
-    if (cur) {
-      const fresh = USERS.find(u => u.name === cur.name);
-      if (fresh) setCurrentUser(fresh);
-    }
+    syncTrainersFromUsers();
+  }
+
+  // Always refresh active session in case perms changed
+  const cur = getCurrentUser();
+  if (cur && (cur.name === 'Amy' || cur.name === 'Max')) {
+    const fresh = USERS.find(u => u.name === cur.name);
+    if (fresh) setCurrentUser(fresh);
   }
 }
 
