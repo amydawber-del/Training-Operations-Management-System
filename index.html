@@ -1127,13 +1127,19 @@
 
   <!-- ALL BOOKINGS -->
   <div>
-    <div class="section-header">
+    <div class="section-header" style="flex-wrap:wrap;gap:10px;">
       <div class="section-title">
         📋 All Bookings
         <span class="badge green" id="allBadge">0</span>
       </div>
-      <div class="filter-bar">
-        <select class="filter-select" id="filterStatus" onchange="renderAllBookings()">
+      <div class="filter-bar" style="flex-wrap:wrap;gap:6px;">
+        <div style="position:relative;display:flex;align-items:center;">
+          <span style="position:absolute;left:9px;font-size:13px;color:var(--text--dark--30);pointer-events:none;">🔍</span>
+          <input class="filter-input" id="bookingSearch" type="text" placeholder="Search company or contact…"
+            oninput="resetPageAndRender()"
+            style="width:210px;padding-left:30px;">
+        </div>
+        <select class="filter-select" id="filterStatus" onchange="resetPageAndRender()">
           <option value="">All Statuses</option>
           <option value="Unassigned">Unassigned</option>
           <option value="Assigned">Assigned</option>
@@ -1141,10 +1147,10 @@
           <option value="Pending">Pending</option>
           <option value="Cancelled">Cancelled</option>
         </select>
-        <select class="filter-select" id="filterTrainer" onchange="renderAllBookings()">
+        <select class="filter-select" id="filterTrainer" onchange="resetPageAndRender()">
           <option value="">All Trainers</option>
         </select>
-        <select class="filter-select" id="filterOption" onchange="renderAllBookings()">
+        <select class="filter-select" id="filterOption" onchange="resetPageAndRender()">
           <option value="">All Options</option>
           <option value="1">Option 1</option>
           <option value="2">Option 2</option>
@@ -1152,6 +1158,17 @@
           <option value="4">Option 4</option>
           <option value="5">Option 5</option>
         </select>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <label style="font-size:11px;color:var(--text--dark--30);white-space:nowrap;">From</label>
+          <input class="filter-input" id="filterDateFrom" type="date"
+            onchange="resetPageAndRender()" style="width:130px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <label style="font-size:11px;color:var(--text--dark--30);white-space:nowrap;">To</label>
+          <input class="filter-input" id="filterDateTo" type="date"
+            onchange="resetPageAndRender()" style="width:130px;">
+        </div>
+        <button class="btn btn-ghost btn-sm" id="clearFiltersBtn" onclick="clearBookingFilters()" style="display:none;white-space:nowrap;">✕ Clear</button>
       </div>
     </div>
     <div class="all-bookings">
@@ -2268,15 +2285,55 @@ function buildStatusSelect(rowIndex, current, bookedOn) {
     + '</div>';
 }
 
+function resetPageAndRender() {
+  currentPage = 1;
+  renderAllBookings();
+}
+
+function clearBookingFilters() {
+  document.getElementById('bookingSearch').value  = '';
+  document.getElementById('filterStatus').value   = '';
+  document.getElementById('filterTrainer').value  = '';
+  document.getElementById('filterOption').value   = '';
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value   = '';
+  currentPage = 1;
+  renderAllBookings();
+}
+
 function renderAllBookings() {
   const statusF  = document.getElementById('filterStatus')?.value  || '';
   const trainerF = document.getElementById('filterTrainer')?.value || '';
   const optionF  = document.getElementById('filterOption')?.value  || '';
+  const searchQ  = (document.getElementById('bookingSearch')?.value || '').trim().toLowerCase();
+  const dateFrom = document.getElementById('filterDateFrom')?.value || '';
+  const dateTo   = document.getElementById('filterDateTo')?.value   || '';
+
+  // Parse date boundaries (YYYY-MM-DD input → Date at start/end of day)
+  const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+  const toDate   = dateTo   ? new Date(dateTo   + 'T23:59:59') : null;
+
+  // Show/hide clear button whenever any filter is active
+  const anyActive = statusF || trainerF || optionF || searchQ || dateFrom || dateTo;
+  const clearBtn = document.getElementById('clearFiltersBtn');
+  if (clearBtn) clearBtn.style.display = anyActive ? 'inline-block' : 'none';
 
   let filtered = allData.filter(r => {
     if (statusF  && r.status  !== statusF)  return false;
     if (trainerF && r.trainer !== trainerF) return false;
     if (optionF  && r.option  !== optionF)  return false;
+    // Search: company name, contact, email
+    if (searchQ) {
+      const haystack = ((r.company||'') + ' ' + (r.contact||'') + ' ' + (r.email||'')).toLowerCase();
+      if (!haystack.includes(searchQ)) return false;
+    }
+    // Date range — uses kpiDate (Booked On Date) then falls back to submission date
+    if (fromDate || toDate) {
+      const d = kpiDate(r) || r.date;
+      if (!d) return false;
+      if (fromDate && d < fromDate) return false;
+      if (toDate   && d > toDate)   return false;
+    }
     return true;
   });
 
@@ -2470,6 +2527,7 @@ function populateTrainerFilter() {
   const current = sel.value;
   sel.innerHTML = '<option value="">All Trainers</option>' +
     TRAINERS.map(t => `<option value="${t}" ${t===current?'selected':''}>${t}</option>`).join('');
+  sel.onchange = () => resetPageAndRender();
 }
 
 function changePage(dir) {
