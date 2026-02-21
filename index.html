@@ -1004,21 +1004,17 @@
         <table id="newRequestsTable">
           <thead>
             <tr>
-              <th>Submitted</th>
+              <th>Date</th>
               <th>Company</th>
               <th>Contact</th>
-              <th>Training Option</th>
-              <th>Booked Date</th>
-              <th>Attendees</th>
+              <th>Option</th>
+              <th>Trainer</th>
               <th>Value</th>
-              <th>Suggested Trainer</th>
-              <th>Assign To</th>
               <th>Status</th>
-              <th>Save</th>
             </tr>
           </thead>
           <tbody id="newRequestsBody">
-            <tr><td colspan="11"><div class="empty-state"><div class="spinner"></div><div class="empty-state-text" style="margin-top:8px;color:var(--text--dark--30);">Connecting to sheet…</div></div></td></tr>
+            <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1046,18 +1042,17 @@
         <table id="actionRequestsTable">
           <thead>
             <tr>
-              <th>Submitted</th>
+              <th>Date</th>
               <th>Company</th>
               <th>Contact</th>
-              <th>Training Option</th>
-              <th>Booked Date</th>
-              <th>Value</th>
+              <th>Option</th>
               <th>Trainer</th>
+              <th>Value</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="actionRequestsBody">
-            <tr><td colspan="8"><div class="empty-state"><div class="spinner"></div><div class="empty-state-text" style="margin-top:8px;color:var(--text--dark--30);">Connecting to sheet…</div></div></td></tr>
+            <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1180,15 +1175,13 @@
               <th>Company</th>
               <th>Contact</th>
               <th>Option</th>
-              <th>Attendees</th>
               <th>Trainer</th>
               <th>Value</th>
               <th>Status</th>
-              <th>Notes</th>
             </tr>
           </thead>
           <tbody id="allBookingsBody">
-            <tr><td colspan="9"><div class="empty-state"><div class="spinner"></div><div class="empty-state-text" style="margin-top:8px;color:var(--text--dark--30);">Connecting to sheet…</div></div></td></tr>
+            <tr><td colspan="7"><div class="empty-state"><div class="spinner"></div><div class="empty-state-text" style="margin-top:8px;color:var(--text--dark--30);">Connecting to sheet…</div></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -1726,53 +1719,42 @@ function renderUnassigned() {
   const tbody = document.getElementById('newRequestsBody');
 
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
       <div class="empty-state-icon">✅</div>
       <div class="empty-state-text">No unassigned requests — all up to date!</div>
     </div></td></tr>`;
     return;
   }
 
-  tbody.innerHTML = filtered.map(r => `
-    <tr id="req-row-${r.rowIndex}">
-      <td style="white-space:nowrap;">${formatDate(r.date || r.timestamp)}</td>
-      <td><strong>${esc(r.company)}</strong></td>
-      <td>${esc(r.contact)}<br><span style="color:var(--text--dark--30);font-size:11px;">${esc(r.email)}</span></td>
-      <td><span class="option-badge opt-${r.option}">Opt ${r.option} — ${esc(r.optionLabel)}</span></td>
-      <td style="white-space:nowrap;">${esc(r.preferredDate) || '—'}</td>
-      <td>${r.attendees}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:4px;">
-          <span style="color:var(--text--dark--30);font-size:12px;">£</span>
-          <input type="number" id="req-value-${r.rowIndex}" value="${r.revenue || ''}" placeholder="0" min="0" step="50"
-            oninput="onReqValueInput(${r.rowIndex})"
-            style="width:80px;border:1px solid var(--light-grey);border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;color:#333;">
-        </div>
-      </td>
-      <td><span class="suggested-trainer">⚡ ${suggested}</span></td>
-      <td>
-        <select class="trainer-select" id="select-${r.rowIndex}" onchange="onReqTrainerChange(${r.rowIndex})">
-          <option value="" selected>— Leave unassigned —</option>
-          ${TRAINERS.map(t => `<option value="${t}">${t}</option>`).join('')}
-        </select>
-      </td>
-      <td>
-        <select id="req-status-${r.rowIndex}" style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:100px;"
-          onchange="applyReqStatusStyle(${r.rowIndex})">
-          <option value="Assigned">Assigned</option>
-          <option value="Booked">Booked</option>
-          <option value="Pending">Pending</option>
-          <option value="Cancelled" selected>Cancelled</option>
-        </select>
-      </td>
-      <td>
-        <button class="btn btn-primary btn-sm" id="req-save-${r.rowIndex}" onclick="saveUnassigned(${r.rowIndex})">Save</button>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = filtered.map(r => {
+    const trainerOpts = '<option value="">— Unassigned —</option>'
+      + TRAINERS.map(t => '<option value="' + t + '"' + (r.trainer === t ? ' selected' : '') + '>' + t + '</option>').join('');
+    const curStatus = r.status || 'Unassigned';
+    const statusOpts = ['Unassigned','Assigned','Booked','Pending','Cancelled']
+      .map(s => '<option value="' + s + '"' + (curStatus === s ? ' selected' : '') + '>' + s + '</option>').join('');
+    const showDate = curStatus === 'Booked';
+    const dateVal = r.bookedOn ? formatDateInput(r.bookedOn) : '';
+    return '<tr id="req-row-' + r.rowIndex + '">'
+      + '<td style="white-space:nowrap;">' + formatDate(r.date || r.timestamp) + '</td>'
+      + '<td><strong>' + esc(r.company) + '</strong><br><span style="color:var(--text--dark--30);font-size:11px;">' + esc(r.email||'') + '</span></td>'
+      + '<td>' + esc(r.contact||'') + '</td>'
+      + '<td><span class="option-badge opt-' + r.option + '">Opt ' + r.option + ' — ' + esc(r.optionLabel) + '</span></td>'
+      + '<td><select id="ua-trainer-' + r.rowIndex + '" onchange="onUaField(' + r.rowIndex + ')" style="min-width:90px;border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;">' + trainerOpts + '</select></td>'
+      + '<td><div style="display:flex;align-items:center;gap:4px;"><span style="color:var(--text--dark--30);font-size:12px;">£</span>'
+        + '<input type="number" id="ua-value-' + r.rowIndex + '" value="' + (r.revenue || '') + '" placeholder="0" min="0" step="50" oninput="onUaValueInput(' + r.rowIndex + ')" style="width:75px;border:1px solid #ccc;border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;color:#333;"></div></td>'
+      + '<td><div style="display:flex;flex-direction:column;gap:4px;">'
+        + '<select id="ua-status-' + r.rowIndex + '" onchange="onUaField(' + r.rowIndex + ')" style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:105px;">' + statusOpts + '</select>'
+        + '<div id="ua-date-wrap-' + r.rowIndex + '" style="display:' + (showDate ? 'flex' : 'none') + ';align-items:center;">'
+          + '<input type="date" id="ua-booked-date-' + r.rowIndex + '" value="' + dateVal + '" onchange="onUaField(' + r.rowIndex + ')" style="border:1px solid #2147f4;border-radius:4px;padding:3px 6px;font-size:11px;font-family:Arial,sans-serif;color:#2147f4;background:#f0f4ff;width:130px;">'
+        + '</div>'
+      + '</div></td>'
+      + '</tr>';
+  }).join('');
 
-  // Apply status colours after render — default to Cancelled style since no trainer selected yet
-  filtered.forEach(r => applyReqStatusStyle(r.rowIndex));
+  filtered.forEach(r => {
+    const sel = document.getElementById('ua-status-' + r.rowIndex);
+    if (sel) applyStatusStyle(sel, r.status || 'Unassigned');
+  });
 }
 
 function filterRequests() { renderUnassigned(); }
@@ -1794,89 +1776,73 @@ function getSuggestedTrainer() {
   return TRAINERS.reduce((a, b) => counts[a] <= counts[b] ? a : b);
 }
 
-// Update allData value immediately as user types in unassigned panel
-function onReqValueInput(rowIndex) {
-  const inp = document.getElementById('req-value-' + rowIndex);
-  const newValue = parseFloat(inp ? inp.value : 0) || 0;
+// onReqValueInput removed — replaced by onUaValueInput
+
+// ── UNASSIGNED PANEL AUTO-SAVE ─────────────────────────────────────────────
+
+// Value input: update local state immediately (debounced save on blur)
+function onUaValueInput(rowIndex) {
+  const inp = document.getElementById('ua-value-' + rowIndex);
   const row = allData.find(r => r.rowIndex === rowIndex);
-  if (row) row.revenue = newValue;
+  if (row && inp) row.revenue = parseFloat(inp.value) || 0;
+  // Debounced save
+  clearTimeout(inp._saveTimer);
+  inp._saveTimer = setTimeout(() => onUaField(rowIndex), 1200);
 }
 
-// Apply colour to status dropdown in unassigned panel
-function applyReqStatusStyle(rowIndex) {
-  const sel = document.getElementById('req-status-' + rowIndex);
-  if (!sel) return;
-  applyStatusStyle(sel, sel.value);
-}
+// Any field change in unassigned panel → auto-save
+async function onUaField(rowIndex) {
+  const trainerSel  = document.getElementById('ua-trainer-' + rowIndex);
+  const statusSel   = document.getElementById('ua-status-' + rowIndex);
+  const valueInp    = document.getElementById('ua-value-' + rowIndex);
+  const dateInp     = document.getElementById('ua-booked-date-' + rowIndex);
+  const dateWrap    = document.getElementById('ua-date-wrap-' + rowIndex);
 
-// When trainer changes in unassigned panel, suggest appropriate status
-function onReqTrainerChange(rowIndex) {
-  const trainerSel = document.getElementById('select-' + rowIndex);
-  const statusSel  = document.getElementById('req-status-' + rowIndex);
-  if (!statusSel) return;
+  const trainer   = trainerSel  ? trainerSel.value  : '';
+  const newStatus = statusSel   ? statusSel.value   : 'Unassigned';
+  const newValue  = valueInp    ? (parseFloat(valueInp.value) || 0) : 0;
+  const bookedOn  = dateInp     ? dateInp.value     : '';
 
-  if (trainerSel && trainerSel.value) {
-    // Trainer selected — suggest Assigned
-    statusSel.value = 'Assigned';
-  } else {
-    // No trainer — suggest Cancelled
-    statusSel.value = 'Cancelled';
-  }
-  applyReqStatusStyle(rowIndex);
-}
+  // Show/hide booked date field
+  if (dateWrap) dateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
+  if (statusSel) applyStatusStyle(statusSel, newStatus);
 
-async function saveUnassigned(rowIndex) {
-  const trainerSel = document.getElementById('select-' + rowIndex);
-  const statusSel  = document.getElementById('req-status-' + rowIndex);
-  const valueInp   = document.getElementById('req-value-' + rowIndex);
-  const btn        = document.getElementById('req-save-' + rowIndex);
-
-  const trainer  = trainerSel ? trainerSel.value : '';
-  const newStatus = statusSel ? statusSel.value : 'Cancelled';
-  const newValue  = valueInp ? (parseFloat(valueInp.value) || 0) : 0;
-
-  // No trainer + not Cancelled = warn user
-  if (!trainer && !['Cancelled'].includes(newStatus)) {
-    showToast('Select a trainer or set status to Cancelled', 'error');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-
-  // Update local data + persist override
+  // Update local data
   const row = allData.find(r => r.rowIndex === rowIndex);
   if (row) {
-    row.trainer = trainer;
-    row.status  = newStatus;
-    if (newValue > 0) row.revenue = newValue;
+    row.trainer  = trainer;
+    row.status   = newStatus;
+    row.revenue  = newValue || row.revenue;
+    if (bookedOn) row.bookedOn = bookedOn;
   }
-  const ov = { trainer, status: newStatus };
-  if (newValue > 0) ov.revenue = newValue;
-  saveOverride(rowIndex, ov);
+  saveOverride(rowIndex, { trainer, status: newStatus, revenue: newValue || undefined, bookedOn: bookedOn || undefined });
 
-  // Build URL with all changed fields
-  let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex
-    + '&status=' + encodeURIComponent(newStatus);
-  if (trainer) url += '&trainer=' + encodeURIComponent(trainer);
-  if (newValue > 0) url += '&value=' + newValue;
+  // Sync to All Bookings table if rendered
+  const mainTrainer = document.getElementById('sel-trainer-' + rowIndex);
+  if (mainTrainer) mainTrainer.value = trainer;
+  const mainStatus = document.getElementById('sel-status-' + rowIndex);
+  if (mainStatus) { mainStatus.value = newStatus; applyStatusStyle(mainStatus, newStatus); }
+  const mainValue = document.getElementById('inp-value-' + rowIndex);
+  if (mainValue && newValue) mainValue.value = newValue;
 
+  let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus);
+  if (trainer)  url += '&trainer='  + encodeURIComponent(trainer);
+  if (newValue) url += '&value='    + newValue;
+  if (bookedOn) url += '&bookedOn=' + encodeURIComponent(bookedOn);
+
+  showToast('Saving…', '');
   try {
-    const res  = await fetch(url);
-    const json = await res.json();
-    showToast(json.success ? '✓ Saved' : '✓ Saved locally (sync sheet manually)', json.success ? 'success' : '');
+    await fetch(url, { method: 'GET', redirect: 'follow', mode: 'no-cors' });
+    showToast('✓ Saved', 'success');
   } catch(e) {
-    showToast('✓ Saved locally (sync sheet manually)', '');
+    showToast('✓ Saved locally', '');
   }
 
-  btn.disabled = false;
-  btn.textContent = 'Save';
-
-  renderUnassigned();
+  // Re-render other panels so counts stay accurate
   renderActionPanel();
   renderTrainerWorkload();
-  renderAllBookings();
   renderKPIs();
+  renderAllBookings();
 }
 
 // =============================================
@@ -2152,7 +2118,7 @@ function renderActionPanel() {
   const tbody = document.getElementById('actionRequestsBody');
 
   if (actionRows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">'
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">'
       + '<div class="empty-state-icon">✅</div>'
       + '<div class="empty-state-text">Nothing needs action right now</div>'
       + '</div></td></tr>';
@@ -2160,86 +2126,98 @@ function renderActionPanel() {
   }
 
   tbody.innerHTML = actionRows.map(r => {
-    const status = r.status || 'Assigned';
-    const statuses = ['Assigned', 'Booked', 'Pending', 'Cancelled'];
-    const opts = statuses.map(s =>
-      '<option value="' + s + '"' + (status === s ? ' selected' : '') + '>' + s + '</option>'
-    ).join('');
-
-    return '<tr id="action-row-' + r.rowIndex + '">'
+    const trainerOpts = '<option value="">— Unassigned —</option>'
+      + TRAINERS.map(t => '<option value="' + t + '"' + (r.trainer === t ? ' selected' : '') + '>' + t + '</option>').join('');
+    const curStatus = r.status || 'Assigned';
+    const statusOpts = ['Unassigned','Assigned','Booked','Pending','Cancelled']
+      .map(s => '<option value="' + s + '"' + (curStatus === s ? ' selected' : '') + '>' + s + '</option>').join('');
+    const showDate = curStatus === 'Booked';
+    const dateVal = r.bookedOn ? formatDateInput(r.bookedOn) : '';
+    return '<tr id="act-row-' + r.rowIndex + '">'
       + '<td style="white-space:nowrap;">' + formatDate(r.date || r.timestamp) + '</td>'
-      + '<td><strong>' + esc(r.company) + '</strong></td>'
-      + '<td>' + esc(r.contact) + '</td>'
-      + '<td><span class="option-badge opt-' + r.option + '">Opt ' + r.option + '</span></td>'
-      + '<td style="white-space:nowrap;">' + (esc(r.preferredDate) || '—') + '</td>'
-      + '<td style="font-weight:600;">' + (r.revenue ? '£' + r.revenue.toLocaleString() : '—') + '</td>'
-      + '<td>' + (esc(r.trainer) || '<span style="color:var(--text--dark--20)">—</span>') + '</td>'
-      + '<td>'
-        + '<select id="action-status-' + r.rowIndex + '" '
-        + 'onchange="onActionStatusChange(' + r.rowIndex + ')" '
-        + 'style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;'
-        + 'font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:100px;">'
-        + opts
-        + '</select>'
-      + '</td>'
+      + '<td><strong>' + esc(r.company) + '</strong><br><span style="color:var(--text--dark--30);font-size:11px;">' + esc(r.email||'') + '</span></td>'
+      + '<td>' + esc(r.contact||'') + '</td>'
+      + '<td><span class="option-badge opt-' + r.option + '">Opt ' + r.option + ' — ' + esc(r.optionLabel) + '</span></td>'
+      + '<td><select id="act-trainer-' + r.rowIndex + '" onchange="onActField(' + r.rowIndex + ')" style="min-width:90px;border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;">' + trainerOpts + '</select></td>'
+      + '<td><div style="display:flex;align-items:center;gap:4px;"><span style="color:var(--text--dark--30);font-size:12px;">£</span>'
+        + '<input type="number" id="act-value-' + r.rowIndex + '" value="' + (r.revenue || '') + '" placeholder="0" min="0" step="50" oninput="onActValueInput(' + r.rowIndex + ')" style="width:75px;border:1px solid #ccc;border-radius:4px;padding:4px 6px;font-size:12px;font-family:Arial,sans-serif;color:#333;"></div></td>'
+      + '<td><div style="display:flex;flex-direction:column;gap:4px;">'
+        + '<select id="act-status-' + r.rowIndex + '" onchange="onActField(' + r.rowIndex + ')" style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:105px;">' + statusOpts + '</select>'
+        + '<div id="act-date-wrap-' + r.rowIndex + '" style="display:' + (showDate ? 'flex' : 'none') + ';align-items:center;">'
+          + '<input type="date" id="act-booked-date-' + r.rowIndex + '" value="' + dateVal + '" onchange="onActField(' + r.rowIndex + ')" style="border:1px solid #2147f4;border-radius:4px;padding:3px 6px;font-size:11px;font-family:Arial,sans-serif;color:#2147f4;background:#f0f4ff;width:130px;">'
+        + '</div>'
+      + '</div></td>'
       + '</tr>';
   }).join('');
 
-  // Apply colours
   actionRows.forEach(r => {
-    const sel = document.getElementById('action-status-' + r.rowIndex);
+    const sel = document.getElementById('act-status-' + r.rowIndex);
     if (sel) applyStatusStyle(sel, r.status || 'Assigned');
   });
 }
 
-async function onActionStatusChange(rowIndex) {
-  const sel = document.getElementById('action-status-' + rowIndex);
-  const newStatus = sel ? sel.value : '';
-  if (!newStatus) return;
+// ── NEEDS ACTION PANEL AUTO-SAVE ─────────────────────────────────────────────
+
+function onActValueInput(rowIndex) {
+  const inp = document.getElementById('act-value-' + rowIndex);
+  const row = allData.find(r => r.rowIndex === rowIndex);
+  if (row && inp) row.revenue = parseFloat(inp.value) || 0;
+  clearTimeout(inp._saveTimer);
+  inp._saveTimer = setTimeout(() => onActField(rowIndex), 1200);
+}
+
+async function onActField(rowIndex) {
+  const trainerSel = document.getElementById('act-trainer-' + rowIndex);
+  const statusSel  = document.getElementById('act-status-'  + rowIndex);
+  const valueInp   = document.getElementById('act-value-'   + rowIndex);
+  const dateInp    = document.getElementById('act-booked-date-' + rowIndex);
+  const dateWrap   = document.getElementById('act-date-wrap-' + rowIndex);
+
+  const trainer   = trainerSel ? trainerSel.value  : '';
+  const newStatus = statusSel  ? statusSel.value   : 'Assigned';
+  const newValue  = valueInp   ? (parseFloat(valueInp.value) || 0) : 0;
+  const bookedOn  = dateInp    ? dateInp.value     : '';
+
+  if (dateWrap) dateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
+  if (statusSel) applyStatusStyle(statusSel, newStatus);
 
   const row = allData.find(r => r.rowIndex === rowIndex);
-  if (row) row.status = newStatus;
-  if (sel) applyStatusStyle(sel, newStatus);
-  saveOverride(rowIndex, { status: newStatus });
+  if (row) {
+    row.trainer  = trainer;
+    row.status   = newStatus;
+    row.revenue  = newValue || row.revenue;
+    if (bookedOn) row.bookedOn = bookedOn;
+  }
+  saveOverride(rowIndex, { trainer, status: newStatus, revenue: newValue || undefined, bookedOn: bookedOn || undefined });
 
-  // Also sync status dropdown in main table if visible
-  const mainSel = document.getElementById('sel-status-' + rowIndex);
-  if (mainSel) { mainSel.value = newStatus; applyStatusStyle(mainSel, newStatus); }
-
-  // Show inline date picker in action panel row if Booked
-  const actionDateWrap = document.getElementById('action-date-wrap-' + rowIndex);
-  if (actionDateWrap) actionDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
-
-  // Also show/hide in main bookings table
+  // Sync to All Bookings table
+  const mainTrainer = document.getElementById('sel-trainer-' + rowIndex);
+  if (mainTrainer) mainTrainer.value = trainer;
+  const mainStatus = document.getElementById('sel-status-' + rowIndex);
+  if (mainStatus) { mainStatus.value = newStatus; applyStatusStyle(mainStatus, newStatus); }
+  const mainValue = document.getElementById('inp-value-' + rowIndex);
+  if (mainValue && newValue) mainValue.value = newValue;
   const mainDateWrap = document.getElementById('booked-date-wrap-' + rowIndex);
   if (mainDateWrap) mainDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
 
   let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus);
-  showToast('Status → ' + newStatus, 'success');
-  try { await fetch(url, { method: "GET", redirect: "follow", mode: "no-cors" }); } catch(e) {}
+  if (trainer)  url += '&trainer='  + encodeURIComponent(trainer);
+  if (newValue) url += '&value='    + newValue;
+  if (bookedOn) url += '&bookedOn=' + encodeURIComponent(bookedOn);
 
-  renderActionPanel();
+  showToast('Saving…', '');
+  try {
+    await fetch(url, { method: 'GET', redirect: 'follow', mode: 'no-cors' });
+    showToast('✓ Saved', 'success');
+  } catch(e) {
+    showToast('✓ Saved locally', '');
+  }
+
   renderUnassigned();
+  renderTrainerWorkload();
   renderKPIs();
   renderCharts();
-}
-
-// Fires when booked-on date picked from action panel
-async function onActionBookedDateChange(rowIndex) {
-  const dateInp = document.getElementById('action-booked-date-' + rowIndex);
-  const bookedOn = dateInp ? dateInp.value : '';
-
-  const row = allData.find(r => r.rowIndex === rowIndex);
-  if (row) row.bookedOn = bookedOn;
-
-  // Sync to main table date input if present
-  const mainInp = document.getElementById('inp-booked-date-' + rowIndex);
-  if (mainInp) mainInp.value = bookedOn;
-
-  showToast('Booked on date saved', 'success');
-  try {
-    await fetch(APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&bookedOn=' + encodeURIComponent(bookedOn), { method: 'GET', redirect: 'follow', mode: 'no-cors' });
-  } catch(e) {}
+  renderAllBookings();
 }
 
 // =============================================
@@ -2360,7 +2338,7 @@ function renderAllBookings() {
   const tbody = document.getElementById('allBookingsBody');
 
   if (page.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">'
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">'
       + '<div class="empty-state-icon">📭</div>'
       + '<div class="empty-state-text">No records match your filters</div>'
       + '</div></td></tr>';
@@ -2378,7 +2356,6 @@ function renderAllBookings() {
       + '<td><strong>' + esc(r.company) + '</strong></td>'
       + '<td>' + esc(r.contact) + '</td>'
       + '<td><span class="option-badge opt-' + r.option + '">Opt ' + r.option + '</span></td>'
-      + '<td>' + r.attendees + '</td>'
       + '<td>'
         + '<select id="sel-trainer-' + r.rowIndex + '" '
         + 'onchange="onTrainerChange(' + r.rowIndex + ')" '
@@ -2396,7 +2373,6 @@ function renderAllBookings() {
         + '</div>'
       + '</td>'
       + '<td>' + buildStatusSelect(r.rowIndex, status, r.bookedOn || '') + '</td>'
-      + '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.notes) + '">' + (esc(r.notes) || '—') + '</td>'
       + '</tr>';
   }).join('');
 
