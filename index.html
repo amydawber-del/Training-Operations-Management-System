@@ -2850,15 +2850,22 @@ async function testConnection() {
         lines.push('Data rows: ' + (json.data ? Math.max(0, json.data.length - 1) : 0));
         lines.push('Columns: ' + json.cols);
         if (json.error) lines.push('❌ Error: ' + json.error);
-        if (json.data && json.data.length > 1) {
-          const firstRow = json.data[1]; // first data row (index 1, header is index 0)
+        if (json.data && json.data.length >= 1) {
+          const headerRow = json.data[0];
           lines.push('');
-          lines.push('── First data row sample ──');
-          lines.push('Col A (Status): "' + firstRow[0] + '"');
-          lines.push('Col B (Timestamp): "' + firstRow[1] + '"');
-          lines.push('Col N (Company): "' + firstRow[13] + '"');
-          lines.push('Col V (Trainer): "' + firstRow[21] + '"');
-          lines.push('Col W (Booked Date): "' + firstRow[22] + '"');
+          lines.push('── Header row (first 10 cols) ──');
+          headerRow.slice(0, 23).forEach((h, i) => {
+            if (h) lines.push('  Col ' + String.fromCharCode(65+i) + ' (' + (i+1) + '): ' + h);
+          });
+        }
+        if (json.data && json.data.length > 1) {
+          const firstRow = json.data[1];
+          lines.push('');
+          lines.push('── First data row ──');
+          json.data[0].slice(0, 23).forEach((h, i) => {
+            const val = firstRow[i];
+            if (h || val) lines.push('  ' + h + ': "' + String(val || '').slice(0, 60) + '"');
+          });
         }
       }
     }
@@ -2968,62 +2975,92 @@ function fetchWithTimeout(url, ms) {
 // Expected: { data: [ [col1, col2, ...], ... ] } where row 0 is headers
 function parseAppsScriptData(rows) {
   if (!rows || rows.length < 2) return [];
-  // Skip header row (row[0]), parse from row[1] onward
-  const parsed = rows.slice(1).map((row, i) => parseRowByIndex(row, i + 2));
-  // Keep any row that has at least a timestamp, company, contact, OR a trainer assigned
-  // (status alone is unreliable as new submissions may have no status yet)
-  const filtered = parsed.filter(r => r.timestamp || r.company || r.contact || r.trainer);
+
+  // Read actual headers from row 0 and build a column-index map
+  const headers = rows[0].map(h => String(h).trim().toLowerCase());
+
+  // Helper: find column index by trying multiple keyword matches
+  const colIdx = (...keys) => {
+    for (const k of keys) {
+      const exact = headers.findIndex(h => h === k);
+      if (exact >= 0) return exact;
+    }
+    for (const k of keys) {
+      const partial = headers.findIndex(h => h.includes(k));
+      if (partial >= 0) return partial;
+    }
+    return -1;
+  };
+
+  // Build the column map from headers
+  const COL_MAP = {
+    status:      colIdx('status'),
+    timestamp:   colIdx('timestamp'),
+    email:       colIdx('email address', 'email'),
+    contact:     colIdx('client stakeholder name', 'stakeholder', 'contact name', 'contact'),
+    prefDate:    colIdx('preferred training date', 'preferred date', 'training date'),
+    option:      colIdx('what type of training', 'training type', 'type of training', 'training option'),
+    areas:       colIdx('which areas of street', 'areas of street', 'areas'),
+    notes:       colIdx('specific features or workflows', 'specific features', 'workflows', 'notes'),
+    attendees:   colIdx('attendees', 'delegates', 'number of attendees'),
+    location:    colIdx('training location', 'location'),
+    score:       colIdx('score'),
+    company:     colIdx('company / business name', 'company / business', 'company name', 'company', 'business name'),
+    goLive:      colIdx('target go-live date', 'go-live date', 'go live date', 'golive'),
+    referredBy:  colIdx('referred by', 'referral'),
+    value:       colIdx('invoice value', 'invoice'),
+    trainer:     colIdx('assigned trainer', 'trainer'),
+    bookedOn:    colIdx('booked on date', 'booked on', 'booked date'),
+  };
+
+  console.log('[Dashboard] Header row:', headers.slice(0, 10).join(' | '));
+  console.log('[Dashboard] Column map:', JSON.stringify(COL_MAP));
+
+  const parsed = rows.slice(1).map((row, i) => buildRow(row, i + 2, COL_MAP));
+  const filtered = parsed.filter(r => r.timestamp || r.company || r.contact || r.trainer || r.email);
   console.log('[Dashboard] Rows from sheet:', rows.length - 1, '→ after filter:', filtered.length);
   if (filtered.length === 0 && parsed.length > 0) {
-    // Safety fallback: if filter dropped everything, log the first row raw to help diagnose
-    console.warn('[Dashboard] All rows filtered! First raw row:', JSON.stringify(rows[1]));
+    console.warn('[Dashboard] All rows filtered out. First raw row sample:', JSON.stringify(rows[1]).slice(0, 300));
     console.warn('[Dashboard] First parsed row:', JSON.stringify(parsed[0]));
   }
   return filtered;
 }
 
-// Parse a row array using exact column positions (0-indexed)
-// Column order confirmed by user:
-// A(0)=Status, B(1)=Timestamp, C(2)=Email, D(3)=Contact/Phone,
-// E(4)=Preferred Date, F(5)=Training Type, G(6)=Areas,
-// H(7)=Specific Features, I(8)=Attendees, J(9)=Location,
-// K(10)=Parking, L(11)=Venue Setup, M(12)=Score,
-// N(13)=Company Name, O(14)=Team Familiarity, P(15)=Priorities,
-// Q(16)=Post-Training Support, R(17)=Anything Else,
-// S(18)=Go-Live Date, T(19)=Referred By,
-// U(20)=Invoice Value, V(21)=Assigned Trainer, W(22)=Booked On Date
-function parseRowByIndex(row, rowIndex) {
-  const c = (i) => (row[i] !== undefined && row[i] !== null) ? String(row[i]).trim() : '';
+// Build a normalised row object using a header-derived COL_MAP
+function buildRow(row, rowIndex, COL_MAP) {
+  const g = (key) => {
+    const i = COL_MAP[key];
+    if (i === undefined || i < 0 || i >= row.length) return '';
+    const v = row[i];
+    return (v !== undefined && v !== null) ? String(v).trim() : '';
+  };
 
-  const status      = c(0);
-  const timestamp   = c(1);
-  const email       = c(2);
-  const contact     = c(3);
-  const preferredDate = c(4);
-  const optionRaw   = c(5);
-  const areas       = c(6);
-  const notes       = c(7);
-  const attendees   = c(8);
-  const location    = c(9);
-  // c(10) = parking, c(11) = venue setup, c(12) = score
-  const score       = c(12);
-  const company     = c(13);
-  // c(14) = familiarity, c(15) = priorities, c(16) = post support
-  // c(17) = anything else, c(18) = go-live date, c(19) = referred by
-  const goLiveDate  = c(18);
-  const referredBy  = c(19);
-  const invoiceValue = c(20);
-  const trainer     = c(21);
-  const bookedOnRaw = c(22);
+  const status       = g('status');
+  const timestamp    = g('timestamp');
+  const email        = g('email');
+  const contact      = g('contact');
+  const preferredDate = g('prefDate');
+  const optionRaw    = g('option');
+  const areas        = g('areas');
+  const notes        = g('notes');
+  const attendees    = g('attendees');
+  const location     = g('location');
+  const score        = g('score');
+  const company      = g('company');
+  const goLiveDate   = g('goLive');
+  const referredBy   = g('referredBy');
+  const invoiceValue = g('value');
+  const trainer      = g('trainer');
+  const bookedOnRaw  = g('bookedOn');
 
-  // Map training type answer to option number
+  // Derive training option number from the free-text answer
   let option = '2';
   const optLower = optionRaw.toLowerCase();
   if (optLower.includes('on demand') || optLower.includes('help centre') || optLower.includes('video')) {
     option = '1';
   } else if (optLower.includes('account') || optLower.includes('go-live') || optLower.includes('go live')) {
     option = '4';
-  } else if (optLower.includes('hq') || optLower.includes('manchester') || optLower.includes('live training')) {
+  } else if (optLower.includes('hq') || optLower.includes('manchester') || optLower.includes('live training at street')) {
     option = '5';
   } else if (optLower.includes('2 day') || optLower.includes('2 days') || optLower.includes('two day')) {
     option = '3';
@@ -3034,16 +3071,13 @@ function parseRowByIndex(row, rowIndex) {
     if (om) option = om[1];
   }
 
-  const numAttendees = parseInt(attendees) || 1;
-  const basePrice    = parseInt(OPTION_PRICES[option]) || 0;
-
-  // Invoice value — strip £ signs and commas
+  const numAttendees  = parseInt(attendees) || 1;
+  const basePrice     = parseInt(OPTION_PRICES[option]) || 0;
   const parsedInvoice = parseFloat(String(invoiceValue).replace(/[£,\s]/g, ''));
-  const revenue = (!isNaN(parsedInvoice) && parsedInvoice > 0)
+  const revenue       = (!isNaN(parsedInvoice) && parsedInvoice > 0)
     ? parsedInvoice
     : (option === '5' ? basePrice * numAttendees : basePrice);
 
-  // Dates
   const parsedDate = parseDate(timestamp || preferredDate);
   const bookedOn   = formatDateInput(bookedOnRaw);
 
@@ -3051,35 +3085,33 @@ function parseRowByIndex(row, rowIndex) {
     rowIndex,
     timestamp,
     date:         parsedDate,
-    company:      company || '',
-    contact:      contact || '',
-    email:        email   || '',
+    company:      company   || '',
+    contact:      contact   || '',
+    email:        email     || '',
     option,
     optionLabel:  OPTION_LABELS[option] || 'Option ' + option,
     preferredDate,
     attendees:    numAttendees,
-    location:     location || '',
-    areas:        areas   || '',
-    notes:        notes   || '',
-    score:        score   || '',
-    goLiveDate:   goLiveDate  || '',
-    referredBy:   referredBy  || '',
-    trainer:      trainer || '',
-    status:       status  || (trainer ? 'Assigned' : 'Unassigned'),
+    location:     location  || '',
+    areas:        areas     || '',
+    notes:        notes     || '',
+    score:        score     || '',
+    goLiveDate:   goLiveDate || '',
+    referredBy:   referredBy || '',
+    trainer:      trainer   || '',
+    status:       status    || (trainer ? 'Assigned' : 'Unassigned'),
     bookedOn,
     revenue
   };
 }
 
-// Parse CSV text — uses same index-based column map as Apps Script parser
+// Parse CSV text — builds header map from row 0, same as Apps Script path
 function parseCSV(text) {
   const lines = text.split('\n').filter(l => l.trim());
   if (lines.length < 2) return [];
-  // Skip header row, parse data rows by column index
-  return lines.slice(1).map((line, i) => {
-    const vals = parseCSVRow(line).map(v => v.trim());
-    return parseRowByIndex(vals, i + 2);
-  }).filter(r => r.timestamp || r.company || r.contact || r.trainer);
+  // Build a fake 2D array so we can reuse parseAppsScriptData
+  const rows = lines.map(l => parseCSVRow(l).map(v => v.trim()));
+  return parseAppsScriptData(rows);
 }
 
 function parseCSVRow(line) {
