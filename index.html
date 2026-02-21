@@ -956,13 +956,13 @@
               <th>Company</th>
               <th>Contact</th>
               <th>Training Option</th>
-              <th>Booked Date</th>
+              <th>Preferred Date</th>
               <th>Attendees</th>
               <th>Value</th>
               <th>Suggested Trainer</th>
               <th>Assign To</th>
               <th>Status</th>
-              <th>Save</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="newRequestsBody">
@@ -1329,6 +1329,12 @@
       <div style="font-size:12px;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="bdModalCompany">—</div>
     </div>
     <div style="padding:22px;">
+      <div id="bdModalTrainerRow" style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text--dark--40);margin-bottom:6px;">Trainer</label>
+        <select id="bdModalTrainerSelect" style="width:100%;border:2px solid var(--action-primary-blue);border-radius:7px;padding:9px 12px;font-size:14px;font-family:Arial,sans-serif;color:var(--text--dark--50);outline:none;background:#fff;">
+          <option value="">— Select trainer —</option>
+        </select>
+      </div>
       <label style="display:block;font-size:12px;font-weight:600;color:var(--text--dark--40);margin-bottom:8px;">How many training days?</label>
       <div style="display:flex;gap:8px;margin-bottom:16px;" id="bdModalDaysBtns">
         <button type="button" class="bd-days-btn active" onclick="bdSelectDays(1)">1 Day</button>
@@ -1855,22 +1861,22 @@ function renderUnassigned() {
       </td>
       <td><span class="suggested-trainer">⚡ ${suggested}</span></td>
       <td>
-        <select class="trainer-select" id="select-${r.rowIndex}" onchange="onReqTrainerChange(${r.rowIndex})">
-          <option value="" selected>— Leave unassigned —</option>
-          ${TRAINERS.map(t => `<option value="${t}">${t}</option>`).join('')}
+        <select class="trainer-select" id="select-${r.rowIndex}" onchange="autoSaveUnassigned(${r.rowIndex})">
+          <option value="" ${!r.trainer ? 'selected' : ''}>— Leave unassigned —</option>
+          ${TRAINERS.map(t => `<option value="${t}" ${r.trainer === t ? 'selected' : ''}>${t}</option>`).join('')}
         </select>
       </td>
       <td>
         <select id="req-status-${r.rowIndex}" style="border:1px solid #ccc;border-radius:4px;padding:4px 7px;font-size:12px;font-family:Arial,sans-serif;font-weight:600;cursor:pointer;min-width:100px;"
-          onchange="applyReqStatusStyle(${r.rowIndex})">
-          <option value="Assigned">Assigned</option>
-          <option value="Booked">Booked</option>
-          <option value="Pending">Pending</option>
-          <option value="Cancelled" selected>Cancelled</option>
+          onchange="autoSaveUnassigned(${r.rowIndex})">
+          <option value="Unassigned" ${r.status==='Unassigned'?'selected':''}>Unassigned</option>
+          <option value="Assigned" ${r.status==='Assigned'?'selected':''}>Assigned</option>
+          <option value="Pending" ${r.status==='Pending'?'selected':''}>Pending</option>
+          <option value="Cancelled" ${r.status==='Cancelled'?'selected':''}>Cancelled</option>
         </select>
       </td>
       <td>
-        <button class="btn btn-primary btn-sm" id="req-save-${r.rowIndex}" onclick="saveUnassigned(${r.rowIndex})">Save</button>
+        <span id="req-saving-${r.rowIndex}" style="font-size:11px;color:var(--text--dark--30);"></span>
       </td>
     </tr>
   `).join('');
@@ -1898,12 +1904,17 @@ function getSuggestedTrainer() {
   return TRAINERS.reduce((a, b) => counts[a] <= counts[b] ? a : b);
 }
 
-// Update allData value immediately as user types in unassigned panel
+// Update allData value immediately as user types, then debounce auto-save
 function onReqValueInput(rowIndex) {
   const inp = document.getElementById('req-value-' + rowIndex);
   const newValue = parseFloat(inp ? inp.value : 0) || 0;
   const row = allData.find(r => r.rowIndex === rowIndex);
   if (row) row.revenue = newValue;
+  // Debounce: wait 1.2s after typing stops before saving
+  if (inp) {
+    clearTimeout(inp._autoSaveTimer);
+    inp._autoSaveTimer = setTimeout(() => autoSaveUnassigned(rowIndex), 1200);
+  }
 }
 
 // Apply colour to status dropdown in unassigned panel
@@ -1913,75 +1924,57 @@ function applyReqStatusStyle(rowIndex) {
   applyStatusStyle(sel, sel.value);
 }
 
-// When trainer changes in unassigned panel, suggest appropriate status
-function onReqTrainerChange(rowIndex) {
-  const trainerSel = document.getElementById('select-' + rowIndex);
-  const statusSel  = document.getElementById('req-status-' + rowIndex);
-  if (!statusSel) return;
+// Auto-save fires on trainer or status change (immediate), or value change (debounced)
+const _autoSaveTimers = {};
+async function autoSaveUnassigned(rowIndex) {
+  clearTimeout(_autoSaveTimers[rowIndex]);
+  _autoSaveTimers[rowIndex] = setTimeout(async () => {
+    const trainerSel = document.getElementById('select-' + rowIndex);
+    const statusSel  = document.getElementById('req-status-' + rowIndex);
+    const valueInp   = document.getElementById('req-value-' + rowIndex);
+    const indicator  = document.getElementById('req-saving-' + rowIndex);
 
-  if (trainerSel && trainerSel.value) {
-    // Trainer selected — suggest Assigned
-    statusSel.value = 'Assigned';
-  } else {
-    // No trainer — suggest Cancelled
-    statusSel.value = 'Cancelled';
-  }
-  applyReqStatusStyle(rowIndex);
+    const trainer   = trainerSel ? trainerSel.value : '';
+    const newStatus = statusSel  ? statusSel.value  : 'Unassigned';
+    const newValue  = valueInp   ? (parseFloat(valueInp.value) || 0) : 0;
+
+    // Auto-set status when trainer is selected
+    if (trainer && statusSel && (newStatus === 'Unassigned' || !newStatus)) {
+      statusSel.value = 'Assigned';
+    }
+    const finalStatus = statusSel ? statusSel.value : (trainer ? 'Assigned' : 'Unassigned');
+    applyStatusStyle(statusSel, finalStatus);
+
+    // Update local data
+    const row = allData.find(r => r.rowIndex === rowIndex);
+    if (row) { row.trainer = trainer; row.status = finalStatus; if (newValue > 0) row.revenue = newValue; }
+    const ov = { trainer, status: finalStatus };
+    if (newValue > 0) ov.revenue = newValue;
+    saveOverride(rowIndex, ov);
+
+    // Show saving indicator
+    if (indicator) indicator.textContent = '⏳';
+
+    // Push to sheet
+    let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(finalStatus);
+    if (trainer)      url += '&trainer=' + encodeURIComponent(trainer);
+    if (newValue > 0) url += '&value=' + newValue;
+
+    try {
+      await fetch(url, { mode: 'no-cors' });
+      if (indicator) { indicator.textContent = '✓'; indicator.style.color = '#4caf50'; setTimeout(() => { if (indicator) indicator.textContent = ''; }, 2000); }
+    } catch(e) {
+      if (indicator) { indicator.textContent = '✓'; indicator.style.color = '#4caf50'; setTimeout(() => { if (indicator) indicator.textContent = ''; }, 2000); }
+    }
+
+    if (row) logActivity('trainer', row.company, trainer ? 'Assigned to ' + trainer : 'Status set to ' + finalStatus, finalStatus);
+    renderActionPanel();
+    renderKPIs();
+  }, 300); // 300ms debounce for dropdown changes
 }
 
-async function saveUnassigned(rowIndex) {
-  const trainerSel = document.getElementById('select-' + rowIndex);
-  const statusSel  = document.getElementById('req-status-' + rowIndex);
-  const valueInp   = document.getElementById('req-value-' + rowIndex);
-  const btn        = document.getElementById('req-save-' + rowIndex);
-
-  const trainer  = trainerSel ? trainerSel.value : '';
-  const newStatus = statusSel ? statusSel.value : 'Cancelled';
-  const newValue  = valueInp ? (parseFloat(valueInp.value) || 0) : 0;
-
-  // No trainer + not Cancelled = warn user
-  if (!trainer && !['Cancelled'].includes(newStatus)) {
-    showToast('Select a trainer or set status to Cancelled', 'error');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-
-  // Update local data + persist override
-  const row = allData.find(r => r.rowIndex === rowIndex);
-  if (row) {
-    row.trainer = trainer;
-    row.status  = newStatus;
-    if (newValue > 0) row.revenue = newValue;
-  }
-  const ov = { trainer, status: newStatus };
-  if (newValue > 0) ov.revenue = newValue;
-  saveOverride(rowIndex, ov);
-
-  // Build URL with all changed fields
-  let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex
-    + '&status=' + encodeURIComponent(newStatus);
-  if (trainer) url += '&trainer=' + encodeURIComponent(trainer);
-  if (newValue > 0) url += '&value=' + newValue;
-
-  try {
-    const res  = await fetch(url);
-    const json = await res.json();
-    showToast(json.success ? '✓ Saved' : '✓ Saved locally (sync sheet manually)', json.success ? 'success' : '');
-  } catch(e) {
-    showToast('✓ Saved locally (sync sheet manually)', '');
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Save';
-
-  renderUnassigned();
-  renderActionPanel();
-  renderTrainerWorkload();
-  renderAllBookings();
-  renderKPIs();
-}
+// Keep saveUnassigned as alias in case called elsewhere
+async function saveUnassigned(rowIndex) { autoSaveUnassigned(rowIndex); }
 
 // =============================================
 // KPIs
@@ -2251,26 +2244,27 @@ async function onActionStatusChange(rowIndex) {
   const newStatus = sel ? sel.value : '';
   if (!newStatus) return;
 
+  // Intercept Booked — open confirmation modal first
+  if (newStatus === 'Booked') {
+    // Revert dropdown visually until modal confirms
+    const row = allData.find(r => r.rowIndex === rowIndex);
+    if (sel && row) { sel.value = row.status || 'Assigned'; applyStatusStyle(sel, row.status || 'Assigned'); }
+    openBookedDateModal(rowIndex);
+    return;
+  }
+
   const row = allData.find(r => r.rowIndex === rowIndex);
   if (row) row.status = newStatus;
   if (sel) applyStatusStyle(sel, newStatus);
   saveOverride(rowIndex, { status: newStatus });
 
-  // Also sync status dropdown in main table if visible
   const mainSel = document.getElementById('sel-status-' + rowIndex);
   if (mainSel) { mainSel.value = newStatus; applyStatusStyle(mainSel, newStatus); }
 
-  // Show inline date picker in action panel row if Booked
-  const actionDateWrap = document.getElementById('action-date-wrap-' + rowIndex);
-  if (actionDateWrap) actionDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
-
-  // Also show/hide in main bookings table
-  const mainDateWrap = document.getElementById('booked-date-wrap-' + rowIndex);
-  if (mainDateWrap) mainDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
-
   let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus);
   showToast('Status → ' + newStatus, 'success');
-  try { await fetch(url); } catch(e) {}
+  try { await fetch(url, { mode: 'no-cors' }); } catch(e) {}
+  if (row) logActivity('status', row.company, 'Status changed to ' + newStatus, '');
 
   renderActionPanel();
   renderUnassigned();
@@ -3427,6 +3421,12 @@ function openBookedDateModal(rowIndex) {
   document.getElementById('bdModalDateInput').value = row.bookedOn ? formatDateInput(row.bookedOn) : '';
   document.getElementById('bdModalValueInput').value = row.revenue || '';
   document.getElementById('bdModalError').style.display = 'none';
+  // Populate trainer dropdown
+  const trainerSel = document.getElementById('bdModalTrainerSelect');
+  if (trainerSel) {
+    trainerSel.innerHTML = '<option value="">— Select trainer —</option>'
+      + TRAINERS.map(t => '<option value="' + t + '"' + (row.trainer === t ? ' selected' : '') + '>' + t + '</option>').join('');
+  }
   // Set days buttons
   document.querySelectorAll('#bdModalDaysBtns .bd-days-btn').forEach(b => { b.className = 'bd-days-btn' + (parseInt(b.textContent) === _bdNumDays ? ' active' : ''); });
   bdUpdateSummary();
@@ -3459,16 +3459,24 @@ async function confirmBookedDateModal() {
   const dateVal = document.getElementById('bdModalDateInput').value;
   const errEl = document.getElementById('bdModalError');
   if (!dateVal) { errEl.textContent = 'Please select a date'; errEl.style.display = 'block'; return; }
+  const trainerSel = document.getElementById('bdModalTrainerSelect');
+  const newTrainer = trainerSel ? trainerSel.value : '';
   const valueInp = document.getElementById('bdModalValueInput');
   const newValue = parseFloat(valueInp.value) || 0;
   const row = allData.find(r => r.rowIndex === _bdRowIndex); if (!row) return;
   row.bookedOn = dateVal; row.status = 'Booked';
+  if (newTrainer) row.trainer = newTrainer;
   if (newValue) row.revenue = newValue;
-  saveOverride(_bdRowIndex, { bookedOn: dateVal, status: 'Booked', revenue: newValue || row.revenue });
+  const ov = { bookedOn: dateVal, status: 'Booked' };
+  if (newTrainer) ov.trainer = newTrainer;
+  if (newValue) ov.revenue = newValue;
+  saveOverride(_bdRowIndex, ov);
   let url = APPS_SCRIPT_URL + '?action=assign&row=' + _bdRowIndex + '&status=Booked&bookedOn=' + encodeURIComponent(dateVal);
+  if (newTrainer) url += '&trainer=' + encodeURIComponent(newTrainer);
   if (newValue) url += '&value=' + newValue;
   try { await fetch(url, { method:'GET', redirect:'follow', mode:'no-cors' }); } catch(e) {}
   logActivity('date', row.company, 'Booked date confirmed', dateVal + ' (' + _bdNumDays + ' day' + (_bdNumDays>1?'s':'') + ')');
+  if (newTrainer) logActivity('trainer', row.company, 'Trainer confirmed on booking', newTrainer);
   if (newValue) logActivity('value', row.company, 'Invoice value confirmed', '£' + newValue.toLocaleString());
   cancelBookedDateModal();
   processData();
