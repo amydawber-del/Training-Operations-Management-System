@@ -1854,6 +1854,125 @@
     color: var(--text--dark--20);
   }
 
+
+  /* ── BOOKED DATE MODAL ─────────────────────────────────────── */
+  .booked-date-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  .booked-date-modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .booked-date-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 400px;
+    max-width: 94vw;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    transform: translateY(12px);
+    transition: transform 0.15s;
+  }
+  .booked-date-modal-overlay.open .booked-date-modal {
+    transform: translateY(0);
+  }
+  .booked-date-modal-header {
+    padding: 18px 22px 14px;
+    background: var(--action-primary-blue);
+    color: #fff;
+  }
+  .booked-date-modal-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .booked-date-modal-company {
+    font-size: 12px;
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .booked-date-modal-body {
+    padding: 22px;
+  }
+  .booked-date-modal-body label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text--dark--40);
+    margin-bottom: 8px;
+  }
+  .booked-date-modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    border: 2px solid var(--action-primary-blue);
+    border-radius: 7px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    color: var(--text--dark--50);
+    margin-bottom: 10px;
+    outline: none;
+  }
+  .booked-date-modal-input:focus {
+    border-color: #1236d4;
+    box-shadow: 0 0 0 3px rgba(33,71,244,0.12);
+  }
+  .booked-date-modal-hint {
+    font-size: 11px;
+    color: var(--text--dark--30);
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+  .booked-date-modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--ui--underline--light-grey);
+    background: var(--card-light-grey);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    align-items: center;
+  }
+  .booked-date-modal-footer-left {
+    flex: 1;
+    font-size: 11px;
+    color: #c0303d;
+    display: none;
+  }
+  .booked-date-modal-footer-left.show { display: block; }
+
+
+  /* Booked Date Modal — days selector buttons */
+  .bd-days-btn {
+    flex: 1;
+    padding: 8px 4px;
+    border: 2px solid var(--ui--underline--light-grey);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text--dark--40);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: Arial, sans-serif;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .bd-days-btn:hover { border-color: var(--action-primary-blue); color: var(--action-primary-blue); }
+  .bd-days-btn.active {
+    border-color: var(--action-primary-blue);
+    background: var(--action-primary-blue);
+    color: #fff;
+  }
+
 </style>
 </head>
 <body>
@@ -3612,6 +3731,230 @@ function onActValueInput(rowIndex) {
   inp._saveTimer = setTimeout(() => onActField(rowIndex), 1200);
 }
 
+// =============================================
+// UK BANK HOLIDAYS + WORKING DAY UTILITIES
+// =============================================
+
+// UK Bank Holidays 2024–2027 (England & Wales)
+// Format: YYYY-MM-DD
+const UK_BANK_HOLIDAYS = new Set([
+  // 2024
+  '2024-01-01','2024-03-29','2024-04-01','2024-05-06',
+  '2024-05-27','2024-08-26','2024-12-25','2024-12-26',
+  // 2025
+  '2025-01-01','2025-04-18','2025-04-21','2025-05-05',
+  '2025-05-26','2025-08-25','2025-12-25','2025-12-26',
+  // 2026
+  '2026-01-01','2026-04-03','2026-04-06','2026-05-04',
+  '2026-05-25','2026-08-31','2026-12-25','2026-12-28',
+  // 2027
+  '2027-01-01','2027-03-26','2027-03-29','2027-05-03',
+  '2027-05-31','2027-08-30','2027-12-27','2027-12-28',
+]);
+
+// Returns true if the date string (YYYY-MM-DD) is a non-working day
+function isNonWorkingDay(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const dow = d.getDay();
+  if (dow === 0 || dow === 6) return true;      // weekend
+  if (UK_BANK_HOLIDAYS.has(dateStr)) return true; // bank holiday
+  return false;
+}
+
+// Shift a YYYY-MM-DD string by N calendar days
+function shiftDateStr(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Get next working day on or after a given date string
+function nextWorkingDay(dateStr) {
+  let d = dateStr;
+  while (isNonWorkingDay(d)) { d = shiftDateStr(d, 1); }
+  return d;
+}
+
+// Format a YYYY-MM-DD as "Mon 3 Mar"
+function fmtDateShort(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+}
+
+// Given a start date + number of training days, return all calendar dates
+// blocked: travel day before, each training day, admin day after
+// Training days skip weekends + bank holidays; travel/admin are calendar days
+function getBlockedDatesForBooking(startDateStr, numTrainingDays) {
+  const blocked = [];
+  if (!startDateStr) return blocked;
+
+  // Travel day: day before start (calendar day — could be weekend but still counts as a trip)
+  blocked.push({ date: shiftDateStr(startDateStr, -1), role: 'travel' });
+
+  // Training days — walk forward through working days only
+  let current = startDateStr;
+  const trainingDates = [];
+  for (let i = 0; i < numTrainingDays; i++) {
+    // Skip non-working days when counting training days
+    while (isNonWorkingDay(current) && i > 0) { current = shiftDateStr(current, 1); }
+    trainingDates.push(current);
+    blocked.push({ date: current, role: 'training' });
+    current = shiftDateStr(current, 1);
+  }
+
+  // Admin day: working day after last training day
+  let adminDay = current;
+  while (isNonWorkingDay(adminDay)) { adminDay = shiftDateStr(adminDay, 1); }
+  blocked.push({ date: adminDay, role: 'admin' });
+
+  return { blocked, trainingDates, adminDay, travelDay: shiftDateStr(startDateStr, -1) };
+}
+
+// =============================================
+// BOOKED DATE MODAL
+// =============================================
+
+// State for the booked date modal
+let _bdModal = { rowIndex: null, prevStatus: null, numDays: 1 };
+
+function openBookedDateModal(rowIndex, company) {
+  const row = allData.find(r => r.rowIndex === rowIndex);
+
+  _bdModal.rowIndex  = rowIndex;
+  _bdModal.numDays   = row && String(row.option) === '3' ? 2 : 1;
+
+  const companyEl = document.getElementById('bdModalCompany');
+  const dateInp   = document.getElementById('bdModalDateInput');
+  const errorEl   = document.getElementById('bdModalError');
+
+  if (companyEl) companyEl.textContent = company || 'This booking';
+  if (errorEl)   errorEl.classList.remove('show');
+
+  // Pre-fill days selector from option
+  bdSelectDays(_bdModal.numDays);
+
+  // Pre-fill date if already set
+  if (dateInp) dateInp.value = (row && row.bookedOn) ? row.bookedOn.slice(0,10) : '';
+
+  // Pre-fill invoice value from row
+  const valueInp = document.getElementById('bdModalValueInput');
+  if (valueInp) valueInp.value = (row && row.revenue) ? row.revenue : '';
+
+  bdUpdateSummary();
+
+  document.getElementById('bookedDateModal').classList.add('open');
+  setTimeout(() => { const di = document.getElementById('bdModalDateInput'); if (di) di.focus(); }, 150);
+}
+
+// Toggle the days selector buttons
+function bdSelectDays(n) {
+  _bdModal.numDays = n;
+  document.querySelectorAll('.bd-days-btn').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.days) === n);
+  });
+  bdUpdateSummary();
+}
+
+// Update the blocked dates preview inside the modal
+function bdUpdateSummary() {
+  const dateInp  = document.getElementById('bdModalDateInput');
+  const summary  = document.getElementById('bdModalSummary');
+  const errorEl  = document.getElementById('bdModalError');
+  if (!summary) return;
+
+  const startDate = dateInp ? dateInp.value : '';
+
+  // Validate: reject weekends + bank holidays as the start date
+  if (startDate) {
+    if (isNonWorkingDay(startDate)) {
+      const d = new Date(startDate + 'T00:00:00');
+      const isWE = d.getDay() === 0 || d.getDay() === 6;
+      const reason = isWE ? 'We do not work weekends' : 'This is a UK bank holiday';
+      summary.style.display = 'block';
+      summary.innerHTML = '<span style="color:#c0303d;font-weight:600;">⚠ ' + reason + ' — please choose another date</span>';
+      if (errorEl) { errorEl.textContent = reason + ' — please choose another date'; errorEl.classList.add('show'); }
+      return;
+    }
+    if (errorEl) { errorEl.classList.remove('show'); errorEl.textContent = 'Please select a date to continue'; }
+  }
+
+  if (!startDate) { summary.style.display = 'none'; return; }
+
+  const { blocked, trainingDates, adminDay, travelDay } = getBlockedDatesForBooking(startDate, _bdModal.numDays);
+
+  const lastTraining = trainingDates[trainingDates.length - 1];
+  const lines = [
+    '<strong>📋 Blocked dates for this booking:</strong>',
+    '🚗 Travel day: ' + fmtDateShort(travelDay) + ' <span style="color:var(--text--dark--30)">(day before)</span>',
+  ];
+  if (trainingDates.length === 1) {
+    lines.push('🎓 Training day: <strong>' + fmtDateShort(trainingDates[0]) + '</strong>');
+  } else {
+    lines.push('🎓 Training: <strong>' + fmtDateShort(trainingDates[0]) + ' → ' + fmtDateShort(lastTraining) + '</strong> (' + trainingDates.length + ' days, weekends & bank holidays skipped)');
+  }
+  lines.push('📝 Admin day: ' + fmtDateShort(adminDay) + ' <span style="color:var(--text--dark--30)">(next working day after training)</span>');
+
+  // Warn if any training day lands on a bank holiday (shouldn't happen but safety check)
+  const bhHits = trainingDates.filter(d => UK_BANK_HOLIDAYS.has(d));
+  if (bhHits.length) {
+    lines.push('<span style="color:#f59e0b;">⚠ Heads up: ' + bhHits.map(fmtDateShort).join(', ') + ' is a bank holiday and will be skipped</span>');
+  }
+
+  summary.style.display = 'block';
+  summary.innerHTML = lines.join('<br>');
+}
+
+function cancelBookedDateModal() {
+  const statusSel = document.getElementById('act-status-' + _bdModal.rowIndex);
+  if (statusSel && _bdModal.prevStatus) {
+    statusSel.value = _bdModal.prevStatus;
+    applyStatusStyle(statusSel, _bdModal.prevStatus);
+  }
+  document.getElementById('bookedDateModal').classList.remove('open');
+  _bdModal = { rowIndex: null, prevStatus: null, numDays: 1 };
+}
+
+async function confirmBookedDateModal() {
+  const dateInp  = document.getElementById('bdModalDateInput');
+  const valueInp = document.getElementById('bdModalValueInput');
+  const errorEl  = document.getElementById('bdModalError');
+  const bookedOn = dateInp ? dateInp.value : '';
+
+  if (!bookedOn) {
+    if (errorEl) { errorEl.textContent = 'Please select a date to continue'; errorEl.classList.add('show'); }
+    if (dateInp) dateInp.focus();
+    return;
+  }
+
+  if (isNonWorkingDay(bookedOn)) {
+    if (errorEl) { errorEl.textContent = 'This date is a weekend or bank holiday — please choose a working day'; errorEl.classList.add('show'); }
+    if (dateInp) dateInp.focus();
+    return;
+  }
+
+  document.getElementById('bookedDateModal').classList.remove('open');
+
+  // Store numDays + confirmed invoice value on the row
+  const row = allData.find(r => r.rowIndex === _bdModal.rowIndex);
+  const confirmedValue = valueInp ? (parseFloat(valueInp.value) || 0) : 0;
+
+  if (row) {
+    row._confirmedTrainingDays = _bdModal.numDays;
+    if (confirmedValue > 0) row.revenue = confirmedValue;
+  }
+
+  // Push confirmed value back into the Needs Action row's value input so _saveActField picks it up
+  const actValueInp = document.getElementById('act-value-' + _bdModal.rowIndex);
+  if (actValueInp && confirmedValue > 0) actValueInp.value = confirmedValue;
+
+  // Push confirmed date into the row input
+  const dateRowInp = document.getElementById('act-booked-date-' + _bdModal.rowIndex);
+  if (dateRowInp) dateRowInp.value = bookedOn;
+
+  await _saveActField(_bdModal.rowIndex);
+  _bdModal = { rowIndex: null, prevStatus: null, numDays: 1 };
+}
+
 async function onActField(rowIndex) {
   const trainerSel = document.getElementById('act-trainer-' + rowIndex);
   const statusSel  = document.getElementById('act-status-'  + rowIndex);
@@ -3623,6 +3966,36 @@ async function onActField(rowIndex) {
   const newStatus = statusSel  ? statusSel.value   : 'Assigned';
   const newValue  = valueInp   ? (parseFloat(valueInp.value) || 0) : 0;
   const bookedOn  = dateInp    ? dateInp.value     : '';
+
+  // ── Intercept: changing TO Booked requires a confirmed date ──
+  if (newStatus === 'Booked') {
+    const row = allData.find(r => r.rowIndex === rowIndex);
+    // Store previous status so we can revert if cancelled
+    _bdModal.prevStatus = row ? row.status : 'Assigned';
+    if (statusSel) applyStatusStyle(statusSel, newStatus);
+    if (dateWrap) dateWrap.style.display = 'flex';
+    openBookedDateModal(rowIndex, row ? row.company : '');
+    return; // stop here — confirmBookedDateModal will call _saveActField
+  }
+
+  if (dateWrap) dateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
+  if (statusSel) applyStatusStyle(statusSel, newStatus);
+
+  await _saveActField(rowIndex);
+}
+
+// Internal: reads current values from the row and saves — called by both onActField and confirmBookedDateModal
+async function _saveActField(rowIndex) {
+  const trainerSel = document.getElementById('act-trainer-' + rowIndex);
+  const statusSel  = document.getElementById('act-status-'  + rowIndex);
+  const valueInp   = document.getElementById('act-value-'   + rowIndex);
+  const dateInp    = document.getElementById('act-booked-date-' + rowIndex);
+  const dateWrap   = document.getElementById('act-date-wrap-' + rowIndex);
+
+  const trainer   = trainerSel ? trainerSel.value              : '';
+  const newStatus = statusSel  ? statusSel.value               : 'Assigned';
+  const newValue  = valueInp   ? (parseFloat(valueInp.value) || 0) : 0;
+  const bookedOn  = dateInp    ? dateInp.value                 : '';
 
   if (dateWrap) dateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
   if (statusSel) applyStatusStyle(statusSel, newStatus);
@@ -3646,6 +4019,10 @@ async function onActField(rowIndex) {
   const mainDateWrap = document.getElementById('booked-date-wrap-' + rowIndex);
   if (mainDateWrap) mainDateWrap.style.display = newStatus === 'Booked' ? 'flex' : 'none';
 
+  // Also sync the booked date in all bookings row
+  const mainDateInp = document.getElementById('booked-date-' + rowIndex);
+  if (mainDateInp && bookedOn) mainDateInp.value = bookedOn;
+
   let url = APPS_SCRIPT_URL + '?action=assign&row=' + rowIndex + '&status=' + encodeURIComponent(newStatus);
   if (trainer)  url += '&trainer='  + encodeURIComponent(trainer);
   if (newValue) url += '&value='    + newValue;
@@ -3654,7 +4031,7 @@ async function onActField(rowIndex) {
   showToast('Saving…', '');
   try {
     await fetch(url, { method: 'GET', redirect: 'follow', mode: 'no-cors' });
-    showToast('✓ Saved', 'success');
+    showToast('✓ Saved — ' + (newStatus === 'Booked' ? '📅 Added to calendar' : 'Updated'), 'success');
   } catch(e) {
     showToast('✓ Saved locally', '');
   }
@@ -3664,13 +4041,15 @@ async function onActField(rowIndex) {
   const _actCo  = _actRow ? _actRow.company : 'Row ' + rowIndex;
   logActivity('status', _actCo, 'Status updated to "' + newStatus + '"', trainer ? 'Trainer: ' + trainer : '');
   if (newValue)  logActivity('value',   _actCo, 'Value updated to £' + newValue.toLocaleString(), '');
-  if (bookedOn)  logActivity('date',    _actCo, 'Booked date updated', bookedOn);
+  if (bookedOn)  logActivity('date',    _actCo, 'Booked date set to ' + bookedOn, '');
 
   renderUnassigned();
+  renderActionPanel();
   renderTrainerWorkload();
   renderKPIs();
   renderCharts();
   renderAllBookings();
+  updateTrainerAvailability();
 }
 
 // =============================================
@@ -5730,42 +6109,70 @@ function renderUpcoming() {
 
 // ── Trainer availability badges on workload cards ─────────────────────────────
 function updateTrainerAvailability() {
-  const todayStr = new Date().toISOString().slice(0,10);
-  const lookahead = 21; // days to scan for next free day
+  const lookahead = 60; // scan up to 60 days ahead
 
   TRAINERS.forEach(trainer => {
     const el = document.getElementById('avail-' + trainer.replace(/\s/g,'_'));
     if (!el) return;
 
-    // Collect busy dates (bookings + gcal events for this trainer)
+    // ── Build full set of blocked dates for this trainer ─────────
     const busyDates = new Set();
+
+    // From bookings — use confirmed training days if set, else derive from option
     allData.forEach(r => {
       if (r.trainer !== trainer || r.status === 'Cancelled') return;
-      const d = r.bookedOn ? r.bookedOn.slice(0,10) : (r.date ? r.date.toISOString().slice(0,10) : null);
-      if (d) busyDates.add(d);
-    });
-    calState.gcalEvents.forEach(e => {
-      if (e.trainer && e.trainer !== trainer) return;
-      const d = e.start instanceof Date ? e.start.toISOString().slice(0,10) : String(e.start).slice(0,10);
-      busyDates.add(d);
+      const dateStr = r.bookedOn
+        ? r.bookedOn.slice(0, 10)
+        : (r.date ? r.date.toISOString().slice(0, 10) : null);
+      if (!dateStr) return;
+      const numDays = r._confirmedTrainingDays || (String(r.option) === '3' ? 2 : 1);
+      const { blocked } = getBlockedDatesForBooking(dateStr, numDays);
+      blocked.forEach(b => busyDates.add(b.date));
     });
 
-    // Find next free weekday
+    // From Google Calendar events
+    calState.gcalEvents.forEach(e => {
+      if (e.trainer && e.trainer !== trainer) return;
+      const dateStr = e.start instanceof Date
+        ? e.start.toISOString().slice(0, 10)
+        : String(e.start).slice(0, 10);
+      const { blocked } = getBlockedDatesForBooking(dateStr, 1);
+      blocked.forEach(b => busyDates.add(b.date));
+    });
+
+    // ── Find next bookable working day ────────────────────────────
+    // A day is bookable if:
+    //  - it is a working day (not weekend, not bank holiday)
+    //  - it is not already in busyDates
+    //  - the travel day before is also not in busyDates
+    //  - the next working day after (admin) is also not in busyDates
     let nextFree = null;
-    for (let i = 1; i <= lookahead; i++) {
-      const d = new Date(Date.now() + i * 86400000);
-      if (d.getDay() === 0 || d.getDay() === 6) continue; // skip weekends
-      const ds = d.toISOString().slice(0,10);
-      if (!busyDates.has(ds)) { nextFree = d; break; }
+    let checked  = 0;
+    let i        = 1;
+    while (checked < lookahead) {
+      const candidate = new Date(Date.now() + i * 86400000);
+      i++;
+      const ds = candidate.toISOString().slice(0, 10);
+
+      if (isNonWorkingDay(ds)) continue; // skip weekends + bank holidays
+      checked++;
+
+      const travelDay = shiftDateStr(ds, -1);
+      const adminDay  = nextWorkingDay(shiftDateStr(ds, 1)); // next working day after
+
+      if (!busyDates.has(travelDay) && !busyDates.has(ds) && !busyDates.has(adminDay)) {
+        nextFree = ds;
+        break;
+      }
     }
 
     if (nextFree) {
-      const label = nextFree.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+      const label = fmtDateShort(nextFree);
       el.className = 'trainer-availability';
-      el.innerHTML = '📅 Next free: <strong>' + label + '</strong>';
+      el.innerHTML = '📅 Next available: <strong>' + label + '</strong>';
     } else {
       el.className = 'trainer-availability busy';
-      el.innerHTML = '🔴 Busy next ' + lookahead + ' days';
+      el.innerHTML = '🔴 Fully booked next ' + lookahead + ' working days';
     }
   });
 }
@@ -5893,6 +6300,58 @@ setInterval(() => loadCalendarData(true), 10 * 60 * 1000);
         <button class="btn btn-ghost" onclick="closeCalSettings()">Cancel</button>
         <button class="btn btn-primary" onclick="saveCalSettings()">Save &amp; Sync</button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- BOOKED DATE MODAL -->
+<div class="booked-date-modal-overlay" id="bookedDateModal">
+  <div class="booked-date-modal">
+    <div class="booked-date-modal-header">
+      <div class="booked-date-modal-title">📅 Confirm Training Booking</div>
+      <div class="booked-date-modal-company" id="bdModalCompany">—</div>
+    </div>
+    <div class="booked-date-modal-body">
+
+      <!-- Training days selector -->
+      <label>How many days of training?</label>
+      <div style="display:flex;gap:8px;margin-bottom:16px;" id="bdModalDaysBtns">
+        <button type="button" class="bd-days-btn active" data-days="1" onclick="bdSelectDays(1)">1 Day</button>
+        <button type="button" class="bd-days-btn" data-days="2" onclick="bdSelectDays(2)">2 Days</button>
+        <button type="button" class="bd-days-btn" data-days="3" onclick="bdSelectDays(3)">3 Days</button>
+        <button type="button" class="bd-days-btn" data-days="4" onclick="bdSelectDays(4)">4 Days</button>
+        <button type="button" class="bd-days-btn" data-days="5" onclick="bdSelectDays(5)">5 Days</button>
+      </div>
+
+      <!-- Date picker -->
+      <label for="bdModalDateInput">First day of training</label>
+      <input type="date" id="bdModalDateInput" class="booked-date-modal-input" onchange="bdUpdateSummary()">
+
+      <!-- Blocked days summary -->
+      <div id="bdModalSummary" style="display:none;background:#f6f8ff;border:1px solid #dde6ff;border-radius:7px;padding:10px 12px;margin-bottom:4px;font-size:11px;line-height:1.7;color:var(--text--dark--40);">
+      </div>
+
+      <div class="booked-date-modal-hint" id="bdModalHint" style="margin-top:6px;margin-bottom:16px;">
+        Weekends and UK bank holidays are automatically excluded. The day before is blocked for travel and the day(s) after for admin.
+      </div>
+
+      <!-- Invoice value -->
+      <div style="border-top:1px solid var(--ui--underline--light-grey);padding-top:14px;">
+        <label for="bdModalValueInput">Confirm Invoice Value</label>
+        <div style="display:flex;align-items:center;gap:0;">
+          <span style="background:var(--card-light-grey);border:2px solid var(--action-primary-blue);border-right:none;border-radius:7px 0 0 7px;padding:9px 12px;font-size:14px;font-weight:700;color:var(--text--dark--40);">£</span>
+          <input type="number" id="bdModalValueInput" class="booked-date-modal-input"
+            min="0" step="50" placeholder="0"
+            style="border-radius:0 7px 7px 0;border-left:none;margin-bottom:0;">
+        </div>
+        <div style="font-size:11px;color:var(--text--dark--30);margin-top:5px;">Pre-filled from the booking — update if the agreed amount differs.</div>
+      </div>
+    </div>
+    <div class="booked-date-modal-footer">
+      <span class="booked-date-modal-footer-left" id="bdModalError">Please select a date to continue</span>
+      <button class="btn btn-ghost" onclick="cancelBookedDateModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmBookedDateModal()">✓ Confirm &amp; Mark Booked</button>
     </div>
   </div>
 </div>
