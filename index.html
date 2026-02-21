@@ -1606,6 +1606,196 @@
     border-radius: 4px;
   }
 
+
+  /* ── CALENDAR SECTION ──────────────────────────────────────────── */
+  .cal-section { margin-bottom: 24px; }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .cal-grid { grid-template-columns: 1fr; } }
+
+  /* Mini month calendar */
+  .cal-month-card {
+    background: #fff;
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .cal-month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--text--dark--50);
+    color: #fff;
+  }
+  .cal-month-title { font-size: 14px; font-weight: 700; }
+  .cal-nav-btn {
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: Arial, sans-serif;
+    transition: background 0.12s;
+  }
+  .cal-nav-btn:hover { background: rgba(255,255,255,0.22); }
+  .cal-dow-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: var(--card-light-grey);
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+  }
+  .cal-dow {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text--dark--30);
+    padding: 6px 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .cal-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+  }
+  .cal-day {
+    position: relative;
+    min-height: 68px;
+    padding: 5px 5px 4px;
+    border-right: 1px solid #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+    cursor: default;
+    transition: background 0.1s;
+  }
+  .cal-day:hover:not(.cal-day-empty) { background: #f6f8ff; }
+  .cal-day-empty { background: #fafafa; }
+  .cal-day-num {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text--dark--30);
+    display: block;
+    margin-bottom: 3px;
+  }
+  .cal-day-today .cal-day-num {
+    background: var(--action-primary-blue);
+    color: #fff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+  .cal-day-past { opacity: 0.45; }
+  .cal-event {
+    display: block;
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  .cal-event-booking  { background: #b8caff; color: #1838c0; }
+  .cal-event-blocked  { background: #fde8eb; color: #c0303d; }
+  .cal-event-gcal     { background: #beffd8; color: #1a6a40; }
+  .cal-event-more {
+    font-size: 9px;
+    color: var(--text--dark--30);
+    padding: 1px 4px;
+    cursor: pointer;
+  }
+
+  /* Upcoming events sidebar */
+  .cal-upcoming-card {
+    background: #fff;
+    border: 1px solid var(--ui--underline--light-grey);
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 520px;
+    display: flex;
+    flex-direction: column;
+  }
+  .cal-upcoming-header {
+    padding: 12px 16px;
+    background: var(--card-light-grey);
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text--dark--40);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .cal-upcoming-body { flex: 1; overflow-y: auto; }
+  .cal-upcoming-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .cal-upcoming-item:last-child { border-bottom: none; }
+  .cal-upcoming-date {
+    min-width: 38px;
+    text-align: center;
+    background: var(--card-light-grey);
+    border-radius: 6px;
+    padding: 4px 6px;
+    flex-shrink: 0;
+  }
+  .cal-upcoming-date-day { font-size: 16px; font-weight: 700; color: var(--text--dark--50); line-height: 1; }
+  .cal-upcoming-date-mon { font-size: 9px; font-weight: 600; color: var(--text--dark--30); text-transform: uppercase; letter-spacing: 0.5px; }
+  .cal-upcoming-body-text { flex: 1; min-width: 0; }
+  .cal-upcoming-company { font-size: 12px; font-weight: 600; color: var(--text--dark--50); }
+  .cal-upcoming-meta { font-size: 11px; color: var(--text--dark--30); margin-top: 2px; }
+  .cal-upcoming-empty { padding: 32px 20px; text-align: center; color: var(--text--dark--30); font-size: 12px; }
+
+  /* Availability badge on trainer cards */
+  .trainer-availability {
+    margin-top: 8px;
+    padding: 6px 8px;
+    background: #f0fdf4;
+    border-radius: 5px;
+    border: 1px solid #bbf7d0;
+    font-size: 11px;
+    color: #1a6a40;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .trainer-availability.loading { background: var(--card-light-grey); border-color: var(--ui--underline--light-grey); color: var(--text--dark--30); }
+  .trainer-availability.busy { background: #fde8eb; border-color: #fecaca; color: #c0303d; }
+  .trainer-availability.unknown { background: var(--card-light-grey); border-color: var(--ui--underline--light-grey); color: var(--text--dark--30); }
+
+  /* Cal filter row */
+  .cal-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--card-light-grey);
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    flex-wrap: wrap;
+  }
+  .cal-legend-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .cal-legend-label { font-size: 11px; color: var(--text--dark--40); }
+
 </style>
 </head>
 <body>
@@ -1760,6 +1950,70 @@
     </div>
     <div class="trainer-grid" id="trainerGrid">
       <div class="kpi-card" style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">Loading trainer data...</div>
+    </div>
+  </div>
+
+  <!-- CALENDAR SECTION -->
+  <div class="cal-section" id="calSection">
+    <div class="section-header">
+      <div class="section-title">📅 Training Calendar</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;color:var(--text--dark--30);" id="calGcalStatus">
+          <span id="calGcalDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ccc;margin-right:4px;vertical-align:middle;"></span>
+          Calendar not connected
+        </span>
+        <button class="refresh-btn" onclick="loadCalendarData(true)" style="font-size:11px;">↻ Sync Calendar</button>
+        <button class="refresh-btn" onclick="openCalSettings()" style="font-size:11px;background:rgba(33,71,244,0.1);border-color:rgba(33,71,244,0.3);color:var(--action-primary-blue);">⚙ Calendar Settings</button>
+      </div>
+    </div>
+
+    <div class="cal-grid">
+      <!-- Month view -->
+      <div class="cal-month-card">
+        <div class="cal-month-header">
+          <button class="cal-nav-btn" onclick="calChangeMonth(-1)">‹</button>
+          <div class="cal-month-title" id="calMonthTitle">—</div>
+          <button class="cal-nav-btn" onclick="calChangeMonth(1)">›</button>
+        </div>
+        <div class="cal-filter-row">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div class="cal-legend-dot" style="background:#b8caff;"></div>
+            <span class="cal-legend-label">Bookings</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div class="cal-legend-dot" style="background:#beffd8;"></div>
+            <span class="cal-legend-label">Google Calendar</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div class="cal-legend-dot" style="background:#fde8eb;"></div>
+            <span class="cal-legend-label">Blocked / Busy</span>
+          </div>
+          <div style="margin-left:auto;">
+            <select id="calFilterTrainer" onchange="renderCalendar()"
+              style="font-size:11px;border:1px solid var(--ui--underline--light-grey);border-radius:4px;padding:3px 7px;font-family:Arial,sans-serif;background:#fff;">
+              <option value="">All Trainers</option>
+            </select>
+          </div>
+        </div>
+        <div class="cal-dow-row">
+          <div class="cal-dow">Mon</div><div class="cal-dow">Tue</div>
+          <div class="cal-dow">Wed</div><div class="cal-dow">Thu</div>
+          <div class="cal-dow">Fri</div><div class="cal-dow">Sat</div>
+          <div class="cal-dow">Sun</div>
+        </div>
+        <div class="cal-days" id="calDays"></div>
+      </div>
+
+      <!-- Upcoming sidebar -->
+      <div class="cal-upcoming-card">
+        <div class="cal-upcoming-header">
+          <span>Upcoming Sessions</span>
+          <span id="calUpcomingCount" style="font-size:10px;color:var(--text--dark--30);">—</span>
+        </div>
+        <div class="cal-upcoming-body" id="calUpcomingBody">
+          <div class="cal-upcoming-empty">Loading...</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2638,6 +2892,10 @@ function processData() {
   renderTrainerWorkload();
   renderAllBookings();
   populateTrainerFilter();
+  populateCalTrainerFilter();
+  renderCalendar();
+  renderUpcoming();
+  updateTrainerAvailability();
 }
 
 // =============================================
@@ -3052,6 +3310,9 @@ function renderTrainerWorkload() {
         </div>
         <div class="workload-bar-wrap">
           <div class="workload-bar ${barClass}" style="width:${pct}%"></div>
+        </div>
+        <div class="trainer-availability loading" id="avail-${t.replace(/\s/g,'_')}">
+          📅 Checking availability…
         </div>
         ${isSuggested ? '<div class="suggested-tag">⚡ Next in rotation</div>' : ''}
       </div>
@@ -4905,6 +5166,314 @@ function closeEditPermModal() {
   document.getElementById('editPermOverlay').classList.remove('open');
 }
 
+
+// =============================================
+// GOOGLE CALENDAR INTEGRATION
+// =============================================
+const CAL_SETTINGS_KEY = 'streetCalSettings';
+
+let calState = {
+  year:      new Date().getFullYear(),
+  month:     new Date().getMonth(),  // 0-indexed
+  gcalEvents: [],   // fetched from Apps Script / GCal
+  isFetching: false,
+};
+
+function getCalSettings() {
+  try { return JSON.parse(localStorage.getItem(CAL_SETTINGS_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveCalSettingsData(obj) {
+  try { localStorage.setItem(CAL_SETTINGS_KEY, JSON.stringify(obj)); } catch(e) {}
+}
+
+// ── Calendar Settings modal ──────────────────────────────────────────────────
+function openCalSettings() {
+  const s = getCalSettings();
+  document.getElementById('calIdInput').value = s.calendarId || '';
+  document.getElementById('calSettingsStatus').textContent = '';
+
+  // Per-trainer optional calendar IDs
+  const wrap = document.getElementById('calSettingsPerTrainer');
+  if (TRAINERS.length) {
+    wrap.innerHTML = '<div style="font-size:11px;font-weight:600;color:var(--text--dark--30);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.6px;">Optional: per-trainer calendar IDs</div>'
+      + TRAINERS.map(t => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="width:70px;font-size:12px;font-weight:600;color:var(--text--dark--40);flex-shrink:0;">${esc(t)}</span>
+          <input type="text" id="calId-${esc(t)}" value="${esc((s.trainerCals||{})[t]||'')}"
+            placeholder="Leave blank to use shared calendar"
+            style="flex:1;border:1px solid var(--ui--underline--light-grey);border-radius:5px;padding:5px 8px;font-size:11px;font-family:Arial,sans-serif;">
+        </div>`).join('');
+  } else {
+    wrap.innerHTML = '';
+  }
+
+  document.getElementById('calSettingsOverlay').classList.add('open');
+}
+
+function closeCalSettings() {
+  document.getElementById('calSettingsOverlay').classList.remove('open');
+}
+
+function saveCalSettings() {
+  const calId = document.getElementById('calIdInput').value.trim();
+  const trainerCals = {};
+  TRAINERS.forEach(t => {
+    const inp = document.getElementById('calId-' + t);
+    if (inp && inp.value.trim()) trainerCals[t] = inp.value.trim();
+  });
+  saveCalSettingsData({ calendarId: calId, trainerCals });
+  document.getElementById('calSettingsStatus').textContent = '✓ Saved — syncing…';
+  closeCalSettings();
+  loadCalendarData(true);
+}
+
+// ── Fetch calendar events from Apps Script ────────────────────────────────────
+async function loadCalendarData(force = false) {
+  const s = getCalSettings();
+  if (!s.calendarId && !Object.keys(s.trainerCals || {}).length) {
+    // No calendar configured — just render with booking data only
+    setCalStatus(false, 'No calendar connected — click ⚙ to add your Calendar ID');
+    renderCalendar();
+    renderUpcoming();
+    populateCalTrainerFilter();
+    return;
+  }
+
+  if (calState.isFetching && !force) return;
+  calState.isFetching = true;
+  setCalStatus(null, 'Syncing…');
+
+  try {
+    const params = new URLSearchParams({ action: 'getCalendarEvents' });
+    if (s.calendarId) params.append('calendarId', s.calendarId);
+
+    // Fetch 3-month window around current cal month
+    const start = new Date(calState.year, calState.month - 1, 1);
+    const end   = new Date(calState.year, calState.month + 2, 0);
+    params.append('start', start.toISOString().slice(0,10));
+    params.append('end',   end.toISOString().slice(0,10));
+
+    const res  = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
+    const json = await res.json();
+
+    if (json.success && json.events) {
+      calState.gcalEvents = json.events.map(e => ({
+        ...e,
+        start: new Date(e.start),
+        end:   new Date(e.end),
+      }));
+      setCalStatus(true, 'Synced — ' + calState.gcalEvents.length + ' events');
+      logActivity('refresh', null, 'Calendar synced — ' + calState.gcalEvents.length + ' events loaded', '');
+    } else {
+      calState.gcalEvents = [];
+      setCalStatus(false, json.error || 'Could not read calendar');
+    }
+  } catch(e) {
+    calState.gcalEvents = [];
+    setCalStatus(false, 'Could not reach Apps Script');
+  }
+
+  calState.isFetching = false;
+  renderCalendar();
+  renderUpcoming();
+  populateCalTrainerFilter();
+  updateTrainerAvailability();
+}
+
+function setCalStatus(ok, msg) {
+  const dot   = document.getElementById('calGcalDot');
+  const label = document.getElementById('calGcalStatus');
+  if (!dot || !label) return;
+  if (ok === true)  { dot.style.background = '#22c55e'; }
+  else if (ok === null) { dot.style.background = '#f59e0b'; }
+  else              { dot.style.background = '#e5e7eb'; }
+  label.innerHTML = `<span id="calGcalDot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ok===true?'#22c55e':ok===null?'#f59e0b':'#e5e7eb'};margin-right:4px;vertical-align:middle;"></span>${esc(msg)}`;
+}
+
+// ── Calendar render ───────────────────────────────────────────────────────────
+function calChangeMonth(dir) {
+  calState.month += dir;
+  if (calState.month > 11) { calState.month = 0;  calState.year++; }
+  if (calState.month <  0) { calState.month = 11; calState.year--; }
+  renderCalendar();
+  renderUpcoming();
+  loadCalendarData(); // fetch new window if needed
+}
+
+function populateCalTrainerFilter() {
+  const sel = document.getElementById('calFilterTrainer');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Trainers</option>'
+    + TRAINERS.map(t => `<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
+}
+
+function getCalDayEvents(dateStr, trainerFilter) {
+  const events = [];
+  // From bookings data
+  allData.forEach(r => {
+    if (r.status === 'Cancelled') return;
+    const d = r.bookedOn
+      ? (r.bookedOn.length >= 10 ? r.bookedOn.slice(0,10) : null)
+      : (r.date ? r.date.toISOString().slice(0,10) : null);
+    if (!d || d !== dateStr) return;
+    if (trainerFilter && r.trainer !== trainerFilter) return;
+    events.push({ type: 'booking', title: r.company || 'Booking', trainer: r.trainer, option: r.option, status: r.status });
+  });
+  // From Google Calendar
+  calState.gcalEvents.forEach(e => {
+    const es = e.start instanceof Date ? e.start.toISOString().slice(0,10) : String(e.start).slice(0,10);
+    if (es !== dateStr) return;
+    if (trainerFilter && e.trainer && e.trainer !== trainerFilter) return;
+    events.push({ type: e.blocked ? 'blocked' : 'gcal', title: e.title || 'Event', trainer: e.trainer || '' });
+  });
+  return events;
+}
+
+function renderCalendar() {
+  const { year, month } = calState;
+  const tf = document.getElementById('calFilterTrainer')?.value || '';
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calMonthTitle').textContent = months[month] + ' ' + year;
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  // Start on Monday (ISO week)
+  let startDow = firstDay.getDay(); // 0=Sun
+  startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
+
+  const container = document.getElementById('calDays');
+  if (!container) return;
+
+  let cells = '';
+
+  // Empty cells before first day
+  for (let i = 0; i < startDow; i++) {
+    cells += '<div class="cal-day cal-day-empty"></div>';
+  }
+
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const isToday = dateStr === todayStr;
+    const isPast  = dateStr < todayStr;
+    const dayDate = new Date(year, month, d);
+    const isWeekend = dayDate.getDay() === 0 || dayDate.getDay() === 6;
+    const events  = getCalDayEvents(dateStr, tf);
+
+    const shown = events.slice(0, 3);
+    const extra = events.length - shown.length;
+
+    cells += `<div class="cal-day${isToday?' cal-day-today':''}${isPast?' cal-day-past':''}${isWeekend?' cal-day-weekend':''}" data-date="${dateStr}">
+      <span class="cal-day-num">${d}</span>
+      ${shown.map(e => `<span class="cal-event cal-event-${e.type}" title="${esc(e.trainer?e.trainer+': ':'')}${esc(e.title)}">${esc(e.trainer?e.trainer+' – ':'')}${esc(e.title)}</span>`).join('')}
+      ${extra > 0 ? `<span class="cal-event-more">+${extra} more</span>` : ''}
+    </div>`;
+  }
+
+  container.innerHTML = cells;
+}
+
+// ── Upcoming sessions sidebar ─────────────────────────────────────────────────
+function renderUpcoming() {
+  const body = document.getElementById('calUpcomingBody');
+  const count = document.getElementById('calUpcomingCount');
+  if (!body) return;
+
+  const todayStr = new Date().toISOString().slice(0,10);
+  const limitStr = new Date(Date.now() + 60*86400*1000).toISOString().slice(0,10);
+
+  // Collect all booked sessions in the next 60 days
+  const items = [];
+  allData.forEach(r => {
+    if (r.status !== 'Booked') return;
+    const d = r.bookedOn ? r.bookedOn.slice(0,10) : (r.date ? r.date.toISOString().slice(0,10) : null);
+    if (!d || d < todayStr || d > limitStr) return;
+    items.push({ date: d, company: r.company, trainer: r.trainer, option: r.option, optionLabel: r.optionLabel, source: 'booking' });
+  });
+  // Google Calendar events
+  calState.gcalEvents.forEach(e => {
+    const d = e.start instanceof Date ? e.start.toISOString().slice(0,10) : String(e.start).slice(0,10);
+    if (d < todayStr || d > limitStr) return;
+    items.push({ date: d, company: e.title, trainer: e.trainer||'', option: '', optionLabel: '', source: 'gcal' });
+  });
+
+  items.sort((a,b) => a.date.localeCompare(b.date));
+
+  if (count) count.textContent = items.length + ' in next 60 days';
+
+  if (!items.length) {
+    body.innerHTML = '<div class="cal-upcoming-empty">No upcoming sessions found</div>';
+    return;
+  }
+
+  const MONTHS_S = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  body.innerHTML = items.map(item => {
+    const dt  = new Date(item.date + 'T00:00:00');
+    const day = dt.getDate();
+    const mon = MONTHS_S[dt.getMonth()];
+    const dotColor = item.source === 'gcal' ? '#22c55e' : '#2147f4';
+    return `<div class="cal-upcoming-item">
+      <div class="cal-upcoming-date">
+        <div class="cal-upcoming-date-day">${day}</div>
+        <div class="cal-upcoming-date-mon">${mon}</div>
+      </div>
+      <div class="cal-upcoming-body-text">
+        <div class="cal-upcoming-company">${esc(item.company||'—')}</div>
+        <div class="cal-upcoming-meta">
+          ${item.trainer ? `<span style="color:var(--action-primary-blue);font-weight:600;">${esc(item.trainer)}</span> · ` : ''}
+          ${item.optionLabel ? 'Opt '+item.option+' · ' : ''}
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${dotColor};vertical-align:middle;margin-right:3px;"></span>
+          ${item.source === 'gcal' ? 'Google Calendar' : 'Booking'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Trainer availability badges on workload cards ─────────────────────────────
+function updateTrainerAvailability() {
+  const todayStr = new Date().toISOString().slice(0,10);
+  const lookahead = 21; // days to scan for next free day
+
+  TRAINERS.forEach(trainer => {
+    const el = document.getElementById('avail-' + trainer.replace(/\s/g,'_'));
+    if (!el) return;
+
+    // Collect busy dates (bookings + gcal events for this trainer)
+    const busyDates = new Set();
+    allData.forEach(r => {
+      if (r.trainer !== trainer || r.status === 'Cancelled') return;
+      const d = r.bookedOn ? r.bookedOn.slice(0,10) : (r.date ? r.date.toISOString().slice(0,10) : null);
+      if (d) busyDates.add(d);
+    });
+    calState.gcalEvents.forEach(e => {
+      if (e.trainer && e.trainer !== trainer) return;
+      const d = e.start instanceof Date ? e.start.toISOString().slice(0,10) : String(e.start).slice(0,10);
+      busyDates.add(d);
+    });
+
+    // Find next free weekday
+    let nextFree = null;
+    for (let i = 1; i <= lookahead; i++) {
+      const d = new Date(Date.now() + i * 86400000);
+      if (d.getDay() === 0 || d.getDay() === 6) continue; // skip weekends
+      const ds = d.toISOString().slice(0,10);
+      if (!busyDates.has(ds)) { nextFree = d; break; }
+    }
+
+    if (nextFree) {
+      const label = nextFree.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+      el.className = 'trainer-availability';
+      el.innerHTML = '📅 Next free: <strong>' + label + '</strong>';
+    } else {
+      el.className = 'trainer-availability busy';
+      el.innerHTML = '🔴 Busy next ' + lookahead + ' days';
+    }
+  });
+}
+
 // =============================================
 // INIT
 // =============================================
@@ -4924,8 +5493,11 @@ if (_sessionUser) {
 }
 
 loadData();
+loadCalendarData();
 // Auto-refresh every 5 minutes
 setInterval(loadData, 5 * 60 * 1000);
+// Auto-refresh calendar every 10 minutes
+setInterval(() => loadCalendarData(true), 10 * 60 * 1000);
 </script>
 
 <!-- ACTIVITY PANEL OVERLAY -->
@@ -4991,6 +5563,40 @@ setInterval(loadData, 5 * 60 * 1000);
     <div style="padding:12px 20px;border-top:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey);display:flex;justify-content:flex-end;gap:8px;">
       <button class="btn btn-ghost" onclick="closeEditPermModal()">Cancel</button>
       <button class="btn btn-primary" id="editPermSaveBtn">Save Permissions</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- CALENDAR SETTINGS MODAL -->
+<div class="username-modal-overlay" id="calSettingsOverlay" onclick="if(event.target===this)closeCalSettings()">
+  <div class="username-modal" style="width:480px;max-width:96vw;padding:0;text-align:left;border-radius:10px;overflow:hidden;">
+    <div style="padding:18px 22px 14px;background:var(--text--dark--50);color:#fff;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:14px;font-weight:700;">📅 Google Calendar Settings</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px;">Connect your shared team calendar</div>
+      </div>
+      <button onclick="closeCalSettings()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;cursor:pointer;padding:5px 9px;border-radius:4px;font-size:16px;">✕</button>
+    </div>
+    <div style="padding:20px;">
+      <div style="font-size:12px;color:var(--text--dark--40);margin-bottom:16px;line-height:1.6;background:#f6f8ff;padding:10px 12px;border-radius:6px;border:1px solid #e0e8ff;">
+        <strong>How to find your Calendar ID:</strong><br>
+        Google Calendar → Settings → Click your calendar → Scroll to "Integrate calendar" → Copy the Calendar ID
+      </div>
+      <label style="font-size:12px;font-weight:600;color:var(--text--dark--40);display:block;margin-bottom:6px;">Shared Team Calendar ID</label>
+      <input type="text" id="calIdInput" placeholder="e.g. abc123@group.calendar.google.com"
+        style="width:100%;box-sizing:border-box;border:1.5px solid var(--ui--underline--light-grey);border-radius:6px;padding:9px 12px;font-size:13px;font-family:Arial,sans-serif;margin-bottom:16px;">
+      <div style="font-size:11px;color:var(--text--dark--30);margin-bottom:10px;">
+        💡 The calendar must also be accessible from your Apps Script (the script owner needs to be shared on the calendar).
+      </div>
+      <div id="calSettingsPerTrainer" style="margin-bottom:16px;"></div>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey);display:flex;justify-content:space-between;gap:8px;align-items:center;">
+      <span id="calSettingsStatus" style="font-size:11px;color:var(--text--dark--30);"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeCalSettings()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCalSettings()">Save &amp; Sync</button>
+      </div>
     </div>
   </div>
 </div>
