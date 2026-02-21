@@ -738,6 +738,177 @@
     padding: 7px 10px; font-size: 13px; font-family: Arial, sans-serif;
   }
   .trainer-add-input:focus { outline: none; border-color: var(--action-primary-blue); }
+
+  /* KPI DETAIL MODAL */
+  .kpi-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .kpi-modal-overlay.open { opacity: 1; pointer-events: all; }
+  .kpi-modal {
+    background: #fff;
+    border-radius: 8px;
+    width: 860px;
+    max-width: 96vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+    overflow: hidden;
+  }
+  .kpi-modal-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .kpi-modal-header-left { flex: 1; }
+  .kpi-modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text--dark--50);
+    margin-bottom: 2px;
+  }
+  .kpi-modal-subtitle {
+    font-size: 12px;
+    color: var(--text--dark--30);
+  }
+  .kpi-modal-headline {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text--dark--50);
+    letter-spacing: -0.5px;
+    margin-top: 8px;
+  }
+  .kpi-modal-close {
+    background: var(--card-light-grey);
+    border: 1px solid var(--ui--underline--light-grey);
+    color: var(--text--dark--30);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 10px;
+    border-radius: 4px;
+    transition: background 0.12s, color 0.12s;
+    flex-shrink: 0;
+  }
+  .kpi-modal-close:hover { background: var(--white-smoke); color: #c0303d; }
+  .kpi-modal-stats {
+    display: flex;
+    gap: 24px;
+    padding: 14px 24px;
+    background: var(--card-light-grey);
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .kpi-modal-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .kpi-modal-stat-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text--dark--30);
+  }
+  .kpi-modal-stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text--dark--50);
+  }
+  .kpi-modal-stat-sub {
+    font-size: 10px;
+    color: var(--text--dark--30);
+  }
+  .kpi-modal-body {
+    overflow-y: auto;
+    flex: 1;
+  }
+  .kpi-modal-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .kpi-modal-table thead tr {
+    background: var(--card-light-grey);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .kpi-modal-table th {
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text--dark--30);
+    border-bottom: 2px solid var(--ui--underline--light-grey);
+    white-space: nowrap;
+  }
+  .kpi-modal-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--ui--underline--light-grey);
+    color: var(--text--dark--40);
+    vertical-align: middle;
+  }
+  .kpi-modal-table tr:last-child td { border-bottom: none; }
+  .kpi-modal-table tr:hover td { background: #fafbff; }
+  .kpi-modal-table .col-money { font-weight: 600; color: var(--text--dark--50); }
+  .kpi-modal-table .col-highlight { font-weight: 600; color: var(--action-primary-blue); }
+  .kpi-modal-footer {
+    padding: 12px 24px;
+    border-top: 1px solid var(--ui--underline--light-grey);
+    background: var(--card-light-grey);
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+  /* Make KPI cards look clickable */
+  .kpi-card.clickable {
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.12s, border-color 0.15s;
+    border: 1px solid var(--ui--underline--light-grey);
+    position: relative;
+  }
+  .kpi-card.clickable:hover {
+    box-shadow: 0 4px 16px rgba(33,71,244,0.12);
+    transform: translateY(-1px);
+    border-color: rgba(33,71,244,0.3);
+  }
+  .kpi-card.clickable::after {
+    content: '↗';
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-size: 12px;
+    color: var(--text--dark--20);
+    transition: color 0.12s;
+  }
+  .kpi-card.clickable:hover::after { color: var(--action-primary-blue); }
+  .trainer-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--accent-blue--50);
+    color: var(--action-primary-blue);
+  }
 </style>
 </head>
 <body>
@@ -905,27 +1076,27 @@
     <div class="section-title" style="margin-bottom:14px;">📈 Performance Overview</div>
   </div>
   <div class="kpi-grid">
-    <div class="kpi-card kpi-accent-left">
+    <div class="kpi-card kpi-accent-left clickable" onclick="openKpiModal('revYear')" title="Click for breakdown">
       <div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
       <div class="kpi-card-value" id="kpiRevYear">£—</div>
-      <div class="kpi-card-sub">Exc. VAT</div>
+      <div class="kpi-card-sub">Exc. VAT · click for detail</div>
     </div>
-    <div class="kpi-card kpi-accent-left kpi-accent-yellow">
+    <div class="kpi-card kpi-accent-left kpi-accent-yellow clickable" onclick="openKpiModal('revMonth')" title="Click for breakdown">
       <div class="kpi-card-label">Revenue This Month <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
       <div class="kpi-card-value" id="kpiRevMonth">£—</div>
       <div id="kpiRevMonthDelta"></div>
     </div>
-    <div class="kpi-card kpi-accent-left kpi-accent-green">
+    <div class="kpi-card kpi-accent-left kpi-accent-green clickable" onclick="openKpiModal('avgFee')" title="Click for breakdown">
       <div class="kpi-card-label">Avg Training Fee (Year) <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
       <div class="kpi-card-value" id="kpiAvgFee">£—</div>
-      <div class="kpi-card-sub">Per booking</div>
+      <div class="kpi-card-sub">Per booking · click for detail</div>
     </div>
-    <div class="kpi-card kpi-accent-left kpi-accent-orange">
+    <div class="kpi-card kpi-accent-left kpi-accent-orange clickable" onclick="openKpiModal('days')" title="Click for breakdown">
       <div class="kpi-card-label">Training Days This Year</div>
       <div class="kpi-card-value" id="kpiDaysYear">—</div>
       <div class="kpi-card-sub" id="kpiDaysMonth">— this month</div>
     </div>
-    <div class="kpi-card kpi-accent-left" style="border-left-color:#9c27b0;">
+    <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#9c27b0;" onclick="openKpiModal('bookings')" title="Click for breakdown">
       <div class="kpi-card-label">Total Bookings (Year)</div>
       <div class="kpi-card-value" id="kpiBookingsYear">—</div>
       <div class="kpi-card-sub" id="kpiBookingsMonth">— this month</div>
@@ -1038,6 +1209,31 @@
           onkeydown="if(event.key==='Enter') addTrainer()">
         <button class="btn btn-primary" onclick="addTrainer()">Add</button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- KPI DETAIL MODAL -->
+<div class="kpi-modal-overlay" id="kpiModalOverlay" onclick="closeKpiModal(event)">
+  <div class="kpi-modal">
+    <div class="kpi-modal-header">
+      <div class="kpi-modal-header-left">
+        <div class="kpi-modal-title" id="kpiModalTitle">—</div>
+        <div class="kpi-modal-subtitle" id="kpiModalSubtitle">—</div>
+        <div class="kpi-modal-headline" id="kpiModalHeadline">—</div>
+      </div>
+      <button class="kpi-modal-close" onclick="closeKpiModal()">✕ Close</button>
+    </div>
+    <div class="kpi-modal-stats" id="kpiModalStats"></div>
+    <div class="kpi-modal-body">
+      <table class="kpi-modal-table">
+        <thead id="kpiModalTableHead"></thead>
+        <tbody id="kpiModalTableBody"></tbody>
+      </table>
+    </div>
+    <div class="kpi-modal-footer">
+      <button class="btn btn-ghost" onclick="closeKpiModal()">✕ Close</button>
     </div>
   </div>
 </div>
@@ -2311,6 +2507,265 @@ function deleteTrainer(name) {
   renderUnassigned();
   showToast(name + ' removed', '');
 }
+
+
+// =============================================
+// KPI DETAIL MODALS
+// =============================================
+const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function openKpiModal(type) {
+  const overlay = document.getElementById('kpiModalOverlay');
+  overlay.classList.add('open');
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const lastMonth = month === 0 ? 11 : month - 1;
+  const lastMonthYear = month === 0 ? year - 1 : year;
+
+  // Base datasets
+  const bookedYear  = allData.filter(r => r.date && r.date.getFullYear() === year && r.option !== '1' && r.status === 'Booked');
+  const bookedMonth = allData.filter(r => r.date && r.date.getFullYear() === year && r.date.getMonth() === month && r.option !== '1' && r.status === 'Booked');
+  const bookedLast  = allData.filter(r => r.date && r.date.getFullYear() === lastMonthYear && r.date.getMonth() === lastMonth && r.option !== '1' && r.status === 'Booked');
+
+  const configs = {
+
+    // ── Total Revenue This Year ──────────────────────────────────────────────
+    revYear: () => {
+      const rows = [...bookedYear].sort((a,b) => (b.date||0) - (a.date||0));
+      const total = rows.reduce((s,r) => s+r.revenue, 0);
+      const byTrainer = {};
+      const byOption  = {};
+      const byMonth   = Array(12).fill(0);
+      rows.forEach(r => {
+        byTrainer[r.trainer||'Unassigned'] = (byTrainer[r.trainer||'Unassigned']||0) + r.revenue;
+        byOption[r.optionLabel||r.option]  = (byOption[r.optionLabel||r.option]||0) + r.revenue;
+        if (r.date) byMonth[r.date.getMonth()] += r.revenue;
+      });
+      const topTrainer = Object.entries(byTrainer).sort((a,b)=>b[1]-a[1])[0];
+      const topMonth   = byMonth.indexOf(Math.max(...byMonth));
+
+      return {
+        title: 'Total Revenue — ' + year,
+        subtitle: 'All confirmed Booked sessions, excluding Option 1 (On Demand)',
+        headline: '£' + total.toLocaleString(),
+        stats: [
+          { label: 'Bookings', value: rows.length, sub: 'contributing' },
+          { label: 'Exc. VAT total', value: '£' + total.toLocaleString(), sub: '' },
+          { label: 'Best month', value: MONTHS_SHORT[topMonth], sub: '£' + byMonth[topMonth].toLocaleString() },
+          { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? '£' + topTrainer[1].toLocaleString() : '' },
+        ],
+        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th>Days</th><th style="text-align:right;">Revenue</th></tr>',
+        body: rows.map(r => `<tr>
+          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td><strong>${esc(r.company)}</strong></td>
+          <td>${esc(r.contact)||'—'}</td>
+          <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+          <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+          <td>${OPTION_DAYS[r.option]||0}d</td>
+          <td style="text-align:right;" class="col-money">£${r.revenue.toLocaleString()}</td>
+        </tr>`).join('') +
+        `<tr style="background:var(--card-light-grey);font-weight:700;">
+          <td colspan="6" style="text-align:right;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text--dark--30);">Total</td>
+          <td style="text-align:right;font-size:15px;">£${total.toLocaleString()}</td>
+        </tr>`
+      };
+    },
+
+    // ── Revenue This Month ───────────────────────────────────────────────────
+    revMonth: () => {
+      const rows = [...bookedMonth].sort((a,b) => (b.date||0) - (a.date||0));
+      const total = rows.reduce((s,r) => s+r.revenue, 0);
+      const totalLast = bookedLast.reduce((s,r) => s+r.revenue, 0);
+      const pctChange = totalLast > 0 ? Math.round(((total - totalLast) / totalLast) * 100) : null;
+      const byTrainer = {};
+      rows.forEach(r => { byTrainer[r.trainer||'Unassigned'] = (byTrainer[r.trainer||'Unassigned']||0) + r.revenue; });
+      const topTrainer = Object.entries(byTrainer).sort((a,b)=>b[1]-a[1])[0];
+
+      return {
+        title: 'Revenue — ' + MONTHS_FULL[month] + ' ' + year,
+        subtitle: 'Booked sessions submitted or dated in ' + MONTHS_FULL[month],
+        headline: '£' + total.toLocaleString(),
+        stats: [
+          { label: 'Bookings', value: rows.length, sub: 'this month' },
+          { label: 'Last month', value: '£' + totalLast.toLocaleString(), sub: MONTHS_SHORT[lastMonth] },
+          { label: 'vs Last month', value: pctChange !== null ? (pctChange >= 0 ? '▲ +' : '▼ ') + pctChange + '%' : '—', sub: pctChange >= 0 ? 'improvement' : 'decline' },
+          { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? '£' + topTrainer[1].toLocaleString() : '' },
+        ],
+        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:right;">Revenue</th></tr>',
+        body: rows.length === 0
+          ? '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text--dark--30);">No booked sessions this month yet</td></tr>'
+          : rows.map(r => `<tr>
+          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td><strong>${esc(r.company)}</strong></td>
+          <td>${esc(r.contact)||'—'}</td>
+          <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+          <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+          <td style="text-align:right;" class="col-money">£${r.revenue.toLocaleString()}</td>
+        </tr>`).join('') +
+        (rows.length > 0 ? `<tr style="background:var(--card-light-grey);font-weight:700;">
+          <td colspan="5" style="text-align:right;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text--dark--30);">Total</td>
+          <td style="text-align:right;font-size:15px;">£${total.toLocaleString()}</td>
+        </tr>` : '')
+      };
+    },
+
+    // ── Average Training Fee ─────────────────────────────────────────────────
+    avgFee: () => {
+      const rows = [...bookedYear].filter(r => r.revenue > 0).sort((a,b) => b.revenue - a.revenue);
+      const total = rows.reduce((s,r) => s+r.revenue, 0);
+      const avg = rows.length ? Math.round(total / rows.length) : 0;
+      const highest = rows[0];
+      const lowest = rows[rows.length-1];
+
+      return {
+        title: 'Average Training Fee — ' + year,
+        subtitle: 'Per booking average, all Booked sessions with a value set',
+        headline: '£' + avg.toLocaleString(),
+        stats: [
+          { label: 'Bookings included', value: rows.length, sub: 'with a fee set' },
+          { label: 'Total revenue', value: '£' + total.toLocaleString(), sub: 'exc. VAT' },
+          { label: 'Highest fee', value: highest ? '£' + highest.revenue.toLocaleString() : '—', sub: highest ? esc(highest.company) : '' },
+          { label: 'Lowest fee', value: lowest ? '£' + lowest.revenue.toLocaleString() : '—', sub: lowest ? esc(lowest.company) : '' },
+        ],
+        head: '<tr><th>Company</th><th>Contact</th><th>Date</th><th>Option</th><th>Trainer</th><th style="text-align:right;">Fee</th><th style="text-align:right;">vs Avg</th></tr>',
+        body: rows.map(r => {
+          const diff = r.revenue - avg;
+          const diffStr = (diff >= 0 ? '+' : '') + '£' + Math.abs(diff).toLocaleString();
+          const diffCol = diff > 0 ? '#2a7a26' : diff < 0 ? '#c0303d' : '#999';
+          return `<tr>
+            <td><strong>${esc(r.company)}</strong></td>
+            <td>${esc(r.contact)||'—'}</td>
+            <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+            <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+            <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+            <td style="text-align:right;" class="col-money">£${r.revenue.toLocaleString()}</td>
+            <td style="text-align:right;font-weight:600;color:${diffCol};">${diffStr}</td>
+          </tr>`;
+        }).join('')
+      };
+    },
+
+    // ── Training Days ────────────────────────────────────────────────────────
+    days: () => {
+      const rows = [...bookedYear].sort((a,b) => (b.date||0) - (a.date||0));
+      const totalDays = rows.reduce((s,r) => s + (OPTION_DAYS[r.option]||0), 0);
+      const monthDays = bookedMonth.reduce((s,r) => s + (OPTION_DAYS[r.option]||0), 0);
+      const byTrainer = {};
+      TRAINERS.forEach(t => { byTrainer[t] = { days: 0, bookings: 0 }; });
+      rows.forEach(r => {
+        const t = r.trainer || 'Unassigned';
+        if (!byTrainer[t]) byTrainer[t] = { days: 0, bookings: 0 };
+        byTrainer[t].days += OPTION_DAYS[r.option]||0;
+        byTrainer[t].bookings++;
+      });
+      const topTrainer = Object.entries(byTrainer).sort((a,b)=>b[1].days-a[1].days)[0];
+
+      return {
+        title: 'Training Days — ' + year,
+        subtitle: 'Based on session type: 1 Day = 1, 2 Day = 2, Accounting = 1, HQ = 1, On Demand = 0',
+        headline: totalDays + ' days',
+        stats: [
+          { label: 'Total sessions', value: rows.length, sub: 'booked this year' },
+          { label: 'This month', value: monthDays + 'd', sub: MONTHS_SHORT[month] + ' booked days' },
+          { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? topTrainer[1].days + ' days' : '' },
+          { label: 'Avg days / booking', value: rows.length ? (totalDays / rows.length).toFixed(1) : '—', sub: 'per session' },
+        ],
+        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th style="text-align:center;">Days</th><th style="text-align:right;">Revenue</th></tr>',
+        body: rows.map(r => `<tr>
+          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td><strong>${esc(r.company)}</strong></td>
+          <td>${esc(r.contact)||'—'}</td>
+          <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+          <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+          <td style="text-align:center;" class="col-highlight">${OPTION_DAYS[r.option]||0}</td>
+          <td style="text-align:right;" class="col-money">£${r.revenue.toLocaleString()}</td>
+        </tr>`).join('') +
+        `<tr style="background:var(--card-light-grey);font-weight:700;">
+          <td colspan="5" style="text-align:right;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text--dark--30);">Total days</td>
+          <td style="text-align:center;font-size:15px;" class="col-highlight">${totalDays}</td>
+          <td style="text-align:right;font-size:15px;">£${rows.reduce((s,r)=>s+r.revenue,0).toLocaleString()}</td>
+        </tr>`
+      };
+    },
+
+    // ── Total Bookings ───────────────────────────────────────────────────────
+    bookings: () => {
+      const rows = [...bookedYear].sort((a,b) => (b.date||0) - (a.date||0));
+      const byOption = {};
+      const byTrainer = {};
+      const byMonth = Array(12).fill(0);
+      rows.forEach(r => {
+        byOption[r.optionLabel||r.option] = (byOption[r.optionLabel||r.option]||0) + 1;
+        const t = r.trainer || 'Unassigned';
+        byTrainer[t] = (byTrainer[t]||0) + 1;
+        if (r.date) byMonth[r.date.getMonth()]++;
+      });
+      const topOption  = Object.entries(byOption).sort((a,b)=>b[1]-a[1])[0];
+      const topTrainer = Object.entries(byTrainer).sort((a,b)=>b[1]-a[1])[0];
+      const busyMonth  = byMonth.indexOf(Math.max(...byMonth));
+
+      return {
+        title: 'All Bookings — ' + year,
+        subtitle: 'Every confirmed Booked session this year, newest first',
+        headline: rows.length + ' bookings',
+        stats: [
+          { label: 'This month', value: bookedMonth.length, sub: MONTHS_SHORT[month] },
+          { label: 'Most popular option', value: topOption ? topOption[0].replace(' Day','d').replace('Personalised ','') : '—', sub: topOption ? topOption[1] + ' bookings' : '' },
+          { label: 'Busiest month', value: MONTHS_SHORT[busyMonth], sub: byMonth[busyMonth] + ' bookings' },
+          { label: 'Top trainer', value: topTrainer ? topTrainer[0] : '—', sub: topTrainer ? topTrainer[1] + ' bookings' : '' },
+        ],
+        head: '<tr><th>Date</th><th>Company</th><th>Contact</th><th>Email</th><th>Option</th><th>Trainer</th><th>Days</th><th style="text-align:right;">Revenue</th></tr>',
+        body: rows.map(r => `<tr>
+          <td style="white-space:nowrap;">${formatDate(r.date)}</td>
+          <td><strong>${esc(r.company)}</strong></td>
+          <td>${esc(r.contact)||'—'}</td>
+          <td style="font-size:11px;color:var(--text--dark--30);">${esc(r.email)||'—'}</td>
+          <td><span class="option-badge opt-${r.option}">${esc(r.optionLabel)}</span></td>
+          <td>${r.trainer ? '<span class="trainer-pill">'+esc(r.trainer)+'</span>' : '<span style="color:var(--text--dark--20)">—</span>'}</td>
+          <td>${OPTION_DAYS[r.option]||0}d</td>
+          <td style="text-align:right;" class="col-money">£${r.revenue.toLocaleString()}</td>
+        </tr>`).join('') +
+        `<tr style="background:var(--card-light-grey);font-weight:700;">
+          <td colspan="7" style="text-align:right;font-size:11px;letter-spacing:0.4px;text-transform:uppercase;color:var(--text--dark--30);">Total revenue</td>
+          <td style="text-align:right;font-size:15px;">£${rows.reduce((s,r)=>s+r.revenue,0).toLocaleString()}</td>
+        </tr>`
+      };
+    }
+  };
+
+  const cfg = configs[type] ? configs[type]() : null;
+  if (!cfg) return;
+
+  document.getElementById('kpiModalTitle').textContent    = cfg.title;
+  document.getElementById('kpiModalSubtitle').textContent = cfg.subtitle;
+  document.getElementById('kpiModalHeadline').textContent = cfg.headline;
+  document.getElementById('kpiModalTableHead').innerHTML  = cfg.head;
+  document.getElementById('kpiModalTableBody').innerHTML  = cfg.body;
+
+  // Stats bar
+  document.getElementById('kpiModalStats').innerHTML = cfg.stats.map(s => `
+    <div class="kpi-modal-stat">
+      <span class="kpi-modal-stat-label">${s.label}</span>
+      <span class="kpi-modal-stat-value">${s.value}</span>
+      ${s.sub ? '<span class="kpi-modal-stat-sub">'+s.sub+'</span>' : ''}
+    </div>
+  `).join('');
+}
+
+function closeKpiModal(event) {
+  if (event && event.target !== document.getElementById('kpiModalOverlay')) return;
+  document.getElementById('kpiModalOverlay').classList.remove('open');
+}
+
+// Also close on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('kpiModalOverlay').classList.remove('open');
+  }
+});
 
 // =============================================
 // INIT
