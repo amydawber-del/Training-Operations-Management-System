@@ -930,7 +930,12 @@ function getTrainerColor(name) {
 function initUserSelector() {
   const sel = document.getElementById('userSelect');
   sel.innerHTML = '<option value="">— Select user —</option>' + USERS.map(u => '<option value="'+u.name+'">'+u.name+(u.role==='admin'?' ★':u.role==='viewer'?' 👁':'')+'</option>').join('');
-  const cur = getCurrentUser();
+  let cur = getCurrentUser();
+  // Default to Amy (admin) if no user has been selected yet
+  if (!cur) {
+    const amy = USERS.find(u => u.name === 'Amy');
+    if (amy) { setCurrentUser(amy); cur = amy; }
+  }
   if (cur) sel.value = cur.name;
   updateHeaderUser();
 }
