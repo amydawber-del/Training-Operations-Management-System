@@ -928,7 +928,17 @@ let _notesRowIndex = null;
 const OVERRIDE_KEY = 'streetDashboardOverrides_v2';
 function getOverrides() { try { return JSON.parse(sessionStorage.getItem(OVERRIDE_KEY) || '{}'); } catch(e) { return {}; } }
 function saveOverride(rowIndex, fields) { const o = getOverrides(); o[rowIndex] = Object.assign(o[rowIndex]||{}, fields); try { sessionStorage.setItem(OVERRIDE_KEY, JSON.stringify(o)); } catch(e) {} }
-function applyOverrides(rows) { const o = getOverrides(); return rows.map(r => { const ov = o[r.rowIndex]; return ov ? Object.assign({}, r, ov) : r; }); }
+function applyOverrides(rows) {
+  const o = getOverrides();
+  return rows.map(r => {
+    const ov = o[r.rowIndex];
+    if (!ov) return r;
+    const merged = Object.assign({}, r, ov);
+    // Re-hydrate date fields that JSON round-trip turns into strings
+    if (merged.date && !(merged.date instanceof Date)) merged.date = toDate(merged.date);
+    return merged;
+  });
+}
 
 // Notes cache (stored in localStorage by rowIndex)
 const NOTES_KEY = 'streetDashboardNotes_v2';
@@ -968,7 +978,11 @@ function formatDate(d) { if(!d) return '—'; const dt=d instanceof Date?d:new D
 function isWeekend(d) { const day=d.getDay(); return day===0||day===6; }
 function isBankHoliday(d) { return UK_BANK_HOLIDAYS.has(toDateStr(d)); }
 function isWorkday(d) { return !isWeekend(d) && !isBankHoliday(d); }
-function toDateStr(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function toDateStr(d) {
+  const dt = (d instanceof Date) ? d : toDate(d);
+  if (!dt) return '';
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
 function addDays(d, n) { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 
 // Given a training date and number of days, return all blocked dates
@@ -1199,21 +1213,26 @@ function normaliseRow(obj, rowIndex) {
   };
 }
 
-function parseDate(str) {
-  if (!str) return null;
-  const s = String(str).trim();
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) { const d=new Date(Number(m[3]),Number(m[2])-1,Number(m[1])); return isNaN(d.getTime())?null:d; }
-  const d = new Date(s); return isNaN(d.getTime())?null:d;
+// Safe date coercion — always returns a real Date object or null, never a string
+function toDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const s = String(v).trim();
+  if (!s) return null;
+  // DD/MM/YYYY
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) { const d=new Date(Number(dmy[3]),Number(dmy[2])-1,Number(dmy[1])); return isNaN(d.getTime())?null:d; }
+  // ISO / any other recognised format
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
 }
+function parseDate(str) { return toDate(str); }
+
 function formatDateInput(val) {
   if (!val) return '';
-  const s=String(val).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
-  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
-  const d=new Date(s); if(!isNaN(d.getTime())) return d.toISOString().slice(0,10);
-  return '';
+  const d = toDate(val);
+  if (!d) return '';
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
 // =============================================
@@ -1301,14 +1320,13 @@ function processData() {
 // STALE ROW HELPER
 // =============================================
 function isStale(row) {
-  if (!row.date && !row.timestamp) return false;
-  const d = row.date || parseDate(row.timestamp);
+  const d = toDate(row.date) || toDate(row.timestamp);
   if (!d) return false;
   return (Date.now() - d.getTime()) > 7*24*60*60*1000;
 }
 function staleTag() { return '<span class="stale-badge">&#9200; 7+ days</span>'; }
 function daysAgo(row) {
-  const d = row.date || parseDate(row.timestamp); if (!d) return null;
+  const d = toDate(row.date) || toDate(row.timestamp); if (!d) return null;
   return Math.floor((Date.now()-d.getTime())/(24*60*60*1000));
 }
 
@@ -1760,7 +1778,7 @@ function renderTrainerWorkload() {
   const now=new Date();
   allData.forEach(r=>{
     if(!r.trainer||!counts.hasOwnProperty(r.trainer)||r.status==='Cancelled') return;
-    const d=r.date;
+    const d=toDate(r.date);
     if(d&&d>=cutoff&&d<=now) counts[r.trainer]++;
     if(r.status==='Booked'&&r.bookedOn){const bd=new Date(r.bookedOn+'T00:00:00');if(bd>=now) upcoming[r.trainer]++;}
     if(r.status==='Pending') upcoming[r.trainer]++;
@@ -1810,7 +1828,8 @@ function getNextFreeDate(trainer, numTrainingDays) {
 // KPIs
 // =============================================
 function kpiDate(r) {
-  if(r.bookedOn){const d=parseDate(r.bookedOn);if(d&&!isNaN(d))return d;} return r.date||null;
+  if (r.bookedOn) { const d = toDate(r.bookedOn); if (d) return d; }
+  return toDate(r.date) || null;
 }
 
 function renderKPIs() {
