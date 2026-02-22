@@ -517,7 +517,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <div class="chart-card">
       <div class="chart-title">Monthly Revenue</div>
       <div class="chart-subtitle">This year vs last year (exc. VAT)</div>
-      <div style="height:240px;"><canvas id="revenueChart"></canvas></div>
+      <div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div>
     </div>
     <div class="chart-card">
       <div class="chart-title">Month Comparison</div>
@@ -526,7 +526,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <div class="compare-card"><div class="compare-card-label" id="thisMonthLabel">This Month</div><div class="compare-card-value" id="thisMonthRev">&#163;&#8212;</div></div>
         <div class="compare-card"><div class="compare-card-label" id="lastMonthLabel">Last Month</div><div class="compare-card-value" id="lastMonthRev">&#163;&#8212;</div></div>
       </div>
-      <div style="height:150px;"><canvas id="optionChart"></canvas></div>
+      <div style="height:150px;position:relative;"><canvas id="optionChart"></canvas></div>
       <div class="chart-subtitle" style="margin-top:10px;margin-bottom:0;">Bookings by training option (this year)</div>
     </div>
   </div>
@@ -1279,17 +1279,22 @@ function generateDemoData() {
 // =============================================
 // PROCESS & RENDER
 // =============================================
+function tryRender(fn, label) {
+  try { fn(); }
+  catch(e) { console.error('Render error in ' + label + ':', e); }
+}
+
 function processData() {
-  renderUnassigned();
-  renderActionPanel();
-  renderKPIs();
-  renderCharts();
-  renderTrainerWorkload();
-  renderAllBookings();
-  populateTrainerFilter();
-  populateCalTrainerFilter();
-  renderCalendar();
-  renderUpcoming();
+  tryRender(renderUnassigned,       'renderUnassigned');
+  tryRender(renderActionPanel,      'renderActionPanel');
+  tryRender(renderKPIs,             'renderKPIs');
+  tryRender(renderCharts,           'renderCharts');
+  tryRender(renderTrainerWorkload,  'renderTrainerWorkload');
+  tryRender(renderAllBookings,      'renderAllBookings');
+  tryRender(populateTrainerFilter,  'populateTrainerFilter');
+  tryRender(populateCalTrainerFilter,'populateCalTrainerFilter');
+  tryRender(renderCalendar,         'renderCalendar');
+  tryRender(renderUpcoming,         'renderUpcoming');
 }
 
 // =============================================
@@ -1644,6 +1649,15 @@ function populateCalTrainerFilter() {
   sel.innerHTML = '<option value="">All Trainers</option>' + TRAINERS.map(t=>'<option value="'+t+'"'+(t===cur?' selected':'')+'>'+t+'</option>').join('');
 }
 
+// Calendar event store — maps a numeric key to event data so onclick doesn't embed JSON
+const _calEventStore = {};
+let _calEventKey = 0;
+function storeCalEvent(ev) {
+  const k = ++_calEventKey;
+  _calEventStore[k] = ev;
+  return k;
+}
+
 // Build calendar events from allData (Booked only)
 function buildCalEvents(trainerFilter) {
   const events = {}; // dateStr -> [{type,title,color,trainer,company,...}]
@@ -1668,6 +1682,9 @@ function buildCalEvents(trainerFilter) {
 }
 
 function renderCalendar() {
+  // Reset event store on each render
+  Object.keys(_calEventStore).forEach(k => delete _calEventStore[k]);
+  _calEventKey = 0;
   const {year,month}=calState;
   const tf = document.getElementById('calFilterTrainer')?.value||'';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1696,8 +1713,8 @@ function renderCalendar() {
       +shown.map(ev => {
         const bg=ev.type==='travel'?'#fef3c7':ev.type==='admin'?'#e0e7ff':(ev.color||'#b8caff');
         const tc=ev.type==='travel'?'#92400e':ev.type==='admin'?'#3730a3':'#fff';
-        const evtJson=encodeURIComponent(JSON.stringify(ev));
-        return '<span class="cal-event" style="background:'+bg+';color:'+tc+';" onclick="openCalEventModal(JSON.parse(decodeURIComponent(\''+evtJson+'\')))" title="'+esc(ev.title)+(ev.trainer?' ('+ev.trainer+')':'')+'">'+esc(ev.title)+'</span>';
+        const evtKey=storeCalEvent(ev);
+        return '<span class="cal-event" style="background:'+bg+';color:'+tc+';" onclick="openCalEventModal(_calEventStore['+evtKey+'])" title="'+esc(ev.title)+(ev.trainer?' ('+ev.trainer+')':'')+'">'+esc(ev.title)+'</span>';
       }).join('')
       +(extra>0?'<span class="cal-event-more">+'+extra+' more</span>':'')
       +'</div>';
