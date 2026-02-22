@@ -405,7 +405,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 2. UNASSIGNED REQUESTS -->
-  <div style="margin-bottom:24px;">
+  <div id="unassignedSection" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title">&#128276; Unassigned Requests<span class="badge" id="unassignedBadge">0</span></div>
     </div>
@@ -431,7 +431,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 3. CALENDAR -->
-  <div style="margin-bottom:24px;">
+  <div id="calendarSection" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title">&#128197; Training Calendar</div>
       <button class="refresh-btn admin-only" onclick="openCalSettings()" style="background:rgba(33,71,244,0.1);border-color:rgba(33,71,244,0.3);color:var(--action-primary-blue);font-size:11px;">&#9881; Cal Settings</button>
@@ -472,7 +472,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 4. NEEDS ACTION -->
-  <div style="margin-bottom:24px;">
+  <div id="actionSection" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title" style="color:#8a5a2a;">&#9888;&#65039; Needs Action &#8212; Pending<span class="badge orange" id="actionBadge">0</span></div>
       <span style="font-size:11px;color:var(--text--dark--30);">Update status to Booked or Cancelled &#8212; admin only</span>
@@ -499,7 +499,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 5. KPI CARDS -->
-  <div style="margin-bottom:16px;"><div class="section-title" style="margin-bottom:14px;">&#128200; Performance Overview</div></div>
+  <div id="kpiSection" style="margin-bottom:16px;"><div class="section-title" style="margin-bottom:14px;">&#128200; Performance Overview</div></div>
   <div class="kpi-grid">
     <div class="kpi-card kpi-accent-left clickable" onclick="openKpiModal('revYear')">
       <div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
@@ -529,7 +529,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 6. CHARTS -->
-  <div class="charts-grid">
+  <div id="chartsSection" class="charts-grid">
     <div class="chart-card">
       <div class="chart-title">Monthly Revenue</div>
       <div class="chart-subtitle">This year vs last year (exc. VAT)</div>
@@ -548,7 +548,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 7. ALL BOOKINGS -->
-  <div>
+  <div id="allBookingsSection">
     <div class="section-header" style="flex-wrap:wrap;gap:10px;">
       <div class="section-title">&#128203; All Bookings<span class="badge green" id="allBadge">0</span></div>
       <div class="filter-bar">
@@ -654,11 +654,17 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         </select>
       </div>
       <div class="form-row">
-        <label class="form-label required">Invoice Value (&#163;)</label>
+        <label class="form-label">Invoice Value (&#163;) <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">optional — £0 allowed</span></label>
         <input type="number" class="form-input" id="bookValue" min="0" step="50" placeholder="e.g. 1100">
         <div class="form-hint" id="bookValueHint">&#8212;</div>
       </div>
       <div class="status-preview booked">&#128200; Status will be set to <strong>Booked</strong></div>
+    </div>
+    <div id="bookingOverrideRow" style="display:none;padding:8px 20px;background:#fff8f0;border-top:1px solid #fde8c8;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="bookingOverride" onchange="checkBookingWarnings()">
+        ⚠️ Admin override — confirm despite double booking conflict
+      </label>
     </div>
     <div class="modal-footer">
       <span id="bookingBlockMsg" style="font-size:12px;color:#c0303d;font-weight:600;margin-right:auto;display:none;"></span>
@@ -869,7 +875,7 @@ const PERM_DEFS = [
   { key:'canAddNotes',         label:'Add Notes',                 section:null },
   { key:'canViewCalendar',     label:'View Calendar',             section:'calendarSection' },
   { key:'canViewAllBookings',  label:'View All Bookings',         section:'allBookingsSection' },
-  { key:'canViewKPIs',         label:'View KPIs & Charts',        section:'kpiSection' },
+  { key:'canViewKPIs',         label:'View KPIs & Charts',        section:'kpiSection', section2:'chartsSection' },
   { key:'canViewActivity',     label:'View Activity Feed',        section:null },
 ];
 
@@ -967,24 +973,18 @@ function updateHeaderUser() {
 
 function applyPermissions() {
   const admin = isAdmin();
-  // Admin-only controls (test, refresh, manage trainers, cal settings, book/cancel buttons)
+  // Admin-only toolbar buttons (test, refresh, manage trainers, cal settings)
   document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
-  // Granular section visibility
+  // Granular section visibility — always evaluated from permissions, never blocked by admin-only
   PERM_DEFS.forEach(p => {
-    if (!p.section) return;
-    const el = document.getElementById(p.section);
-    if (el) el.style.display = (admin || hasPerm(p.key)) ? '' : 'none';
+    const show = admin || hasPerm(p.key);
+    if (p.section)  { const el = document.getElementById(p.section);  if (el) el.style.display = show ? '' : 'none'; }
+    if (p.section2) { const el = document.getElementById(p.section2); if (el) el.style.display = show ? '' : 'none'; }
   });
-  // Assign button visibility
-  document.querySelectorAll('.assign-btn').forEach(el => { el.style.display = (admin || hasPerm('canAssign')) ? '' : 'none'; });
-  // Notes button visibility
-  document.querySelectorAll('.notes-btn').forEach(el => { el.style.display = (admin || hasPerm('canAddNotes')) ? '' : 'none'; });
-  // Book/cancel buttons already gated by .admin-only — extend to canBook/canCancel
-  document.querySelectorAll('.book-btn').forEach(el => { el.style.display = (admin || hasPerm('canBook')) ? '' : 'none'; });
-  document.querySelectorAll('.cancel-btn').forEach(el => { el.style.display = (admin || hasPerm('canCancel')) ? '' : 'none'; });
-  // Activity feed link
+  // Activity feed button
   const actBtn = document.getElementById('activityFeedBtn');
   if (actBtn) actBtn.style.display = (admin || hasPerm('canViewActivity')) ? '' : 'none';
+  // Re-render panels so book/cancel/notes/assign buttons reflect current permissions
   renderActionPanel();
   renderUnassigned();
 }
@@ -1501,36 +1501,40 @@ function renderActionPanel() {
     tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">Nothing needs action right now</div></div></td></tr>';
     return;
   }
-  const admin = isAdmin();
+  const canBook   = isAdmin() || hasPerm('canBook');
+  const canCancel = isAdmin() || hasPerm('canCancel');
+  const canNotes  = isAdmin() || hasPerm('canAddNotes');
   tbody.innerHTML = rows.map(r => {
     const stale = isStale(r);
     const color = getTrainerColor(r.trainer);
     const trainerHtml = r.trainer
       ? '<span class="trainer-pill" style="background:'+color+'22;color:'+color+';">'+esc(r.trainer)+'</span>'
-      : '<span style="color:var(--text--dark--20);font-size:12px;">—</span>';
-    const statusHtml = admin
-      ? '<div style="display:flex;gap:6px;">'
-          +'<button class="btn btn-success btn-sm" onclick="openBookModal('+r.rowIndex+')">&#128200; Book</button>'
-          +'<button class="btn btn-danger btn-sm" onclick="openCancelModal('+r.rowIndex+')">&#10007; Cancel</button>'
-        +'</div>'
+      : '<span style="color:var(--text--dark--20);font-size:12px;">&#8212;</span>';
+    const actionBtns = [];
+    if (canBook)   actionBtns.push('<button class="btn btn-success btn-sm book-btn" onclick="openBookModal('+r.rowIndex+')">&#128200; Book</button>');
+    if (canCancel) actionBtns.push('<button class="btn btn-danger btn-sm cancel-btn" onclick="openCancelModal('+r.rowIndex+')">&#10007; Cancel</button>');
+    const statusHtml = actionBtns.length
+      ? '<div style="display:flex;gap:6px;">'+actionBtns.join('')+'</div>'
       : '<span class="status-badge status-pending">Pending</span>';
+    const notesBtn = canNotes
+      ? '<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm notes-btn" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button></div>'
+      : '';
     return '<tr class="'+(stale?'row-stale':'')+'">'
       +'<td style="white-space:nowrap;font-size:12px;color:var(--text--dark--30);">'+formatDate(r.date||r.timestamp)+(stale?'<br>'+staleTag():'')+'</td>'
       +'<td>'+companyCell(r)+'</td>'
       +'<td style="font-size:12px;">'+esc(r.contact||'')+'</td>'
       +'<td><span class="option-badge opt-'+r.option+'">Opt '+r.option+'</span></td>'
-      +'<td style="font-size:12px;color:var(--text--dark--30);">'+esc(r.preferredDate||'—')+'</td>'
+      +'<td style="font-size:12px;color:var(--text--dark--30);">'+esc(r.preferredDate||'&#8212;')+'</td>'
       +'<td>'+trainerHtml+'</td>'
-      +'<td>'+statusHtml+'<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button></div></td>'
+      +'<td>'+statusHtml+notesBtn+'</td>'
       +'</tr>';
   }).join('');
 }
 
-// =============================================
 // BOOKING MODAL
 // =============================================
 function openBookModal(rowIndex) {
-  if (!isAdmin()) { showToast('Admin access required','error'); return; }
+  if (!isAdmin() && !hasPerm('canBook')) { showToast('Permission required','error'); return; }
   const row = allData.find(r=>r.rowIndex===rowIndex); if (!row) return;
   _bookRowIndex = rowIndex;
   document.getElementById('bookModalCompany').textContent = row.company + (row.contact?' · '+row.contact:'');
@@ -1543,6 +1547,8 @@ function openBookModal(rowIndex) {
   sel.innerHTML = '<option value="">— Select trainer —</option>' + TRAINERS.map(t=>'<option value="'+t+'"'+(t===row.trainer?' selected':'')+'>'+t+'</option>').join('');
   document.getElementById('bookWarnings').innerHTML = '';
   document.getElementById('bookingBlockMsg').style.display='none';
+  const ovr = document.getElementById('bookingOverride'); if (ovr) ovr.checked = false;
+  const ovrRow = document.getElementById('bookingOverrideRow'); if (ovrRow) ovrRow.style.display='none';
   document.getElementById('confirmBookBtn').disabled=false;
   document.getElementById('bookOverlay').classList.add('open');
   checkBookingWarnings();
@@ -1590,13 +1596,20 @@ function checkBookingWarnings() {
   wrap.innerHTML = warnings.map(w=>'<div class="warning-box '+w.type+'"><span>'+(w.type==='error'?'🚫':'⚠️')+'</span><span>'+esc(w.msg.replace(/^🚫 |^⚠️ /,''))+'</span></div>').join('');
   const blockMsg = document.getElementById('bookingBlockMsg');
   const btn = document.getElementById('confirmBookBtn');
+  const overrideRow = document.getElementById('bookingOverrideRow');
+  const overrideChecked = document.getElementById('bookingOverride')?.checked;
   if (hardBlock) {
-    blockMsg.textContent='Cannot confirm — trainer double booking detected';
-    blockMsg.style.display='';
-    btn.disabled=true;
+    if (overrideRow) overrideRow.style.display = isAdmin() ? '' : 'none';
+    blockMsg.textContent = overrideChecked
+      ? '⚠️ Override active — double booking will be saved'
+      : 'Double booking detected — tick override below to proceed';
+    blockMsg.style.color = overrideChecked ? '#92400e' : '#c0303d';
+    blockMsg.style.display = '';
+    btn.disabled = !overrideChecked;
   } else {
-    blockMsg.style.display='none';
-    btn.disabled=false;
+    if (overrideRow) overrideRow.style.display = 'none';
+    blockMsg.style.display = 'none';
+    btn.disabled = false;
   }
 }
 
@@ -1609,17 +1622,20 @@ async function confirmBook() {
   // Validate
   if (!dateStr) { document.getElementById('bookDate').classList.add('error'); showToast('Please enter a booking date','error'); return; }
   if (!trainer) { document.getElementById('bookTrainer').classList.add('error'); showToast('Please select a trainer','error'); return; }
-  if (!value)   { document.getElementById('bookValue').classList.add('error'); showToast('Please enter an invoice value','error'); return; }
-  // Double-check no double booking
-  const blocked = getBlockedDates(dateStr, numDays);
-  const allBlocked = [...blocked.travel,...blocked.training,...blocked.admin];
-  const conflict = allData.find(r => {
-    if (r.rowIndex===_bookRowIndex||r.status!=='Booked'||r.trainer!==trainer||!r.bookedOn) return false;
-    const ob = getBlockedDates(r.bookedOn, r.trainingDays||OPTION_DAYS[r.option]||1);
-    const oa = [...ob.travel,...ob.training,...ob.admin];
-    return allBlocked.some(d=>oa.includes(d));
-  });
-  if (conflict) { showToast('Cannot book — trainer '+trainer+' has a conflict with '+conflict.company,'error'); return; }
+  // £0 is valid (e.g. internal sessions) — no minimum value check
+  // Double booking safety check — bypassed if admin has ticked override
+  const overrideActive = isAdmin() && document.getElementById('bookingOverride')?.checked;
+  if (!overrideActive) {
+    const blocked = getBlockedDates(dateStr, numDays);
+    const allBlocked = [...blocked.travel,...blocked.training,...blocked.admin];
+    const conflict = allData.find(r => {
+      if (r.rowIndex===_bookRowIndex||r.status!=='Booked'||r.trainer!==trainer||!r.bookedOn) return false;
+      const ob = getBlockedDates(r.bookedOn, r.trainingDays||OPTION_DAYS[r.option]||1);
+      const oa = [...ob.travel,...ob.training,...ob.admin];
+      return allBlocked.some(d=>oa.includes(d));
+    });
+    if (conflict) { showToast('Double booking — tick override to confirm anyway','error'); return; }
+  }
 
   const rowIndex = _bookRowIndex;
   const row = allData.find(r=>r.rowIndex===rowIndex);
@@ -1638,7 +1654,7 @@ async function confirmBook() {
 // CANCEL MODAL
 // =============================================
 function openCancelModal(rowIndex) {
-  if (!isAdmin()) { showToast('Admin access required','error'); return; }
+  if (!isAdmin() && !hasPerm('canCancel')) { showToast('Permission required','error'); return; }
   const row = allData.find(r=>r.rowIndex===rowIndex); if (!row) return;
   _cancelRowIndex = rowIndex;
   document.getElementById('cancelModalCompany').textContent = row.company + (row.contact?' · '+row.contact:'');
