@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Street Training Dashboard</title>
-<!-- BUILD: 2026-02-22 08:52 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -323,6 +322,22 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .kpi-stat-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text--dark--30); margin-bottom: 4px; }
 .kpi-stat-value { font-size: 20px; font-weight: 700; color: var(--text--dark--50); }
 .kpi-stat-sub { font-size: 11px; color: var(--text--dark--30); }
+
+/* Permission toggle switches */
+.perm-toggle {
+  display:inline-flex; align-items:center;
+  width:32px; height:18px; border-radius:9px;
+  background:#d1d5db; cursor:pointer;
+  transition:background 0.2s; flex-shrink:0; position:relative;
+}
+.perm-toggle.on { background:#2147f4; }
+.perm-thumb {
+  position:absolute; left:2px; width:14px; height:14px;
+  border-radius:50%; background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,0.2);
+  transition:left 0.2s;
+}
+.perm-toggle.on .perm-thumb { left:16px; }
 </style>
 </head>
 <body>
@@ -362,7 +377,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <select class="user-select" id="userSelect" onchange="onUserChange()">
         <option value="">&#8212; Select user &#8212;</option>
       </select>
-      <span class="admin-badge" id="adminBadge" style="display:none;">ADMIN</span>
+      <span class="admin-badge" id="adminBadge" style="display:none;font-size:9px;padding:2px 6px;border-radius:8px;background:#2147f4;color:#fff;font-weight:700;letter-spacing:0.5px;">Admin</span>
     </div>
     <button class="activity-btn" id="activityNavBtn" onclick="openActivityPanel()" title="Activity Feed">&#128336; Activity<span class="activity-btn-dot" id="activityBtnDot"></span></button>
     <button class="refresh-btn admin-only" id="testBtn" onclick="testConnection(this)" style="background:rgba(255,200,0,0.15);border-color:rgba(255,200,0,0.3);">&#128269; Test</button>
@@ -727,15 +742,20 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 
 <!-- MANAGE TRAINERS MODAL -->
 <div class="modal-overlay" id="trainerModalOverlay" onclick="if(event.target===this)closeTrainerModal()">
-  <div class="modal">
+  <div class="modal" style="max-width:700px;width:95%;">
     <div class="modal-header">
-      <div><div class="modal-title">&#128100; Manage Trainers</div><div class="modal-subtitle">Add or remove team members</div></div>
+      <div><div class="modal-title">&#128100; Manage Users &amp; Permissions</div><div class="modal-subtitle">Configure roles and what each user can see or do</div></div>
       <button class="modal-close" onclick="closeTrainerModal()">&#10005;</button>
     </div>
-    <div class="modal-body">
-      <div class="trainer-list" id="trainerList"></div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <input type="text" class="form-input" id="newTrainerName" placeholder="New trainer name&#8230;" style="flex:1;" onkeydown="if(event.key==='Enter')addTrainer()">
+    <div class="modal-body" style="padding:0;">
+      <div id="trainerList" style="max-height:55vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:8px;padding:16px;border-top:1px solid var(--light-grey);background:#fafafa;border-radius:0 0 12px 12px;">
+        <input type="text" class="form-input" id="newTrainerName" placeholder="New user name&#8230;" style="flex:1;" onkeydown="if(event.key==='Enter')addTrainer()">
+        <select class="form-input" id="newTrainerRole" style="width:110px;">
+          <option value="trainer">Trainer</option>
+          <option value="viewer">Viewer</option>
+          <option value="admin">Admin</option>
+        </select>
         <button class="btn btn-primary" onclick="addTrainer()">+ Add</button>
       </div>
     </div>
@@ -834,19 +854,51 @@ const UK_BANK_HOLIDAYS = new Set([
 ]);
 
 // =============================================
-// USER SYSTEM (simple — no PIN)
+// USER SYSTEM
 // =============================================
-const USERS_KEY = 'streetDashboardUsers_v3';
+const USERS_KEY = 'streetDashboardUsers_v4';
 const CUR_USER_KEY = 'streetDashboardCurrentUser';
+
+// All granular permissions — admin always has all; trainer/viewer get toggles
+const PERM_DEFS = [
+  { key:'canViewUnassigned',   label:'View Unassigned Requests',  section:'unassignedSection' },
+  { key:'canAssign',           label:'Assign Enquiries',          section:null },
+  { key:'canViewNeedsAction',  label:'View Needs Action',         section:'actionSection' },
+  { key:'canBook',             label:'Confirm Bookings',          section:null },
+  { key:'canCancel',           label:'Cancel Bookings',           section:null },
+  { key:'canAddNotes',         label:'Add Notes',                 section:null },
+  { key:'canViewCalendar',     label:'View Calendar',             section:'calendarSection' },
+  { key:'canViewAllBookings',  label:'View All Bookings',         section:'allBookingsSection' },
+  { key:'canViewKPIs',         label:'View KPIs & Charts',        section:'kpiSection' },
+  { key:'canViewActivity',     label:'View Activity Feed',        section:null },
+];
+
+const DEFAULT_PERMS_TRAINER = {
+  canViewUnassigned:true, canAssign:true, canViewNeedsAction:true,
+  canBook:false, canCancel:false, canAddNotes:true,
+  canViewCalendar:true, canViewAllBookings:true, canViewKPIs:false, canViewActivity:false
+};
+const DEFAULT_PERMS_VIEWER = {
+  canViewUnassigned:false, canAssign:false, canViewNeedsAction:false,
+  canBook:false, canCancel:false, canAddNotes:false,
+  canViewCalendar:true, canViewAllBookings:true, canViewKPIs:false, canViewActivity:false
+};
+
+function ensurePerms(u) {
+  if (u.role === 'admin') { u.permissions = null; return u; }
+  const defaults = u.role === 'viewer' ? DEFAULT_PERMS_VIEWER : DEFAULT_PERMS_TRAINER;
+  if (!u.permissions) u.permissions = Object.assign({}, defaults);
+  // Fill any missing keys
+  PERM_DEFS.forEach(p => { if (!(p.key in u.permissions)) u.permissions[p.key] = defaults[p.key]; });
+  return u;
+}
 
 function getUsers() {
   let users = [];
   try { const s = JSON.parse(localStorage.getItem(USERS_KEY) || 'null'); if (Array.isArray(s)) users = s; } catch(e) {}
-  // Ensure Amy (admin) and Max exist
   if (!users.find(u => u.name === 'Amy')) users.unshift({ name:'Amy', role:'admin' });
   if (!users.find(u => u.name === 'Max'))  users.push({ name:'Max',  role:'trainer' });
-  // Ensure all have role
-  users.forEach(u => { if (!u.role) u.role = 'trainer'; });
+  users.forEach(u => { if (!u.role) u.role = 'trainer'; ensurePerms(u); });
   try { localStorage.setItem(USERS_KEY, JSON.stringify(users)); } catch(e) {}
   return users;
 }
@@ -854,6 +906,16 @@ function saveUsers(arr) { try { localStorage.setItem(USERS_KEY, JSON.stringify(a
 function getCurrentUser() { try { return JSON.parse(localStorage.getItem(CUR_USER_KEY) || 'null'); } catch(e) { return null; } }
 function setCurrentUser(u) { try { localStorage.setItem(CUR_USER_KEY, JSON.stringify(u)); } catch(e) {} }
 function isAdmin() { const u = getCurrentUser(); return u && u.role === 'admin'; }
+function hasPerm(key) {
+  const u = getCurrentUser();
+  if (!u) return false;
+  if (u.role === 'admin') return true;
+  // Re-read from USERS to get latest toggles
+  const fresh = USERS.find(x => x.name === u.name);
+  if (!fresh) return false;
+  if (fresh.role === 'admin') return true;
+  return !!(fresh.permissions && fresh.permissions[key]);
+}
 
 let USERS = getUsers();
 let TRAINERS = USERS.map(u => u.name);
@@ -867,7 +929,7 @@ function getTrainerColor(name) {
 
 function initUserSelector() {
   const sel = document.getElementById('userSelect');
-  sel.innerHTML = '<option value="">— Select user —</option>' + USERS.map(u => '<option value="'+u.name+'">'+u.name+(u.role==='admin'?' ★':'')+'</option>').join('');
+  sel.innerHTML = '<option value="">— Select user —</option>' + USERS.map(u => '<option value="'+u.name+'">'+u.name+(u.role==='admin'?' ★':u.role==='viewer'?' 👁':'')+'</option>').join('');
   const cur = getCurrentUser();
   if (cur) sel.value = cur.name;
   updateHeaderUser();
@@ -888,7 +950,9 @@ function updateHeaderUser() {
   if (u) {
     avatar.textContent = u.name[0].toUpperCase();
     avatar.style.background = getTrainerColor(u.name);
-    badge.style.display = u.role === 'admin' ? 'inline-block' : 'none';
+    badge.textContent = u.role === 'admin' ? 'Admin' : u.role === 'viewer' ? 'Viewer' : 'Trainer';
+    badge.style.display = u.role !== 'admin' ? 'inline-block' : 'inline-block';
+    badge.style.background = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
   } else {
     avatar.textContent = '?';
     avatar.style.background = '#777';
@@ -898,11 +962,26 @@ function updateHeaderUser() {
 
 function applyPermissions() {
   const admin = isAdmin();
-  document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = admin ? '' : 'none';
+  // Admin-only controls (test, refresh, manage trainers, cal settings, book/cancel buttons)
+  document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
+  // Granular section visibility
+  PERM_DEFS.forEach(p => {
+    if (!p.section) return;
+    const el = document.getElementById(p.section);
+    if (el) el.style.display = (admin || hasPerm(p.key)) ? '' : 'none';
   });
-  // Re-render panels that depend on permissions
+  // Assign button visibility
+  document.querySelectorAll('.assign-btn').forEach(el => { el.style.display = (admin || hasPerm('canAssign')) ? '' : 'none'; });
+  // Notes button visibility
+  document.querySelectorAll('.notes-btn').forEach(el => { el.style.display = (admin || hasPerm('canAddNotes')) ? '' : 'none'; });
+  // Book/cancel buttons already gated by .admin-only — extend to canBook/canCancel
+  document.querySelectorAll('.book-btn').forEach(el => { el.style.display = (admin || hasPerm('canBook')) ? '' : 'none'; });
+  document.querySelectorAll('.cancel-btn').forEach(el => { el.style.display = (admin || hasPerm('canCancel')) ? '' : 'none'; });
+  // Activity feed link
+  const actBtn = document.getElementById('activityFeedBtn');
+  if (actBtn) actBtn.style.display = (admin || hasPerm('canViewActivity')) ? '' : 'none';
   renderActionPanel();
+  renderUnassigned();
 }
 
 // =============================================
@@ -2010,47 +2089,89 @@ function openTrainerModal() {
   document.getElementById('trainerModalOverlay').classList.add('open');
 }
 function closeTrainerModal(){document.getElementById('trainerModalOverlay').classList.remove('open');}
+
 function renderTrainerList() {
-  const el=document.getElementById('trainerList');
-  el.innerHTML=USERS.map((u,i)=>{
-    const color=TRAINER_PALETTE[i%TRAINER_PALETTE.length];
-    return '<div class="trainer-list-item">'
-      +'<div class="trainer-list-name"><div class="trainer-color-dot" style="background:'+color+'"></div>'+esc(u.name)+'<span style="font-size:10px;font-weight:400;color:var(--text--dark--30);">('+u.role+')</span></div>'
-      +'<div style="display:flex;gap:6px;align-items:center;">'
-        +'<select onchange="changeUserRole(\''+u.name+'\',this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;font-family:Arial,sans-serif;">'
-          +'<option value="trainer"'+(u.role==='trainer'?' selected':'')+'>Trainer</option>'
-          +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'
-        +'</select>'
-        +(USERS.length>1?'<button class="btn btn-danger btn-sm" onclick="removeTrainer(\''+u.name+'\')">Remove</button>':'')
+  const el = document.getElementById('trainerList');
+  el.innerHTML = USERS.map((u, i) => {
+    const color = TRAINER_PALETTE[i % TRAINER_PALETTE.length];
+    const roleBadgeColor = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
+    const roleLabel = u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
+    let permToggles = '';
+    if (u.role !== 'admin') {
+      permToggles = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">'
+        + PERM_DEFS.map(p => {
+            const on = !!(u.permissions && u.permissions[p.key]);
+            return '<label style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text--dark--70);cursor:pointer;user-select:none;">'
+              +'<span class="perm-toggle'+(on?' on':'')+'" onclick="togglePerm(''+u.name+'',''+p.key+'',this)">'
+              +'<span class="perm-thumb"></span></span>'
+              +esc(p.label)+'</label>';
+          }).join('')
+        + '</div>';
+    } else {
+      permToggles = '<div style="font-size:11px;color:#2147f4;margin-top:8px;padding-top:8px;border-top:1px solid #eef0ff;">&#10022; Admin — full access to everything</div>';
+    }
+    return '<div style="padding:14px 18px;border-bottom:1px solid var(--light-grey);">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+        +'<div style="display:flex;align-items:center;gap:8px;">'
+          +'<div class="trainer-color-dot" style="background:'+color+'"></div>'
+          +'<span style="font-weight:600;font-size:13px;">'+esc(u.name)+'</span>'
+          +'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+roleBadgeColor+'22;color:'+roleBadgeColor+';">'+roleLabel+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;align-items:center;">'
+          +'<select onchange="changeUserRole(''+u.name+'',this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;">'
+            +'<option value="trainer"'+(u.role==='trainer'?' selected':'')+'>Trainer</option>'
+            +'<option value="viewer"'+(u.role==='viewer'?' selected':'')+'>Viewer</option>'
+            +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'
+          +'</select>'
+          +(USERS.length>1?'<button class="btn btn-danger btn-sm" onclick="removeTrainer(''+u.name+'')">Remove</button>':'')
+        +'</div>'
       +'</div>'
-      +'</div>';
+      + permToggles
+    +'</div>';
   }).join('');
 }
-function changeUserRole(name, role) {
-  const u=USERS.find(u=>u.name===name); if(!u) return;
-  u.role=role; saveUsers(USERS);
-  const cur=getCurrentUser(); if(cur&&cur.name===name){cur.role=role;setCurrentUser(cur);updateHeaderUser();applyPermissions();}
-  logActivity('admin',null,name+' role changed to '+role,getCurrentUser()?.name||'');
+
+function togglePerm(name, key, el) {
+  const u = USERS.find(x => x.name === name); if(!u||!u.permissions) return;
+  u.permissions[key] = !u.permissions[key];
+  el.classList.toggle('on', u.permissions[key]);
+  saveUsers(USERS);
+  const cur = getCurrentUser();
+  if (cur && cur.name === name) { setCurrentUser(u); applyPermissions(); }
 }
+
+function changeUserRole(name, role) {
+  const u = USERS.find(x => x.name === name); if(!u) return;
+  u.role = role; ensurePerms(u); saveUsers(USERS);
+  const cur = getCurrentUser();
+  if (cur && cur.name === name) { setCurrentUser(u); updateHeaderUser(); applyPermissions(); }
+  renderTrainerList(); syncTrainers();
+  logActivity('admin', null, name+' role changed to '+role, getCurrentUser()?.name||'');
+}
+
 function addTrainer() {
-  const inp=document.getElementById('newTrainerName');
-  const name=inp.value.trim();
-  if(!name){showToast('Enter a trainer name','error');return;}
-  if(USERS.find(u=>u.name.toLowerCase()===name.toLowerCase())){showToast('Trainer already exists','error');return;}
-  USERS.push({name,role:'trainer'});
-  saveUsers(USERS); syncTrainers();
+  const inp = document.getElementById('newTrainerName');
+  const roleSel = document.getElementById('newTrainerRole');
+  const name = inp.value.trim();
+  const role = roleSel ? roleSel.value : 'trainer';
+  if(!name){showToast('Enter a name','error');return;}
+  if(USERS.find(u=>u.name.toLowerCase()===name.toLowerCase())){showToast('User already exists','error');return;}
+  const newUser = ensurePerms({name, role});
+  USERS.push(newUser); saveUsers(USERS); syncTrainers();
   inp.value='';
   renderTrainerList(); renderTrainerWorkload(); populateTrainerFilter(); populateCalTrainerFilter();
-  logActivity('admin',null,'Added trainer: '+name,getCurrentUser()?.name||'');
-  showToast('Trainer added','success');
+  logActivity('admin', null, 'Added user: '+name+' ('+role+')', getCurrentUser()?.name||'');
+  showToast(name+' added as '+role, 'success');
 }
+
 function removeTrainer(name) {
-  if(!confirm('Remove '+name+' from the trainer list? Their existing bookings will be retained.')) return;
-  USERS=USERS.filter(u=>u.name!==name); saveUsers(USERS); syncTrainers();
+  if(!confirm('Remove '+name+'? Their existing bookings will be retained.')) return;
+  USERS = USERS.filter(u => u.name !== name); saveUsers(USERS); syncTrainers();
   renderTrainerList(); renderTrainerWorkload(); populateTrainerFilter(); populateCalTrainerFilter();
-  logActivity('admin',null,'Removed trainer: '+name,getCurrentUser()?.name||'');
-  showToast('Trainer removed','');
+  logActivity('admin', null, 'Removed user: '+name, getCurrentUser()?.name||'');
+  showToast('User removed','');
 }
+
 
 // =============================================
 // CALENDAR SETTINGS MODAL
