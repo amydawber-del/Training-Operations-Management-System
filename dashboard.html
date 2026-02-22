@@ -975,26 +975,47 @@ function formatDate(d) { if(!d) return '—'; const dt=d instanceof Date?d:new D
 // =============================================
 // DATE HELPERS
 // =============================================
-function isWeekend(d) { const day=d.getDay(); return day===0||day===6; }
-function isBankHoliday(d) { return UK_BANK_HOLIDAYS.has(toDateStr(d)); }
-function isWorkday(d) { return !isWeekend(d) && !isBankHoliday(d); }
-function toDateStr(d) {
-  const dt = (d instanceof Date) ? d : toDate(d);
-  if (!dt) return '';
-  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+// Always returns a proper Date or null — handles strings, Date objects, ISO, DD/MM/YYYY
+function toDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const s = String(v).trim();
+  if (!s) return null;
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) { const d=new Date(Number(dmy[3]),Number(dmy[2])-1,Number(dmy[1])); return isNaN(d.getTime())?null:d; }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
 }
-function addDays(d, n) { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+// Always returns "YYYY-MM-DD" from a Date object or date string
+function toDateStr(v) {
+  const d = (v instanceof Date) ? v : toDate(v);
+  if (!d) return '';
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+// isBankHoliday accepts either a Date or a "YYYY-MM-DD" string
+function isBankHoliday(v) {
+  const s = (typeof v === 'string' && v.length === 10) ? v : toDateStr(v);
+  return UK_BANK_HOLIDAYS.has(s);
+}
+function isWeekend(d) { const dt=(d instanceof Date)?d:toDate(d); if(!dt)return false; const day=dt.getDay(); return day===0||day===6; }
+function isWorkday(d) { return !isWeekend(d) && !isBankHoliday(d); }
+function addDays(d, n) { const r=new Date(d instanceof Date?d:toDate(d)||new Date()); r.setDate(r.getDate()+n); return r; }
 
-// Given a training date and number of days, return all blocked dates
+// Given a training date string (YYYY-MM-DD) and number of days, return all blocked date strings
 function getBlockedDates(trainingDateStr, numDays) {
   if (!trainingDateStr) return { travel:[], training:[], admin:[] };
-  const start = new Date(trainingDateStr+'T00:00:00');
-  const travel = addDays(start, -1);
-  const training = [];
-  for (let i=0;i<numDays;i++) training.push(addDays(start, i));
-  const lastTraining = training[training.length-1] || start;
-  const admin = addDays(lastTraining, 1);
-  return { travel:[toDateStr(travel)], training:training.map(toDateStr), admin:[toDateStr(admin)] };
+  const start = toDate(trainingDateStr);
+  if (!start) return { travel:[], training:[], admin:[] };
+  const travelDate = addDays(start, -1);
+  const trainingDates = [];
+  for (let i=0;i<numDays;i++) trainingDates.push(addDays(start, i));
+  const lastTraining = trainingDates[trainingDates.length-1] || start;
+  const adminDate = addDays(lastTraining, 1);
+  return {
+    travel:   [toDateStr(travelDate)],
+    training: trainingDates.map(toDateStr),
+    admin:    [toDateStr(adminDate)]
+  };
 }
 
 // =============================================
@@ -1075,10 +1096,9 @@ async function loadData() {
     }
   } catch(e) { /* silently fall through */ }
 
-  // Fall back to demo data — no toast, just a quiet status indicator
-  allData = applyOverrides(generateDemoData());
-  processData();
-  document.getElementById('lastUpdated').textContent = '⚠ Demo data';
+  // Both sources failed — show clear error, do NOT load demo data
+  document.getElementById('lastUpdated').textContent = '✗ Cannot reach sheet — check connection';
+  showToast('Cannot reach Google Sheet. Check your network and try Refresh.', 'error');
   setLoading(false);
 }
 
@@ -1213,19 +1233,6 @@ function normaliseRow(obj, rowIndex) {
   };
 }
 
-// Safe date coercion — always returns a real Date object or null, never a string
-function toDate(v) {
-  if (!v) return null;
-  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-  const s = String(v).trim();
-  if (!s) return null;
-  // DD/MM/YYYY
-  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (dmy) { const d=new Date(Number(dmy[3]),Number(dmy[2])-1,Number(dmy[1])); return isNaN(d.getTime())?null:d; }
-  // ISO / any other recognised format
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
 function parseDate(str) { return toDate(str); }
 
 function formatDateInput(val) {
