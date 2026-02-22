@@ -391,7 +391,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 <main class="main">
 
   <!-- 1. TRAINER WORKLOAD -->
-  <div style="margin-bottom:24px;">
+  <div id="trainerWorkloadSection" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title">&#128100; Trainer Workload</div>
       <div style="display:flex;align-items:center;gap:10px;">
@@ -867,25 +867,26 @@ const CUR_USER_KEY = 'streetDashboardCurrentUser';
 
 // All granular permissions — admin always has all; trainer/viewer get toggles
 const PERM_DEFS = [
-  { key:'canViewUnassigned',   label:'View Unassigned Requests',  section:'unassignedSection' },
-  { key:'canAssign',           label:'Assign Enquiries',          section:null },
-  { key:'canViewNeedsAction',  label:'View Needs Action',         section:'actionSection' },
-  { key:'canBook',             label:'Confirm Bookings',          section:null },
-  { key:'canCancel',           label:'Cancel Bookings',           section:null },
-  { key:'canAddNotes',         label:'Add Notes',                 section:null },
-  { key:'canViewCalendar',     label:'View Calendar',             section:'calendarSection' },
-  { key:'canViewAllBookings',  label:'View All Bookings',         section:'allBookingsSection' },
-  { key:'canViewKPIs',         label:'View KPIs & Charts',        section:'kpiSection', section2:'chartsSection' },
-  { key:'canViewActivity',     label:'View Activity Feed',        section:null },
+  { key:'canViewTrainerWorkload', label:'View Trainer Workload',     section:'trainerWorkloadSection' },
+  { key:'canViewUnassigned',      label:'View Unassigned Requests',  section:'unassignedSection' },
+  { key:'canAssign',              label:'Assign Enquiries',          section:null },
+  { key:'canViewNeedsAction',     label:'View Needs Action',         section:'actionSection' },
+  { key:'canBook',                label:'Confirm Bookings',          section:null },
+  { key:'canCancel',              label:'Cancel Bookings',           section:null },
+  { key:'canAddNotes',            label:'Add Notes',                 section:null },
+  { key:'canViewCalendar',        label:'View Calendar',             section:'calendarSection' },
+  { key:'canViewAllBookings',     label:'View All Bookings',         section:'allBookingsSection' },
+  { key:'canViewKPIs',            label:'View KPIs & Charts',        section:'kpiSection', section2:'chartsSection' },
+  { key:'canViewActivity',        label:'View Activity Feed',        section:null },
 ];
 
 const DEFAULT_PERMS_TRAINER = {
-  canViewUnassigned:true, canAssign:true, canViewNeedsAction:true,
+  canViewTrainerWorkload:true, canViewUnassigned:true, canAssign:true, canViewNeedsAction:true,
   canBook:false, canCancel:false, canAddNotes:true,
   canViewCalendar:true, canViewAllBookings:true, canViewKPIs:false, canViewActivity:false
 };
 const DEFAULT_PERMS_VIEWER = {
-  canViewUnassigned:false, canAssign:false, canViewNeedsAction:false,
+  canViewTrainerWorkload:false, canViewUnassigned:false, canAssign:false, canViewNeedsAction:false,
   canBook:false, canCancel:false, canAddNotes:false,
   canViewCalendar:true, canViewAllBookings:true, canViewKPIs:false, canViewActivity:false
 };
@@ -924,9 +925,12 @@ function hasPerm(key) {
 }
 
 let USERS = getUsers();
-let TRAINERS = USERS.map(u => u.name);
+let TRAINERS = USERS.filter(u => u.role !== 'viewer').map(u => u.name);
 
-function syncTrainers() { USERS = getUsers(); TRAINERS = USERS.map(u => u.name); }
+function syncTrainers() {
+  USERS = getUsers();
+  TRAINERS = USERS.filter(u => u.role !== 'viewer').map(u => u.name);
+}
 
 function getTrainerColor(name) {
   const idx = TRAINERS.indexOf(name);
@@ -984,9 +988,6 @@ function applyPermissions() {
   // Activity feed button
   const actBtn = document.getElementById('activityFeedBtn');
   if (actBtn) actBtn.style.display = (admin || hasPerm('canViewActivity')) ? '' : 'none';
-  // Re-render panels so book/cancel/notes/assign buttons reflect current permissions
-  renderActionPanel();
-  renderUnassigned();
 }
 
 // =============================================
@@ -1396,16 +1397,18 @@ function tryRender(fn, label) {
 }
 
 function processData() {
-  tryRender(renderUnassigned,       'renderUnassigned');
-  tryRender(renderActionPanel,      'renderActionPanel');
-  tryRender(renderKPIs,             'renderKPIs');
-  tryRender(renderCharts,           'renderCharts');
-  tryRender(renderTrainerWorkload,  'renderTrainerWorkload');
-  tryRender(renderAllBookings,      'renderAllBookings');
-  tryRender(populateTrainerFilter,  'populateTrainerFilter');
+  tryRender(renderUnassigned,        'renderUnassigned');
+  tryRender(renderActionPanel,       'renderActionPanel');
+  tryRender(renderKPIs,              'renderKPIs');
+  tryRender(renderCharts,            'renderCharts');
+  tryRender(renderTrainerWorkload,   'renderTrainerWorkload');
+  tryRender(renderAllBookings,       'renderAllBookings');
+  tryRender(populateTrainerFilter,   'populateTrainerFilter');
   tryRender(populateCalTrainerFilter,'populateCalTrainerFilter');
-  tryRender(renderCalendar,         'renderCalendar');
-  tryRender(renderUpcoming,         'renderUpcoming');
+  tryRender(renderCalendar,          'renderCalendar');
+  tryRender(renderUpcoming,          'renderUpcoming');
+  // Always re-apply permissions after render so sections are correctly shown/hidden
+  applyPermissions();
 }
 
 // =============================================
