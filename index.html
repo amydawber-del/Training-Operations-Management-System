@@ -949,7 +949,7 @@ function getUsers() {
   try { const s = JSON.parse(localStorage.getItem(USERS_KEY) || 'null'); if (Array.isArray(s)) users = s; } catch(e) {}
   if (!users.find(u => u.name === 'Amy')) users.unshift({ name:'Amy', role:'admin' });
   if (!users.find(u => u.name === 'Max'))  users.push({ name:'Max',  role:'trainer' });
-  users.forEach(u => { if (!u.role) u.role = 'trainer'; ensurePerms(u); });
+  users.forEach(u => { if (!u.role) u.role = 'trainer'; else if (!['admin','trainer','viewer'].includes(u.role)) u.role = 'trainer'; ensurePerms(u); });
   try { localStorage.setItem(USERS_KEY, JSON.stringify(users)); } catch(e) {}
   return users;
 }
@@ -1000,8 +1000,10 @@ function showLoginScreen() {
   _loginSelectedUser = null;
   // Populate user dropdown — everyone can pick their own account
   const sel = document.getElementById('loginUserSelect');
+  // Always re-read from localStorage so newly added viewers/trainers appear immediately
+  const allUsers = getUsers();
   sel.innerHTML = '<option value="">— Choose account —</option>'
-    + USERS.map(u => '<option value="'+u.name+'">'+u.name+'</option>').join('');
+    + allUsers.map(u => '<option value="'+u.name+'">'+u.name+'</option>').join('');
   // Hide dashboard
   const hdr = document.getElementById('mainHeader'); if (hdr) hdr.style.display = 'none';
   const main = document.getElementById('mainContent'); if (main) main.style.display = 'none';
@@ -1131,9 +1133,12 @@ function updateHeaderUser() {
 }
 
 function applyPermissions() {
-  const admin = isAdmin();
-  // Admin-only toolbar buttons
-  document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
+  // When shadowing, show the dashboard through the target's eyes — not as admin
+  const realAdmin = isAdmin();             // true if logged-in user is admin
+  const shadowing = isShadowing();
+  const admin = realAdmin && !shadowing;   // only full admin powers when NOT shadowing
+  // Admin-only toolbar buttons — still visible to real admin even while shadowing
+  document.querySelectorAll('.admin-only').forEach(el => { el.style.display = realAdmin ? '' : 'none'; });
   // Granular section visibility — hide everything first, then show what's permitted
   PERM_DEFS.forEach(p => {
     const show = admin || hasPerm(p.key);
@@ -1604,8 +1609,9 @@ function renderUnassigned() {
     tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>';
     return;
   }
-  const canAssign = isAdmin() || hasPerm('canAssign');
-  const canNotes  = isAdmin() || hasPerm('canAddNotes');
+  const _adminAct = isAdmin() && !isShadowing();
+  const canAssign = _adminAct || hasPerm('canAssign');
+  const canNotes  = _adminAct || hasPerm('canAddNotes');
   tbody.innerHTML = rows.map(r => {
     const stale = isStale(r);
     const actionBtns = [];
@@ -1667,9 +1673,10 @@ function renderActionPanel() {
     tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">Nothing needs action right now</div></div></td></tr>';
     return;
   }
-  const canBook   = isAdmin() || hasPerm('canBook');
-  const canCancel = isAdmin() || hasPerm('canCancel');
-  const canNotes  = isAdmin() || hasPerm('canAddNotes');
+  const _adminAct2 = isAdmin() && !isShadowing();
+  const canBook   = _adminAct2 || hasPerm('canBook');
+  const canCancel = _adminAct2 || hasPerm('canCancel');
+  const canNotes  = _adminAct2 || hasPerm('canAddNotes');
   tbody.innerHTML = rows.map(r => {
     const stale = isStale(r);
     const color = getTrainerColor(r.trainer);
@@ -1765,7 +1772,7 @@ function checkBookingWarnings() {
   const overrideRow = document.getElementById('bookingOverrideRow');
   const overrideChecked = document.getElementById('bookingOverride')?.checked;
   if (hardBlock) {
-    if (overrideRow) overrideRow.style.display = isAdmin() ? '' : 'none';
+    if (overrideRow) overrideRow.style.display = (isAdmin() && !isShadowing()) ? '' : 'none';
     blockMsg.textContent = overrideChecked
       ? '⚠️ Override active — double booking will be saved'
       : 'Double booking detected — tick override below to proceed';
@@ -2286,8 +2293,8 @@ function renderTrainerList() {
     const color = TRAINER_PALETTE[i % TRAINER_PALETTE.length];
     const roleBadgeColor = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
     const roleLabel = u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
-    const pinStatus = u.pin ? '🔐 PIN set' : '🔓 No PIN';
-    const pinBtnLabel = u.pin ? 'Change PIN' : 'Set PIN';
+    const pinStatus = u.pin ? '<span style="color:#22a06b;font-weight:600;">🔐 PIN set</span>' : '<span style="color:#c0303d;font-weight:600;">🔓 No PIN</span>';
+    const pinBtnLabel = u.pin ? '🔐 Reset PIN' : '🔓 Set PIN';
     let permToggles = '';
     if (u.role !== 'admin') {
       permToggles = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">'
@@ -2309,7 +2316,7 @@ function renderTrainerList() {
           +'<div class="trainer-color-dot" style="background:'+color+'"></div>'
           +'<span style="font-weight:600;font-size:13px;">'+esc(u.name)+'</span>'
           +'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+roleBadgeColor+'22;color:'+roleBadgeColor+';">'+roleLabel+'</span>'
-          +'<span style="font-size:10px;color:var(--text--dark--30);">'+pinStatus+'</span>'
+          +'<span style="font-size:10px;">'+pinStatus+'</span>'
         +'</div>'
         +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">'
           +'<select data-role-user="'+esc(u.name)+'" onchange="changeUserRole(this.dataset.roleUser,this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;">'
@@ -2472,16 +2479,9 @@ function closeActivityPanel(){document.getElementById('activityPanel').classList
 // =============================================
 syncTrainers();
 initActivityFeed();
-// Show login screen or go straight to dashboard
-const _initSess = getSession();
-if (_initSess) {
-  hideLoginScreen();
-  updateHeaderUser();
-  applyPermissions();
-  loadData();
-} else {
-  showLoginScreen();
-}
+// Always require PIN on every page load — session cleared so no bypass via refresh
+clearSession();
+showLoginScreen();
 setInterval(() => { if (getSession()) loadData(); }, 5*60*1000);
 </script>
 </body>
