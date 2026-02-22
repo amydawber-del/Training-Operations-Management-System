@@ -1068,6 +1068,23 @@ async function loadData() {
   setLoading(false);
 }
 
+// Maps the actual Google Form option text → internal option number
+function resolveOption(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (!s) return '2';
+  // Exact/partial matches for known form values
+  if (s.includes('2 day') || s.includes('two day') || s.includes('personalised 2')) return '3';
+  if (s.includes('accounting') || s.includes('go live') || s.includes('go-live'))    return '4';
+  if (s.includes('hq') || s.includes('live hq') || s.includes('on site'))            return '5';
+  if (s.includes('on demand') || s.includes('help centre') || s.includes('option 1')) return '1';
+  if (s.includes('1 day') || s.includes('one day') || s.includes('personalised 1') ||
+      s.includes('training day')) return '2';
+  // Bare digit fallback
+  const m = s.match(/\b([1-5])\b/);
+  if (m) return m[1];
+  return '2';
+}
+
 function parseAppsScriptData(rows) {
   if (!rows || rows.length < 2) return [];
   // Use EXACT column positions matching Apps Script COL map (0-indexed)
@@ -1098,10 +1115,11 @@ function parseAppsScriptData(rows) {
     const attendeesRaw= g(row, C.ATTENDEES);
     const trainingDaysRaw = g(row, C.TRAINING_DAYS);
 
-    const option      = String(optionRaw).match(/\d/) ? String(optionRaw).match(/\d/)[0] : '2';
+    const option      = resolveOption(optionRaw);
     const numAttendees= parseInt(attendeesRaw) || 1;
     const basePrice   = parseInt(OPTION_PRICES[option]) || 0;
-    let revenue       = parseFloat(String(revenueRaw).replace(/[^0-9.]/g,'')) || 0;
+    let revenue = parseFloat(String(revenueRaw).replace(/[^0-9.]/g,'')) || 0;
+    // If sheet has 0 or blank, use the default option price
     if (!revenue) revenue = option === '5' ? basePrice * numAttendees : basePrice;
     const parsedDate  = parseDate(timestamp || prefDate);
     const bookedOn    = formatDateInput(bookedOnRaw);
@@ -1154,7 +1172,7 @@ function normaliseRow(obj, rowIndex) {
   const rawStatus = get('status');
   const notes = get('notes','admin notes','comments');
   const revenueRaw = get('invoice value','value','revenue','amount','fee','price');
-  const option = String(optionRaw).match(/\d/)?String(optionRaw).match(/\d/)[0]:'2';
+  const option = resolveOption(optionRaw);
   const basePrice = parseInt(OPTION_PRICES[option])||0;
   let revenue = parseFloat(String(revenueRaw).replace(/[^0-9.]/g,''))||0;
   if (!revenue && option) revenue = option==='5'?basePrice*numAttendees:basePrice;
