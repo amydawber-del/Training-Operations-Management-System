@@ -365,30 +365,71 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 </nav>
 
 <!-- HEADER -->
-<header class="header">
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="position:fixed;inset:0;z-index:9999;background:var(--brand--black);display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#fff;font-family:Arial,sans-serif;">STREET<span style="color:var(--brand--yellow);">.</span><span style="font-size:12px;font-weight:400;">CO.UK</span></div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px;letter-spacing:0.5px;">Training Dashboard</div>
+  </div>
+  <div style="background:#fff;border-radius:16px;padding:32px 36px;width:340px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
+    <div style="font-size:16px;font-weight:700;color:var(--text--dark--50);margin-bottom:6px;">Welcome back</div>
+    <div style="font-size:12px;color:var(--text--dark--30);margin-bottom:20px;">Select your account to continue</div>
+
+    <!-- Step 1: user select -->
+    <div id="loginStep1">
+      <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Account</label>
+      <select id="loginUserSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:13px;font-family:Arial,sans-serif;color:var(--text--dark--50);background:#fff;appearance:none;cursor:pointer;margin-bottom:16px;">
+        <option value="">— Choose account —</option>
+      </select>
+      <button onclick="loginStepPin()" style="width:100%;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Continue →</button>
+    </div>
+
+    <!-- Step 2: PIN entry -->
+    <div id="loginStep2" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+        <button onclick="loginBack()" style="background:none;border:none;cursor:pointer;color:var(--text--dark--30);font-size:18px;line-height:1;padding:0;">←</button>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text--dark--50);" id="loginUserLabel">—</div>
+          <div style="font-size:11px;color:var(--text--dark--30);" id="loginUserRole">—</div>
+        </div>
+      </div>
+      <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">PIN</label>
+      <input id="loginPinInput" type="password" inputmode="numeric" maxlength="8" placeholder="Enter your PIN"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:20px;letter-spacing:6px;font-family:Arial,sans-serif;text-align:center;margin-bottom:8px;"
+        onkeydown="if(event.key==='Enter')loginConfirmPin()">
+      <div id="loginPinError" style="font-size:12px;color:#c0303d;min-height:18px;margin-bottom:10px;text-align:center;"></div>
+      <button onclick="loginConfirmPin()" style="width:100%;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Log In</button>
+      <div id="loginNoPinNote" style="font-size:11px;color:var(--text--dark--30);text-align:center;margin-top:10px;display:none;">No PIN set — any input accepted. Ask admin to set one.</div>
+    </div>
+  </div>
+</div>
+
+<header class="header" id="mainHeader" style="display:none;">
   <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleNav()"><span></span><span></span><span></span></button>
   <div class="street-logo-mark">STREET<span class="logo-dot">.</span><span style="font-size:9px;font-weight:400;">CO.UK</span></div>
   <div class="header-title">Training Dashboard</div>
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">&#8212;</span>
-    <!-- User selector -->
-    <div class="user-selector-wrap">
+    <!-- Logged in user display -->
+    <div class="user-selector-wrap" style="cursor:default;">
       <div class="user-avatar" id="headerAvatar">?</div>
-      <select class="user-select" id="userSelect" onchange="onUserChange()">
-        <option value="">&#8212; Select user &#8212;</option>
-      </select>
+      <span id="headerUserName" style="font-size:12px;font-weight:600;color:#ddd;">—</span>
       <span class="admin-badge" id="adminBadge" style="display:none;font-size:9px;padding:2px 6px;border-radius:8px;background:#2147f4;color:#fff;font-weight:700;letter-spacing:0.5px;">Admin</span>
     </div>
+    <button id="shadowBanner" onclick="exitShadow()" style="display:none;background:#f59e0b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">👁 Shadowing — Click to exit</button>
+    <button id="changeMyPinBtn" onclick="changeMyPin()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#ddd;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;font-weight:600;">🔐 PIN</button>
+    <button onclick="logout()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:#ddd;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;font-weight:600;">Sign out</button>
     <button class="activity-btn" id="activityNavBtn" onclick="openActivityPanel()" title="Activity Feed">&#128336; Activity<span class="activity-btn-dot" id="activityBtnDot"></span></button>
     <button class="refresh-btn admin-only" id="testBtn" onclick="testConnection(this)" style="background:rgba(255,200,0,0.15);border-color:rgba(255,200,0,0.3);">&#128269; Test</button>
     <button class="refresh-btn admin-only" onclick="loadData()">&#8635; Refresh</button>
   </div>
 </header>
 
-<div class="loading-bar" id="loadingBar"></div>
+<div class="loading-bar" id="loadingBar" style="display:none;"></div>
 
 <!-- MAIN -->
-<main class="main">
+<main class="main" id="mainContent" style="display:none;">
 
   <!-- 1. TRAINER WORKLOAD -->
   <div id="trainerWorkloadSection" style="margin-bottom:24px;">
@@ -499,7 +540,8 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 5. KPI CARDS -->
-  <div id="kpiSection" style="margin-bottom:16px;"><div class="section-title" style="margin-bottom:14px;">&#128200; Performance Overview</div></div>
+  <div id="kpiSection">
+  <div style="margin-bottom:16px;"><div class="section-title" style="margin-bottom:14px;">&#128200; Performance Overview</div></div>
   <div class="kpi-grid">
     <div class="kpi-card kpi-accent-left clickable" onclick="openKpiModal('revYear')">
       <div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div>
@@ -529,7 +571,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 
   <!-- 6. CHARTS -->
-  <div id="chartsSection" class="charts-grid">
+  <div class="charts-grid">
     <div class="chart-card">
       <div class="chart-title">Monthly Revenue</div>
       <div class="chart-subtitle">This year vs last year (exc. VAT)</div>
@@ -547,6 +589,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     </div>
   </div>
 
+  </div><!-- /kpiSection -->
   <!-- 7. ALL BOOKINGS -->
   <div id="allBookingsSection">
     <div class="section-header" style="flex-wrap:wrap;gap:10px;">
@@ -860,10 +903,10 @@ const UK_BANK_HOLIDAYS = new Set([
 ]);
 
 // =============================================
-// USER SYSTEM
+// USER SYSTEM + LOGIN
 // =============================================
-const USERS_KEY = 'streetDashboardUsers_v4';
-const CUR_USER_KEY = 'streetDashboardCurrentUser';
+const USERS_KEY    = 'streetDashboardUsers_v4';
+const SESSION_KEY  = 'streetDashboardSession_v1';  // {name, shadow}
 
 // All granular permissions — admin always has all; trainer/viewer get toggles
 const PERM_DEFS = [
@@ -876,26 +919,27 @@ const PERM_DEFS = [
   { key:'canAddNotes',            label:'Add Notes',                 section:null },
   { key:'canViewCalendar',        label:'View Calendar',             section:'calendarSection' },
   { key:'canViewAllBookings',     label:'View All Bookings',         section:'allBookingsSection' },
-  { key:'canViewKPIs',            label:'View KPIs & Charts',        section:'kpiSection', section2:'chartsSection' },
+  { key:'canViewKPIs',            label:'View KPIs & Charts',        section:'kpiSection' },
   { key:'canViewActivity',        label:'View Activity Feed',        section:null },
 ];
 
 const DEFAULT_PERMS_TRAINER = {
-  canViewTrainerWorkload:true, canViewUnassigned:true, canAssign:true, canViewNeedsAction:true,
-  canBook:false, canCancel:false, canAddNotes:true,
-  canViewCalendar:true, canViewAllBookings:true, canViewKPIs:false, canViewActivity:false
+  canViewTrainerWorkload:true,  canViewUnassigned:true,     canAssign:true,
+  canViewNeedsAction:true,      canBook:false,              canCancel:false,
+  canAddNotes:true,             canViewCalendar:true,       canViewAllBookings:true,
+  canViewKPIs:false,            canViewActivity:false
 };
 const DEFAULT_PERMS_VIEWER = {
-  canViewTrainerWorkload:false, canViewUnassigned:false, canAssign:false, canViewNeedsAction:false,
-  canBook:false, canCancel:false, canAddNotes:false,
-  canViewCalendar:true, canViewAllBookings:true, canViewKPIs:false, canViewActivity:false
+  canViewTrainerWorkload:false, canViewUnassigned:false,    canAssign:false,
+  canViewNeedsAction:false,     canBook:false,              canCancel:false,
+  canAddNotes:false,            canViewCalendar:true,       canViewAllBookings:true,
+  canViewKPIs:false,            canViewActivity:false
 };
 
 function ensurePerms(u) {
   if (u.role === 'admin') { u.permissions = null; return u; }
   const defaults = u.role === 'viewer' ? DEFAULT_PERMS_VIEWER : DEFAULT_PERMS_TRAINER;
   if (!u.permissions) u.permissions = Object.assign({}, defaults);
-  // Fill any missing keys
   PERM_DEFS.forEach(p => { if (!(p.key in u.permissions)) u.permissions[p.key] = defaults[p.key]; });
   return u;
 }
@@ -910,25 +954,145 @@ function getUsers() {
   return users;
 }
 function saveUsers(arr) { try { localStorage.setItem(USERS_KEY, JSON.stringify(arr)); } catch(e) {} }
-function getCurrentUser() { try { return JSON.parse(localStorage.getItem(CUR_USER_KEY) || 'null'); } catch(e) { return null; } }
-function setCurrentUser(u) { try { localStorage.setItem(CUR_USER_KEY, JSON.stringify(u)); } catch(e) {} }
-function isAdmin() { const u = getCurrentUser(); return u && u.role === 'admin'; }
+
+// Session: {name, shadow} — shadow = name of real admin when shadowing
+function getSession()         { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null'); } catch(e) { return null; } }
+function setSession(s)        { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch(e) {} }
+function clearSession()       { try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {} }
+
+function getCurrentUser() {
+  const sess = getSession();
+  if (!sess) return null;
+  return USERS.find(u => u.name === sess.name) || null;
+}
+function getRealUser() {
+  // Always returns the actually-logged-in user, ignoring shadow
+  const sess = getSession();
+  if (!sess) return null;
+  const realName = sess.shadow || sess.name; // sess.shadow is stored admin name when shadowing
+  return USERS.find(u => u.name === realName) || null;
+}
+function isAdmin() { const u = getRealUser(); return u && u.role === 'admin'; }
+function isShadowing() { const s = getSession(); return !!(s && s.shadow); }
+
 function hasPerm(key) {
-  const u = getCurrentUser();
+  const u = getCurrentUser();   // returns shadow target if shadowing, else real user
   if (!u) return false;
   if (u.role === 'admin') return true;
-  // Re-read from USERS to get latest toggles
+  // Always read from USERS for latest toggles
   const fresh = USERS.find(x => x.name === u.name);
   if (!fresh) return false;
   if (fresh.role === 'admin') return true;
   return !!(fresh.permissions && fresh.permissions[key]);
 }
 
-let USERS = getUsers();
+// ── Login flow ──────────────────────────────────────────
+let _loginSelectedUser = null;
+
+function showLoginScreen() {
+  syncTrainers();
+  const el = document.getElementById('loginScreen');
+  if (el) el.style.display = 'flex';
+  document.getElementById('loginStep1').style.display = '';
+  document.getElementById('loginStep2').style.display = 'none';
+  document.getElementById('loginPinError').textContent = '';
+  document.getElementById('loginPinInput').value = '';
+  _loginSelectedUser = null;
+  // Populate user dropdown — everyone can pick their own account
+  const sel = document.getElementById('loginUserSelect');
+  sel.innerHTML = '<option value="">— Choose account —</option>'
+    + USERS.map(u => '<option value="'+u.name+'">'+u.name+'</option>').join('');
+  // Hide dashboard
+  const hdr = document.getElementById('mainHeader'); if (hdr) hdr.style.display = 'none';
+  const main = document.getElementById('mainContent'); if (main) main.style.display = 'none';
+  const lb = document.getElementById('loadingBar'); if (lb) lb.style.display = 'none';
+}
+
+function hideLoginScreen() {
+  const el = document.getElementById('loginScreen');
+  if (el) el.style.display = 'none';
+  // Reveal dashboard
+  const hdr = document.getElementById('mainHeader'); if (hdr) hdr.style.display = '';
+  const main = document.getElementById('mainContent'); if (main) main.style.display = '';
+  const lb = document.getElementById('loadingBar'); if (lb) lb.style.display = '';
+}
+
+function loginStepPin() {
+  const sel = document.getElementById('loginUserSelect');
+  const name = sel.value;
+  if (!name) { sel.style.borderColor='#c0303d'; return; }
+  sel.style.borderColor='';
+  _loginSelectedUser = USERS.find(u => u.name === name);
+  if (!_loginSelectedUser) return;
+  document.getElementById('loginUserLabel').textContent = _loginSelectedUser.name;
+  document.getElementById('loginUserRole').textContent  = _loginSelectedUser.role.charAt(0).toUpperCase()+_loginSelectedUser.role.slice(1);
+  const hasPin = !!_loginSelectedUser.pin;
+  document.getElementById('loginNoPinNote').style.display = hasPin ? 'none' : '';
+  document.getElementById('loginPinInput').placeholder = hasPin ? 'Enter your PIN' : 'No PIN set — press Log In';
+  document.getElementById('loginPinError').textContent = '';
+  document.getElementById('loginPinInput').value = '';
+  document.getElementById('loginStep1').style.display = 'none';
+  document.getElementById('loginStep2').style.display = '';
+  setTimeout(() => document.getElementById('loginPinInput').focus(), 80);
+}
+
+function loginBack() {
+  _loginSelectedUser = null;
+  document.getElementById('loginStep1').style.display = '';
+  document.getElementById('loginStep2').style.display = 'none';
+}
+
+function loginConfirmPin() {
+  if (!_loginSelectedUser) return;
+  const entered = document.getElementById('loginPinInput').value;
+  const storedPin = _loginSelectedUser.pin || '';
+  if (storedPin && entered !== storedPin) {
+    document.getElementById('loginPinError').textContent = 'Incorrect PIN. Try again.';
+    document.getElementById('loginPinInput').value = '';
+    document.getElementById('loginPinInput').focus();
+    return;
+  }
+  // Login success
+  setSession({ name: _loginSelectedUser.name });
+  hideLoginScreen();
+  updateHeaderUser();
+  applyPermissions();
+  logActivity('login', null, _loginSelectedUser.name + ' logged in', '');
+  if (!allData.length) loadData(); else processData();
+}
+
+function logout() {
+  clearSession();
+  showLoginScreen();
+}
+
+// ── Shadow mode (admin only) ─────────────────────────────
+function startShadow(targetName) {
+  if (!isAdmin()) return;
+  const adminName = getRealUser().name;
+  setSession({ name: targetName, shadow: adminName });
+  updateHeaderUser();
+  applyPermissions();
+  processData();
+  showToast('Shadowing ' + targetName, '');
+}
+
+function exitShadow() {
+  const s = getSession();
+  if (!s || !s.shadow) return;
+  setSession({ name: s.shadow });
+  updateHeaderUser();
+  applyPermissions();
+  processData();
+  showToast('Back to your account', 'success');
+}
+
+// ──────────────────────────────────────────────────────────
+let USERS    = getUsers();
 let TRAINERS = USERS.filter(u => u.role !== 'viewer').map(u => u.name);
 
 function syncTrainers() {
-  USERS = getUsers();
+  USERS    = getUsers();
   TRAINERS = USERS.filter(u => u.role !== 'viewer').map(u => u.name);
 }
 
@@ -938,56 +1102,53 @@ function getTrainerColor(name) {
 }
 
 function initUserSelector() {
-  const sel = document.getElementById('userSelect');
-  sel.innerHTML = '<option value="">— Select user —</option>' + USERS.map(u => '<option value="'+u.name+'">'+u.name+(u.role==='admin'?' ★':u.role==='viewer'?' 👁':'')+'</option>').join('');
-  let cur = getCurrentUser();
-  // Default to Amy (admin) if no user has been selected yet
-  if (!cur) {
-    const amy = USERS.find(u => u.name === 'Amy');
-    if (amy) { setCurrentUser(amy); cur = amy; }
-  }
-  if (cur) sel.value = cur.name;
-  updateHeaderUser();
-}
-
-function onUserChange() {
-  const sel = document.getElementById('userSelect');
-  const name = sel.value;
-  if (!name) { setCurrentUser(null); updateHeaderUser(); applyPermissions(); return; }
-  const user = USERS.find(u => u.name === name);
-  if (user) { setCurrentUser(user); updateHeaderUser(); applyPermissions(); logActivity('login', null, name + ' switched to this user', ''); }
+  // With PIN login, this just shows the login screen if no session
+  const sess = getSession();
+  if (!sess) { showLoginScreen(); } else { hideLoginScreen(); updateHeaderUser(); }
 }
 
 function updateHeaderUser() {
   const u = getCurrentUser();
-  const avatar = document.getElementById('headerAvatar');
-  const badge = document.getElementById('adminBadge');
+  const avatar   = document.getElementById('headerAvatar');
+  const badge    = document.getElementById('adminBadge');
+  const nameEl   = document.getElementById('headerUserName');
+  const shadowEl = document.getElementById('shadowBanner');
+  const sess     = getSession();
   if (u) {
     avatar.textContent = u.name[0].toUpperCase();
     avatar.style.background = getTrainerColor(u.name);
-    badge.textContent = u.role === 'admin' ? 'Admin' : u.role === 'viewer' ? 'Viewer' : 'Trainer';
-    badge.style.display = u.role !== 'admin' ? 'inline-block' : 'inline-block';
+    if (nameEl) nameEl.textContent = u.name;
+    badge.textContent  = u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
     badge.style.background = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
+    badge.style.display = 'inline-block';
+    if (shadowEl) shadowEl.style.display = (sess && sess.shadow) ? '' : 'none';
   } else {
-    avatar.textContent = '?';
-    avatar.style.background = '#777';
+    avatar.textContent = '?'; avatar.style.background = '#777';
+    if (nameEl) nameEl.textContent = '—';
     badge.style.display = 'none';
+    if (shadowEl) shadowEl.style.display = 'none';
   }
 }
 
 function applyPermissions() {
   const admin = isAdmin();
-  // Admin-only toolbar buttons (test, refresh, manage trainers, cal settings)
+  // Admin-only toolbar buttons
   document.querySelectorAll('.admin-only').forEach(el => { el.style.display = admin ? '' : 'none'; });
-  // Granular section visibility — always evaluated from permissions, never blocked by admin-only
+  // Granular section visibility — hide everything first, then show what's permitted
   PERM_DEFS.forEach(p => {
     const show = admin || hasPerm(p.key);
     if (p.section)  { const el = document.getElementById(p.section);  if (el) el.style.display = show ? '' : 'none'; }
-    if (p.section2) { const el = document.getElementById(p.section2); if (el) el.style.display = show ? '' : 'none'; }
   });
+  // chartsSection is inside kpiSection — handled above
   // Activity feed button
-  const actBtn = document.getElementById('activityFeedBtn');
-  if (actBtn) actBtn.style.display = (admin || hasPerm('canViewActivity')) ? '' : 'none';
+  // Activity buttons — two IDs exist for different contexts
+  ['activityFeedBtn', 'activityNavBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.style.display = (admin || hasPerm('canViewActivity')) ? '' : 'none';
+  });
+  // Shadow banner
+  const shadowEl = document.getElementById('shadowBanner');
+  if (shadowEl) shadowEl.style.display = isShadowing() ? '' : 'none';
 }
 
 // =============================================
@@ -1443,18 +1604,20 @@ function renderUnassigned() {
     tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>';
     return;
   }
+  const canAssign = isAdmin() || hasPerm('canAssign');
+  const canNotes  = isAdmin() || hasPerm('canAddNotes');
   tbody.innerHTML = rows.map(r => {
     const stale = isStale(r);
+    const actionBtns = [];
+    if (canAssign) actionBtns.push('<button class="btn btn-primary btn-sm assign-btn" onclick="openAssignModal('+r.rowIndex+')">&#10003; Assign</button>');
+    if (canNotes)  actionBtns.push('<button class="btn btn-ghost btn-sm notes-btn" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button>');
     return '<tr class="'+(stale?'row-stale':'')+'">'
       +'<td style="white-space:nowrap;font-size:12px;color:var(--text--dark--30);">'+formatDate(r.date||r.timestamp)+(stale?'<br>'+staleTag():'')+'</td>'
       +'<td>'+companyCell(r)+'<br><span style="font-size:11px;color:var(--text--dark--30);">'+esc(r.contact||'')+'</span></td>'
       +'<td style="font-size:12px;color:var(--text--dark--40);">'+esc(r.contact||'')+'</td>'
       +'<td><span class="option-badge opt-'+r.option+'">Opt '+r.option+' — '+esc(r.optionLabel)+'</span></td>'
       +'<td style="font-size:12px;color:var(--text--dark--30);">'+esc(r.preferredDate||'—')+'</td>'
-      +'<td><div style="display:flex;gap:6px;align-items:center;">'
-        +'<button class="btn btn-primary btn-sm" onclick="openAssignModal('+r.rowIndex+')">&#10003; Assign</button>'
-        +'<button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button>'
-      +'</div></td>'
+      +'<td><div style="display:flex;gap:6px;align-items:center;">'+actionBtns.join('')+'</div></td>'
       +'</tr>';
   }).join('');
 }
@@ -1916,7 +2079,9 @@ function renderTrainerWorkload() {
 
 // Find next free date for a trainer (travel+training+admin all clear of weekends, bank holidays, other bookings)
 function getNextFreeDate(trainer, numTrainingDays) {
-  for (let i=1;i<=21;i++) {
+  // Minimum 14 calendar days buffer for preparation time
+  const MIN_BUFFER_DAYS = 14;
+  for (let i=MIN_BUFFER_DAYS;i<=MIN_BUFFER_DAYS+60;i++) {
     const start=addDays(new Date(),i);
     if (!isWorkday(start)) continue;
     const blocked=getBlockedDates(toDateStr(start),numTrainingDays);
@@ -2116,10 +2281,13 @@ function closeTrainerModal(){document.getElementById('trainerModalOverlay').clas
 
 function renderTrainerList() {
   const el = document.getElementById('trainerList');
+  const curAdmin = getCurrentUser();
   el.innerHTML = USERS.map((u, i) => {
     const color = TRAINER_PALETTE[i % TRAINER_PALETTE.length];
     const roleBadgeColor = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
     const roleLabel = u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
+    const pinStatus = u.pin ? '🔐 PIN set' : '🔓 No PIN';
+    const pinBtnLabel = u.pin ? 'Change PIN' : 'Set PIN';
     let permToggles = '';
     if (u.role !== 'admin') {
       permToggles = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">'
@@ -2134,19 +2302,23 @@ function renderTrainerList() {
     } else {
       permToggles = '<div style="font-size:11px;color:#2147f4;margin-top:8px;padding-top:8px;border-top:1px solid #eef0ff;">&#10022; Admin &mdash; full access to everything</div>';
     }
+    const isSelf = curAdmin && curAdmin.name === u.name;
     return '<div style="padding:14px 18px;border-bottom:1px solid var(--light-grey);">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">'
         +'<div style="display:flex;align-items:center;gap:8px;">'
           +'<div class="trainer-color-dot" style="background:'+color+'"></div>'
           +'<span style="font-weight:600;font-size:13px;">'+esc(u.name)+'</span>'
           +'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+roleBadgeColor+'22;color:'+roleBadgeColor+';">'+roleLabel+'</span>'
+          +'<span style="font-size:10px;color:var(--text--dark--30);">'+pinStatus+'</span>'
         +'</div>'
-        +'<div style="display:flex;gap:6px;align-items:center;">'
+        +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">'
           +'<select data-role-user="'+esc(u.name)+'" onchange="changeUserRole(this.dataset.roleUser,this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;">'
             +'<option value="trainer"'+(u.role==='trainer'?' selected':'')+'>Trainer</option>'
             +'<option value="viewer"'+(u.role==='viewer'?' selected':'')+'>Viewer</option>'
             +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'
           +'</select>'
+          +'<button class="btn btn-ghost btn-sm" data-set-pin="'+esc(u.name)+'">'+pinBtnLabel+'</button>'
+          +(!isSelf && u.role!=='admin'?'<button class="btn btn-ghost btn-sm" data-shadow-user="'+esc(u.name)+'" style="color:#7c3aed;border-color:#7c3aed;">👁 Shadow</button>':'')
           +(USERS.length>1?'<button class="btn btn-danger btn-sm" data-remove-user="'+esc(u.name)+'">Remove</button>':'')
         +'</div>'
       +'</div>'
@@ -2154,15 +2326,49 @@ function renderTrainerList() {
     +'</div>';
   }).join('');
 
-  // Attach events via delegation — no inline onclick quoting issues
+  // Attach events via delegation
   el.querySelectorAll('.perm-toggle').forEach(span => {
-    span.addEventListener('click', function() {
-      togglePerm(this.dataset.user, this.dataset.key, this);
-    });
+    span.addEventListener('click', function() { togglePerm(this.dataset.user, this.dataset.key, this); });
   });
   el.querySelectorAll('[data-remove-user]').forEach(btn => {
     btn.addEventListener('click', function() { removeTrainer(this.dataset.removeUser); });
   });
+  el.querySelectorAll('[data-set-pin]').forEach(btn => {
+    btn.addEventListener('click', function() { adminSetPin(this.dataset.setPin); });
+  });
+  el.querySelectorAll('[data-shadow-user]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      closeTrainerModal();
+      startShadow(this.dataset.shadowUser);
+    });
+  });
+}
+
+function adminSetPin(name) {
+  const u = USERS.find(x => x.name === name); if (!u) return;
+  const newPin = prompt('Set PIN for ' + name + ' (4-8 digits, leave blank to remove PIN):');
+  if (newPin === null) return; // cancelled
+  if (newPin === '') { u.pin = ''; saveUsers(USERS); renderTrainerList(); showToast('PIN removed for '+name, ''); return; }
+  if (!/^\d{4,8}$/.test(newPin)) { alert('PIN must be 4-8 digits only.'); return; }
+  u.pin = newPin; saveUsers(USERS); renderTrainerList();
+  showToast('PIN set for '+name, 'success');
+  logActivity('admin', null, 'PIN updated for '+name, getCurrentUser()?.name||'');
+}
+
+function changeMyPin() {
+  const real = getRealUser(); if (!real) return;
+  const cur = prompt('Current PIN (leave blank if none):') || '';
+  if (real.pin && cur !== real.pin) { showToast('Incorrect current PIN', 'error'); return; }
+  const newPin = prompt('New PIN (4-8 digits, blank to remove):');
+  if (newPin === null) return;
+  if (newPin === '') { real.pin = ''; saveUsers(USERS); showToast('PIN removed', ''); return; }
+  if (!/^\d{4,8}$/.test(newPin)) { showToast('PIN must be 4-8 digits', 'error'); return; }
+  const confirm = prompt('Confirm new PIN:');
+  if (confirm !== newPin) { showToast('PINs do not match', 'error'); return; }
+  const u = USERS.find(x => x.name === real.name); if (!u) return;
+  u.pin = newPin; saveUsers(USERS); syncTrainers();
+  showToast('PIN updated ✓', 'success');
+  logActivity('admin', null, real.name + ' changed their PIN', '');
 }
 
 function togglePerm(name, key, el) {
@@ -2171,14 +2377,14 @@ function togglePerm(name, key, el) {
   el.classList.toggle('on', u.permissions[key]);
   saveUsers(USERS);
   const cur = getCurrentUser();
-  if (cur && cur.name === name) { setCurrentUser(u); applyPermissions(); }
+  if (cur && cur.name === name) { applyPermissions(); processData(); }
 }
 
 function changeUserRole(name, role) {
   const u = USERS.find(x => x.name === name); if(!u) return;
   u.role = role; ensurePerms(u); saveUsers(USERS);
   const cur = getCurrentUser();
-  if (cur && cur.name === name) { setCurrentUser(u); updateHeaderUser(); applyPermissions(); }
+  if (cur && cur.name === name) { updateHeaderUser(); applyPermissions(); }
   renderTrainerList(); syncTrainers();
   logActivity('admin', null, name+' role changed to '+role, getCurrentUser()?.name||'');
 }
@@ -2193,7 +2399,7 @@ function addTrainer() {
   const newUser = ensurePerms({name, role});
   USERS.push(newUser); saveUsers(USERS); syncTrainers();
   inp.value='';
-  renderTrainerList(); renderTrainerWorkload(); populateTrainerFilter(); populateCalTrainerFilter();
+  renderTrainerList(); renderTrainerWorkload(); populateTrainerFilter(); populateCalTrainerFilter(); applyPermissions();
   logActivity('admin', null, 'Added user: '+name+' ('+role+')', getCurrentUser()?.name||'');
   showToast(name+' added as '+role, 'success');
 }
@@ -2265,11 +2471,18 @@ function closeActivityPanel(){document.getElementById('activityPanel').classList
 // INIT
 // =============================================
 syncTrainers();
-initUserSelector();
-applyPermissions();
 initActivityFeed();
-loadData();
-setInterval(loadData, 5*60*1000);
+// Show login screen or go straight to dashboard
+const _initSess = getSession();
+if (_initSess) {
+  hideLoginScreen();
+  updateHeaderUser();
+  applyPermissions();
+  loadData();
+} else {
+  showLoginScreen();
+}
+setInterval(() => { if (getSession()) loadData(); }, 5*60*1000);
 </script>
 </body>
 </html>
