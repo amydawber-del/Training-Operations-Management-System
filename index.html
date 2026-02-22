@@ -2107,13 +2107,13 @@ function renderTrainerList() {
         + PERM_DEFS.map(p => {
             const on = !!(u.permissions && u.permissions[p.key]);
             return '<label style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text--dark--70);cursor:pointer;user-select:none;">'
-              +'<span class="perm-toggle'+(on?' on':'')+'" onclick="togglePerm(''+u.name+'',''+p.key+'',this)">'
+              +'<span class="perm-toggle'+(on?' on':'')+'" data-user="'+esc(u.name)+'" data-key="'+p.key+'">'
               +'<span class="perm-thumb"></span></span>'
               +esc(p.label)+'</label>';
           }).join('')
         + '</div>';
     } else {
-      permToggles = '<div style="font-size:11px;color:#2147f4;margin-top:8px;padding-top:8px;border-top:1px solid #eef0ff;">&#10022; Admin — full access to everything</div>';
+      permToggles = '<div style="font-size:11px;color:#2147f4;margin-top:8px;padding-top:8px;border-top:1px solid #eef0ff;">&#10022; Admin &mdash; full access to everything</div>';
     }
     return '<div style="padding:14px 18px;border-bottom:1px solid var(--light-grey);">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;">'
@@ -2123,17 +2123,27 @@ function renderTrainerList() {
           +'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+roleBadgeColor+'22;color:'+roleBadgeColor+';">'+roleLabel+'</span>'
         +'</div>'
         +'<div style="display:flex;gap:6px;align-items:center;">'
-          +'<select onchange="changeUserRole(''+u.name+'',this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;">'
+          +'<select data-role-user="'+esc(u.name)+'" onchange="changeUserRole(this.dataset.roleUser,this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;">'
             +'<option value="trainer"'+(u.role==='trainer'?' selected':'')+'>Trainer</option>'
             +'<option value="viewer"'+(u.role==='viewer'?' selected':'')+'>Viewer</option>'
             +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'
           +'</select>'
-          +(USERS.length>1?'<button class="btn btn-danger btn-sm" onclick="removeTrainer(''+u.name+'')">Remove</button>':'')
+          +(USERS.length>1?'<button class="btn btn-danger btn-sm" data-remove-user="'+esc(u.name)+'">Remove</button>':'')
         +'</div>'
       +'</div>'
       + permToggles
     +'</div>';
   }).join('');
+
+  // Attach events via delegation — no inline onclick quoting issues
+  el.querySelectorAll('.perm-toggle').forEach(span => {
+    span.addEventListener('click', function() {
+      togglePerm(this.dataset.user, this.dataset.key, this);
+    });
+  });
+  el.querySelectorAll('[data-remove-user]').forEach(btn => {
+    btn.addEventListener('click', function() { removeTrainer(this.dataset.removeUser); });
+  });
 }
 
 function togglePerm(name, key, el) {
