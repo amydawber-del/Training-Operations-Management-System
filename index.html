@@ -94,6 +94,13 @@ td { padding: 10px 14px; border-bottom: 1px solid var(--ui--underline--light-gre
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafafa; }
 
+/* SORTABLE HEADERS */
+th.sortable { cursor: pointer; user-select: none; transition: color 0.12s, background 0.12s; }
+th.sortable:hover { color: var(--action-primary-blue); background: #f0f3ff; }
+th.sort-active { color: var(--action-primary-blue); background: #eef1ff; }
+.sort-icon { display: inline-block; margin-left: 4px; font-size: 10px; opacity: 0.5; }
+th.sort-active .sort-icon { opacity: 1; }
+
 /* STALE ROW */
 .row-stale { background: #fffbf0 !important; }
 .row-stale td { background: #fffbf0 !important; }
@@ -127,6 +134,8 @@ tr:hover td { background: #fafafa; }
 .btn-success:hover { background: #1a8055; }
 .btn-warning { background: #f59e0b; color: #fff; }
 .btn-warning:hover { background: #d97706; }
+.btn-edit { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.35); color: #7c3aed; }
+.btn-edit:hover { background: rgba(139,92,246,0.18); color: #6d28d9; }
 
 /* KPI */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 16px; margin-bottom: 24px; }
@@ -194,6 +203,7 @@ tr:hover td { background: #fafafa; }
 .cal-event-travel { background: #fef3c7; color: #92400e; }
 .cal-event-training { color: #fff; }
 .cal-event-admin { background: #e0e7ff; color: #3730a3; }
+.cal-event-leave { background: #f3e8ff; color: #6d28d9; }
 .cal-event-more { display: block; font-size: 9px; color: var(--text--dark--30); padding: 1px 4px; cursor: pointer; }
 
 .cal-upcoming-card { background: #fff; border: 1px solid var(--ui--underline--light-grey); border-radius: 8px; overflow: hidden; max-height: 520px; display: flex; flex-direction: column; }
@@ -307,9 +317,6 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .trainer-list-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--card-light-grey); border-radius: 6px; border: 1px solid var(--ui--underline--light-grey); }
 .trainer-list-name { font-size: 13px; font-weight: 600; color: var(--text--dark--50); display: flex; align-items: center; gap: 8px; }
 
-/* CAL SETTINGS */
-.cal-settings-body { padding: 20px; }
-
 /* KPI MODAL */
 .kpi-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
 .kpi-modal-overlay.open { opacity: 1; pointer-events: all; }
@@ -338,6 +345,13 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   transition:left 0.2s;
 }
 .perm-toggle.on .perm-thumb { left:16px; }
+
+/* ICS feed status */
+.ics-status { font-size:10px; color:var(--text--dark--30); display:flex; align-items:center; gap:4px; }
+.ics-dot { width:6px; height:6px; border-radius:50%; background:#d1d5db; flex-shrink:0; }
+.ics-dot.ok { background:#22a06b; }
+.ics-dot.error { background:#e53935; }
+.ics-dot.loading { background:#f59e0b; animation:pulse-dot 1s infinite; }
 </style>
 </head>
 <body>
@@ -364,8 +378,6 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-s3SWoPSaIanCZLMLYNnVmu3NU-LY4Lm7Db12gHLv6LzVuQ/viewform" class="nav-item" target="_blank"><span class="nav-item-icon">&#128221;</span> Training Request Form</a>
 </nav>
 
-<!-- HEADER -->
-
 <!-- LOGIN SCREEN -->
 <div id="loginScreen" style="position:fixed;inset:0;z-index:9999;background:var(--brand--black);display:none;flex-direction:column;align-items:center;justify-content:center;gap:0;">
   <div style="text-align:center;margin-bottom:32px;">
@@ -375,8 +387,6 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div style="background:#fff;border-radius:16px;padding:32px 36px;width:340px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
     <div style="font-size:16px;font-weight:700;color:var(--text--dark--50);margin-bottom:6px;">Welcome back</div>
     <div style="font-size:12px;color:var(--text--dark--30);margin-bottom:20px;">Select your account to continue</div>
-
-    <!-- Step 1: user select -->
     <div id="loginStep1">
       <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Account</label>
       <select id="loginUserSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:13px;font-family:Arial,sans-serif;color:var(--text--dark--50);background:#fff;appearance:none;cursor:pointer;margin-bottom:16px;">
@@ -384,8 +394,6 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       </select>
       <button onclick="loginStepPin()" style="width:100%;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Continue →</button>
     </div>
-
-    <!-- Step 2: PIN entry -->
     <div id="loginStep2" style="display:none;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
         <button onclick="loginBack()" style="background:none;border:none;cursor:pointer;color:var(--text--dark--30);font-size:18px;line-height:1;padding:0;">←</button>
@@ -411,7 +419,6 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div class="header-title">Training Dashboard</div>
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">&#8212;</span>
-    <!-- Logged in user display -->
     <div class="user-selector-wrap" style="cursor:default;">
       <div class="user-avatar" id="headerAvatar">?</div>
       <span id="headerUserName" style="font-size:12px;font-weight:600;color:#ddd;">—</span>
@@ -459,14 +466,8 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <span style="font-size:11px;color:var(--text--dark--30);">Click <strong>Assign</strong> to open the assignment panel</span>
       </div>
       <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Actions</th></tr>
-          </thead>
-          <tbody id="unassignedBody">
-            <tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr>
-          </tbody>
-        </table>
+        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Actions</th></tr></thead>
+        <tbody id="unassignedBody"><tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
   </div>
@@ -475,7 +476,10 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div id="calendarSection" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title">&#128197; Training Calendar</div>
-      <button class="refresh-btn admin-only" onclick="openCalSettings()" style="background:rgba(33,71,244,0.1);border-color:rgba(33,71,244,0.3);color:var(--action-primary-blue);font-size:11px;">&#9881; Cal Settings</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div id="icsStatusBar" style="display:flex;align-items:center;gap:10px;font-size:11px;"></div>
+        <button class="refresh-btn admin-only" onclick="openCalSettings()" style="background:rgba(33,71,244,0.1);border-color:rgba(33,71,244,0.3);color:var(--action-primary-blue);font-size:11px;">&#9881; Cal Settings</button>
+      </div>
     </div>
     <div class="cal-grid">
       <div class="cal-month-card">
@@ -494,6 +498,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#2147f4;"></div><span class="cal-legend-label">Training</span></div>
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e0e7ff;border:1px solid #a5b4fc;"></div><span class="cal-legend-label">Admin</span></div>
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#fef9c3;border:1px solid #fde047;"></div><span class="cal-legend-label">Bank Holiday</span></div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#f3e8ff;border:1px solid #d8b4fe;"></div><span class="cal-legend-label">Team Leave</span></div>
           <span id="calGcalStatus" style="font-size:11px;color:var(--text--dark--30);margin-left:auto;"></span>
         </div>
         <div class="cal-dow-row">
@@ -524,17 +529,10 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
           <div class="alert-dot" id="actionDot" style="display:none;background:#f59e0b;"></div>
           <span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">Pending bookings awaiting confirmation</span>
         </div>
-        <span style="font-size:11px;color:var(--text--dark--30);">Only status can be changed from this panel</span>
       </div>
       <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Trainer</th><th>Status</th></tr>
-          </thead>
-          <tbody id="actionBody">
-            <tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr>
-          </tbody>
-        </table>
+        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Trainer</th><th>Status</th></tr></thead>
+        <tbody id="actionBody"><tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
   </div>
@@ -588,8 +586,8 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="chart-subtitle" style="margin-top:10px;margin-bottom:0;">Bookings by training option (this year)</div>
     </div>
   </div>
+  </div>
 
-  </div><!-- /kpiSection -->
   <!-- 7. ALL BOOKINGS -->
   <div id="allBookingsSection">
     <div class="section-header" style="flex-wrap:wrap;gap:10px;">
@@ -617,10 +615,10 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Date</th><th>Company</th><th>Contact</th><th>Option</th><th>Trainer</th><th>Days</th><th>Value</th><th>Status</th></tr>
+            <tr id="allBookingsHead"></tr>
           </thead>
           <tbody id="allBookingsBody">
-            <tr><td colspan="8" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr>
+            <tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr>
           </tbody>
         </table>
       </div>
@@ -635,27 +633,20 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 
 </main>
 
-<!-- ============================================================ -->
-<!-- MODALS -->
-<!-- ============================================================ -->
+<!-- ============================================================ MODALS ============================================================ -->
 
-<!-- ASSIGN MODAL (trainer only) -->
+<!-- ASSIGN MODAL -->
 <div class="modal-overlay" id="assignOverlay" onclick="if(event.target===this)closeAssignModal()">
   <div class="modal">
     <div class="modal-header">
-      <div>
-        <div class="modal-title" id="assignModalCompany">Assign Trainer</div>
-        <div class="modal-subtitle" id="assignModalContact">&#8212;</div>
-      </div>
+      <div><div class="modal-title" id="assignModalCompany">Assign Trainer</div><div class="modal-subtitle" id="assignModalContact">&#8212;</div></div>
       <button class="modal-close" onclick="closeAssignModal()">&#10005;</button>
     </div>
     <div class="modal-body">
       <div id="assignModalOption" style="margin-bottom:14px;font-size:12px;color:var(--text--dark--30);"></div>
       <div class="form-row">
         <label class="form-label required">Assign Trainer</label>
-        <select class="form-select" id="assignTrainerSel">
-          <option value="">&#8212; Select trainer &#8212;</option>
-        </select>
+        <select class="form-select" id="assignTrainerSel"><option value="">&#8212; Select trainer &#8212;</option></select>
       </div>
       <div class="status-preview pending">&#128203; Enquiry will move to <strong>Pending</strong> status</div>
     </div>
@@ -666,14 +657,11 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 </div>
 
-<!-- BOOK MODAL (Needs Action &#8594; Booked) -->
+<!-- BOOK MODAL -->
 <div class="modal-overlay" id="bookOverlay" onclick="if(event.target===this)closeBookModal()">
   <div class="modal modal-lg">
     <div class="modal-header">
-      <div>
-        <div class="modal-title">&#128200; Confirm Booking</div>
-        <div class="modal-subtitle" id="bookModalCompany">&#8212;</div>
-      </div>
+      <div><div class="modal-title">&#128200; Confirm Booking</div><div class="modal-subtitle" id="bookModalCompany">&#8212;</div></div>
       <button class="modal-close" onclick="closeBookModal()">&#10005;</button>
     </div>
     <div class="modal-body">
@@ -687,14 +675,11 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <div class="form-row">
           <label class="form-label required">Number of Training Days</label>
           <input type="number" class="form-input" id="bookDays" min="1" max="14" value="1" oninput="checkBookingWarnings()">
-          <div class="form-hint">Used to block the calendar</div>
         </div>
       </div>
       <div class="form-row">
         <label class="form-label required">Trainer</label>
-        <select class="form-select" id="bookTrainer" onchange="checkBookingWarnings()">
-          <option value="">&#8212; Select trainer &#8212;</option>
-        </select>
+        <select class="form-select" id="bookTrainer" onchange="checkBookingWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select>
       </div>
       <div class="form-row">
         <label class="form-label">Invoice Value (&#163;) <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">optional — £0 allowed</span></label>
@@ -717,21 +702,66 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 </div>
 
+<!-- EDIT BOOKING MODAL (admin — amend date/value on existing bookings) -->
+<div class="modal-overlay" id="editBookingOverlay" onclick="if(event.target===this)closeEditBookingModal()">
+  <div class="modal modal-lg">
+    <div class="modal-header" style="background:#6d28d9;">
+      <div><div class="modal-title">&#9998; Edit Booking</div><div class="modal-subtitle" id="editBookingCompany">&#8212;</div></div>
+      <button class="modal-close" onclick="closeEditBookingModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="warning-box info" style="margin-bottom:16px;">
+        <span>&#8505;&#65039;</span>
+        <span>Use this to amend the training date, invoice value, trainer, or number of days for a confirmed booking (e.g. reschedule or price change after negotiation).</span>
+      </div>
+      <div id="editBookingWarnings"></div>
+      <div class="form-2col">
+        <div class="form-row">
+          <label class="form-label required">Training Date</label>
+          <input type="date" class="form-input" id="editBookDate" oninput="checkEditWarnings()">
+        </div>
+        <div class="form-row">
+          <label class="form-label required">Training Days</label>
+          <input type="number" class="form-input" id="editBookDays" min="1" max="14" value="1" oninput="checkEditWarnings()">
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label required">Trainer</label>
+        <select class="form-select" id="editBookTrainer" onchange="checkEditWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Invoice Value (&#163;)</label>
+        <input type="number" class="form-input" id="editBookValue" min="0" step="50" placeholder="e.g. 1100">
+        <div class="form-hint">Leave as-is or update after negotiation</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Amendment Reason <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">optional but recommended</span></label>
+        <input type="text" class="form-input" id="editBookReason" placeholder="e.g. Rescheduled by client, price negotiated down…">
+      </div>
+    </div>
+    <div id="editBookingOverrideRow" style="display:none;padding:8px 20px;background:#fff8f0;border-top:1px solid #fde8c8;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;cursor:pointer;font-weight:600;">
+        <input type="checkbox" id="editBookingOverride" onchange="checkEditWarnings()">
+        ⚠️ Admin override — confirm despite double booking conflict
+      </label>
+    </div>
+    <div class="modal-footer">
+      <span id="editBookingBlockMsg" style="font-size:12px;color:#c0303d;font-weight:600;margin-right:auto;display:none;"></span>
+      <button class="btn btn-ghost" onclick="closeEditBookingModal()">Cancel</button>
+      <button class="btn btn-edit" id="confirmEditBookBtn" onclick="confirmEditBooking()" style="background:#6d28d9;color:#fff;border:none;">&#9998; Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- CANCEL MODAL -->
 <div class="modal-overlay" id="cancelOverlay" onclick="if(event.target===this)closeCancelModal()">
   <div class="modal">
     <div class="modal-header">
-      <div>
-        <div class="modal-title">&#10007; Cancel Enquiry</div>
-        <div class="modal-subtitle" id="cancelModalCompany">&#8212;</div>
-      </div>
+      <div><div class="modal-title">&#10007; Cancel Enquiry</div><div class="modal-subtitle" id="cancelModalCompany">&#8212;</div></div>
       <button class="modal-close" onclick="closeCancelModal()">&#10005;</button>
     </div>
     <div class="modal-body">
-      <div class="warning-box warn" style="margin-bottom:16px;">
-        <span>&#9888;&#65039;</span>
-        <span>Cancelling will move this enquiry to All Bookings. This action can be undone by an admin.</span>
-      </div>
+      <div class="warning-box warn" style="margin-bottom:16px;"><span>&#9888;&#65039;</span><span>Cancelling will move this enquiry to All Bookings. This action can be undone by an admin.</span></div>
       <div class="form-row">
         <label class="form-label required">Cancellation Reason</label>
         <textarea class="form-input" id="cancelReason" rows="3" placeholder="Enter the reason for cancellation&#8230;" style="resize:vertical;"></textarea>
@@ -748,16 +778,11 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 <div class="modal-overlay" id="notesOverlay" onclick="if(event.target===this)closeNotesModal()">
   <div class="modal modal-lg">
     <div class="modal-header">
-      <div>
-        <div class="modal-title">&#128221; Progress Notes</div>
-        <div class="modal-subtitle" id="notesModalCompany">&#8212;</div>
-      </div>
+      <div><div class="modal-title">&#128221; Progress Notes</div><div class="modal-subtitle" id="notesModalCompany">&#8212;</div></div>
       <button class="modal-close" onclick="closeNotesModal()">&#10005;</button>
     </div>
     <div class="modal-body">
-      <div class="notes-list" id="notesList">
-        <div style="text-align:center;color:var(--text--dark--30);padding:20px;">No notes yet.</div>
-      </div>
+      <div class="notes-list" id="notesList"><div style="text-align:center;color:var(--text--dark--30);padding:20px;">No notes yet.</div></div>
       <div style="border-top:1px solid var(--ui--underline--light-grey);padding-top:16px;margin-top:8px;">
         <div class="form-row">
           <label class="form-label required">Add Note</label>
@@ -776,14 +801,11 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 <div class="modal-overlay" id="calEventOverlay" onclick="if(event.target===this)closeCalEventModal()">
   <div class="modal">
     <div class="modal-header" id="calEventHeader">
-      <div>
-        <div class="modal-title" id="calEventTitle">Booking Details</div>
-        <div class="modal-subtitle" id="calEventSubtitle">&#8212;</div>
-      </div>
+      <div><div class="modal-title" id="calEventTitle">Booking Details</div><div class="modal-subtitle" id="calEventSubtitle">&#8212;</div></div>
       <button class="modal-close" onclick="closeCalEventModal()">&#10005;</button>
     </div>
     <div class="modal-body" id="calEventBody"></div>
-    <div class="modal-footer">
+    <div class="modal-footer" id="calEventFooter">
       <button class="btn btn-ghost" onclick="closeCalEventModal()">Close</button>
     </div>
   </div>
@@ -808,9 +830,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <button class="btn btn-primary" onclick="addTrainer()">+ Add</button>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeTrainerModal()">Close</button>
-    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeTrainerModal()">Close</button></div>
   </div>
 </div>
 
@@ -818,17 +838,30 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 <div class="modal-overlay" id="calSettingsOverlay" onclick="if(event.target===this)closeCalSettings()">
   <div class="modal">
     <div class="modal-header">
-      <div><div class="modal-title">&#128197; Google Calendar Settings</div><div class="modal-subtitle">Connect your shared team calendar</div></div>
+      <div><div class="modal-title">&#128197; Calendar Settings</div><div class="modal-subtitle">Google Calendar + Humaans ICS feeds</div></div>
       <button class="modal-close" onclick="closeCalSettings()">&#10005;</button>
     </div>
     <div class="modal-body">
       <div class="warning-box info" style="margin-bottom:16px;">
         <span>&#8505;&#65039;</span>
-        <span>Google Calendar &rarr; Settings &rarr; Click your calendar &rarr; "Integrate calendar" &rarr; Copy the Calendar ID</span>
+        <div>
+          <strong>Google Calendar:</strong> Settings → Click your calendar → "Integrate calendar" → Copy Calendar ID<br><br>
+          <strong>ICS feeds:</strong> Public holidays and team annual leave are pre-configured from Humaans. They load automatically when the dashboard opens.
+        </div>
       </div>
       <div class="form-row">
-        <label class="form-label">Shared Team Calendar ID</label>
+        <label class="form-label">Shared Team Calendar ID (Google)</label>
         <input type="text" class="form-input" id="calIdInput" placeholder="e.g. abc123@group.calendar.google.com">
+      </div>
+      <div class="form-row">
+        <label class="form-label">Public Holidays ICS URL</label>
+        <input type="text" class="form-input" id="calHolidayIcsInput" placeholder="https://app.humaans.io/calendar-feeds/…?type=public-holidays">
+        <div class="form-hint">Defaults to Humaans UK public holidays feed</div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Team Annual Leave ICS URL</label>
+        <input type="text" class="form-input" id="calLeaveIcsInput" placeholder="https://app.humaans.io/calendar-feeds/…?filter=my-teams">
+        <div class="form-hint">Defaults to Humaans team leave feed</div>
       </div>
       <div id="calSettingsPerTrainer" style="margin-top:8px;"></div>
     </div>
@@ -844,10 +877,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 <div class="kpi-modal-overlay" id="kpiModalOverlay" onclick="if(event.target===this)document.getElementById('kpiModalOverlay').classList.remove('open')">
   <div class="kpi-modal">
     <div class="kpi-modal-header">
-      <div>
-        <div class="modal-title" id="kpiModalTitle">&#8212;</div>
-        <div class="modal-subtitle" id="kpiModalSubtitle">&#8212;</div>
-      </div>
+      <div><div class="modal-title" id="kpiModalTitle">&#8212;</div><div class="modal-subtitle" id="kpiModalSubtitle">&#8212;</div></div>
       <button class="modal-close" onclick="document.getElementById('kpiModalOverlay').classList.remove('open')">&#10005;</button>
     </div>
     <div class="kpi-modal-body">
@@ -873,9 +903,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <span class="activity-count" id="activityCount">0 events</span>
     <button class="activity-clear-btn" onclick="clearActivityLog()">&#128465; Clear log</button>
   </div>
-  <div class="activity-feed-body" id="activityFeedBody">
-    <div class="activity-empty">&#128203; No activity yet</div>
-  </div>
+  <div class="activity-feed-body" id="activityFeedBody"><div class="activity-empty">&#128203; No activity yet</div></div>
 </div>
 
 <!-- TOAST -->
@@ -888,53 +916,49 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCvBhFSPyyoaVsui0DCxvGQQa0V7e_UCJ5LfqvcSysTHTFlNRcx4ewlET5TyouJ0ZYow/exec';
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSvPvb_WzFGr6SKflZEob3RFpuh44lKckD4DcsoAXxKUwtYBGCtGGEqA9YkSnvBKh3pQc9nwdbfh9B2/pub?gid=1792679763&single=true&output=csv';
 
+// Default Humaans ICS feed URLs (editable in Cal Settings)
+const DEFAULT_HOLIDAY_ICS = 'https://app.humaans.io/calendar-feeds/5GazIsnzjxJnLUPrls2lrPcs?type=public-holidays';
+const DEFAULT_LEAVE_ICS   = 'https://app.humaans.io/calendar-feeds/5GazIsnzjxJnLUPrls2lrPcs?filter=my-teams';
+
 const OPTION_LABELS = { '1':'On Demand + Help Centre', '2':'Personalised 1 Day', '3':'Personalised 2 Day', '4':'Accounting + Go Live', '5':'Live HQ Session' };
 const OPTION_PRICES = { '1':0, '2':1100, '3':1850, '4':1000, '5':220 };
-const OPTION_DAYS   = { '1':0, '2':1,    '3':2,    '4':1,    '5':1   };
+const OPTION_DAYS   = { '1':0, '2':1,    '3':2,    '4':1,    '5':1 };
 
-// Trainer calendar colours (index maps to trainer position)
 const TRAINER_PALETTE = ['#2147f4','#22a06b','#e67e22','#9b59b6','#0891b2','#dc2626','#d97706','#0d9488','#7c3aed','#db2777'];
 
-// UK Bank Holidays 2024–2026
-const UK_BANK_HOLIDAYS = new Set([
+// Fallback UK Bank Holidays (used if ICS feed fails)
+const UK_BANK_HOLIDAYS_FALLBACK = new Set([
   '2024-01-01','2024-03-29','2024-04-01','2024-05-06','2024-05-27','2024-08-26','2024-12-25','2024-12-26',
   '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26','2025-08-25','2025-12-25','2025-12-26',
   '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25','2026-08-31','2026-12-25','2026-12-28'
 ]);
 
+// Live ICS data — populated on load
+let icsHolidayDates = new Set();   // YYYY-MM-DD strings for public holidays
+let icsLeaveEvents  = [];          // [{dateStr, summary, who}]
+let icsHolidayLabels = {};         // dateStr -> holiday name
+
 // =============================================
 // USER SYSTEM + LOGIN
 // =============================================
-const USERS_KEY    = 'streetDashboardUsers_v4';
-const SESSION_KEY  = 'streetDashboardSession_v1';  // {name, shadow}
+const USERS_KEY   = 'streetDashboardUsers_v4';
+const SESSION_KEY = 'streetDashboardSession_v1';
 
-// All granular permissions — admin always has all; trainer/viewer get toggles
 const PERM_DEFS = [
-  { key:'canViewTrainerWorkload', label:'View Trainer Workload',     section:'trainerWorkloadSection' },
-  { key:'canViewUnassigned',      label:'View Unassigned Requests',  section:'unassignedSection' },
-  { key:'canAssign',              label:'Assign Enquiries',          section:null },
-  { key:'canViewNeedsAction',     label:'View Needs Action',         section:'actionSection' },
-  { key:'canBook',                label:'Confirm Bookings',          section:null },
-  { key:'canCancel',              label:'Cancel Bookings',           section:null },
-  { key:'canAddNotes',            label:'Add Notes',                 section:null },
-  { key:'canViewCalendar',        label:'View Calendar',             section:'calendarSection' },
-  { key:'canViewAllBookings',     label:'View All Bookings',         section:'allBookingsSection' },
-  { key:'canViewKPIs',            label:'View KPIs & Charts',        section:'kpiSection' },
-  { key:'canViewActivity',        label:'View Activity Feed',        section:null },
+  { key:'canViewTrainerWorkload', label:'View Trainer Workload',    section:'trainerWorkloadSection' },
+  { key:'canViewUnassigned',      label:'View Unassigned Requests', section:'unassignedSection' },
+  { key:'canAssign',              label:'Assign Enquiries',         section:null },
+  { key:'canViewNeedsAction',     label:'View Needs Action',        section:'actionSection' },
+  { key:'canBook',                label:'Confirm Bookings',         section:null },
+  { key:'canCancel',              label:'Cancel Bookings',          section:null },
+  { key:'canAddNotes',            label:'Add Notes',                section:null },
+  { key:'canViewCalendar',        label:'View Calendar',            section:'calendarSection' },
+  { key:'canViewAllBookings',     label:'View All Bookings',        section:'allBookingsSection' },
+  { key:'canViewKPIs',            label:'View KPIs & Charts',       section:'kpiSection' },
+  { key:'canViewActivity',        label:'View Activity Feed',       section:null },
 ];
-
-const DEFAULT_PERMS_TRAINER = {
-  canViewTrainerWorkload:true,  canViewUnassigned:true,     canAssign:true,
-  canViewNeedsAction:true,      canBook:false,              canCancel:false,
-  canAddNotes:true,             canViewCalendar:true,       canViewAllBookings:true,
-  canViewKPIs:false,            canViewActivity:false
-};
-const DEFAULT_PERMS_VIEWER = {
-  canViewTrainerWorkload:false, canViewUnassigned:false,    canAssign:false,
-  canViewNeedsAction:false,     canBook:false,              canCancel:false,
-  canAddNotes:false,            canViewCalendar:true,       canViewAllBookings:true,
-  canViewKPIs:false,            canViewActivity:false
-};
+const DEFAULT_PERMS_TRAINER = { canViewTrainerWorkload:true,canViewUnassigned:true,canAssign:true,canViewNeedsAction:true,canBook:false,canCancel:false,canAddNotes:true,canViewCalendar:true,canViewAllBookings:true,canViewKPIs:false,canViewActivity:false };
+const DEFAULT_PERMS_VIEWER  = { canViewTrainerWorkload:false,canViewUnassigned:false,canAssign:false,canViewNeedsAction:false,canBook:false,canCancel:false,canAddNotes:false,canViewCalendar:true,canViewAllBookings:true,canViewKPIs:false,canViewActivity:false };
 
 function ensurePerms(u) {
   if (u.role === 'admin') { u.permissions = null; return u; }
@@ -943,7 +967,6 @@ function ensurePerms(u) {
   PERM_DEFS.forEach(p => { if (!(p.key in u.permissions)) u.permissions[p.key] = defaults[p.key]; });
   return u;
 }
-
 function getUsers() {
   let users = [];
   try { const s = JSON.parse(localStorage.getItem(USERS_KEY) || 'null'); if (Array.isArray(s)) users = s; } catch(e) {}
@@ -954,206 +977,114 @@ function getUsers() {
   return users;
 }
 function saveUsers(arr) { try { localStorage.setItem(USERS_KEY, JSON.stringify(arr)); } catch(e) {} }
-
-// Session: {name, shadow} — shadow = name of real admin when shadowing
-function getSession()         { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null'); } catch(e) { return null; } }
-function setSession(s)        { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch(e) {} }
-function clearSession()       { try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {} }
-
-function getCurrentUser() {
-  const sess = getSession();
-  if (!sess) return null;
-  return USERS.find(u => u.name === sess.name) || null;
-}
-function getRealUser() {
-  // Always returns the actually-logged-in user, ignoring shadow
-  const sess = getSession();
-  if (!sess) return null;
-  const realName = sess.shadow || sess.name; // sess.shadow is stored admin name when shadowing
-  return USERS.find(u => u.name === realName) || null;
-}
-function isAdmin() { const u = getRealUser(); return u && u.role === 'admin'; }
-function isShadowing() { const s = getSession(); return !!(s && s.shadow); }
-
+function getSession()   { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null'); } catch(e) { return null; } }
+function setSession(s)  { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch(e) {} }
+function clearSession() { try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {} }
+function getCurrentUser() { const s=getSession(); if(!s)return null; return USERS.find(u=>u.name===s.name)||null; }
+function getRealUser()    { const s=getSession(); if(!s)return null; const n=s.shadow||s.name; return USERS.find(u=>u.name===n)||null; }
+function isAdmin()    { const u=getRealUser(); return u&&u.role==='admin'; }
+function isShadowing(){ const s=getSession(); return !!(s&&s.shadow); }
 function hasPerm(key) {
-  const u = getCurrentUser();   // returns shadow target if shadowing, else real user
-  if (!u) return false;
-  if (u.role === 'admin') return true;
-  // Always read from USERS for latest toggles
-  const fresh = USERS.find(x => x.name === u.name);
-  if (!fresh) return false;
-  if (fresh.role === 'admin') return true;
-  return !!(fresh.permissions && fresh.permissions[key]);
+  const u=getCurrentUser(); if(!u) return false;
+  if(u.role==='admin') return true;
+  const fresh=USERS.find(x=>x.name===u.name); if(!fresh) return false;
+  if(fresh.role==='admin') return true;
+  return !!(fresh.permissions&&fresh.permissions[key]);
 }
 
-// ── Login flow ──────────────────────────────────────────
+// Login flow
 let _loginSelectedUser = null;
-
 function showLoginScreen() {
   syncTrainers();
-  const el = document.getElementById('loginScreen');
-  if (el) el.style.display = 'flex';
-  document.getElementById('loginStep1').style.display = '';
-  document.getElementById('loginStep2').style.display = 'none';
-  document.getElementById('loginPinError').textContent = '';
-  document.getElementById('loginPinInput').value = '';
-  _loginSelectedUser = null;
-  // Populate user dropdown — everyone can pick their own account
-  const sel = document.getElementById('loginUserSelect');
-  // Always re-read from localStorage so newly added viewers/trainers appear immediately
-  const allUsers = getUsers();
-  sel.innerHTML = '<option value="">— Choose account —</option>'
-    + allUsers.map(u => '<option value="'+u.name+'">'+u.name+'</option>').join('');
-  // Hide dashboard
-  const hdr = document.getElementById('mainHeader'); if (hdr) hdr.style.display = 'none';
-  const main = document.getElementById('mainContent'); if (main) main.style.display = 'none';
-  const lb = document.getElementById('loadingBar'); if (lb) lb.style.display = 'none';
+  const el=document.getElementById('loginScreen'); if(el) el.style.display='flex';
+  document.getElementById('loginStep1').style.display='';
+  document.getElementById('loginStep2').style.display='none';
+  document.getElementById('loginPinError').textContent='';
+  document.getElementById('loginPinInput').value='';
+  _loginSelectedUser=null;
+  const sel=document.getElementById('loginUserSelect');
+  const allUsers=getUsers();
+  sel.innerHTML='<option value="">— Choose account —</option>'+allUsers.map(u=>'<option value="'+u.name+'">'+u.name+'</option>').join('');
+  const hdr=document.getElementById('mainHeader'); if(hdr) hdr.style.display='none';
+  const main=document.getElementById('mainContent'); if(main) main.style.display='none';
+  const lb=document.getElementById('loadingBar'); if(lb) lb.style.display='none';
 }
-
 function hideLoginScreen() {
-  const el = document.getElementById('loginScreen');
-  if (el) el.style.display = 'none';
-  // Reveal dashboard
-  const hdr = document.getElementById('mainHeader'); if (hdr) hdr.style.display = '';
-  const main = document.getElementById('mainContent'); if (main) main.style.display = '';
-  const lb = document.getElementById('loadingBar'); if (lb) lb.style.display = '';
+  const el=document.getElementById('loginScreen'); if(el) el.style.display='none';
+  const hdr=document.getElementById('mainHeader'); if(hdr) hdr.style.display='';
+  const main=document.getElementById('mainContent'); if(main) main.style.display='';
+  const lb=document.getElementById('loadingBar'); if(lb) lb.style.display='';
 }
-
 function loginStepPin() {
-  const sel = document.getElementById('loginUserSelect');
-  const name = sel.value;
-  if (!name) { sel.style.borderColor='#c0303d'; return; }
-  sel.style.borderColor='';
-  _loginSelectedUser = USERS.find(u => u.name === name);
-  if (!_loginSelectedUser) return;
-  document.getElementById('loginUserLabel').textContent = _loginSelectedUser.name;
-  document.getElementById('loginUserRole').textContent  = _loginSelectedUser.role.charAt(0).toUpperCase()+_loginSelectedUser.role.slice(1);
-  const hasPin = !!_loginSelectedUser.pin;
-  document.getElementById('loginNoPinNote').style.display = hasPin ? 'none' : '';
-  document.getElementById('loginPinInput').placeholder = hasPin ? 'Enter your PIN' : 'No PIN set — press Log In';
-  document.getElementById('loginPinError').textContent = '';
-  document.getElementById('loginPinInput').value = '';
-  document.getElementById('loginStep1').style.display = 'none';
-  document.getElementById('loginStep2').style.display = '';
-  setTimeout(() => document.getElementById('loginPinInput').focus(), 80);
+  const sel=document.getElementById('loginUserSelect'); const name=sel.value;
+  if(!name){sel.style.borderColor='#c0303d';return;} sel.style.borderColor='';
+  _loginSelectedUser=USERS.find(u=>u.name===name); if(!_loginSelectedUser) return;
+  document.getElementById('loginUserLabel').textContent=_loginSelectedUser.name;
+  document.getElementById('loginUserRole').textContent=_loginSelectedUser.role.charAt(0).toUpperCase()+_loginSelectedUser.role.slice(1);
+  const hasPin=!!_loginSelectedUser.pin;
+  document.getElementById('loginNoPinNote').style.display=hasPin?'none':'';
+  document.getElementById('loginPinInput').placeholder=hasPin?'Enter your PIN':'No PIN set — press Log In';
+  document.getElementById('loginPinError').textContent='';
+  document.getElementById('loginPinInput').value='';
+  document.getElementById('loginStep1').style.display='none';
+  document.getElementById('loginStep2').style.display='';
+  setTimeout(()=>document.getElementById('loginPinInput').focus(),80);
 }
-
-function loginBack() {
-  _loginSelectedUser = null;
-  document.getElementById('loginStep1').style.display = '';
-  document.getElementById('loginStep2').style.display = 'none';
-}
-
+function loginBack() { _loginSelectedUser=null; document.getElementById('loginStep1').style.display=''; document.getElementById('loginStep2').style.display='none'; }
 function loginConfirmPin() {
-  if (!_loginSelectedUser) return;
-  const entered = document.getElementById('loginPinInput').value;
-  const storedPin = _loginSelectedUser.pin || '';
-  if (storedPin && entered !== storedPin) {
-    document.getElementById('loginPinError').textContent = 'Incorrect PIN. Try again.';
-    document.getElementById('loginPinInput').value = '';
-    document.getElementById('loginPinInput').focus();
-    return;
-  }
-  // Login success
-  setSession({ name: _loginSelectedUser.name });
-  hideLoginScreen();
-  updateHeaderUser();
-  applyPermissions();
-  logActivity('login', null, _loginSelectedUser.name + ' logged in', '');
-  if (!allData.length) loadData(); else processData();
+  if(!_loginSelectedUser) return;
+  const entered=document.getElementById('loginPinInput').value;
+  const storedPin=_loginSelectedUser.pin||'';
+  if(storedPin&&entered!==storedPin){ document.getElementById('loginPinError').textContent='Incorrect PIN. Try again.'; document.getElementById('loginPinInput').value=''; document.getElementById('loginPinInput').focus(); return; }
+  setSession({name:_loginSelectedUser.name});
+  hideLoginScreen(); updateHeaderUser(); applyPermissions();
+  logActivity('login',null,_loginSelectedUser.name+' logged in','');
+  if(!allData.length) loadData(); else processData();
 }
+function logout() { clearSession(); showLoginScreen(); }
 
-function logout() {
-  clearSession();
-  showLoginScreen();
-}
-
-// ── Shadow mode (admin only) ─────────────────────────────
+// Shadow mode
 function startShadow(targetName) {
-  if (!isAdmin()) return;
-  const adminName = getRealUser().name;
-  setSession({ name: targetName, shadow: adminName });
-  updateHeaderUser();
-  applyPermissions();
-  processData();
-  showToast('Shadowing ' + targetName, '');
+  if(!isAdmin()) return;
+  const adminName=getRealUser().name;
+  setSession({name:targetName,shadow:adminName});
+  updateHeaderUser(); applyPermissions(); processData();
+  showToast('Shadowing '+targetName,'');
 }
-
 function exitShadow() {
-  const s = getSession();
-  if (!s || !s.shadow) return;
-  setSession({ name: s.shadow });
-  updateHeaderUser();
-  applyPermissions();
-  processData();
-  showToast('Back to your account', 'success');
+  const s=getSession(); if(!s||!s.shadow) return;
+  setSession({name:s.shadow});
+  updateHeaderUser(); applyPermissions(); processData();
+  showToast('Back to your account','success');
 }
 
-// ──────────────────────────────────────────────────────────
 let USERS    = getUsers();
-let TRAINERS = USERS.filter(u => u.role !== 'viewer').map(u => u.name);
+let TRAINERS = USERS.filter(u=>u.role!=='viewer').map(u=>u.name);
+function syncTrainers() { USERS=getUsers(); TRAINERS=USERS.filter(u=>u.role!=='viewer').map(u=>u.name); }
+function getTrainerColor(name) { const idx=TRAINERS.indexOf(name); return idx>=0?TRAINER_PALETTE[idx%TRAINER_PALETTE.length]:'#777'; }
 
-function syncTrainers() {
-  USERS    = getUsers();
-  TRAINERS = USERS.filter(u => u.role !== 'viewer').map(u => u.name);
-}
-
-function getTrainerColor(name) {
-  const idx = TRAINERS.indexOf(name);
-  return idx >= 0 ? TRAINER_PALETTE[idx % TRAINER_PALETTE.length] : '#777';
-}
-
-function initUserSelector() {
-  // With PIN login, this just shows the login screen if no session
-  const sess = getSession();
-  if (!sess) { showLoginScreen(); } else { hideLoginScreen(); updateHeaderUser(); }
-}
-
+function initUserSelector() { const sess=getSession(); if(!sess){showLoginScreen();}else{hideLoginScreen();updateHeaderUser();} }
 function updateHeaderUser() {
-  const u = getCurrentUser();
-  const avatar   = document.getElementById('headerAvatar');
-  const badge    = document.getElementById('adminBadge');
-  const nameEl   = document.getElementById('headerUserName');
-  const shadowEl = document.getElementById('shadowBanner');
-  const sess     = getSession();
-  if (u) {
-    avatar.textContent = u.name[0].toUpperCase();
-    avatar.style.background = getTrainerColor(u.name);
-    if (nameEl) nameEl.textContent = u.name;
-    badge.textContent  = u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
-    badge.style.background = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
-    badge.style.display = 'inline-block';
-    if (shadowEl) shadowEl.style.display = (sess && sess.shadow) ? '' : 'none';
-  } else {
-    avatar.textContent = '?'; avatar.style.background = '#777';
-    if (nameEl) nameEl.textContent = '—';
-    badge.style.display = 'none';
-    if (shadowEl) shadowEl.style.display = 'none';
-  }
+  const u=getCurrentUser(); const avatar=document.getElementById('headerAvatar'); const badge=document.getElementById('adminBadge');
+  const nameEl=document.getElementById('headerUserName'); const shadowEl=document.getElementById('shadowBanner'); const sess=getSession();
+  if(u){
+    avatar.textContent=u.name[0].toUpperCase(); avatar.style.background=getTrainerColor(u.name);
+    if(nameEl) nameEl.textContent=u.name;
+    badge.textContent=u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
+    badge.style.background=u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
+    badge.style.display='inline-block';
+    if(shadowEl) shadowEl.style.display=(sess&&sess.shadow)?'':'none';
+  } else { avatar.textContent='?'; avatar.style.background='#777'; if(nameEl) nameEl.textContent='—'; badge.style.display='none'; if(shadowEl) shadowEl.style.display='none'; }
 }
-
 function applyPermissions() {
-  // When shadowing, show the dashboard through the target's eyes — not as admin
-  const realAdmin = isAdmin();             // true if logged-in user is admin
-  const shadowing = isShadowing();
-  const admin = realAdmin && !shadowing;   // only full admin powers when NOT shadowing
-  // Admin-only toolbar buttons — still visible to real admin even while shadowing
-  document.querySelectorAll('.admin-only').forEach(el => { el.style.display = realAdmin ? '' : 'none'; });
-  // Granular section visibility — hide everything first, then show what's permitted
-  PERM_DEFS.forEach(p => {
-    const show = admin || hasPerm(p.key);
-    if (p.section)  { const el = document.getElementById(p.section);  if (el) el.style.display = show ? '' : 'none'; }
+  const realAdmin=isAdmin(); const shadowing=isShadowing(); const admin=realAdmin&&!shadowing;
+  document.querySelectorAll('.admin-only').forEach(el=>{el.style.display=realAdmin?'':'none';});
+  PERM_DEFS.forEach(p=>{
+    const show=admin||hasPerm(p.key);
+    if(p.section){const el=document.getElementById(p.section);if(el)el.style.display=show?'':'none';}
   });
-  // chartsSection is inside kpiSection — handled above
-  // Activity feed button
-  // Activity buttons — two IDs exist for different contexts
-  ['activityFeedBtn', 'activityNavBtn'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.style.display = (admin || hasPerm('canViewActivity')) ? '' : 'none';
-  });
-  // Shadow banner
-  const shadowEl = document.getElementById('shadowBanner');
-  if (shadowEl) shadowEl.style.display = isShadowing() ? '' : 'none';
+  ['activityFeedBtn','activityNavBtn'].forEach(id=>{const btn=document.getElementById(id);if(btn)btn.style.display=(admin||hasPerm('canViewActivity'))?'':'none';});
+  const shadowEl=document.getElementById('shadowBanner'); if(shadowEl) shadowEl.style.display=isShadowing()?'':'none';
 }
 
 // =============================================
@@ -1162,461 +1093,297 @@ function applyPermissions() {
 let allData = [];
 let currentPage = 1;
 const PAGE_SIZE = 15;
-let revenueChart = null;
-let optionChart = null;
+let revenueChart = null, optionChart = null;
+const calState = { year:new Date().getFullYear(), month:new Date().getMonth(), gcalEvents:[], isFetching:false };
 
-// Calendar state
-const calState = { year: new Date().getFullYear(), month: new Date().getMonth(), gcalEvents: [], isFetching: false };
+// Sort state for All Bookings
+let sortState = { col:'date', dir:'desc' };
 
-// Modal state
-let _assignRowIndex = null;
-let _bookRowIndex = null;
-let _cancelRowIndex = null;
-let _notesRowIndex = null;
+let _assignRowIndex=null, _bookRowIndex=null, _cancelRowIndex=null, _notesRowIndex=null, _editBookRowIndex=null;
 
 // =============================================
-// OVERRIDE CACHE
+// OVERRIDES / NOTES CACHE
 // =============================================
-const OVERRIDE_KEY = 'streetDashboardOverrides_v2';
-function getOverrides() { try { return JSON.parse(sessionStorage.getItem(OVERRIDE_KEY) || '{}'); } catch(e) { return {}; } }
-function saveOverride(rowIndex, fields) { const o = getOverrides(); o[rowIndex] = Object.assign(o[rowIndex]||{}, fields); try { sessionStorage.setItem(OVERRIDE_KEY, JSON.stringify(o)); } catch(e) {} }
-function applyOverrides(rows) {
-  const o = getOverrides();
-  return rows.map(r => {
-    const ov = o[r.rowIndex];
-    if (!ov) return r;
-    const merged = Object.assign({}, r, ov);
-    // Re-hydrate date fields that JSON round-trip turns into strings
-    if (merged.date && !(merged.date instanceof Date)) merged.date = toDate(merged.date);
-    return merged;
-  });
+const OVERRIDE_KEY='streetDashboardOverrides_v2';
+function getOverrides(){try{return JSON.parse(sessionStorage.getItem(OVERRIDE_KEY)||'{}');}catch(e){return {};}}
+function saveOverride(ri,fields){const o=getOverrides();o[ri]=Object.assign(o[ri]||{},fields);try{sessionStorage.setItem(OVERRIDE_KEY,JSON.stringify(o));}catch(e){}}
+function applyOverrides(rows){
+  const o=getOverrides();
+  return rows.map(r=>{const ov=o[r.rowIndex];if(!ov)return r;const merged=Object.assign({},r,ov);if(merged.date&&!(merged.date instanceof Date))merged.date=toDate(merged.date);return merged;});
 }
-
-// Notes cache (stored in localStorage by rowIndex)
-const NOTES_KEY = 'streetDashboardNotes_v2';
-function getAllNotes() { try { return JSON.parse(localStorage.getItem(NOTES_KEY) || '{}'); } catch(e) { return {}; } }
-function getNotesForRow(rowIndex) { return getAllNotes()[rowIndex] || []; }
-function saveNoteForRow(rowIndex, text, author) {
-  const all = getAllNotes();
-  if (!all[rowIndex]) all[rowIndex] = [];
-  all[rowIndex].push({ text, author, time: new Date().toISOString() });
-  try { localStorage.setItem(NOTES_KEY, JSON.stringify(all)); } catch(e) {}
-}
+const NOTES_KEY='streetDashboardNotes_v2';
+function getAllNotes(){try{return JSON.parse(localStorage.getItem(NOTES_KEY)||'{}');}catch(e){return {};}}
+function getNotesForRow(ri){return getAllNotes()[ri]||[];}
+function saveNoteForRow(ri,text,author){const all=getAllNotes();if(!all[ri])all[ri]=[];all[ri].push({text,author,time:new Date().toISOString()});try{localStorage.setItem(NOTES_KEY,JSON.stringify(all));}catch(e){}}
 
 // =============================================
 // NAV
 // =============================================
-function toggleNav() { const d=document.getElementById('navDrawer'),o=document.getElementById('navOverlay'),b=document.getElementById('hamburgerBtn'); if(d.classList.contains('open')){closeNav();}else{d.classList.add('open');o.classList.add('open');b.classList.add('open');} }
-function closeNav() { document.getElementById('navDrawer').classList.remove('open'); document.getElementById('navOverlay').classList.remove('open'); document.getElementById('hamburgerBtn').classList.remove('open'); }
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeNav(); closeAssignModal(); closeBookModal(); closeCancelModal(); closeNotesModal(); closeCalEventModal();
-    document.getElementById('kpiModalOverlay').classList.remove('open');
-  }
-});
+function toggleNav(){const d=document.getElementById('navDrawer'),o=document.getElementById('navOverlay'),b=document.getElementById('hamburgerBtn');if(d.classList.contains('open')){closeNav();}else{d.classList.add('open');o.classList.add('open');b.classList.add('open');}}
+function closeNav(){document.getElementById('navDrawer').classList.remove('open');document.getElementById('navOverlay').classList.remove('open');document.getElementById('hamburgerBtn').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeNav();closeAssignModal();closeBookModal();closeCancelModal();closeNotesModal();closeCalEventModal();closeEditBookingModal();document.getElementById('kpiModalOverlay').classList.remove('open');}});
 
 // =============================================
 // TOAST / LOADING
 // =============================================
-function showToast(msg, type='') { const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; document.getElementById('toastContainer').appendChild(t); setTimeout(()=>t.remove(),3500); }
-function setLoading(on) { document.getElementById('loadingBar').classList.toggle('active',on); }
-function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function formatDate(d) { if(!d) return '—'; const dt=d instanceof Date?d:new Date(d); if(isNaN(dt.getTime())) return '—'; return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function showToast(msg,type=''){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('toastContainer').appendChild(t);setTimeout(()=>t.remove(),3500);}
+function setLoading(on){document.getElementById('loadingBar').classList.toggle('active',on);}
+function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function formatDate(d){if(!d)return '—';const dt=d instanceof Date?d:new Date(d);if(isNaN(dt.getTime()))return '—';return dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
 
 // =============================================
 // DATE HELPERS
 // =============================================
-// Always returns a proper Date or null — handles strings, Date objects, ISO, DD/MM/YYYY
-function toDate(v) {
-  if (!v) return null;
-  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-  const s = String(v).trim();
-  if (!s) return null;
-  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (dmy) { const d=new Date(Number(dmy[3]),Number(dmy[2])-1,Number(dmy[1])); return isNaN(d.getTime())?null:d; }
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
+function toDate(v){if(!v)return null;if(v instanceof Date)return isNaN(v.getTime())?null:v;const s=String(v).trim();if(!s)return null;const dmy=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(dmy){const d=new Date(Number(dmy[3]),Number(dmy[2])-1,Number(dmy[1]));return isNaN(d.getTime())?null:d;}const d=new Date(s);return isNaN(d.getTime())?null:d;}
+function toDateStr(v){const d=(v instanceof Date)?v:toDate(v);if(!d)return '';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function isBankHoliday(v){const s=(typeof v==='string'&&v.length===10)?v:toDateStr(v);return icsHolidayDates.size>0?icsHolidayDates.has(s):UK_BANK_HOLIDAYS_FALLBACK.has(s);}
+function isWeekend(d){const dt=(d instanceof Date)?d:toDate(d);if(!dt)return false;const day=dt.getDay();return day===0||day===6;}
+function isWorkday(d){return !isWeekend(d)&&!isBankHoliday(d);}
+function addDays(d,n){const r=new Date(d instanceof Date?d:toDate(d)||new Date());r.setDate(r.getDate()+n);return r;}
+function getBlockedDates(trainingDateStr,numDays){
+  if(!trainingDateStr)return{travel:[],training:[],admin:[]};
+  const start=toDate(trainingDateStr);if(!start)return{travel:[],training:[],admin:[]};
+  const travelDate=addDays(start,-1);const trainingDates=[];
+  for(let i=0;i<numDays;i++)trainingDates.push(addDays(start,i));
+  const lastTraining=trainingDates[trainingDates.length-1]||start;const adminDate=addDays(lastTraining,1);
+  return{travel:[toDateStr(travelDate)],training:trainingDates.map(toDateStr),admin:[toDateStr(adminDate)]};
 }
-// Always returns "YYYY-MM-DD" from a Date object or date string
-function toDateStr(v) {
-  const d = (v instanceof Date) ? v : toDate(v);
-  if (!d) return '';
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-// isBankHoliday accepts either a Date or a "YYYY-MM-DD" string
-function isBankHoliday(v) {
-  const s = (typeof v === 'string' && v.length === 10) ? v : toDateStr(v);
-  return UK_BANK_HOLIDAYS.has(s);
-}
-function isWeekend(d) { const dt=(d instanceof Date)?d:toDate(d); if(!dt)return false; const day=dt.getDay(); return day===0||day===6; }
-function isWorkday(d) { return !isWeekend(d) && !isBankHoliday(d); }
-function addDays(d, n) { const r=new Date(d instanceof Date?d:toDate(d)||new Date()); r.setDate(r.getDate()+n); return r; }
 
-// Given a training date string (YYYY-MM-DD) and number of days, return all blocked date strings
-function getBlockedDates(trainingDateStr, numDays) {
-  if (!trainingDateStr) return { travel:[], training:[], admin:[] };
-  const start = toDate(trainingDateStr);
-  if (!start) return { travel:[], training:[], admin:[] };
-  const travelDate = addDays(start, -1);
-  const trainingDates = [];
-  for (let i=0;i<numDays;i++) trainingDates.push(addDays(start, i));
-  const lastTraining = trainingDates[trainingDates.length-1] || start;
-  const adminDate = addDays(lastTraining, 1);
-  return {
-    travel:   [toDateStr(travelDate)],
-    training: trainingDates.map(toDateStr),
-    admin:    [toDateStr(adminDate)]
-  };
+// =============================================
+// ICS FEED PARSING
+// =============================================
+function parseICS(text) {
+  const events = [];
+  // Split by VEVENT
+  const parts = text.split('BEGIN:VEVENT');
+  for (let i = 1; i < parts.length; i++) {
+    const block = parts[i];
+    const get = (key) => {
+      // Handle folded lines (lines starting with space/tab are continuations)
+      const unfolded = block.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
+      const m = unfolded.match(new RegExp(key + '[^:\r\n]*:([^\r\n]+)'));
+      return m ? m[1].trim() : '';
+    };
+    const dtstart = get('DTSTART');
+    const summary = get('SUMMARY').replace(/\\n/g,' ').replace(/\\,/g,',').replace(/\\;/g,';');
+    const uid     = get('UID');
+    if (!dtstart || !summary) continue;
+    // Parse date — could be DATE (YYYYMMDD) or DATETIME (YYYYMMDDTHHmmssZ)
+    const dateOnly = dtstart.replace(/T.*$/, '');
+    const dateStr = dateOnly.length === 8
+      ? dateOnly.slice(0,4)+'-'+dateOnly.slice(4,6)+'-'+dateOnly.slice(6,8)
+      : toDateStr(dtstart);
+    if (dateStr) events.push({ dateStr, summary, uid });
+  }
+  return events;
+}
+
+async function fetchICSFeed(url, label) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (!text.includes('BEGIN:VCALENDAR')) throw new Error('Not a valid ICS');
+    return parseICS(text);
+  } catch(e) {
+    console.warn('ICS fetch failed ('+label+'):', e.message);
+    return null;
+  }
+}
+
+function updateICSStatus(holidayOk, leaveOk) {
+  const bar = document.getElementById('icsStatusBar');
+  if (!bar) return;
+  const hDot = holidayOk === null ? 'loading' : holidayOk ? 'ok' : 'error';
+  const lDot = leaveOk  === null ? 'loading' : leaveOk  ? 'ok' : 'error';
+  bar.innerHTML =
+    '<span class="ics-status"><span class="ics-dot '+hDot+'"></span>Holidays: '+(holidayOk===null?'loading…':holidayOk?'live ✓':'fallback')+'</span>' +
+    '<span class="ics-status" style="margin-left:8px;"><span class="ics-dot '+lDot+'"></span>Leave: '+(leaveOk===null?'loading…':leaveOk?'live ✓':'not loaded')+'</span>';
+}
+
+async function loadICSFeeds() {
+  const s = getCalSettings();
+  const holidayUrl = s.holidayIcsUrl || DEFAULT_HOLIDAY_ICS;
+  const leaveUrl   = s.leaveIcsUrl   || DEFAULT_LEAVE_ICS;
+  updateICSStatus(null, null);
+  const [holidayEvents, leaveEvents] = await Promise.all([
+    fetchICSFeed(holidayUrl, 'public-holidays'),
+    fetchICSFeed(leaveUrl,   'team-leave')
+  ]);
+  let holidayOk = false, leaveOk = false;
+  if (holidayEvents && holidayEvents.length > 0) {
+    icsHolidayDates = new Set(holidayEvents.map(e => e.dateStr));
+    icsHolidayLabels = {};
+    holidayEvents.forEach(e => { icsHolidayLabels[e.dateStr] = e.summary; });
+    holidayOk = true;
+  } else {
+    // Use fallback set
+    icsHolidayDates = new Set(UK_BANK_HOLIDAYS_FALLBACK);
+  }
+  if (leaveEvents && leaveEvents.length > 0) {
+    icsLeaveEvents = leaveEvents;
+    leaveOk = true;
+  } else {
+    icsLeaveEvents = [];
+  }
+  updateICSStatus(holidayOk, leaveOk);
+  // Re-render calendar with new data
+  renderCalendar();
+  renderUpcoming();
+}
+
+// =============================================
+// TEST CONNECTION
+// =============================================
+async function testConnection(btn) {
+  btn.textContent='⏳…';btn.disabled=true;
+  let info='';
+  try{const res=await fetchWithTimeout(APPS_SCRIPT_URL+'?action=getData',{},10000);const text=await res.text();const isJSON=text.trim().startsWith('{');info+='--- Apps Script ---\nStatus: '+res.status+'\nIs JSON: '+isJSON;if(isJSON){const json=JSON.parse(text);info+='\nRows: '+(json.data?json.data.length:'none')+'\nSuccess: '+json.success;if(json.error)info+='\nError: '+json.error;}else{info+='\nResponse preview:\n'+text.slice(0,200);}}catch(e){info+='--- Apps Script ---\nFAILED: '+e.message;}
+  try{const res2=await fetchWithTimeout(CSV_URL,{},8000);const text2=await res2.text();info+='\n\n--- CSV Fallback ---\nStatus: '+res2.status+'\nLength: '+text2.length+' chars\nLooks valid: '+(text2.includes(',')&&text2.length>100);}catch(e){info+='\n\n--- CSV Fallback ---\nFAILED: '+e.message;}
+  alert(info);btn.textContent='🔍 Test';btn.disabled=false;
 }
 
 // =============================================
 // DATA FETCHING
 // =============================================
-
-// Fetch with timeout helper
-function fetchWithTimeout(url, options={}, timeoutMs=10000) {
-  const fetchPromise = fetch(url, { ...options, redirect: 'follow' });
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Timed out after ' + timeoutMs + 'ms')), timeoutMs)
-  );
-  return Promise.race([fetchPromise, timeoutPromise]);
-}
-
-async function testConnection(btn) {
-  btn.textContent = '⏳…'; btn.disabled = true;
-  let info = '';
-  // Try Apps Script
-  try {
-    const res = await fetchWithTimeout(APPS_SCRIPT_URL+'?action=getData', {}, 10000);
-    const text = await res.text();
-    const isJSON = text.trim().startsWith('{');
-    info += '--- Apps Script ---\nStatus: '+res.status+'\nIs JSON: '+isJSON;
-    if (isJSON) {
-      const json = JSON.parse(text);
-      info += '\nRows: '+(json.data?json.data.length:'none')+'\nSuccess: '+json.success;
-      if (json.error) info += '\nError: '+json.error;
-    } else {
-      info += '\nResponse preview:\n'+text.slice(0,200);
-    }
-  } catch(e) {
-    info += '--- Apps Script ---\nFAILED: '+e.message+'\n\nThis is usually a CORS or deployment issue.\nCheck your Apps Script is deployed as:\n  Execute as: Me\n  Who has access: Anyone';
-  }
-  // Try CSV
-  try {
-    const res2 = await fetchWithTimeout(CSV_URL, {}, 8000);
-    const text2 = await res2.text();
-    info += '\n\n--- CSV Fallback ---\nStatus: '+res2.status+'\nLength: '+text2.length+' chars\nLooks valid: '+(text2.includes(',')&&text2.length>100);
-  } catch(e) {
-    info += '\n\n--- CSV Fallback ---\nFAILED: '+e.message;
-  }
-  alert(info);
-  btn.textContent = '🔍 Test'; btn.disabled = false;
+function fetchWithTimeout(url,options={},timeoutMs=10000){
+  const fp=fetch(url,{...options,redirect:'follow'});
+  const tp=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timed out after '+timeoutMs+'ms')),timeoutMs));
+  return Promise.race([fp,tp]);
 }
 
 async function loadData() {
   setLoading(true);
-  document.getElementById('lastUpdated').textContent = 'Loading…';
-
-  // Try Apps Script first
-  try {
-    const res = await fetchWithTimeout(APPS_SCRIPT_URL+'?action=getData', {}, 10000);
-    const text = await res.text();
-    if (text && text.trim().startsWith('{')) {
-      const json = JSON.parse(text);
-      if (json && json.data && json.data.length > 1) {
-        allData = applyOverrides(parseAppsScriptData(json.data));
+  document.getElementById('lastUpdated').textContent='Loading…';
+  try{
+    const res=await fetchWithTimeout(APPS_SCRIPT_URL+'?action=getData',{},10000);
+    const text=await res.text();
+    if(text&&text.trim().startsWith('{')){
+      const json=JSON.parse(text);
+      if(json&&json.data&&json.data.length>1){
+        allData=applyOverrides(parseAppsScriptData(json.data));
         processData();
-        document.getElementById('lastUpdated').textContent = '✓ Live — '+new Date().toLocaleTimeString();
-        setLoading(false);
-        return;
+        document.getElementById('lastUpdated').textContent='✓ Live — '+new Date().toLocaleTimeString();
+        setLoading(false); return;
       }
-      if (json && json.error) { /* ignore */ }
     }
-  } catch(e) { /* silently fall through */ }
-
-  // Try CSV fallback
-  try {
-    const res2 = await fetchWithTimeout(CSV_URL, {}, 8000);
-    const text2 = await res2.text();
-    if (text2 && text2.length > 100 && text2.includes(',')) {
-      allData = applyOverrides(parseCSV(text2));
+  }catch(e){}
+  try{
+    const res2=await fetchWithTimeout(CSV_URL,{},8000);
+    const text2=await res2.text();
+    if(text2&&text2.length>100&&text2.includes(',')){
+      allData=applyOverrides(parseCSV(text2));
       processData();
-      document.getElementById('lastUpdated').textContent = '⚠ CSV mode — '+new Date().toLocaleTimeString();
-      setLoading(false);
-      return;
+      document.getElementById('lastUpdated').textContent='⚠ CSV mode — '+new Date().toLocaleTimeString();
+      setLoading(false); return;
     }
-  } catch(e) { /* silently fall through */ }
-
-  // Both sources failed — show clear error, do NOT load demo data
-  document.getElementById('lastUpdated').textContent = '✗ Cannot reach sheet — check connection';
-  showToast('Cannot reach Google Sheet. Check your network and try Refresh.', 'error');
+  }catch(e){}
+  document.getElementById('lastUpdated').textContent='✗ Cannot reach sheet — check connection';
+  showToast('Cannot reach Google Sheet. Check your network and try Refresh.','error');
   setLoading(false);
 }
 
-// Maps the actual Google Form option text → internal option number
-function resolveOption(raw) {
-  const s = String(raw || '').toLowerCase().trim();
-  if (!s) return '2';
-  // Exact/partial matches for known form values
-  if (s.includes('2 day') || s.includes('two day') || s.includes('personalised 2')) return '3';
-  if (s.includes('accounting') || s.includes('go live') || s.includes('go-live'))    return '4';
-  if (s.includes('hq') || s.includes('live hq') || s.includes('on site'))            return '5';
-  if (s.includes('on demand') || s.includes('help centre') || s.includes('option 1')) return '1';
-  if (s.includes('1 day') || s.includes('one day') || s.includes('personalised 1') ||
-      s.includes('training day')) return '2';
-  // Bare digit fallback
-  const m = s.match(/\b([1-5])\b/);
-  if (m) return m[1];
-  return '2';
+function resolveOption(raw){
+  const s=String(raw||'').toLowerCase().trim();if(!s)return '2';
+  if(s.includes('2 day')||s.includes('two day')||s.includes('personalised 2'))return '3';
+  if(s.includes('accounting')||s.includes('go live')||s.includes('go-live'))return '4';
+  if(s.includes('hq')||s.includes('live hq')||s.includes('on site'))return '5';
+  if(s.includes('on demand')||s.includes('help centre')||s.includes('option 1'))return '1';
+  if(s.includes('1 day')||s.includes('one day')||s.includes('personalised 1')||s.includes('training day'))return '2';
+  const m=s.match(/\b([1-5])\b/);if(m)return m[1];return '2';
 }
 
-function parseAppsScriptData(rows) {
-  if (!rows || rows.length < 2) return [];
-  // Use EXACT column positions matching Apps Script COL map (0-indexed)
-  const C = {
-    STATUS:0, TIMESTAMP:1, EMAIL:2, CONTACT:3, PREFERRED_DATE:4,
-    OPTION:5, ATTENDEES:8, COMPANY:13,
-    VALUE:20, TRAINER:21, BOOKED_DATE:22, TRAINING_DAYS:23
-  };
-  const g = (row, idx) => {
-    const v = row[idx];
-    if (v === undefined || v === null || v === '') return '';
-    // Google Sheets returns Date objects — convert to ISO string
-    if (v instanceof Date || (typeof v === 'object' && v.getTime)) return v.toISOString();
-    return String(v).trim();
-  };
-  return rows.slice(1).map((row, i) => {
-    const rowIndex = i + 2;
-    const timestamp   = g(row, C.TIMESTAMP);
-    const company     = g(row, C.COMPANY);
-    const contact     = g(row, C.CONTACT);
-    const email       = g(row, C.EMAIL);
-    const optionRaw   = g(row, C.OPTION);
-    const trainer     = g(row, C.TRAINER);
-    const rawStatus   = g(row, C.STATUS);
-    const revenueRaw  = g(row, C.VALUE);
-    const bookedOnRaw = g(row, C.BOOKED_DATE);
-    const prefDate    = g(row, C.PREFERRED_DATE);
-    const attendeesRaw= g(row, C.ATTENDEES);
-    const trainingDaysRaw = g(row, C.TRAINING_DAYS);
-
-    const option      = resolveOption(optionRaw);
-    const numAttendees= parseInt(attendeesRaw) || 1;
-    const basePrice   = parseInt(OPTION_PRICES[option]) || 0;
-    let revenue = parseFloat(String(revenueRaw).replace(/[^0-9.]/g,'')) || 0;
-    // If sheet has 0 or blank, use the default option price
-    if (!revenue) revenue = option === '5' ? basePrice * numAttendees : basePrice;
-    const parsedDate  = parseDate(timestamp || prefDate);
-    const bookedOn    = formatDateInput(bookedOnRaw);
-    const trainingDays= parseInt(trainingDaysRaw) || OPTION_DAYS[option] || 1;
-
-    // Normalise status
-    let status = rawStatus || (trainer ? 'Pending' : 'Unassigned');
-    if (['New','Assigned','Complete','new','assigned','complete'].includes(status)) status = trainer ? 'Pending' : 'Unassigned';
-    if (['booked','BOOKED'].includes(status)) status = 'Booked';
-    if (['cancelled','CANCELLED','Canceled','canceled'].includes(status)) status = 'Cancelled';
-    if (!['Pending','Booked','Cancelled','Unassigned'].includes(status)) status = trainer ? 'Pending' : 'Unassigned';
-
-    return {
-      rowIndex, timestamp, date: parsedDate,
-      company, contact, email,
-      option, optionLabel: OPTION_LABELS[option] || ('Option ' + option),
-      preferredDate: prefDate, attendees: numAttendees,
-      trainer, status, notes: '',
-      bookedOn, trainingDays, revenue
-    };
-  }).filter(r => r.company || r.contact);
-}
-function parseCSV(text) {
-  const lines=text.split('\n').filter(l=>l.trim());
-  if (lines.length<2) return [];
-  const headers=parseCSVRow(lines[0]).map(h=>h.trim().toLowerCase());
-  return lines.slice(1).map((line,i)=>{ const vals=parseCSVRow(line); const obj={}; headers.forEach((h,j)=>{obj[h]=(vals[j]||'').trim();}); return normaliseRow(obj,i+2); }).filter(r=>r.company||r.contact);
-}
-function parseCSVRow(line) {
-  const result=[]; let cur='',inQ=false;
-  for (let i=0;i<line.length;i++) { const c=line[i]; if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){result.push(cur);cur='';}else{cur+=c;} }
-  result.push(cur); return result;
+function parseAppsScriptData(rows){
+  if(!rows||rows.length<2)return [];
+  const C={STATUS:0,TIMESTAMP:1,EMAIL:2,CONTACT:3,PREFERRED_DATE:4,OPTION:5,ATTENDEES:8,COMPANY:13,VALUE:20,TRAINER:21,BOOKED_DATE:22,TRAINING_DAYS:23};
+  const g=(row,idx)=>{const v=row[idx];if(v===undefined||v===null||v==='')return '';if(v instanceof Date||(typeof v==='object'&&v.getTime))return v.toISOString();return String(v).trim();};
+  return rows.slice(1).map((row,i)=>{
+    const rowIndex=i+2;
+    const timestamp=g(row,C.TIMESTAMP),company=g(row,C.COMPANY),contact=g(row,C.CONTACT),email=g(row,C.EMAIL);
+    const optionRaw=g(row,C.OPTION),trainer=g(row,C.TRAINER),rawStatus=g(row,C.STATUS);
+    const revenueRaw=g(row,C.VALUE),bookedOnRaw=g(row,C.BOOKED_DATE),prefDate=g(row,C.PREFERRED_DATE);
+    const attendeesRaw=g(row,C.ATTENDEES),trainingDaysRaw=g(row,C.TRAINING_DAYS);
+    const option=resolveOption(optionRaw),numAttendees=parseInt(attendeesRaw)||1,basePrice=parseInt(OPTION_PRICES[option])||0;
+    let revenue=parseFloat(String(revenueRaw).replace(/[^0-9.]/g,''))||0;
+    if(!revenue)revenue=option==='5'?basePrice*numAttendees:basePrice;
+    const parsedDate=parseDate(timestamp||prefDate);const bookedOn=formatDateInput(bookedOnRaw);const trainingDays=parseInt(trainingDaysRaw)||OPTION_DAYS[option]||1;
+    let status=rawStatus||(trainer?'Pending':'Unassigned');
+    if(['New','Assigned','Complete','new','assigned','complete'].includes(status))status=trainer?'Pending':'Unassigned';
+    if(['booked','BOOKED'].includes(status))status='Booked';
+    if(['cancelled','CANCELLED','Canceled','canceled'].includes(status))status='Cancelled';
+    if(!['Pending','Booked','Cancelled','Unassigned'].includes(status))status=trainer?'Pending':'Unassigned';
+    return{rowIndex,timestamp,date:parsedDate,company,contact,email,option,optionLabel:OPTION_LABELS[option]||('Option '+option),preferredDate:prefDate,attendees:numAttendees,trainer,status,notes:'',bookedOn,trainingDays,revenue};
+  }).filter(r=>r.company||r.contact);
 }
 
-function normaliseRow(obj, rowIndex) {
-  const get = (...keys) => {
-    for (const k of keys) for (const ok of Object.keys(obj)) if (ok===k) return obj[ok];
-    for (const k of keys) for (const ok of Object.keys(obj)) if (ok.includes(k)) return obj[ok];
-    return '';
-  };
-  const timestamp = get('timestamp');
-  const company = get('company / business name:','company / business name','company name','company','organisation','business','agency');
-  const contact = get('client stakeholder name and phone number (authorising training)','client stakeholder name','stakeholder','contact','name','your name');
-  const email = get('email address','email');
-  const optionRaw = get('what type of training are you interested in?','what type of training','training option','type of training','option','training type','package');
-  const numAttendeesRaw = get('how many delegates will be attending the hq session?','delegates','attendees','how many');
-  const numAttendees = parseInt(numAttendeesRaw) || 1;
-  const bookedDate = get('preferred training date','preferred date','training date','date');
-  const trainer = get('trainer','assigned trainer');
-  const rawStatus = get('status');
-  const notes = get('notes','admin notes','comments');
-  const revenueRaw = get('invoice value','value','revenue','amount','fee','price');
-  const option = resolveOption(optionRaw);
-  const basePrice = parseInt(OPTION_PRICES[option])||0;
-  let revenue = parseFloat(String(revenueRaw).replace(/[^0-9.]/g,''))||0;
-  if (!revenue && option) revenue = option==='5'?basePrice*numAttendees:basePrice;
-  const parsedDate = parseDate(timestamp||bookedDate);
-
-  // Normalise status to 3-state system
-  let status = rawStatus || (trainer ? 'Pending' : 'Unassigned');
-  // Map legacy statuses
-  if (['New','Assigned','Complete','new','assigned','complete'].includes(status)) status = trainer ? 'Pending' : 'Unassigned';
-  if (['booked','BOOKED'].includes(status)) status = 'Booked';
-  if (['cancelled','CANCELLED','Canceled','canceled'].includes(status)) status = 'Cancelled';
-  if (!['Pending','Booked','Cancelled','Unassigned'].includes(status)) status = trainer ? 'Pending' : 'Unassigned';
-
-  return {
-    rowIndex, timestamp: timestamp||'', date: parsedDate,
-    company: company||'', contact: contact||'', email: email||'',
-    option, optionLabel: OPTION_LABELS[option]||('Option '+option),
-    preferredDate: bookedDate||'', attendees: numAttendees,
-    trainer: trainer||'', status,
-    notes: notes||'',
-    bookedOn: formatDateInput(get('booked on date','booked on','date booked'))||'',
-    trainingDays: parseInt(get('training days','days'))||OPTION_DAYS[option]||1,
-    revenue
-  };
+function parseCSV(text){const lines=text.split('\n').filter(l=>l.trim());if(lines.length<2)return [];const headers=parseCSVRow(lines[0]).map(h=>h.trim().toLowerCase());return lines.slice(1).map((line,i)=>{const vals=parseCSVRow(line);const obj={};headers.forEach((h,j)=>{obj[h]=(vals[j]||'').trim();});return normaliseRow(obj,i+2);}).filter(r=>r.company||r.contact);}
+function parseCSVRow(line){const result=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){result.push(cur);cur='';}else{cur+=c;}}result.push(cur);return result;}
+function normaliseRow(obj,rowIndex){
+  const get=(...keys)=>{for(const k of keys)for(const ok of Object.keys(obj))if(ok===k)return obj[ok];for(const k of keys)for(const ok of Object.keys(obj))if(ok.includes(k))return obj[ok];return '';};
+  const timestamp=get('timestamp'),company=get('company / business name:','company / business name','company name','company','organisation','business','agency');
+  const contact=get('client stakeholder name and phone number (authorising training)','client stakeholder name','stakeholder','contact','name','your name');
+  const email=get('email address','email'),optionRaw=get('what type of training are you interested in?','what type of training','training option','type of training','option','training type','package');
+  const numAttendeesRaw=get('how many delegates will be attending the hq session?','delegates','attendees','how many'),numAttendees=parseInt(numAttendeesRaw)||1;
+  const bookedDate=get('preferred training date','preferred date','training date','date'),trainer=get('trainer','assigned trainer');
+  const rawStatus=get('status'),notes=get('notes','admin notes','comments'),revenueRaw=get('invoice value','value','revenue','amount','fee','price');
+  const option=resolveOption(optionRaw),basePrice=parseInt(OPTION_PRICES[option])||0;
+  let revenue=parseFloat(String(revenueRaw).replace(/[^0-9.]/g,''))||0;
+  if(!revenue&&option)revenue=option==='5'?basePrice*numAttendees:basePrice;
+  const parsedDate=parseDate(timestamp||bookedDate);
+  let status=rawStatus||(trainer?'Pending':'Unassigned');
+  if(['New','Assigned','Complete','new','assigned','complete'].includes(status))status=trainer?'Pending':'Unassigned';
+  if(['booked','BOOKED'].includes(status))status='Booked';
+  if(['cancelled','CANCELLED','Canceled','canceled'].includes(status))status='Cancelled';
+  if(!['Pending','Booked','Cancelled','Unassigned'].includes(status))status=trainer?'Pending':'Unassigned';
+  return{rowIndex,timestamp:timestamp||'',date:parsedDate,company:company||'',contact:contact||'',email:email||'',option,optionLabel:OPTION_LABELS[option]||('Option '+option),preferredDate:bookedDate||'',attendees:numAttendees,trainer:trainer||'',status,notes:notes||'',bookedOn:formatDateInput(get('booked on date','booked on','date booked'))||'',trainingDays:parseInt(get('training days','days'))||OPTION_DAYS[option]||1,revenue};
 }
-
-function parseDate(str) { return toDate(str); }
-
-function formatDateInput(val) {
-  if (!val) return '';
-  const d = toDate(val);
-  if (!d) return '';
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-// =============================================
-// DEMO DATA
-// =============================================
-function generateDemoData() {
-  const now=new Date(), year=now.getFullYear(), lastYear=year-1;
-  const rows=[]; let rowIdx=2;
-  const companies=['Acorn Estates','Bridgewater Properties','Chapman & Co','Dalton Lettings','Elara Homes','Foxcroft Realty','Grange Lettings','Harfield & Sons','Ivory Keys','Jameson Estate Agents','Keystone Lettings','Lakewood Homes'];
-  const contacts=['James Wilson','Sarah Brown','Michael Davies','Emma Jones','Oliver Smith','Charlotte Taylor','Harry White','Amelia Harris','George Clark','Lily Walker','Noah Robinson','Sophia Lewis'];
-  for (let m=0;m<=now.getMonth();m++) {
-    const count=3+Math.floor(Math.random()*5);
-    for (let i=0;i<count;i++) {
-      const day=1+Math.floor(Math.random()*28);
-      const dateObj=new Date(year,m,day);
-      if (dateObj>now) continue;
-      const opt=['2','2','3','3','4','5','1'][Math.floor(Math.random()*7)];
-      const compIdx=(m*3+i)%companies.length;
-      const trainerIdx=Math.floor(Math.random()*TRAINERS.length);
-      const isNew=(m===now.getMonth()&&i>=2);
-      const isUnassigned=(m===now.getMonth()&&i>=3);
-      const numAtt=opt==='5'?(2+Math.floor(Math.random()*4)):1;
-      const bookedDateObj=new Date(year,m,day+14);
-      const trainer=isUnassigned?'':TRAINERS[trainerIdx];
-      const status=isUnassigned?'Unassigned':(isNew?'Pending':'Booked');
-      rows.push({
-        rowIndex:rowIdx++, timestamp:dateObj.toISOString(), date:dateObj,
-        company:companies[compIdx], contact:contacts[compIdx],
-        email:contacts[compIdx].toLowerCase().replace(' ','.')+'@'+companies[compIdx].toLowerCase().replace(/[^a-z]/g,'')+'.com',
-        option:opt, optionLabel:OPTION_LABELS[opt],
-        preferredDate:bookedDateObj.toLocaleDateString('en-GB'), attendees:numAtt,
-        trainer, status, notes:'',
-        bookedOn:status==='Booked'?toDateStr(bookedDateObj):'',
-        trainingDays:OPTION_DAYS[opt]||1,
-        revenue:opt==='5'?OPTION_PRICES[opt]*numAtt:OPTION_PRICES[opt]
-      });
-    }
-  }
-  for (let m=0;m<12;m++) {
-    const count=2+Math.floor(Math.random()*4);
-    for (let i=0;i<count;i++) {
-      const day=1+Math.floor(Math.random()*28);
-      const dateObj=new Date(lastYear,m,day);
-      const opt=['2','2','3','4','5'][Math.floor(Math.random()*5)];
-      const compIdx=(m*2+i)%companies.length;
-      const numAtt=opt==='5'?(2+Math.floor(Math.random()*3)):1;
-      const bookedDateObj=new Date(lastYear,m,day+7);
-      rows.push({
-        rowIndex:rowIdx++, timestamp:dateObj.toISOString(), date:dateObj,
-        company:companies[compIdx]+' (LY)', contact:contacts[compIdx], email:'',
-        option:opt, optionLabel:OPTION_LABELS[opt],
-        preferredDate:'', attendees:numAtt,
-        trainer:TRAINERS[Math.floor(Math.random()*TRAINERS.length)],
-        status:'Booked', notes:'', bookedOn:toDateStr(bookedDateObj),
-        trainingDays:OPTION_DAYS[opt]||1,
-        revenue:opt==='5'?OPTION_PRICES[opt]*numAtt:OPTION_PRICES[opt]
-      });
-    }
-  }
-  return rows;
-}
+function parseDate(str){return toDate(str);}
+function formatDateInput(val){if(!val)return '';const d=toDate(val);if(!d)return '';return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // =============================================
 // PROCESS & RENDER
 // =============================================
-function tryRender(fn, label) {
-  try { fn(); }
-  catch(e) { console.error('Render error in ' + label + ':', e); }
-}
-
-function processData() {
-  tryRender(renderUnassigned,        'renderUnassigned');
-  tryRender(renderActionPanel,       'renderActionPanel');
-  tryRender(renderKPIs,              'renderKPIs');
-  tryRender(renderCharts,            'renderCharts');
-  tryRender(renderTrainerWorkload,   'renderTrainerWorkload');
-  tryRender(renderAllBookings,       'renderAllBookings');
-  tryRender(populateTrainerFilter,   'populateTrainerFilter');
+function tryRender(fn,label){try{fn();}catch(e){console.error('Render error in '+label+':',e);}}
+function processData(){
+  tryRender(renderUnassigned,'renderUnassigned');
+  tryRender(renderActionPanel,'renderActionPanel');
+  tryRender(renderKPIs,'renderKPIs');
+  tryRender(renderCharts,'renderCharts');
+  tryRender(renderTrainerWorkload,'renderTrainerWorkload');
+  tryRender(renderAllBookings,'renderAllBookings');
+  tryRender(populateTrainerFilter,'populateTrainerFilter');
   tryRender(populateCalTrainerFilter,'populateCalTrainerFilter');
-  tryRender(renderCalendar,          'renderCalendar');
-  tryRender(renderUpcoming,          'renderUpcoming');
-  // Always re-apply permissions after render so sections are correctly shown/hidden
+  tryRender(renderCalendar,'renderCalendar');
+  tryRender(renderUpcoming,'renderUpcoming');
   applyPermissions();
 }
 
 // =============================================
 // STALE ROW HELPER
 // =============================================
-function isStale(row) {
-  const d = toDate(row.date) || toDate(row.timestamp);
-  if (!d) return false;
-  return (Date.now() - d.getTime()) > 7*24*60*60*1000;
-}
-function staleTag() { return '<span class="stale-badge">&#9200; 7+ days</span>'; }
-function daysAgo(row) {
-  const d = toDate(row.date) || toDate(row.timestamp); if (!d) return null;
-  return Math.floor((Date.now()-d.getTime())/(24*60*60*1000));
-}
-
-function companyCell(row) {
-  const notesCount = getNotesForRow(row.rowIndex).length;
-  const noteIcon = notesCount>0 ? ' <span style="font-size:10px;background:var(--action-primary-blue);color:#fff;border-radius:10px;padding:1px 6px;cursor:pointer;" onclick="openNotesModal('+row.rowIndex+')" title="View notes">'+notesCount+' note'+(notesCount>1?'s':'')+'</span>' : '';
+function isStale(row){const d=toDate(row.date)||toDate(row.timestamp);if(!d)return false;return(Date.now()-d.getTime())>7*24*60*60*1000;}
+function staleTag(){return '<span class="stale-badge">&#9200; 7+ days</span>';}
+function companyCell(row){
+  const notesCount=getNotesForRow(row.rowIndex).length;
+  const noteIcon=notesCount>0?' <span style="font-size:10px;background:var(--action-primary-blue);color:#fff;border-radius:10px;padding:1px 6px;cursor:pointer;" onclick="openNotesModal('+row.rowIndex+')" title="View notes">'+notesCount+' note'+(notesCount>1?'s':'')+'</span>':'';
   return '<span class="company-link" onclick="openNotesModal('+row.rowIndex+')">'+esc(row.company)+'</span>'+noteIcon;
 }
 
 // =============================================
 // UNASSIGNED REQUESTS
 // =============================================
-function renderUnassigned() {
-  const rows = allData.filter(r => !r.trainer || !r.trainer.trim() || r.status === 'Unassigned');
-  document.getElementById('unassignedBadge').textContent = rows.length;
-  document.getElementById('unassignedDot').style.display = rows.length>0?'block':'none';
-  const tbody = document.getElementById('unassignedBody');
-  if (rows.length===0) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>';
-    return;
-  }
-  const _adminAct = isAdmin() && !isShadowing();
-  const canAssign = _adminAct || hasPerm('canAssign');
-  const canNotes  = _adminAct || hasPerm('canAddNotes');
-  tbody.innerHTML = rows.map(r => {
-    const stale = isStale(r);
-    const actionBtns = [];
-    if (canAssign) actionBtns.push('<button class="btn btn-primary btn-sm assign-btn" onclick="openAssignModal('+r.rowIndex+')">&#10003; Assign</button>');
-    if (canNotes)  actionBtns.push('<button class="btn btn-ghost btn-sm notes-btn" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button>');
+function renderUnassigned(){
+  const rows=allData.filter(r=>!r.trainer||!r.trainer.trim()||r.status==='Unassigned');
+  document.getElementById('unassignedBadge').textContent=rows.length;
+  document.getElementById('unassignedDot').style.display=rows.length>0?'block':'none';
+  const tbody=document.getElementById('unassignedBody');
+  if(rows.length===0){tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>';return;}
+  const _adminAct=isAdmin()&&!isShadowing(),canAssign=_adminAct||hasPerm('canAssign'),canNotes=_adminAct||hasPerm('canAddNotes');
+  tbody.innerHTML=rows.map(r=>{
+    const stale=isStale(r);const actionBtns=[];
+    if(canAssign)actionBtns.push('<button class="btn btn-primary btn-sm" onclick="openAssignModal('+r.rowIndex+')">&#10003; Assign</button>');
+    if(canNotes)actionBtns.push('<button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button>');
     return '<tr class="'+(stale?'row-stale':'')+'">'
       +'<td style="white-space:nowrap;font-size:12px;color:var(--text--dark--30);">'+formatDate(r.date||r.timestamp)+(stale?'<br>'+staleTag():'')+'</td>'
       +'<td>'+companyCell(r)+'<br><span style="font-size:11px;color:var(--text--dark--30);">'+esc(r.contact||'')+'</span></td>'
@@ -1631,151 +1398,181 @@ function renderUnassigned() {
 // =============================================
 // ASSIGN MODAL
 // =============================================
-function openAssignModal(rowIndex) {
-  const row = allData.find(r=>r.rowIndex===rowIndex); if (!row) return;
-  _assignRowIndex = rowIndex;
-  document.getElementById('assignModalCompany').textContent = row.company||'Assign Trainer';
-  document.getElementById('assignModalContact').textContent = (row.contact||'') + (row.option?' · Opt '+row.option+' — '+row.optionLabel:'');
-  document.getElementById('assignModalOption').innerHTML = '<span class="option-badge opt-'+row.option+'">Opt '+row.option+' — '+esc(row.optionLabel)+'</span> · Preferred: '+esc(row.preferredDate||'Not specified');
-  const sel = document.getElementById('assignTrainerSel');
-  sel.innerHTML = '<option value="">— Select trainer —</option>' + TRAINERS.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+function openAssignModal(ri){
+  const row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  _assignRowIndex=ri;
+  document.getElementById('assignModalCompany').textContent=row.company||'Assign Trainer';
+  document.getElementById('assignModalContact').textContent=(row.contact||'')+(row.option?' · Opt '+row.option+' — '+row.optionLabel:'');
+  document.getElementById('assignModalOption').innerHTML='<span class="option-badge opt-'+row.option+'">Opt '+row.option+' — '+esc(row.optionLabel)+'</span> · Preferred: '+esc(row.preferredDate||'Not specified');
+  const sel=document.getElementById('assignTrainerSel');
+  sel.innerHTML='<option value="">— Select trainer —</option>'+TRAINERS.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
   document.getElementById('assignOverlay').classList.add('open');
   setTimeout(()=>sel.focus(),100);
 }
-function closeAssignModal() { document.getElementById('assignOverlay').classList.remove('open'); _assignRowIndex=null; }
-
-async function confirmAssign() {
-  const trainer = document.getElementById('assignTrainerSel').value;
-  if (!trainer) { showToast('Please select a trainer','error'); return; }
-  const rowIndex = _assignRowIndex;
-  const row = allData.find(r=>r.rowIndex===rowIndex);
-  if (!row) return;
-  row.trainer = trainer;
-  row.status = 'Pending';
-  saveOverride(rowIndex, {trainer, status:'Pending'});
-  closeAssignModal();
-  logActivity('assign', row.company, 'Assigned to '+trainer+', set to Pending', getCurrentUser()?.name||'Unknown');
+function closeAssignModal(){document.getElementById('assignOverlay').classList.remove('open');_assignRowIndex=null;}
+async function confirmAssign(){
+  const trainer=document.getElementById('assignTrainerSel').value;if(!trainer){showToast('Please select a trainer','error');return;}
+  const ri=_assignRowIndex,row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  row.trainer=trainer;row.status='Pending';saveOverride(ri,{trainer,status:'Pending'});
+  closeAssignModal();logActivity('assign',row.company,'Assigned to '+trainer+', set to Pending',getCurrentUser()?.name||'Unknown');
   showToast('✓ Assigned to '+trainer,'success');
-  const url = APPS_SCRIPT_URL+'?action=assign&row='+rowIndex+'&trainer='+encodeURIComponent(trainer)+'&status=Pending';
-  try { await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'}); } catch(e) {}
+  const url=APPS_SCRIPT_URL+'?action=assign&row='+ri+'&trainer='+encodeURIComponent(trainer)+'&status=Pending';
+  try{await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'});}catch(e){}
   processData();
 }
 
 // =============================================
 // NEEDS ACTION (PENDING)
 // =============================================
-function renderActionPanel() {
-  const rows = allData.filter(r => r.status==='Pending');
-  document.getElementById('actionBadge').textContent = rows.length;
-  document.getElementById('actionDot').style.display = rows.length>0?'block':'none';
-  const tbody = document.getElementById('actionBody');
-  if (rows.length===0) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">Nothing needs action right now</div></div></td></tr>';
-    return;
-  }
-  const _adminAct2 = isAdmin() && !isShadowing();
-  const canBook   = _adminAct2 || hasPerm('canBook');
-  const canCancel = _adminAct2 || hasPerm('canCancel');
-  const canNotes  = _adminAct2 || hasPerm('canAddNotes');
-  tbody.innerHTML = rows.map(r => {
-    const stale = isStale(r);
-    const color = getTrainerColor(r.trainer);
-    const trainerHtml = r.trainer
-      ? '<span class="trainer-pill" style="background:'+color+'22;color:'+color+';">'+esc(r.trainer)+'</span>'
-      : '<span style="color:var(--text--dark--20);font-size:12px;">&#8212;</span>';
-    const actionBtns = [];
-    if (canBook)   actionBtns.push('<button class="btn btn-success btn-sm book-btn" onclick="openBookModal('+r.rowIndex+')">&#128200; Book</button>');
-    if (canCancel) actionBtns.push('<button class="btn btn-danger btn-sm cancel-btn" onclick="openCancelModal('+r.rowIndex+')">&#10007; Cancel</button>');
-    const statusHtml = actionBtns.length
-      ? '<div style="display:flex;gap:6px;">'+actionBtns.join('')+'</div>'
-      : '<span class="status-badge status-pending">Pending</span>';
-    const notesBtn = canNotes
-      ? '<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm notes-btn" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button></div>'
-      : '';
+function renderActionPanel(){
+  const rows=allData.filter(r=>r.status==='Pending');
+  document.getElementById('actionBadge').textContent=rows.length;
+  document.getElementById('actionDot').style.display=rows.length>0?'block':'none';
+  const tbody=document.getElementById('actionBody');
+  if(rows.length===0){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">&#9989;</div><div class="empty-state-text">Nothing needs action right now</div></div></td></tr>';return;}
+  const _a=isAdmin()&&!isShadowing(),canBook=_a||hasPerm('canBook'),canCancel=_a||hasPerm('canCancel'),canNotes=_a||hasPerm('canAddNotes');
+  tbody.innerHTML=rows.map(r=>{
+    const stale=isStale(r),color=getTrainerColor(r.trainer);
+    const trainerHtml=r.trainer?'<span class="trainer-pill" style="background:'+color+'22;color:'+color+';">'+esc(r.trainer)+'</span>':'<span style="color:var(--text--dark--20);font-size:12px;">&#8212;</span>';
+    const actionBtns=[];
+    if(canBook)actionBtns.push('<button class="btn btn-success btn-sm" onclick="openBookModal('+r.rowIndex+')">&#128200; Book</button>');
+    if(canCancel)actionBtns.push('<button class="btn btn-danger btn-sm" onclick="openCancelModal('+r.rowIndex+')">&#10007; Cancel</button>');
+    const statusHtml=actionBtns.length?'<div style="display:flex;gap:6px;">'+actionBtns.join('')+'</div>':'<span class="status-badge status-pending">Pending</span>';
+    const notesBtn=canNotes?'<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button></div>':'';
     return '<tr class="'+(stale?'row-stale':'')+'">'
       +'<td style="white-space:nowrap;font-size:12px;color:var(--text--dark--30);">'+formatDate(r.date||r.timestamp)+(stale?'<br>'+staleTag():'')+'</td>'
-      +'<td>'+companyCell(r)+'</td>'
-      +'<td style="font-size:12px;">'+esc(r.contact||'')+'</td>'
+      +'<td>'+companyCell(r)+'</td><td style="font-size:12px;">'+esc(r.contact||'')+'</td>'
       +'<td><span class="option-badge opt-'+r.option+'">Opt '+r.option+'</span></td>'
       +'<td style="font-size:12px;color:var(--text--dark--30);">'+esc(r.preferredDate||'&#8212;')+'</td>'
-      +'<td>'+trainerHtml+'</td>'
-      +'<td>'+statusHtml+notesBtn+'</td>'
-      +'</tr>';
+      +'<td>'+trainerHtml+'</td><td>'+statusHtml+notesBtn+'</td></tr>';
   }).join('');
 }
 
-// BOOKING MODAL
 // =============================================
-function openBookModal(rowIndex) {
-  if (!isAdmin() && !hasPerm('canBook')) { showToast('Permission required','error'); return; }
-  const row = allData.find(r=>r.rowIndex===rowIndex); if (!row) return;
-  _bookRowIndex = rowIndex;
-  document.getElementById('bookModalCompany').textContent = row.company + (row.contact?' · '+row.contact:'');
-  document.getElementById('bookDate').value = row.bookedOn||row.preferredDate||'';
-  document.getElementById('bookDays').value = row.trainingDays||OPTION_DAYS[row.option]||1;
-  document.getElementById('bookValue').value = row.revenue||OPTION_PRICES[row.option]||'';
-  document.getElementById('bookValueHint').textContent = 'Default for Opt '+row.option+': £'+(OPTION_PRICES[row.option]||0).toLocaleString();
-  // Populate trainer dropdown
-  const sel = document.getElementById('bookTrainer');
-  sel.innerHTML = '<option value="">— Select trainer —</option>' + TRAINERS.map(t=>'<option value="'+t+'"'+(t===row.trainer?' selected':'')+'>'+t+'</option>').join('');
-  document.getElementById('bookWarnings').innerHTML = '';
+// BOOK MODAL
+// =============================================
+function openBookModal(ri){
+  if(!isAdmin()&&!hasPerm('canBook')){showToast('Permission required','error');return;}
+  const row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  _bookRowIndex=ri;
+  document.getElementById('bookModalCompany').textContent=row.company+(row.contact?' · '+row.contact:'');
+  document.getElementById('bookDate').value=row.bookedOn||row.preferredDate||'';
+  document.getElementById('bookDays').value=row.trainingDays||OPTION_DAYS[row.option]||1;
+  document.getElementById('bookValue').value=row.revenue||OPTION_PRICES[row.option]||'';
+  document.getElementById('bookValueHint').textContent='Default for Opt '+row.option+': £'+(OPTION_PRICES[row.option]||0).toLocaleString();
+  const sel=document.getElementById('bookTrainer');
+  sel.innerHTML='<option value="">— Select trainer —</option>'+TRAINERS.map(t=>'<option value="'+t+'"'+(t===row.trainer?' selected':'')+'>'+t+'</option>').join('');
+  document.getElementById('bookWarnings').innerHTML='';
   document.getElementById('bookingBlockMsg').style.display='none';
-  const ovr = document.getElementById('bookingOverride'); if (ovr) ovr.checked = false;
-  const ovrRow = document.getElementById('bookingOverrideRow'); if (ovrRow) ovrRow.style.display='none';
+  const ovr=document.getElementById('bookingOverride');if(ovr)ovr.checked=false;
+  const ovrRow=document.getElementById('bookingOverrideRow');if(ovrRow)ovrRow.style.display='none';
   document.getElementById('confirmBookBtn').disabled=false;
   document.getElementById('bookOverlay').classList.add('open');
   checkBookingWarnings();
 }
-function closeBookModal() { document.getElementById('bookOverlay').classList.remove('open'); _bookRowIndex=null; }
-
-function checkBookingWarnings() {
-  const dateStr = document.getElementById('bookDate').value;
-  const numDays = parseInt(document.getElementById('bookDays').value)||1;
-  const trainer = document.getElementById('bookTrainer').value;
-  const warnings = [];
-  let hardBlock = false;
-
-  if (dateStr) {
-    const d = new Date(dateStr+'T00:00:00');
-    if (isWeekend(d)) warnings.push({type:'warn', msg:'⚠️ Training date falls on a weekend.'});
-    if (isBankHoliday(dateStr)) warnings.push({type:'warn', msg:'⚠️ Training date is a UK bank holiday.'});
-    // Check all blocked dates
-    const blocked = getBlockedDates(dateStr, numDays);
-    [...blocked.training].forEach(ds => {
-      const bd = new Date(ds+'T00:00:00');
-      if (isWeekend(bd)) warnings.push({type:'warn', msg:'⚠️ Training day '+ds+' falls on a weekend.'});
-      if (isBankHoliday(ds)) warnings.push({type:'warn', msg:'⚠️ Training day '+ds+' is a bank holiday.'});
-    });
-    // Check double booking (hard block)
-    if (trainer) {
-      const allBlocked = [...blocked.travel, ...blocked.training, ...blocked.admin];
-      const conflict = allData.find(r => {
-        if (r.rowIndex===_bookRowIndex) return false;
-        if (r.status!=='Booked') return false;
-        if (r.trainer!==trainer) return false;
-        if (!r.bookedOn) return false;
-        const otherBlocked = getBlockedDates(r.bookedOn, r.trainingDays||OPTION_DAYS[r.option]||1);
-        const otherAll = [...otherBlocked.travel,...otherBlocked.training,...otherBlocked.admin];
-        return allBlocked.some(d=>otherAll.includes(d));
-      });
-      if (conflict) {
-        warnings.push({type:'error', msg:'🚫 DOUBLE BOOKING: '+trainer+' is already assigned to '+conflict.company+' on overlapping dates. You cannot book this trainer here.'});
-        hardBlock = true;
-      }
+function closeBookModal(){document.getElementById('bookOverlay').classList.remove('open');_bookRowIndex=null;}
+function checkBookingWarnings(){
+  const dateStr=document.getElementById('bookDate').value,numDays=parseInt(document.getElementById('bookDays').value)||1,trainer=document.getElementById('bookTrainer').value;
+  const warnings=[];let hardBlock=false;
+  if(dateStr){
+    const d=new Date(dateStr+'T00:00:00');
+    if(isWeekend(d))warnings.push({type:'warn',msg:'⚠️ Training date falls on a weekend.'});
+    if(isBankHoliday(dateStr))warnings.push({type:'warn',msg:'⚠️ Training date is a UK bank holiday.'});
+    const blocked=getBlockedDates(dateStr,numDays);
+    [...blocked.training].forEach(ds=>{const bd=new Date(ds+'T00:00:00');if(isWeekend(bd))warnings.push({type:'warn',msg:'⚠️ Training day '+ds+' falls on a weekend.'});if(isBankHoliday(ds))warnings.push({type:'warn',msg:'⚠️ Training day '+ds+' is a bank holiday.'});});
+    if(trainer){
+      const allBlocked=[...blocked.travel,...blocked.training,...blocked.admin];
+      const conflict=allData.find(r=>{if(r.rowIndex===_bookRowIndex||r.status!=='Booked'||r.trainer!==trainer||!r.bookedOn)return false;const ob=getBlockedDates(r.bookedOn,r.trainingDays||OPTION_DAYS[r.option]||1);const oa=[...ob.travel,...ob.training,...ob.admin];return allBlocked.some(d=>oa.includes(d));});
+      if(conflict){warnings.push({type:'error',msg:'🚫 DOUBLE BOOKING: '+trainer+' is already assigned to '+conflict.company+' on overlapping dates.'});hardBlock=true;}
     }
   }
+  const wrap=document.getElementById('bookWarnings');
+  wrap.innerHTML=warnings.map(w=>'<div class="warning-box '+w.type+'"><span>'+(w.type==='error'?'🚫':'⚠️')+'</span><span>'+esc(w.msg.replace(/^🚫 |^⚠️ /,''))+'</span></div>').join('');
+  const blockMsg=document.getElementById('bookingBlockMsg'),btn=document.getElementById('confirmBookBtn');
+  const overrideRow=document.getElementById('bookingOverrideRow'),overrideChecked=document.getElementById('bookingOverride')?.checked;
+  if(hardBlock){
+    if(overrideRow)overrideRow.style.display=(isAdmin()&&!isShadowing())?'':'none';
+    blockMsg.textContent=overrideChecked?'⚠️ Override active — double booking will be saved':'Double booking detected — tick override below to proceed';
+    blockMsg.style.color=overrideChecked?'#92400e':'#c0303d';blockMsg.style.display='';btn.disabled=!overrideChecked;
+  }else{if(overrideRow)overrideRow.style.display='none';blockMsg.style.display='none';btn.disabled=false;}
+}
+async function confirmBook(){
+  if(!isAdmin()){showToast('Admin access required','error');return;}
+  const dateStr=document.getElementById('bookDate').value,numDays=parseInt(document.getElementById('bookDays').value)||1;
+  const trainer=document.getElementById('bookTrainer').value,value=parseFloat(document.getElementById('bookValue').value)||0;
+  if(!dateStr){document.getElementById('bookDate').classList.add('error');showToast('Please enter a booking date','error');return;}
+  if(!trainer){document.getElementById('bookTrainer').classList.add('error');showToast('Please select a trainer','error');return;}
+  const overrideActive=isAdmin()&&document.getElementById('bookingOverride')?.checked;
+  if(!overrideActive){
+    const blocked=getBlockedDates(dateStr,numDays);const allBlocked=[...blocked.travel,...blocked.training,...blocked.admin];
+    const conflict=allData.find(r=>{if(r.rowIndex===_bookRowIndex||r.status!=='Booked'||r.trainer!==trainer||!r.bookedOn)return false;const ob=getBlockedDates(r.bookedOn,r.trainingDays||OPTION_DAYS[r.option]||1);const oa=[...ob.travel,...ob.training,...ob.admin];return allBlocked.some(d=>oa.includes(d));});
+    if(conflict){showToast('Double booking — tick override to confirm anyway','error');return;}
+  }
+  const ri=_bookRowIndex,row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  row.status='Booked';row.bookedOn=dateStr;row.trainer=trainer;row.revenue=value;row.trainingDays=numDays;
+  saveOverride(ri,{status:'Booked',bookedOn:dateStr,trainer,revenue:value,trainingDays:numDays});
+  closeBookModal();logActivity('book',row.company,'Booked on '+dateStr+' with '+trainer+' ('+numDays+'d, £'+value.toLocaleString()+')',getCurrentUser()?.name||'Unknown');
+  showToast('✓ Booking confirmed — '+row.company,'success');
+  const url=APPS_SCRIPT_URL+'?action=assign&row='+ri+'&status=Booked&bookedOn='+encodeURIComponent(dateStr)+'&trainer='+encodeURIComponent(trainer)+'&value='+value+'&trainingDays='+numDays;
+  try{await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'});}catch(e){}
+  processData();
+}
 
-  const wrap = document.getElementById('bookWarnings');
-  wrap.innerHTML = warnings.map(w=>'<div class="warning-box '+w.type+'"><span>'+(w.type==='error'?'🚫':'⚠️')+'</span><span>'+esc(w.msg.replace(/^🚫 |^⚠️ /,''))+'</span></div>').join('');
-  const blockMsg = document.getElementById('bookingBlockMsg');
-  const btn = document.getElementById('confirmBookBtn');
-  const overrideRow = document.getElementById('bookingOverrideRow');
-  const overrideChecked = document.getElementById('bookingOverride')?.checked;
+// =============================================
+// EDIT BOOKING MODAL (amend existing bookings)
+// =============================================
+function openEditBookingModal(ri) {
+  if (!isAdmin()) { showToast('Admin access required', 'error'); return; }
+  const row = allData.find(r => r.rowIndex === ri); if (!row) return;
+  _editBookRowIndex = ri;
+  document.getElementById('editBookingCompany').textContent = row.company + (row.contact ? ' · ' + row.contact : '') + ' · Opt ' + row.option;
+  document.getElementById('editBookDate').value  = row.bookedOn || '';
+  document.getElementById('editBookDays').value  = row.trainingDays || OPTION_DAYS[row.option] || 1;
+  document.getElementById('editBookValue').value = row.revenue || '';
+  document.getElementById('editBookReason').value = '';
+  const sel = document.getElementById('editBookTrainer');
+  sel.innerHTML = '<option value="">— Select trainer —</option>' + TRAINERS.map(t => '<option value="'+t+'"'+(t===row.trainer?' selected':'')+'>'+t+'</option>').join('');
+  document.getElementById('editBookingWarnings').innerHTML = '';
+  document.getElementById('editBookingBlockMsg').style.display = 'none';
+  const ovr = document.getElementById('editBookingOverride'); if (ovr) ovr.checked = false;
+  const ovrRow = document.getElementById('editBookingOverrideRow'); if (ovrRow) ovrRow.style.display = 'none';
+  document.getElementById('confirmEditBookBtn').disabled = false;
+  document.getElementById('editBookingOverlay').classList.add('open');
+  checkEditWarnings();
+}
+function closeEditBookingModal() { document.getElementById('editBookingOverlay').classList.remove('open'); _editBookRowIndex = null; }
+
+function checkEditWarnings() {
+  const dateStr  = document.getElementById('editBookDate').value;
+  const numDays  = parseInt(document.getElementById('editBookDays').value) || 1;
+  const trainer  = document.getElementById('editBookTrainer').value;
+  const warnings = []; let hardBlock = false;
+  if (dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isWeekend(d)) warnings.push({ type:'warn', msg:'Training date falls on a weekend.' });
+    if (isBankHoliday(dateStr)) warnings.push({ type:'warn', msg:'Training date is a UK bank holiday.' });
+    if (trainer) {
+      const blocked = getBlockedDates(dateStr, numDays);
+      const allBlocked = [...blocked.travel, ...blocked.training, ...blocked.admin];
+      const conflict = allData.find(r => {
+        if (r.rowIndex === _editBookRowIndex || r.status !== 'Booked' || r.trainer !== trainer || !r.bookedOn) return false;
+        const ob = getBlockedDates(r.bookedOn, r.trainingDays || OPTION_DAYS[r.option] || 1);
+        const oa = [...ob.travel, ...ob.training, ...ob.admin];
+        return allBlocked.some(d => oa.includes(d));
+      });
+      if (conflict) { warnings.push({ type:'error', msg:'DOUBLE BOOKING: '+trainer+' is already assigned to '+conflict.company+' on overlapping dates.' }); hardBlock = true; }
+    }
+  }
+  document.getElementById('editBookingWarnings').innerHTML = warnings.map(w =>
+    '<div class="warning-box '+w.type+'"><span>'+(w.type==='error'?'🚫':'⚠️')+'</span><span>'+esc(w.msg)+'</span></div>'
+  ).join('');
+  const blockMsg = document.getElementById('editBookingBlockMsg');
+  const btn = document.getElementById('confirmEditBookBtn');
+  const overrideRow = document.getElementById('editBookingOverrideRow');
+  const overrideChecked = document.getElementById('editBookingOverride')?.checked;
   if (hardBlock) {
-    if (overrideRow) overrideRow.style.display = (isAdmin() && !isShadowing()) ? '' : 'none';
-    blockMsg.textContent = overrideChecked
-      ? '⚠️ Override active — double booking will be saved'
-      : 'Double booking detected — tick override below to proceed';
+    if (overrideRow) overrideRow.style.display = isAdmin() ? '' : 'none';
+    blockMsg.textContent = overrideChecked ? '⚠️ Override active' : 'Double booking — tick override to proceed';
     blockMsg.style.color = overrideChecked ? '#92400e' : '#c0303d';
     blockMsg.style.display = '';
     btn.disabled = !overrideChecked;
@@ -1786,234 +1583,214 @@ function checkBookingWarnings() {
   }
 }
 
-async function confirmBook() {
-  if (!isAdmin()) { showToast('Admin access required','error'); return; }
-  const dateStr = document.getElementById('bookDate').value;
-  const numDays = parseInt(document.getElementById('bookDays').value)||1;
-  const trainer = document.getElementById('bookTrainer').value;
-  const value   = parseFloat(document.getElementById('bookValue').value)||0;
-  // Validate
-  if (!dateStr) { document.getElementById('bookDate').classList.add('error'); showToast('Please enter a booking date','error'); return; }
-  if (!trainer) { document.getElementById('bookTrainer').classList.add('error'); showToast('Please select a trainer','error'); return; }
-  // £0 is valid (e.g. internal sessions) — no minimum value check
-  // Double booking safety check — bypassed if admin has ticked override
-  const overrideActive = isAdmin() && document.getElementById('bookingOverride')?.checked;
+async function confirmEditBooking() {
+  if (!isAdmin()) { showToast('Admin access required', 'error'); return; }
+  const dateStr  = document.getElementById('editBookDate').value;
+  const numDays  = parseInt(document.getElementById('editBookDays').value) || 1;
+  const trainer  = document.getElementById('editBookTrainer').value;
+  const value    = parseFloat(document.getElementById('editBookValue').value) || 0;
+  const reason   = document.getElementById('editBookReason').value.trim();
+  if (!dateStr) { document.getElementById('editBookDate').classList.add('error'); showToast('Please enter a training date', 'error'); return; }
+  if (!trainer) { document.getElementById('editBookTrainer').classList.add('error'); showToast('Please select a trainer', 'error'); return; }
+  const overrideActive = document.getElementById('editBookingOverride')?.checked;
   if (!overrideActive) {
     const blocked = getBlockedDates(dateStr, numDays);
-    const allBlocked = [...blocked.travel,...blocked.training,...blocked.admin];
+    const allBlocked = [...blocked.travel, ...blocked.training, ...blocked.admin];
     const conflict = allData.find(r => {
-      if (r.rowIndex===_bookRowIndex||r.status!=='Booked'||r.trainer!==trainer||!r.bookedOn) return false;
-      const ob = getBlockedDates(r.bookedOn, r.trainingDays||OPTION_DAYS[r.option]||1);
-      const oa = [...ob.travel,...ob.training,...ob.admin];
-      return allBlocked.some(d=>oa.includes(d));
+      if (r.rowIndex === _editBookRowIndex || r.status !== 'Booked' || r.trainer !== trainer || !r.bookedOn) return false;
+      const ob = getBlockedDates(r.bookedOn, r.trainingDays || OPTION_DAYS[r.option] || 1);
+      const oa = [...ob.travel, ...ob.training, ...ob.admin];
+      return allBlocked.some(d => oa.includes(d));
     });
-    if (conflict) { showToast('Double booking — tick override to confirm anyway','error'); return; }
+    if (conflict) { showToast('Double booking — tick override to confirm', 'error'); return; }
   }
-
-  const rowIndex = _bookRowIndex;
-  const row = allData.find(r=>r.rowIndex===rowIndex);
-  if (!row) return;
-  row.status='Booked'; row.bookedOn=dateStr; row.trainer=trainer; row.revenue=value; row.trainingDays=numDays;
-  saveOverride(rowIndex, {status:'Booked', bookedOn:dateStr, trainer, revenue:value, trainingDays:numDays});
-  closeBookModal();
-  logActivity('book', row.company, 'Booked on '+dateStr+' with '+trainer+' ('+numDays+'d, £'+value.toLocaleString()+')', getCurrentUser()?.name||'Unknown');
-  showToast('✓ Booking confirmed — '+row.company,'success');
-  const url=APPS_SCRIPT_URL+'?action=assign&row='+rowIndex+'&status=Booked&bookedOn='+encodeURIComponent(dateStr)+'&trainer='+encodeURIComponent(trainer)+'&value='+value+'&trainingDays='+numDays;
-  try { await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'}); } catch(e) {}
+  const ri = _editBookRowIndex;
+  const row = allData.find(r => r.rowIndex === ri); if (!row) return;
+  // Detect what changed for log message
+  const changes = [];
+  if (row.bookedOn   !== dateStr)    changes.push('date: '+row.bookedOn+' → '+dateStr);
+  if (row.revenue    !== value)      changes.push('value: £'+row.revenue+' → £'+value);
+  if (row.trainingDays !== numDays)  changes.push('days: '+row.trainingDays+' → '+numDays);
+  if (row.trainer    !== trainer)    changes.push('trainer: '+row.trainer+' → '+trainer);
+  row.bookedOn = dateStr; row.trainer = trainer; row.revenue = value; row.trainingDays = numDays;
+  saveOverride(ri, { bookedOn: dateStr, trainer, revenue: value, trainingDays: numDays });
+  if (reason) saveNoteForRow(ri, '[AMENDED] '+reason+(changes.length?' ('+changes.join(', ')+')':''), getCurrentUser()?.name || 'Unknown');
+  closeEditBookingModal();
+  logActivity('edit', row.company, 'Booking amended: '+changes.join(', '), getCurrentUser()?.name||'Unknown');
+  showToast('✓ Booking updated — '+row.company, 'success');
+  const url = APPS_SCRIPT_URL+'?action=assign&row='+ri+'&status=Booked&bookedOn='+encodeURIComponent(dateStr)+'&trainer='+encodeURIComponent(trainer)+'&value='+value+'&trainingDays='+numDays;
+  try { await fetch(url, { method:'GET', redirect:'follow', mode:'no-cors' }); } catch(e) {}
   processData();
 }
 
 // =============================================
 // CANCEL MODAL
 // =============================================
-function openCancelModal(rowIndex) {
-  if (!isAdmin() && !hasPerm('canCancel')) { showToast('Permission required','error'); return; }
-  const row = allData.find(r=>r.rowIndex===rowIndex); if (!row) return;
-  _cancelRowIndex = rowIndex;
-  document.getElementById('cancelModalCompany').textContent = row.company + (row.contact?' · '+row.contact:'');
-  document.getElementById('cancelReason').value = '';
+function openCancelModal(ri){
+  if(!isAdmin()&&!hasPerm('canCancel')){showToast('Permission required','error');return;}
+  const row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  _cancelRowIndex=ri;
+  document.getElementById('cancelModalCompany').textContent=row.company+(row.contact?' · '+row.contact:'');
+  document.getElementById('cancelReason').value='';
   document.getElementById('cancelOverlay').classList.add('open');
 }
-function closeCancelModal() { document.getElementById('cancelOverlay').classList.remove('open'); _cancelRowIndex=null; }
-
-async function confirmCancel() {
-  if (!isAdmin()) { showToast('Admin access required','error'); return; }
-  const reason = document.getElementById('cancelReason').value.trim();
-  if (!reason) { document.getElementById('cancelReason').classList.add('error'); showToast('Please enter a cancellation reason','error'); return; }
-  const rowIndex = _cancelRowIndex;
-  const row = allData.find(r=>r.rowIndex===rowIndex);
-  if (!row) return;
-  const who = getCurrentUser()?.name||'Unknown';
-  // Save reason to notes
-  saveNoteForRow(rowIndex, '[CANCELLED] '+reason, who);
-  row.status='Cancelled'; row.trainer=row.trainer||'';
-  saveOverride(rowIndex, {status:'Cancelled'});
-  closeCancelModal();
-  logActivity('cancel', row.company, 'Cancelled — '+reason, who);
+function closeCancelModal(){document.getElementById('cancelOverlay').classList.remove('open');_cancelRowIndex=null;}
+async function confirmCancel(){
+  if(!isAdmin()){showToast('Admin access required','error');return;}
+  const reason=document.getElementById('cancelReason').value.trim();
+  if(!reason){document.getElementById('cancelReason').classList.add('error');showToast('Please enter a cancellation reason','error');return;}
+  const ri=_cancelRowIndex,row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  const who=getCurrentUser()?.name||'Unknown';
+  saveNoteForRow(ri,'[CANCELLED] '+reason,who);
+  row.status='Cancelled';row.trainer=row.trainer||'';saveOverride(ri,{status:'Cancelled'});
+  closeCancelModal();logActivity('cancel',row.company,'Cancelled — '+reason,who);
   showToast('Enquiry cancelled','');
-  const url=APPS_SCRIPT_URL+'?action=assign&row='+rowIndex+'&status=Cancelled';
-  try { await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'}); } catch(e) {}
+  const url=APPS_SCRIPT_URL+'?action=assign&row='+ri+'&status=Cancelled';
+  try{await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'});}catch(e){}
   processData();
 }
 
 // =============================================
 // NOTES MODAL
 // =============================================
-function openNotesModal(rowIndex) {
-  const row = allData.find(r=>r.rowIndex===rowIndex); if (!row) return;
-  _notesRowIndex = rowIndex;
-  document.getElementById('notesModalCompany').textContent = row.company + (row.contact?' · '+row.contact:'') + ' · '+row.optionLabel;
-  document.getElementById('newNoteText').value = '';
-  renderNotesList(rowIndex);
+function openNotesModal(ri){
+  const row=allData.find(r=>r.rowIndex===ri);if(!row)return;
+  _notesRowIndex=ri;
+  document.getElementById('notesModalCompany').textContent=row.company+(row.contact?' · '+row.contact:'')+'· '+row.optionLabel;
+  document.getElementById('newNoteText').value='';
+  renderNotesList(ri);
   document.getElementById('notesOverlay').classList.add('open');
 }
-function closeNotesModal() { document.getElementById('notesOverlay').classList.remove('open'); _notesRowIndex=null; }
-
-function renderNotesList(rowIndex) {
-  const notes = getNotesForRow(rowIndex);
-  const el = document.getElementById('notesList');
-  if (!notes.length) {
-    el.innerHTML = '<div style="text-align:center;color:var(--text--dark--30);padding:20px;">No notes yet. Add one below.</div>';
-    return;
-  }
+function closeNotesModal(){document.getElementById('notesOverlay').classList.remove('open');_notesRowIndex=null;}
+function renderNotesList(ri){
+  const notes=getNotesForRow(ri),el=document.getElementById('notesList');
+  if(!notes.length){el.innerHTML='<div style="text-align:center;color:var(--text--dark--30);padding:20px;">No notes yet. Add one below.</div>';return;}
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  el.innerHTML = notes.map(n => {
-    const d=new Date(n.time);
-    const timeStr = d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    const isCancelled = n.text.startsWith('[CANCELLED]');
-    const borderColor = isCancelled ? '#c0303d' : 'var(--action-primary-blue)';
-    return '<div class="note-item" style="border-left-color:'+borderColor+';">'
-      +'<div class="note-meta">'+esc(n.author)+' &middot; '+timeStr+'</div>'
-      +'<div class="note-text">'+esc(n.text)+'</div>'
-      +'</div>';
+  el.innerHTML=notes.map(n=>{
+    const d=new Date(n.time);const timeStr=d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const isCancelled=n.text.startsWith('[CANCELLED]'),isAmended=n.text.startsWith('[AMENDED]');
+    const borderColor=isCancelled?'#c0303d':isAmended?'#7c3aed':'var(--action-primary-blue)';
+    return '<div class="note-item" style="border-left-color:'+borderColor+';"><div class="note-meta">'+esc(n.author)+' &middot; '+timeStr+'</div><div class="note-text">'+esc(n.text)+'</div></div>';
   }).join('');
 }
-
-function saveNote() {
-  const text = document.getElementById('newNoteText').value.trim();
-  if (!text) { showToast('Please enter a note','error'); return; }
-  const who = getCurrentUser()?.name||'Unknown';
-  saveNoteForRow(_notesRowIndex, text, who);
-  document.getElementById('newNoteText').value='';
-  renderNotesList(_notesRowIndex);
-  logActivity('note', allData.find(r=>r.rowIndex===_notesRowIndex)?.company||'', 'Note added by '+who, text.slice(0,80));
-  showToast('Note saved','success');
-  renderUnassigned(); renderActionPanel();
+function saveNote(){
+  const text=document.getElementById('newNoteText').value.trim();if(!text){showToast('Please enter a note','error');return;}
+  const who=getCurrentUser()?.name||'Unknown';saveNoteForRow(_notesRowIndex,text,who);
+  document.getElementById('newNoteText').value='';renderNotesList(_notesRowIndex);
+  logActivity('note',allData.find(r=>r.rowIndex===_notesRowIndex)?.company||'','Note added by '+who,text.slice(0,80));
+  showToast('Note saved','success');renderUnassigned();renderActionPanel();
 }
 
 // =============================================
 // CALENDAR EVENT MODAL
 // =============================================
 function openCalEventModal(eventData) {
-  const header = document.getElementById('calEventHeader');
-  const trainerColor = eventData.trainer ? getTrainerColor(eventData.trainer) : '#777';
-  header.style.background = eventData.type==='travel'?'#92400e':eventData.type==='admin'?'#3730a3':trainerColor;
+  const header=document.getElementById('calEventHeader');
+  const trainerColor=eventData.trainer?getTrainerColor(eventData.trainer):'#777';
+  let headerBg = eventData.type==='travel'?'#92400e':eventData.type==='admin'?'#3730a3':eventData.type==='leave'?'#6d28d9':trainerColor;
+  header.style.background = headerBg;
   document.getElementById('calEventTitle').textContent = eventData.title;
   document.getElementById('calEventSubtitle').textContent = eventData.dateStr + (eventData.trainer?' · '+eventData.trainer:'');
-  let body='';
-  if (eventData.type==='training'||eventData.type==='booking') {
+  let body = '';
+  if (eventData.type==='training' || eventData.type==='booking') {
     body += '<div style="margin-bottom:12px;"><strong>'+esc(eventData.company||eventData.title)+'</strong></div>';
     if (eventData.contact) body += '<div style="margin-bottom:8px;font-size:12px;color:var(--text--dark--40);">Contact: '+esc(eventData.contact)+'</div>';
     if (eventData.option) body += '<div style="margin-bottom:8px;"><span class="option-badge opt-'+eventData.option+'">Opt '+eventData.option+' — '+esc(eventData.optionLabel)+'</span></div>';
     if (eventData.trainer) body += '<div style="margin-bottom:8px;font-size:12px;"><span class="trainer-pill" style="background:'+trainerColor+'22;color:'+trainerColor+';">'+esc(eventData.trainer)+'</span></div>';
     if (eventData.revenue) body += '<div style="font-size:13px;font-weight:600;color:var(--action-primary-blue);">&#163;'+Number(eventData.revenue).toLocaleString()+'</div>';
     if (eventData.trainingDays) body += '<div style="font-size:12px;color:var(--text--dark--30);margin-top:4px;">'+eventData.trainingDays+' training day'+(eventData.trainingDays>1?'s':'')+'</div>';
+  } else if (eventData.type==='leave') {
+    body = '<div style="font-size:12px;color:#6d28d9;font-weight:600;margin-bottom:8px;">🏖️ Team Annual Leave</div>'
+      +'<div style="font-size:13px;color:var(--text--dark--50);">'+esc(eventData.summary)+'</div>';
   } else {
     body = '<div style="font-size:12px;color:var(--text--dark--40);">'+esc(eventData.description||eventData.title)+'</div>';
     if (eventData.type==='travel') body += '<div style="margin-top:8px;font-size:12px;color:#92400e;">Travel day for: <strong>'+esc(eventData.forCompany||'')+'</strong></div>';
-    if (eventData.type==='admin') body += '<div style="margin-top:8px;font-size:12px;color:#3730a3;">Admin day after: <strong>'+esc(eventData.forCompany||'')+'</strong></div>';
+    if (eventData.type==='admin')  body += '<div style="margin-top:8px;font-size:12px;color:#3730a3;">Admin day after: <strong>'+esc(eventData.forCompany||'')+'</strong></div>';
   }
   document.getElementById('calEventBody').innerHTML = body;
+  // Show edit button only for training events, admin only
+  const footer = document.getElementById('calEventFooter');
+  const canEdit = isAdmin() && !isShadowing() && (eventData.type==='training') && eventData.rowIndex;
+  footer.innerHTML = '<button class="btn btn-ghost" onclick="closeCalEventModal()">Close</button>'
+    + (canEdit ? '<button class="btn btn-edit" onclick="closeCalEventModal();openEditBookingModal('+eventData.rowIndex+')">&#9998; Edit Booking</button>' : '');
   document.getElementById('calEventOverlay').classList.add('open');
 }
-function closeCalEventModal() { document.getElementById('calEventOverlay').classList.remove('open'); }
+function closeCalEventModal(){document.getElementById('calEventOverlay').classList.remove('open');}
 
 // =============================================
 // CALENDAR
 // =============================================
-const CAL_SETTINGS_KEY = 'streetDashboardCalSettings';
-function getCalSettings() { try { return JSON.parse(localStorage.getItem(CAL_SETTINGS_KEY)||'{}'); } catch(e) { return {}; } }
-function saveCalSettingsData(d) { try { localStorage.setItem(CAL_SETTINGS_KEY,JSON.stringify(d)); } catch(e) {} }
+const CAL_SETTINGS_KEY='streetDashboardCalSettings';
+function getCalSettings(){try{return JSON.parse(localStorage.getItem(CAL_SETTINGS_KEY)||'{}');}catch(e){return {};}}
+function saveCalSettingsData(d){try{localStorage.setItem(CAL_SETTINGS_KEY,JSON.stringify(d));}catch(e){}}
 
-function calChangeMonth(dir) {
+function calChangeMonth(dir){
   calState.month+=dir;
-  if (calState.month>11){calState.month=0;calState.year++;}
-  if (calState.month<0){calState.month=11;calState.year--;}
-  renderCalendar(); renderUpcoming();
+  if(calState.month>11){calState.month=0;calState.year++;}
+  if(calState.month<0){calState.month=11;calState.year--;}
+  renderCalendar();renderUpcoming();
+}
+function populateCalTrainerFilter(){
+  const sel=document.getElementById('calFilterTrainer');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Trainers</option>'+TRAINERS.map(t=>'<option value="'+t+'"'+(t===cur?' selected':'')+'>'+t+'</option>').join('');
 }
 
-function populateCalTrainerFilter() {
-  const sel = document.getElementById('calFilterTrainer'); if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">All Trainers</option>' + TRAINERS.map(t=>'<option value="'+t+'"'+(t===cur?' selected':'')+'>'+t+'</option>').join('');
-}
+const _calEventStore={};let _calEventKey=0;
+function storeCalEvent(ev){const k=++_calEventKey;_calEventStore[k]=ev;return k;}
 
-// Calendar event store — maps a numeric key to event data so onclick doesn't embed JSON
-const _calEventStore = {};
-let _calEventKey = 0;
-function storeCalEvent(ev) {
-  const k = ++_calEventKey;
-  _calEventStore[k] = ev;
-  return k;
-}
-
-// Build calendar events from allData (Booked only)
-function buildCalEvents(trainerFilter) {
-  const events = {}; // dateStr -> [{type,title,color,trainer,company,...}]
-  const addEvent = (dateStr, ev) => {
-    if (!events[dateStr]) events[dateStr] = [];
-    events[dateStr].push(ev);
-  };
-  allData.forEach(r => {
-    if (r.status!=='Booked'||!r.bookedOn) return;
-    if (trainerFilter && r.trainer!==trainerFilter) return;
-    const numDays = r.trainingDays||OPTION_DAYS[r.option]||1;
-    const blocked = getBlockedDates(r.bookedOn, numDays);
-    const color = getTrainerColor(r.trainer);
-    // Travel
-    blocked.travel.forEach(ds => addEvent(ds, {type:'travel',title:'Travel — '+r.company,dateStr:ds,trainer:r.trainer,company:r.company,forCompany:r.company}));
-    // Training days
-    blocked.training.forEach((ds,i) => addEvent(ds, {type:'training',title:(numDays>1?'Day '+(i+1)+': ':'')+r.company,dateStr:ds,trainer:r.trainer,company:r.company,contact:r.contact,option:r.option,optionLabel:r.optionLabel,revenue:r.revenue,trainingDays:numDays,color}));
-    // Admin
-    blocked.admin.forEach(ds => addEvent(ds, {type:'admin',title:'Admin — '+r.company,dateStr:ds,trainer:r.trainer,company:r.company,forCompany:r.company}));
+function buildCalEvents(trainerFilter){
+  const events={};
+  const addEvent=(ds,ev)=>{if(!events[ds])events[ds]=[];events[ds].push(ev);};
+  allData.forEach(r=>{
+    if(r.status!=='Booked'||!r.bookedOn)return;
+    if(trainerFilter&&r.trainer!==trainerFilter)return;
+    const numDays=r.trainingDays||OPTION_DAYS[r.option]||1;
+    const blocked=getBlockedDates(r.bookedOn,numDays);
+    const color=getTrainerColor(r.trainer);
+    blocked.travel.forEach(ds=>addEvent(ds,{type:'travel',title:'Travel — '+r.company,dateStr:ds,trainer:r.trainer,company:r.company,forCompany:r.company}));
+    blocked.training.forEach((ds,i)=>addEvent(ds,{type:'training',title:(numDays>1?'Day '+(i+1)+': ':'')+r.company,dateStr:ds,trainer:r.trainer,company:r.company,contact:r.contact,option:r.option,optionLabel:r.optionLabel,revenue:r.revenue,trainingDays:numDays,color,rowIndex:r.rowIndex}));
+    blocked.admin.forEach(ds=>addEvent(ds,{type:'admin',title:'Admin — '+r.company,dateStr:ds,trainer:r.trainer,company:r.company,forCompany:r.company}));
+  });
+  // Add team leave events (filtered by trainer name if a filter is active)
+  icsLeaveEvents.forEach(ev => {
+    // If leave summary contains trainer name, filter accordingly
+    if (trainerFilter && !ev.summary.toLowerCase().includes(trainerFilter.toLowerCase())) return;
+    addEvent(ev.dateStr, { type:'leave', title: ev.summary, dateStr: ev.dateStr, summary: ev.summary });
   });
   return events;
 }
 
-function renderCalendar() {
-  // Reset event store on each render
-  Object.keys(_calEventStore).forEach(k => delete _calEventStore[k]);
-  _calEventKey = 0;
-  const {year,month}=calState;
-  const tf = document.getElementById('calFilterTrainer')?.value||'';
+function renderCalendar(){
+  Object.keys(_calEventStore).forEach(k=>delete _calEventStore[k]);_calEventKey=0;
+  const{year,month}=calState;
+  const tf=document.getElementById('calFilterTrainer')?.value||'';
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  document.getElementById('calMonthTitle').textContent = MONTHS[month]+' '+year;
-  const firstDay=new Date(year,month,1), lastDay=new Date(year,month+1,0);
+  document.getElementById('calMonthTitle').textContent=MONTHS[month]+' '+year;
+  const firstDay=new Date(year,month,1),lastDay=new Date(year,month+1,0);
   const todayStr=toDateStr(new Date());
-  let startDow=firstDay.getDay(); startDow=startDow===0?6:startDow-1;
-  const calEvents = buildCalEvents(tf);
-  const container=document.getElementById('calDays'); if(!container) return;
+  let startDow=firstDay.getDay();startDow=startDow===0?6:startDow-1;
+  const calEvents=buildCalEvents(tf);
+  const container=document.getElementById('calDays');if(!container)return;
   let cells='';
-  for(let i=0;i<startDow;i++) cells+='<div class="cal-day cal-day-empty"></div>';
-  for(let d=1;d<=lastDay.getDate();d++) {
+  for(let i=0;i<startDow;i++)cells+='<div class="cal-day cal-day-empty"></div>';
+  for(let d=1;d<=lastDay.getDate();d++){
     const ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const dt=new Date(ds+'T00:00:00');
-    const isToday=ds===todayStr, isPast=ds<todayStr;
-    const isWE=isWeekend(dt), isBH=isBankHoliday(ds);
+    const isToday=ds===todayStr,isPast=ds<todayStr;
+    const isWE=isWeekend(dt),isBH=isBankHoliday(ds);
+    const bhLabel=icsHolidayLabels[ds]||'';
     const dayEvts=calEvents[ds]||[];
-    const shown=dayEvts.slice(0,3), extra=dayEvts.length-shown.length;
+    const shown=dayEvts.slice(0,3),extra=dayEvts.length-shown.length;
     let cls='cal-day';
-    if(isToday) cls+=' cal-day-today';
-    if(isPast) cls+=' cal-day-past';
-    if(isWE) cls+=' cal-day-weekend';
-    if(isBH) cls+=' cal-day-holiday';
+    if(isToday)cls+=' cal-day-today';if(isPast)cls+=' cal-day-past';if(isWE)cls+=' cal-day-weekend';if(isBH)cls+=' cal-day-holiday';
     cells+='<div class="'+cls+'">'
-      +'<span class="cal-day-num">'+d+(isBH?' 🏦':'')+'</span>'
-      +shown.map(ev => {
-        const bg=ev.type==='travel'?'#fef3c7':ev.type==='admin'?'#e0e7ff':(ev.color||'#b8caff');
-        const tc=ev.type==='travel'?'#92400e':ev.type==='admin'?'#3730a3':'#fff';
-        const evtKey=storeCalEvent(ev);
-        return '<span class="cal-event" style="background:'+bg+';color:'+tc+';" onclick="openCalEventModal(_calEventStore['+evtKey+'])" title="'+esc(ev.title)+(ev.trainer?' ('+ev.trainer+')':'')+'">'+esc(ev.title)+'</span>';
+      +'<span class="cal-day-num" title="'+(isBH&&bhLabel?bhLabel:'')+'">'+d+(isBH?' 🏦':'')+'</span>'
+      +shown.map(ev=>{
+        const bg=ev.type==='travel'?'#fef3c7':ev.type==='admin'?'#e0e7ff':ev.type==='leave'?'#f3e8ff':(ev.color||'#b8caff');
+        const tc=ev.type==='travel'?'#92400e':ev.type==='admin'?'#3730a3':ev.type==='leave'?'#6d28d9':'#fff';
+        const ek=storeCalEvent(ev);
+        return '<span class="cal-event" style="background:'+bg+';color:'+tc+';" onclick="openCalEventModal(_calEventStore['+ek+'])" title="'+esc(ev.title)+(ev.trainer?' ('+ev.trainer+')':'')+'">'+esc(ev.title)+'</span>';
       }).join('')
       +(extra>0?'<span class="cal-event-more">+'+extra+' more</span>':'')
       +'</div>';
@@ -2021,88 +1798,54 @@ function renderCalendar() {
   container.innerHTML=cells;
 }
 
-function renderUpcoming() {
-  const body=document.getElementById('calUpcomingBody'), count=document.getElementById('calUpcomingCount');
-  if (!body) return;
-  const todayStr=toDateStr(new Date()), limit=new Date(Date.now()+60*86400*1000);
-  const limitStr=toDateStr(limit);
+function renderUpcoming(){
+  const body=document.getElementById('calUpcomingBody'),count=document.getElementById('calUpcomingCount');
+  if(!body)return;
+  const todayStr=toDateStr(new Date()),limit=new Date(Date.now()+60*86400*1000),limitStr=toDateStr(limit);
   const items=[];
-  allData.forEach(r => {
-    if(r.status!=='Booked'||!r.bookedOn) return;
-    if(r.bookedOn<todayStr||r.bookedOn>limitStr) return;
-    items.push({date:r.bookedOn,company:r.company,trainer:r.trainer,option:r.option,optionLabel:r.optionLabel,trainingDays:r.trainingDays||OPTION_DAYS[r.option]||1});
-  });
+  allData.forEach(r=>{if(r.status!=='Booked'||!r.bookedOn)return;if(r.bookedOn<todayStr||r.bookedOn>limitStr)return;items.push({date:r.bookedOn,company:r.company,trainer:r.trainer,option:r.option,optionLabel:r.optionLabel,trainingDays:r.trainingDays||OPTION_DAYS[r.option]||1});});
   items.sort((a,b)=>a.date.localeCompare(b.date));
-  if(count) count.textContent=items.length+' sessions in next 60 days';
+  if(count)count.textContent=items.length+' sessions in next 60 days';
   if(!items.length){body.innerHTML='<div class="cal-upcoming-empty">No upcoming sessions</div>';return;}
   const MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  body.innerHTML=items.map(item=>{
-    const dt=new Date(item.date+'T00:00:00'),day=dt.getDate(),mon=MS[dt.getMonth()];
-    const color=getTrainerColor(item.trainer);
+  body.innerHTML=items.map(item=>{const dt=new Date(item.date+'T00:00:00'),day=dt.getDate(),mon=MS[dt.getMonth()];const color=getTrainerColor(item.trainer);
     return '<div class="cal-upcoming-item">'
       +'<div class="cal-upcoming-date"><div class="cal-upcoming-date-day">'+day+'</div><div class="cal-upcoming-date-mon">'+mon+'</div></div>'
-      +'<div class="cal-upcoming-body-text">'
-        +'<div class="cal-upcoming-company">'+esc(item.company)+'</div>'
-        +'<div class="cal-upcoming-meta">'+(item.trainer?'<span style="color:'+color+';font-weight:600;">'+esc(item.trainer)+'</span> &middot; ':'')+item.trainingDays+' day'+(item.trainingDays>1?'s':'')+' · Opt '+item.option+'</div>'
-      +'</div>'
-      +'</div>';
+      +'<div class="cal-upcoming-body-text"><div class="cal-upcoming-company">'+esc(item.company)+'</div>'
+      +'<div class="cal-upcoming-meta">'+(item.trainer?'<span style="color:'+color+';font-weight:600;">'+esc(item.trainer)+'</span> &middot; ':'')+item.trainingDays+' day'+(item.trainingDays>1?'s':'')+' · Opt '+item.option+'</div></div></div>';
   }).join('');
 }
 
 // =============================================
 // TRAINER WORKLOAD
 // =============================================
-function renderTrainerWorkload() {
-  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-30);
-  const counts={},upcoming={};
-  TRAINERS.forEach(t=>{counts[t]=0;upcoming[t]=0;});
-  const now=new Date();
-  allData.forEach(r=>{
-    if(!r.trainer||!counts.hasOwnProperty(r.trainer)||r.status==='Cancelled') return;
-    const d=toDate(r.date);
-    if(d&&d>=cutoff&&d<=now) counts[r.trainer]++;
-    if(r.status==='Booked'&&r.bookedOn){const bd=new Date(r.bookedOn+'T00:00:00');if(bd>=now) upcoming[r.trainer]++;}
-    if(r.status==='Pending') upcoming[r.trainer]++;
-  });
+function renderTrainerWorkload(){
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);
+  const counts={},upcoming={};TRAINERS.forEach(t=>{counts[t]=0;upcoming[t]=0;});const now=new Date();
+  allData.forEach(r=>{if(!r.trainer||!counts.hasOwnProperty(r.trainer)||r.status==='Cancelled')return;const d=toDate(r.date);if(d&&d>=cutoff&&d<=now)counts[r.trainer]++;if(r.status==='Booked'&&r.bookedOn){const bd=new Date(r.bookedOn+'T00:00:00');if(bd>=now)upcoming[r.trainer]++;}if(r.status==='Pending')upcoming[r.trainer]++;});
   const maxCount=Math.max(1,...Object.values(counts));
   const grid=document.getElementById('trainerGrid');
-  if (!TRAINERS.length){grid.innerHTML='<div style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">No trainers configured. Use Manage Trainers to add team members.</div>';return;}
+  if(!TRAINERS.length){grid.innerHTML='<div style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">No trainers configured.</div>';return;}
   grid.innerHTML=TRAINERS.map((t,i)=>{
-    const color=TRAINER_PALETTE[i%TRAINER_PALETTE.length];
-    const pct=Math.round((counts[t]/maxCount)*100);
+    const color=TRAINER_PALETTE[i%TRAINER_PALETTE.length],pct=Math.round((counts[t]/maxCount)*100);
     const nextFree=getNextFreeDate(t,1);
-    const nextFreeHtml=nextFree
-      ?'<div class="next-free-tag">📅 Next free: <strong>'+nextFree+'</strong></div>'
-      :'<div class="next-free-tag busy">🔴 Busy — no free days in 21 days</div>';
+    const nextFreeHtml=nextFree?'<div class="next-free-tag">📅 Next free: <strong>'+nextFree+'</strong></div>':'<div class="next-free-tag busy">🔴 Busy — no free days in 21 days</div>';
     return '<div class="trainer-card">'
       +'<div class="trainer-name"><div class="trainer-color-dot" style="background:'+color+'"></div>'+esc(t)+'</div>'
       +'<div class="trainer-stat"><span>Last 30 days</span><span class="trainer-stat-val">'+counts[t]+'</span></div>'
       +'<div class="trainer-stat"><span>Upcoming</span><span class="trainer-stat-val">'+upcoming[t]+'</span></div>'
       +'<div class="workload-bar-wrap"><div class="workload-bar" style="width:'+pct+'%;background:'+color+';"></div></div>'
-      +nextFreeHtml
-      +'</div>';
+      +nextFreeHtml+'</div>';
   }).join('');
 }
-
-// Find next free date for a trainer (travel+training+admin all clear of weekends, bank holidays, other bookings)
-function getNextFreeDate(trainer, numTrainingDays) {
-  // Minimum 14 calendar days buffer for preparation time
-  const MIN_BUFFER_DAYS = 14;
-  for (let i=MIN_BUFFER_DAYS;i<=MIN_BUFFER_DAYS+60;i++) {
-    const start=addDays(new Date(),i);
-    if (!isWorkday(start)) continue;
-    const blocked=getBlockedDates(toDateStr(start),numTrainingDays);
-    const allDs=[...blocked.travel,...blocked.training,...blocked.admin];
-    // Check none of these days are weekends/BH
-    if (allDs.some(ds=>{const d=new Date(ds+'T00:00:00');return isWeekend(d)||isBankHoliday(ds);})) continue;
-    // Check no conflicts with existing bookings
-    const hasConflict=allData.some(r=>{
-      if(r.trainer!==trainer||r.status!=='Booked'||!r.bookedOn) return false;
-      const ob=getBlockedDates(r.bookedOn,r.trainingDays||OPTION_DAYS[r.option]||1);
-      const oa=[...ob.travel,...ob.training,...ob.admin];
-      return allDs.some(d=>oa.includes(d));
-    });
-    if (!hasConflict) return start.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+function getNextFreeDate(trainer,numTrainingDays){
+  const MIN_BUFFER_DAYS=14;
+  for(let i=MIN_BUFFER_DAYS;i<=MIN_BUFFER_DAYS+60;i++){
+    const start=addDays(new Date(),i);if(!isWorkday(start))continue;
+    const blocked=getBlockedDates(toDateStr(start),numTrainingDays);const allDs=[...blocked.travel,...blocked.training,...blocked.admin];
+    if(allDs.some(ds=>{const d=new Date(ds+'T00:00:00');return isWeekend(d)||isBankHoliday(ds);}))continue;
+    const hasConflict=allData.some(r=>{if(r.trainer!==trainer||r.status!=='Booked'||!r.bookedOn)return false;const ob=getBlockedDates(r.bookedOn,r.trainingDays||OPTION_DAYS[r.option]||1);const oa=[...ob.travel,...ob.training,...ob.admin];return allDs.some(d=>oa.includes(d));});
+    if(!hasConflict)return start.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
   }
   return null;
 }
@@ -2110,20 +1853,14 @@ function getNextFreeDate(trainer, numTrainingDays) {
 // =============================================
 // KPIs
 // =============================================
-function kpiDate(r) {
-  if (r.bookedOn) { const d = toDate(r.bookedOn); if (d) return d; }
-  return toDate(r.date) || null;
-}
-
-function renderKPIs() {
+function kpiDate(r){if(r.bookedOn){const d=toDate(r.bookedOn);if(d)return d;}return toDate(r.date)||null;}
+function renderKPIs(){
   const now=new Date(),year=now.getFullYear(),month=now.getMonth();
   const lastMonth=month===0?11:month-1,lastMonthYear=month===0?year-1:year;
   const thisYearRows=allData.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year&&r.option!=='1'&&r.status==='Booked';});
   const thisMonthRows=allData.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year&&d.getMonth()===month&&r.option!=='1'&&r.status==='Booked';});
   const lastMonthRows=allData.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===lastMonthYear&&d.getMonth()===lastMonth&&r.option!=='1'&&r.status==='Booked';});
-  const revYear=thisYearRows.reduce((s,r)=>s+r.revenue,0);
-  const revMonth=thisMonthRows.reduce((s,r)=>s+r.revenue,0);
-  const revLastMonth=lastMonthRows.reduce((s,r)=>s+r.revenue,0);
+  const revYear=thisYearRows.reduce((s,r)=>s+r.revenue,0),revMonth=thisMonthRows.reduce((s,r)=>s+r.revenue,0),revLastMonth=lastMonthRows.reduce((s,r)=>s+r.revenue,0);
   const avgFee=thisYearRows.filter(r=>r.revenue>0).length?Math.round(revYear/thisYearRows.filter(r=>r.revenue>0).length):0;
   const daysYear=thisYearRows.reduce((s,r)=>s+(r.trainingDays||OPTION_DAYS[r.option]||0),0);
   const daysMonth=thisMonthRows.reduce((s,r)=>s+(r.trainingDays||OPTION_DAYS[r.option]||0),0);
@@ -2137,53 +1874,26 @@ function renderKPIs() {
   const deltaEl=document.getElementById('kpiRevMonthDelta');
   if(revLastMonth>0){const pct=Math.round(((revMonth-revLastMonth)/revLastMonth)*100),up=pct>=0;deltaEl.innerHTML='<span class="kpi-card-delta '+(up?'delta-up':'delta-down')+'">'+(up?'▲':'▼')+' '+Math.abs(pct)+'% vs last month</span>';}
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('thisMonthLabel').textContent=MONTHS[month];
-  document.getElementById('lastMonthLabel').textContent=MONTHS[lastMonth];
-  document.getElementById('thisMonthRev').textContent='£'+revMonth.toLocaleString();
-  document.getElementById('lastMonthRev').textContent='£'+revLastMonth.toLocaleString();
+  document.getElementById('thisMonthLabel').textContent=MONTHS[month];document.getElementById('lastMonthLabel').textContent=MONTHS[lastMonth];
+  document.getElementById('thisMonthRev').textContent='£'+revMonth.toLocaleString();document.getElementById('lastMonthRev').textContent='£'+revLastMonth.toLocaleString();
 }
 
 // =============================================
 // KPI MODAL
 // =============================================
-function openKpiModal(type) {
+function openKpiModal(type){
   const now=new Date(),year=now.getFullYear(),month=now.getMonth();
   const rows=allData.filter(r=>r.status==='Booked'&&r.option!=='1');
-  const MONTHS_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let config={};
-  if(type==='revYear'){
-    const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});
-    const total=yr.reduce((s,r)=>s+r.revenue,0);
-    config={title:'Total Revenue '+year,subtitle:'All booked sessions',headline:'£'+total.toLocaleString(),
-      stats:[{label:'Sessions',value:yr.length},{label:'Revenue',value:'£'+total.toLocaleString()},{label:'Best Trainer',value:topByRevenue(yr)},{label:'Avg Fee',value:'£'+(yr.filter(r=>r.revenue>0).length?Math.round(total/yr.filter(r=>r.revenue>0).length).toLocaleString():'—')}],
-      rows:yr.sort((a,b)=>(kpiDate(b)||0)-(kpiDate(a)||0))};
-  } else if(type==='revMonth'){
-    const mr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year&&d.getMonth()===month;});
-    config={title:'Revenue '+MONTHS_SHORT[month]+' '+year,subtitle:'Booked sessions this month',headline:'£'+mr.reduce((s,r)=>s+r.revenue,0).toLocaleString(),
-      stats:[{label:'Sessions',value:mr.length},{label:'Revenue',value:'£'+mr.reduce((s,r)=>s+r.revenue,0).toLocaleString()},{label:'Top Trainer',value:topByRevenue(mr)},{label:'Days',value:mr.reduce((s,r)=>s+(r.trainingDays||OPTION_DAYS[r.option]||0),0)}],
-      rows:mr};
-  } else if(type==='avgFee'){
-    const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});
-    const avg=yr.filter(r=>r.revenue>0).length?Math.round(yr.reduce((s,r)=>s+r.revenue,0)/yr.filter(r=>r.revenue>0).length):0;
-    config={title:'Average Fee '+year,subtitle:'Per confirmed booking',headline:'£'+avg.toLocaleString(),
-      stats:[{label:'Sessions',value:yr.length},{label:'Avg Fee',value:'£'+avg.toLocaleString()},{label:'Highest',value:'£'+(yr.length?Math.max(...yr.map(r=>r.revenue)).toLocaleString():'—')},{label:'Lowest',value:'£'+(yr.filter(r=>r.revenue>0).length?Math.min(...yr.filter(r=>r.revenue>0).map(r=>r.revenue)).toLocaleString():'—')}],
-      rows:yr.sort((a,b)=>b.revenue-a.revenue)};
-  } else if(type==='days'){
-    const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});
-    const totalDays=yr.reduce((s,r)=>s+(r.trainingDays||OPTION_DAYS[r.option]||0),0);
-    config={title:'Training Days '+year,subtitle:'Based on confirmed bookings',headline:totalDays+' days',
-      stats:[{label:'Sessions',value:yr.length},{label:'Total Days',value:totalDays},{label:'Top Trainer',value:topByDays(yr)},{label:'Avg Days',value:yr.length?(totalDays/yr.length).toFixed(1):'—'}],
-      rows:yr.sort((a,b)=>(b.trainingDays||0)-(a.trainingDays||0))};
-  } else if(type==='bookings'){
-    const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});
-    config={title:'Bookings '+year,subtitle:'All confirmed sessions',headline:yr.length+' bookings',
-      stats:[{label:'Total',value:yr.length},{label:'This Month',value:yr.filter(r=>{const d=kpiDate(r);return d&&d.getMonth()===month;}).length},{label:'Top Trainer',value:topByCount(yr)},{label:'Revenue',value:'£'+yr.reduce((s,r)=>s+r.revenue,0).toLocaleString()}],
-      rows:yr.sort((a,b)=>(kpiDate(b)||0)-(kpiDate(a)||0))};
-  }
+  if(type==='revYear'){const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});const total=yr.reduce((s,r)=>s+r.revenue,0);config={title:'Total Revenue '+year,subtitle:'All booked sessions',headline:'£'+total.toLocaleString(),stats:[{label:'Sessions',value:yr.length},{label:'Revenue',value:'£'+total.toLocaleString()},{label:'Best Trainer',value:topByRevenue(yr)},{label:'Avg Fee',value:'£'+(yr.filter(r=>r.revenue>0).length?Math.round(total/yr.filter(r=>r.revenue>0).length).toLocaleString():'—')}],rows:yr.sort((a,b)=>(kpiDate(b)||0)-(kpiDate(a)||0))};}
+  else if(type==='revMonth'){const mr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year&&d.getMonth()===month;});config={title:'Revenue '+MS[month]+' '+year,subtitle:'Booked sessions this month',headline:'£'+mr.reduce((s,r)=>s+r.revenue,0).toLocaleString(),stats:[{label:'Sessions',value:mr.length},{label:'Revenue',value:'£'+mr.reduce((s,r)=>s+r.revenue,0).toLocaleString()},{label:'Top Trainer',value:topByRevenue(mr)},{label:'Days',value:mr.reduce((s,r)=>s+(r.trainingDays||OPTION_DAYS[r.option]||0),0)}],rows:mr};}
+  else if(type==='avgFee'){const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});const avg=yr.filter(r=>r.revenue>0).length?Math.round(yr.reduce((s,r)=>s+r.revenue,0)/yr.filter(r=>r.revenue>0).length):0;config={title:'Average Fee '+year,subtitle:'Per confirmed booking',headline:'£'+avg.toLocaleString(),stats:[{label:'Sessions',value:yr.length},{label:'Avg Fee',value:'£'+avg.toLocaleString()},{label:'Highest',value:'£'+(yr.length?Math.max(...yr.map(r=>r.revenue)).toLocaleString():'—')},{label:'Lowest',value:'£'+(yr.filter(r=>r.revenue>0).length?Math.min(...yr.filter(r=>r.revenue>0).map(r=>r.revenue)).toLocaleString():'—')}],rows:yr.sort((a,b)=>b.revenue-a.revenue)};}
+  else if(type==='days'){const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});const totalDays=yr.reduce((s,r)=>s+(r.trainingDays||OPTION_DAYS[r.option]||0),0);config={title:'Training Days '+year,subtitle:'Based on confirmed bookings',headline:totalDays+' days',stats:[{label:'Sessions',value:yr.length},{label:'Total Days',value:totalDays},{label:'Top Trainer',value:topByDays(yr)},{label:'Avg Days',value:yr.length?(totalDays/yr.length).toFixed(1):'—'}],rows:yr.sort((a,b)=>(b.trainingDays||0)-(a.trainingDays||0))};}
+  else if(type==='bookings'){const yr=rows.filter(r=>{const d=kpiDate(r);return d&&d.getFullYear()===year;});config={title:'Bookings '+year,subtitle:'All confirmed sessions',headline:yr.length+' bookings',stats:[{label:'Total',value:yr.length},{label:'This Month',value:yr.filter(r=>{const d=kpiDate(r);return d&&d.getMonth()===month;}).length},{label:'Top Trainer',value:topByCount(yr)},{label:'Revenue',value:'£'+yr.reduce((s,r)=>s+r.revenue,0).toLocaleString()}],rows:yr.sort((a,b)=>(kpiDate(b)||0)-(kpiDate(a)||0))};}
   document.getElementById('kpiModalTitle').textContent=config.title||'';
   document.getElementById('kpiModalSubtitle').textContent=config.subtitle||'';
-  const statGrid=document.getElementById('kpiStatGrid');
-  statGrid.innerHTML=(config.stats||[]).map(s=>'<div class="kpi-stat"><div class="kpi-stat-label">'+esc(s.label)+'</div><div class="kpi-stat-value">'+esc(String(s.value))+'</div></div>').join('');
+  document.getElementById('kpiStatGrid').innerHTML=(config.stats||[]).map(s=>'<div class="kpi-stat"><div class="kpi-stat-label">'+esc(s.label)+'</div><div class="kpi-stat-value">'+esc(String(s.value))+'</div></div>').join('');
   document.getElementById('kpiModalTableHead').innerHTML='<tr style="background:var(--card-light-grey);"><th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);">Date</th><th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);">Days</th><th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);">Revenue</th></tr>';
   document.getElementById('kpiModalTableBody').innerHTML=(config.rows||[]).slice(0,50).map(r=>'<tr style="border-bottom:1px solid var(--ui--underline--light-grey);"><td style="padding:8px 12px;font-size:12px;white-space:nowrap;">'+formatDate(kpiDate(r))+'</td><td style="padding:8px 12px;font-size:12px;font-weight:600;">'+esc(r.company)+'</td><td style="padding:8px 12px;font-size:12px;">'+esc(r.trainer||'—')+'</td><td style="padding:8px 12px;font-size:12px;text-align:center;">'+(r.trainingDays||OPTION_DAYS[r.option]||0)+'</td><td style="padding:8px 12px;font-size:12px;text-align:right;font-weight:600;">£'+r.revenue.toLocaleString()+'</td></tr>').join('');
   document.getElementById('kpiModalOverlay').classList.add('open');
@@ -2195,41 +1905,67 @@ function topByCount(rows){const t={};rows.forEach(r=>{if(r.trainer){if(!t[r.trai
 // =============================================
 // CHARTS
 // =============================================
-function renderCharts() { renderRevenueChart(); renderOptionChart(); }
-function renderRevenueChart() {
+function renderCharts(){renderRevenueChart();renderOptionChart();}
+function renderRevenueChart(){
   const now=new Date(),year=now.getFullYear(),lastYear=year-1;
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const ty=Array(12).fill(0),ly=Array(12).fill(0);
   allData.forEach(r=>{if(r.option==='1'||r.status!=='Booked')return;const d=kpiDate(r);if(!d)return;const y=d.getFullYear(),m=d.getMonth();if(y===year)ty[m]+=r.revenue;else if(y===lastYear)ly[m]+=r.revenue;});
-  const ctx=document.getElementById('revenueChart').getContext('2d');
-  if(revenueChart)revenueChart.destroy();
+  const ctx=document.getElementById('revenueChart').getContext('2d');if(revenueChart)revenueChart.destroy();
   revenueChart=new Chart(ctx,{type:'bar',data:{labels:MONTHS,datasets:[{label:String(year),data:ty,backgroundColor:'rgba(33,71,244,0.7)',borderRadius:3,borderSkipped:false},{label:String(lastYear),data:ly,backgroundColor:'rgba(33,71,244,0.2)',borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:ctx=>'£'+ctx.raw.toLocaleString()}}},scales:{y:{ticks:{callback:v=>'£'+v.toLocaleString(),font:{size:11}},grid:{color:'#f3f4f6'}},x:{grid:{display:false},ticks:{font:{size:11}}}}}});
 }
-function renderOptionChart() {
-  const now=new Date(),year=now.getFullYear();
-  const counts={'2':0,'3':0,'4':0,'5':0};
+function renderOptionChart(){
+  const now=new Date(),year=now.getFullYear();const counts={'2':0,'3':0,'4':0,'5':0};
   allData.forEach(r=>{if(r.option==='1'||r.status!=='Booked')return;const d=kpiDate(r);if(d&&d.getFullYear()===year&&counts.hasOwnProperty(r.option))counts[r.option]++;});
-  const labels=['Opt 2','Opt 3','Opt 4','Opt 5'];
-  const values=[counts['2'],counts['3'],counts['4'],counts['5']];
-  const ctx=document.getElementById('optionChart').getContext('2d');
-  if(optionChart)optionChart.destroy();
-  optionChart=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:values,backgroundColor:['#b8caff','#f6be9d','#bde4b9','#beffd8'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}}}});
+  const ctx=document.getElementById('optionChart').getContext('2d');if(optionChart)optionChart.destroy();
+  optionChart=new Chart(ctx,{type:'doughnut',data:{labels:['Opt 2','Opt 3','Opt 4','Opt 5'],datasets:[{data:[counts['2'],counts['3'],counts['4'],counts['5']],backgroundColor:['#b8caff','#f6be9d','#bde4b9','#beffd8'],borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}}}});
 }
 
 // =============================================
-// ALL BOOKINGS TABLE
+// ALL BOOKINGS — SORTABLE TABLE
 // =============================================
-function populateTrainerFilter() {
-  const sel=document.getElementById('filterTrainer');if(!sel)return;
-  const cur=sel.value;
+const ALL_BOOKINGS_COLS = [
+  { key:'date',    label:'Date',    sortFn: (a,b) => (kpiDate(a)||0) - (kpiDate(b)||0) },
+  { key:'company', label:'Company', sortFn: (a,b) => (a.company||'').localeCompare(b.company||'') },
+  { key:'contact', label:'Contact', sortFn: (a,b) => (a.contact||'').localeCompare(b.contact||'') },
+  { key:'option',  label:'Option',  sortFn: (a,b) => (a.option||'').localeCompare(b.option||'') },
+  { key:'trainer', label:'Trainer', sortFn: (a,b) => (a.trainer||'').localeCompare(b.trainer||'') },
+  { key:'days',    label:'Days',    sortFn: (a,b) => (a.trainingDays||0) - (b.trainingDays||0) },
+  { key:'value',   label:'Value',   sortFn: (a,b) => (a.revenue||0) - (b.revenue||0) },
+  { key:'status',  label:'Status',  sortFn: (a,b) => (a.status||'').localeCompare(b.status||'') },
+];
+
+function buildAllBookingsHead() {
+  const head = document.getElementById('allBookingsHead'); if (!head) return;
+  head.innerHTML = ALL_BOOKINGS_COLS.map(col => {
+    const isActive = sortState.col === col.key;
+    const icon = isActive ? (sortState.dir === 'asc' ? '▲' : '▼') : '⇅';
+    return '<th class="sortable'+(isActive?' sort-active':'')+'" onclick="setSort(\''+col.key+'\')">'
+      + col.label + '<span class="sort-icon">'+icon+'</span></th>';
+  }).join('') + '<th>Actions</th>';
+}
+
+function setSort(col) {
+  if (sortState.col === col) {
+    sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortState.col = col;
+    sortState.dir = col === 'date' ? 'desc' : 'asc'; // dates default descending, others ascending
+  }
+  currentPage = 1;
+  renderAllBookings();
+}
+
+function populateTrainerFilter(){
+  const sel=document.getElementById('filterTrainer');if(!sel)return;const cur=sel.value;
   sel.innerHTML='<option value="">All Trainers</option>'+TRAINERS.map(t=>'<option value="'+t+'"'+(t===cur?' selected':'')+'>'+t+'</option>').join('');
 }
-
 function resetPageAndRender(){currentPage=1;renderAllBookings();}
 function changePage(dir){currentPage=Math.max(1,currentPage+dir);renderAllBookings();}
 function clearBookingFilters(){document.getElementById('bookingSearch').value='';document.getElementById('filterStatus').value='';document.getElementById('filterTrainer').value='';document.getElementById('filterOption').value='';document.getElementById('filterDateFrom').value='';document.getElementById('filterDateTo').value='';currentPage=1;renderAllBookings();}
 
-function renderAllBookings() {
+function renderAllBookings(){
+  buildAllBookingsHead();
   const search=(document.getElementById('bookingSearch')?.value||'').toLowerCase();
   const statusF=document.getElementById('filterStatus')?.value||'';
   const trainerF=document.getElementById('filterTrainer')?.value||'';
@@ -2246,17 +1982,31 @@ function renderAllBookings() {
     if(dateTo&&(!d||toDateStr(d)>dateTo))return false;
     return true;
   });
-  filtered.sort((a,b)=>(kpiDate(b)||new Date(0))-(kpiDate(a)||new Date(0)));
+  // Apply sort
+  const col = ALL_BOOKINGS_COLS.find(c => c.key === sortState.col);
+  if (col) {
+    filtered.sort((a, b) => {
+      const cmp = col.sortFn(a, b);
+      return sortState.dir === 'asc' ? cmp : -cmp;
+    });
+  }
   document.getElementById('allBadge').textContent=filtered.length;
-  const total=filtered.length, totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+  const total=filtered.length,totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
   currentPage=Math.min(currentPage,totalPages);
-  const start=(currentPage-1)*PAGE_SIZE, pageRows=filtered.slice(start,start+PAGE_SIZE);
+  const start=(currentPage-1)*PAGE_SIZE,pageRows=filtered.slice(start,start+PAGE_SIZE);
   const tbody=document.getElementById('allBookingsBody');
-  if(!pageRows.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">&#128203;</div><div class="empty-state-text">No bookings found</div></div></td></tr>';document.getElementById('allBookingsPagination').style.display='none';return;}
+  const _adminAct=isAdmin()&&!isShadowing();
+  if(!pageRows.length){
+    tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">&#128203;</div><div class="empty-state-text">No bookings found</div></div></td></tr>';
+    document.getElementById('allBookingsPagination').style.display='none';return;
+  }
   tbody.innerHTML=pageRows.map(r=>{
     const color=getTrainerColor(r.trainer);
     const tPill=r.trainer?'<span class="trainer-pill" style="background:'+color+'22;color:'+color+';">'+esc(r.trainer)+'</span>':'—';
     const days=(r.trainingDays||OPTION_DAYS[r.option]||0);
+    const editBtn=_adminAct&&r.status==='Booked'
+      ?'<button class="btn btn-edit btn-sm" onclick="openEditBookingModal('+r.rowIndex+')" title="Edit booking details">&#9998;</button>':''
+    const notesBtn='<button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')" title="Notes">&#128221;</button>';
     return '<tr>'
       +'<td style="white-space:nowrap;font-size:12px;">'+formatDate(kpiDate(r))+'</td>'
       +'<td>'+companyCell(r)+'<br><span style="font-size:11px;color:var(--text--dark--30);">'+esc(r.email||'')+'</span></td>'
@@ -2264,8 +2014,9 @@ function renderAllBookings() {
       +'<td><span class="option-badge opt-'+r.option+'">Opt '+r.option+'</span></td>'
       +'<td>'+tPill+'</td>'
       +'<td style="font-size:12px;text-align:center;">'+days+'</td>'
-      +'<td style="font-size:13px;font-weight:600;">'+( r.revenue?'£'+r.revenue.toLocaleString():'—')+'</td>'
+      +'<td style="font-size:13px;font-weight:600;">'+(r.revenue?'£'+r.revenue.toLocaleString():'—')+'</td>'
       +'<td><span class="status-badge status-'+r.status.toLowerCase()+'">'+r.status+'</span></td>'
+      +'<td><div style="display:flex;gap:4px;">'+editBtn+notesBtn+'</div></td>'
       +'</tr>';
   }).join('');
   const pag=document.getElementById('allBookingsPagination');
@@ -2279,163 +2030,66 @@ function renderAllBookings() {
 // =============================================
 // TRAINER MANAGEMENT MODAL
 // =============================================
-function openTrainerModal() {
-  if(!isAdmin()){showToast('Admin access required','error');return;}
-  renderTrainerList();
-  document.getElementById('trainerModalOverlay').classList.add('open');
-}
+function openTrainerModal(){if(!isAdmin()){showToast('Admin access required','error');return;}renderTrainerList();document.getElementById('trainerModalOverlay').classList.add('open');}
 function closeTrainerModal(){document.getElementById('trainerModalOverlay').classList.remove('open');}
-
-function renderTrainerList() {
-  const el = document.getElementById('trainerList');
-  const curAdmin = getCurrentUser();
-  el.innerHTML = USERS.map((u, i) => {
-    const color = TRAINER_PALETTE[i % TRAINER_PALETTE.length];
-    const roleBadgeColor = u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
-    const roleLabel = u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
-    const pinStatus = u.pin ? '<span style="color:#22a06b;font-weight:600;">🔐 PIN set</span>' : '<span style="color:#c0303d;font-weight:600;">🔓 No PIN</span>';
-    const pinBtnLabel = u.pin ? '🔐 Reset PIN' : '🔓 Set PIN';
-    let permToggles = '';
-    if (u.role !== 'admin') {
-      permToggles = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">'
-        + PERM_DEFS.map(p => {
-            const on = !!(u.permissions && u.permissions[p.key]);
-            return '<label style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text--dark--70);cursor:pointer;user-select:none;">'
-              +'<span class="perm-toggle'+(on?' on':'')+'" data-user="'+esc(u.name)+'" data-key="'+p.key+'">'
-              +'<span class="perm-thumb"></span></span>'
-              +esc(p.label)+'</label>';
-          }).join('')
-        + '</div>';
-    } else {
-      permToggles = '<div style="font-size:11px;color:#2147f4;margin-top:8px;padding-top:8px;border-top:1px solid #eef0ff;">&#10022; Admin &mdash; full access to everything</div>';
-    }
-    const isSelf = curAdmin && curAdmin.name === u.name;
+function renderTrainerList(){
+  const el=document.getElementById('trainerList'),curAdmin=getCurrentUser();
+  el.innerHTML=USERS.map((u,i)=>{
+    const color=TRAINER_PALETTE[i%TRAINER_PALETTE.length];
+    const roleBadgeColor=u.role==='admin'?'#2147f4':u.role==='viewer'?'#6b7280':'#22a06b';
+    const roleLabel=u.role==='admin'?'Admin':u.role==='viewer'?'Viewer':'Trainer';
+    const pinStatus=u.pin?'<span style="color:#22a06b;font-weight:600;">🔐 PIN set</span>':'<span style="color:#c0303d;font-weight:600;">🔓 No PIN</span>';
+    const pinBtnLabel=u.pin?'🔐 Reset PIN':'🔓 Set PIN';
+    let permToggles='';
+    if(u.role!=='admin'){
+      permToggles='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">'
+        +PERM_DEFS.map(p=>{const on=!!(u.permissions&&u.permissions[p.key]);return '<label style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text--dark--70);cursor:pointer;user-select:none;"><span class="perm-toggle'+(on?' on':'')+'" data-user="'+esc(u.name)+'" data-key="'+p.key+'"><span class="perm-thumb"></span></span>'+esc(p.label)+'</label>';}).join('')
+        +'</div>';
+    }else{permToggles='<div style="font-size:11px;color:#2147f4;margin-top:8px;padding-top:8px;border-top:1px solid #eef0ff;">&#10022; Admin &mdash; full access</div>';}
+    const isSelf=curAdmin&&curAdmin.name===u.name;
     return '<div style="padding:14px 18px;border-bottom:1px solid var(--light-grey);">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">'
-        +'<div style="display:flex;align-items:center;gap:8px;">'
-          +'<div class="trainer-color-dot" style="background:'+color+'"></div>'
-          +'<span style="font-weight:600;font-size:13px;">'+esc(u.name)+'</span>'
-          +'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+roleBadgeColor+'22;color:'+roleBadgeColor+';">'+roleLabel+'</span>'
-          +'<span style="font-size:10px;">'+pinStatus+'</span>'
-        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:8px;"><div class="trainer-color-dot" style="background:'+color+'"></div><span style="font-weight:600;font-size:13px;">'+esc(u.name)+'</span><span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:'+roleBadgeColor+'22;color:'+roleBadgeColor+';">'+roleLabel+'</span><span style="font-size:10px;">'+pinStatus+'</span></div>'
         +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">'
-          +'<select data-role-user="'+esc(u.name)+'" onchange="changeUserRole(this.dataset.roleUser,this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;">'
-            +'<option value="trainer"'+(u.role==='trainer'?' selected':'')+'>Trainer</option>'
-            +'<option value="viewer"'+(u.role==='viewer'?' selected':'')+'>Viewer</option>'
-            +'<option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option>'
-          +'</select>'
+          +'<select data-role-user="'+esc(u.name)+'" onchange="changeUserRole(this.dataset.roleUser,this.value)" style="font-size:11px;border:1px solid var(--light-grey);border-radius:4px;padding:3px 6px;"><option value="trainer"'+(u.role==='trainer'?' selected':'')+'>Trainer</option><option value="viewer"'+(u.role==='viewer'?' selected':'')+'>Viewer</option><option value="admin"'+(u.role==='admin'?' selected':'')+'>Admin</option></select>'
           +'<button class="btn btn-ghost btn-sm" data-set-pin="'+esc(u.name)+'">'+pinBtnLabel+'</button>'
-          +(!isSelf && u.role!=='admin'?'<button class="btn btn-ghost btn-sm" data-shadow-user="'+esc(u.name)+'" style="color:#7c3aed;border-color:#7c3aed;">👁 Shadow</button>':'')
+          +(!isSelf&&u.role!=='admin'?'<button class="btn btn-ghost btn-sm" data-shadow-user="'+esc(u.name)+'" style="color:#7c3aed;border-color:#7c3aed;">👁 Shadow</button>':'')
           +(USERS.length>1?'<button class="btn btn-danger btn-sm" data-remove-user="'+esc(u.name)+'">Remove</button>':'')
         +'</div>'
-      +'</div>'
-      + permToggles
-    +'</div>';
+      +'</div>'+permToggles+'</div>';
   }).join('');
-
-  // Attach events via delegation
-  el.querySelectorAll('.perm-toggle').forEach(span => {
-    span.addEventListener('click', function() { togglePerm(this.dataset.user, this.dataset.key, this); });
-  });
-  el.querySelectorAll('[data-remove-user]').forEach(btn => {
-    btn.addEventListener('click', function() { removeTrainer(this.dataset.removeUser); });
-  });
-  el.querySelectorAll('[data-set-pin]').forEach(btn => {
-    btn.addEventListener('click', function() { adminSetPin(this.dataset.setPin); });
-  });
-  el.querySelectorAll('[data-shadow-user]').forEach(btn => {
-    btn.addEventListener('click', function() {
-      closeTrainerModal();
-      startShadow(this.dataset.shadowUser);
-    });
-  });
+  el.querySelectorAll('.perm-toggle').forEach(span=>{span.addEventListener('click',function(){togglePerm(this.dataset.user,this.dataset.key,this);});});
+  el.querySelectorAll('[data-remove-user]').forEach(btn=>{btn.addEventListener('click',function(){removeTrainer(this.dataset.removeUser);});});
+  el.querySelectorAll('[data-set-pin]').forEach(btn=>{btn.addEventListener('click',function(){adminSetPin(this.dataset.setPin);});});
+  el.querySelectorAll('[data-shadow-user]').forEach(btn=>{btn.addEventListener('click',function(){closeTrainerModal();startShadow(this.dataset.shadowUser);});});
 }
-
-function adminSetPin(name) {
-  const u = USERS.find(x => x.name === name); if (!u) return;
-  const newPin = prompt('Set PIN for ' + name + ' (4-8 digits, leave blank to remove PIN):');
-  if (newPin === null) return; // cancelled
-  if (newPin === '') { u.pin = ''; saveUsers(USERS); renderTrainerList(); showToast('PIN removed for '+name, ''); return; }
-  if (!/^\d{4,8}$/.test(newPin)) { alert('PIN must be 4-8 digits only.'); return; }
-  u.pin = newPin; saveUsers(USERS); renderTrainerList();
-  showToast('PIN set for '+name, 'success');
-  logActivity('admin', null, 'PIN updated for '+name, getCurrentUser()?.name||'');
-}
-
-function changeMyPin() {
-  const real = getRealUser(); if (!real) return;
-  const cur = prompt('Current PIN (leave blank if none):') || '';
-  if (real.pin && cur !== real.pin) { showToast('Incorrect current PIN', 'error'); return; }
-  const newPin = prompt('New PIN (4-8 digits, blank to remove):');
-  if (newPin === null) return;
-  if (newPin === '') { real.pin = ''; saveUsers(USERS); showToast('PIN removed', ''); return; }
-  if (!/^\d{4,8}$/.test(newPin)) { showToast('PIN must be 4-8 digits', 'error'); return; }
-  const confirm = prompt('Confirm new PIN:');
-  if (confirm !== newPin) { showToast('PINs do not match', 'error'); return; }
-  const u = USERS.find(x => x.name === real.name); if (!u) return;
-  u.pin = newPin; saveUsers(USERS); syncTrainers();
-  showToast('PIN updated ✓', 'success');
-  logActivity('admin', null, real.name + ' changed their PIN', '');
-}
-
-function togglePerm(name, key, el) {
-  const u = USERS.find(x => x.name === name); if(!u||!u.permissions) return;
-  u.permissions[key] = !u.permissions[key];
-  el.classList.toggle('on', u.permissions[key]);
-  saveUsers(USERS);
-  const cur = getCurrentUser();
-  if (cur && cur.name === name) { applyPermissions(); processData(); }
-}
-
-function changeUserRole(name, role) {
-  const u = USERS.find(x => x.name === name); if(!u) return;
-  u.role = role; ensurePerms(u); saveUsers(USERS);
-  const cur = getCurrentUser();
-  if (cur && cur.name === name) { updateHeaderUser(); applyPermissions(); }
-  renderTrainerList(); syncTrainers();
-  logActivity('admin', null, name+' role changed to '+role, getCurrentUser()?.name||'');
-}
-
-function addTrainer() {
-  const inp = document.getElementById('newTrainerName');
-  const roleSel = document.getElementById('newTrainerRole');
-  const name = inp.value.trim();
-  const role = roleSel ? roleSel.value : 'trainer';
-  if(!name){showToast('Enter a name','error');return;}
-  if(USERS.find(u=>u.name.toLowerCase()===name.toLowerCase())){showToast('User already exists','error');return;}
-  const newUser = ensurePerms({name, role});
-  USERS.push(newUser); saveUsers(USERS); syncTrainers();
-  inp.value='';
-  renderTrainerList(); renderTrainerWorkload(); populateTrainerFilter(); populateCalTrainerFilter(); applyPermissions();
-  logActivity('admin', null, 'Added user: '+name+' ('+role+')', getCurrentUser()?.name||'');
-  showToast(name+' added as '+role, 'success');
-}
-
-function removeTrainer(name) {
-  if(!confirm('Remove '+name+'? Their existing bookings will be retained.')) return;
-  USERS = USERS.filter(u => u.name !== name); saveUsers(USERS); syncTrainers();
-  renderTrainerList(); renderTrainerWorkload(); populateTrainerFilter(); populateCalTrainerFilter();
-  logActivity('admin', null, 'Removed user: '+name, getCurrentUser()?.name||'');
-  showToast('User removed','');
-}
-
+function adminSetPin(name){const u=USERS.find(x=>x.name===name);if(!u)return;const newPin=prompt('Set PIN for '+name+' (4-8 digits, leave blank to remove PIN):');if(newPin===null)return;if(newPin===''){u.pin='';saveUsers(USERS);renderTrainerList();showToast('PIN removed for '+name,'');return;}if(!/^\d{4,8}$/.test(newPin)){alert('PIN must be 4-8 digits only.');return;}u.pin=newPin;saveUsers(USERS);renderTrainerList();showToast('PIN set for '+name,'success');logActivity('admin',null,'PIN updated for '+name,getCurrentUser()?.name||'');}
+function changeMyPin(){const real=getRealUser();if(!real)return;const cur=prompt('Current PIN (leave blank if none):')||'';if(real.pin&&cur!==real.pin){showToast('Incorrect current PIN','error');return;}const newPin=prompt('New PIN (4-8 digits, blank to remove):');if(newPin===null)return;if(newPin===''){real.pin='';saveUsers(USERS);showToast('PIN removed','');return;}if(!/^\d{4,8}$/.test(newPin)){showToast('PIN must be 4-8 digits','error');return;}const confirm=prompt('Confirm new PIN:');if(confirm!==newPin){showToast('PINs do not match','error');return;}const u=USERS.find(x=>x.name===real.name);if(!u)return;u.pin=newPin;saveUsers(USERS);syncTrainers();showToast('PIN updated ✓','success');logActivity('admin',null,real.name+' changed their PIN','');}
+function togglePerm(name,key,el){const u=USERS.find(x=>x.name===name);if(!u||!u.permissions)return;u.permissions[key]=!u.permissions[key];el.classList.toggle('on',u.permissions[key]);saveUsers(USERS);const cur=getCurrentUser();if(cur&&cur.name===name){applyPermissions();processData();}}
+function changeUserRole(name,role){const u=USERS.find(x=>x.name===name);if(!u)return;u.role=role;ensurePerms(u);saveUsers(USERS);const cur=getCurrentUser();if(cur&&cur.name===name){updateHeaderUser();applyPermissions();}renderTrainerList();syncTrainers();logActivity('admin',null,name+' role changed to '+role,getCurrentUser()?.name||'');}
+function addTrainer(){const inp=document.getElementById('newTrainerName'),roleSel=document.getElementById('newTrainerRole');const name=inp.value.trim(),role=roleSel?roleSel.value:'trainer';if(!name){showToast('Enter a name','error');return;}if(USERS.find(u=>u.name.toLowerCase()===name.toLowerCase())){showToast('User already exists','error');return;}const newUser=ensurePerms({name,role});USERS.push(newUser);saveUsers(USERS);syncTrainers();inp.value='';renderTrainerList();renderTrainerWorkload();populateTrainerFilter();populateCalTrainerFilter();applyPermissions();logActivity('admin',null,'Added user: '+name+' ('+role+')',getCurrentUser()?.name||'');showToast(name+' added as '+role,'success');}
+function removeTrainer(name){if(!confirm('Remove '+name+'? Their existing bookings will be retained.'))return;USERS=USERS.filter(u=>u.name!==name);saveUsers(USERS);syncTrainers();renderTrainerList();renderTrainerWorkload();populateTrainerFilter();populateCalTrainerFilter();logActivity('admin',null,'Removed user: '+name,getCurrentUser()?.name||'');showToast('User removed','');}
 
 // =============================================
 // CALENDAR SETTINGS MODAL
 // =============================================
-function openCalSettings() {
-  if(!isAdmin()){showToast('Admin access required','error');return;}
+function openCalSettings(){if(!isAdmin()){showToast('Admin access required','error');return;}
   const s=getCalSettings();
   document.getElementById('calIdInput').value=s.calendarId||'';
+  document.getElementById('calHolidayIcsInput').value=s.holidayIcsUrl||DEFAULT_HOLIDAY_ICS;
+  document.getElementById('calLeaveIcsInput').value=s.leaveIcsUrl||DEFAULT_LEAVE_ICS;
   document.getElementById('calSettingsStatus').textContent='';
   document.getElementById('calSettingsOverlay').classList.add('open');
 }
 function closeCalSettings(){document.getElementById('calSettingsOverlay').classList.remove('open');}
 function saveCalSettings(){
   const calId=document.getElementById('calIdInput').value.trim();
-  saveCalSettingsData({calendarId:calId});
-  document.getElementById('calSettingsStatus').textContent='✓ Saved';
-  setTimeout(closeCalSettings,800);
+  const holidayIcsUrl=document.getElementById('calHolidayIcsInput').value.trim();
+  const leaveIcsUrl=document.getElementById('calLeaveIcsInput').value.trim();
+  saveCalSettingsData({calendarId:calId,holidayIcsUrl,leaveIcsUrl});
+  document.getElementById('calSettingsStatus').textContent='✓ Saved — reloading feeds…';
+  loadICSFeeds();
+  setTimeout(closeCalSettings,1000);
 }
 
 // =============================================
@@ -2448,28 +2102,15 @@ function logActivity(type,company,what,detail){
   const entry={type,company:company||'',what,detail:detail||'',who,time:new Date().toISOString()};
   const log=getActivity();log.unshift(entry);if(log.length>200)log.splice(200);
   try{localStorage.setItem(ACTIVITY_KEY,JSON.stringify(log));}catch(e){}
-  initActivityFeed();
-  const dot=document.getElementById('activityBtnDot');if(dot)dot.classList.add('visible');
+  initActivityFeed();const dot=document.getElementById('activityBtnDot');if(dot)dot.classList.add('visible');
 }
 function clearActivityLog(){if(!isAdmin()){showToast('Admin access required','error');return;}try{localStorage.removeItem(ACTIVITY_KEY);}catch(e){}initActivityFeed();showToast('Activity log cleared','');}
 function initActivityFeed(){
-  const log=getActivity();
-  const body=document.getElementById('activityFeedBody');
-  const countEl=document.getElementById('activityCount');
-  if(!body)return;
-  if(countEl)countEl.textContent=log.length+' event'+(log.length!==1?'s':'');
+  const log=getActivity(),body=document.getElementById('activityFeedBody'),countEl=document.getElementById('activityCount');
+  if(!body)return;if(countEl)countEl.textContent=log.length+' event'+(log.length!==1?'s':'');
   if(!log.length){body.innerHTML='<div class="activity-empty">&#128203; No activity yet</div>';return;}
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  body.innerHTML=log.slice(0,80).map(e=>{
-    const d=new Date(e.time);
-    const timeStr=d.getDate()+' '+MONTHS[d.getMonth()]+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    return '<div class="activity-entry">'
-      +'<div class="activity-who">'+esc(e.who)+(e.company?' &middot; '+esc(e.company):'')+'</div>'
-      +'<div class="activity-what">'+esc(e.what)+'</div>'
-      +(e.detail?'<div class="activity-detail">'+esc(e.detail)+'</div>':'')
-      +'<div class="activity-time">'+timeStr+'</div>'
-      +'</div>';
-  }).join('');
+  body.innerHTML=log.slice(0,80).map(e=>{const d=new Date(e.time);const timeStr=d.getDate()+' '+MONTHS[d.getMonth()]+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});return '<div class="activity-entry"><div class="activity-who">'+esc(e.who)+(e.company?' &middot; '+esc(e.company):'')+'</div><div class="activity-what">'+esc(e.what)+'</div>'+(e.detail?'<div class="activity-detail">'+esc(e.detail)+'</div>':'')+'<div class="activity-time">'+timeStr+'</div></div>';}).join('');
 }
 function openActivityPanel(){document.getElementById('activityPanel').classList.add('open');document.getElementById('activityPanelOverlay').classList.add('open');const dot=document.getElementById('activityBtnDot');if(dot)dot.classList.remove('visible');}
 function closeActivityPanel(){document.getElementById('activityPanel').classList.remove('open');document.getElementById('activityPanelOverlay').classList.remove('open');}
@@ -2479,10 +2120,13 @@ function closeActivityPanel(){document.getElementById('activityPanel').classList
 // =============================================
 syncTrainers();
 initActivityFeed();
-// Always require PIN on every page load — session cleared so no bypass via refresh
 clearSession();
 showLoginScreen();
-setInterval(() => { if (getSession()) loadData(); }, 5*60*1000);
+
+// Load ICS feeds on startup (these don't require login)
+loadICSFeeds();
+
+setInterval(()=>{if(getSession())loadData();},5*60*1000);
 </script>
 </body>
 </html>
