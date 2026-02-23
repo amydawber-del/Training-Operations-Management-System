@@ -430,38 +430,9 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div style="background:#fff;border-radius:16px;padding:32px 28px;width:320px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
     <div id="loginCardTitle" style="font-size:16px;font-weight:700;color:var(--text--dark--50);margin-bottom:6px;">Welcome back</div>
     <div id="loginCardSub" style="font-size:12px;color:var(--text--dark--30);margin-bottom:20px;">Select your account to continue</div>
-    <div id="loginStep1">
-      <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Account</label>
-      <select id="loginUserSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:13px;font-family:Arial,sans-serif;color:var(--text--dark--50);background:#fff;appearance:none;cursor:pointer;margin-bottom:16px;"><option value="">&#8212; Choose account &#8212;</option></select>
-      <button onclick="loginStepPin()" style="width:100%;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Continue &#8594;</button>
-    </div>
-    <div id="loginStep2" style="display:none;">
-      <div style="display:flex;align-items:center;margin-bottom:16px;">
-        <button onclick="loginBack()" style="background:none;border:none;cursor:pointer;color:var(--text--dark--30);font-size:20px;line-height:1;padding:0;width:28px;flex-shrink:0;">&#8592;</button>
-        <div style="flex:1;text-align:center;"><div style="font-size:13px;font-weight:700;color:var(--text--dark--50);" id="loginUserLabel">&#8212;</div><div style="font-size:11px;color:var(--text--dark--30);" id="loginUserRole">&#8212;</div></div>
-        <div style="width:28px;"></div>
-      </div>
-      <div style="text-align:center;margin-bottom:4px;">
-        <div style="font-size:11px;font-weight:600;color:var(--text--dark--30);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:16px;">Enter PIN</div>
-        <div id="pinDots" style="display:flex;align-items:center;justify-content:center;gap:16px;min-height:22px;"></div>
-        <div id="loginPinError" style="font-size:12px;color:#c0303d;min-height:18px;margin-top:10px;font-weight:600;text-align:center;"></div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px;">
-        <button class="pin-key" onclick="pinPadPress('1')"><span class="pin-key-num">1</span><span class="pin-key-sub">&nbsp;</span></button>
-        <button class="pin-key" onclick="pinPadPress('2')"><span class="pin-key-num">2</span><span class="pin-key-sub">ABC</span></button>
-        <button class="pin-key" onclick="pinPadPress('3')"><span class="pin-key-num">3</span><span class="pin-key-sub">DEF</span></button>
-        <button class="pin-key" onclick="pinPadPress('4')"><span class="pin-key-num">4</span><span class="pin-key-sub">GHI</span></button>
-        <button class="pin-key" onclick="pinPadPress('5')"><span class="pin-key-num">5</span><span class="pin-key-sub">JKL</span></button>
-        <button class="pin-key" onclick="pinPadPress('6')"><span class="pin-key-num">6</span><span class="pin-key-sub">MNO</span></button>
-        <button class="pin-key" onclick="pinPadPress('7')"><span class="pin-key-num">7</span><span class="pin-key-sub">PQRS</span></button>
-        <button class="pin-key" onclick="pinPadPress('8')"><span class="pin-key-num">8</span><span class="pin-key-sub">TUV</span></button>
-        <button class="pin-key" onclick="pinPadPress('9')"><span class="pin-key-num">9</span><span class="pin-key-sub">WXYZ</span></button>
-        <button class="pin-key pin-key-action" id="pinSubmitBtn" onclick="loginConfirmPin()" style="visibility:hidden;">&#10003;</button>
-        <button class="pin-key" onclick="pinPadPress('0')"><span class="pin-key-num">0</span><span class="pin-key-sub">&nbsp;</span></button>
-        <button class="pin-key pin-key-ghost" id="pinBackspaceBtn" onclick="pinPadBackspace()" style="visibility:hidden;font-size:18px;color:var(--text--dark--30);">&#9003;</button>
-      </div>
-      <div id="loginNoPinNote" style="font-size:11px;color:var(--text--dark--30);text-align:center;margin-top:12px;display:none;">No PIN set &#8212; tap &#10003; to continue</div>
-    </div>
+    <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Select your account</label>
+    <select id="loginUserSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:13px;font-family:Arial,sans-serif;color:var(--text--dark--50);background:#fff;appearance:none;cursor:pointer;margin-bottom:16px;"><option value="">&#8212; Choose account &#8212;</option></select>
+    <button onclick="loginDirect()" style="width:100%;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Enter Dashboard &#8594;</button>
   </div>
 </div>
 
@@ -913,11 +884,20 @@ function loadUsers() {
   if(saved) { trainers = JSON.parse(saved); }
   else {
     trainers = [
-      {id:'u1',name:'Daniel',role:'admin',color:'#2147f4',pin:'1234',icsUrl:''},
-      {id:'u2',name:'Holly',role:'trainer',color:'#e53935',pin:'',icsUrl:''},
-      {id:'u3',name:'Matthew',role:'trainer',color:'#22a06b',pin:'',icsUrl:''},
-      {id:'u4',name:'Sam',role:'trainer',color:'#f59e0b',pin:'',icsUrl:''},
-      {id:'u5',name:'Alex',role:'viewer',color:'#9c27b0',pin:'',icsUrl:''}
+      {id:'u1', name:'Jack Cullen',         role:'viewer',   email:'jack.cullen@agentsoftware.net',       jobTitle:'Onboarding Specialist', color:'#2147f4', pin:'', icsUrl:''},
+      {id:'u2', name:'Emma Cockcroft',      role:'viewer',   email:'emma.cockcroft@agentsoftware.net',    jobTitle:'Onboarding Specialist', color:'#e53935', pin:'', icsUrl:''},
+      {id:'u3', name:'Sam Howat',           role:'viewer',   email:'sam.howat@agentsoftware.net',         jobTitle:'Onboarding Specialist', color:'#22a06b', pin:'', icsUrl:''},
+      {id:'u4', name:'Liam Sorah',          role:'viewer',   email:'liam.sorah@agentsoftware.net',        jobTitle:'Onboarding Specialist', color:'#f59e0b', pin:'', icsUrl:''},
+      {id:'u5', name:'Max Hornby',          role:'trainer',  email:'max.hornby@agentsoftware.net',        jobTitle:'Product Trainer',        color:'#9c27b0', pin:'', icsUrl:''},
+      {id:'u6', name:'Saskia Kirkham',      role:'viewer',   email:'saskia.kirkham@agentsoftware.net',    jobTitle:'Onboarding Specialist', color:'#00bcd4', pin:'', icsUrl:''},
+      {id:'u7', name:'Matt Hinawski',       role:'viewer',   email:'matthew.hinawski@agentsoftware.net',  jobTitle:'Onboarding Admin',       color:'#ff7043', pin:'', icsUrl:''},
+      {id:'u8', name:'Tracy Kettle',        role:'viewer',   email:'tracy.kettle@agentsoftware.net',      jobTitle:'Onboarding Specialist', color:'#3f51b5', pin:'', icsUrl:''},
+      {id:'u9', name:'Lucie de Lison',      role:'viewer',   email:'lucie.delison@agentsoftware.net',     jobTitle:'Onboarding Specialist', color:'#8bc34a', pin:'', icsUrl:''},
+      {id:'u10',name:'Karolina Pawlowicz',  role:'viewer',   email:'karolina.pawlowicz@agentsoftware.net',jobTitle:'Onboarding Specialist', color:'#e91e63', pin:'', icsUrl:''},
+      {id:'u11',name:'Amy Dawber',          role:'admin',    email:'amy.dawber@agentsoftware.net',        jobTitle:'Product Trainer',        color:'#f44336', pin:'', icsUrl:''},
+      {id:'u12',name:'Rob Kenyon',          role:'viewer',   email:'rob.kenyon@agentsoftware.net',        jobTitle:'Head of Street Onboarding', color:'#607d8b', pin:'', icsUrl:''},
+      {id:'u13',name:'Amy Lea',             role:'viewer',   email:'amy.lea@agentsoftware.net',           jobTitle:'Onboarding Specialist', color:'#009688', pin:'', icsUrl:''},
+      {id:'u14',name:'Stella Nicol',        role:'viewer',   email:'stella@agentsoftware.net',            jobTitle:'Head of Client Onboarding', color:'#795548', pin:'', icsUrl:''}
     ];
     saveUsers();
   }
@@ -929,7 +909,10 @@ function saveUsers() { localStorage.setItem('dashUsers', JSON.stringify(trainers
 function populateLoginSelect() {
   const sel = document.getElementById('loginUserSelect');
   sel.innerHTML = '<option value="">— Choose account —</option>';
-  trainers.forEach(u => sel.innerHTML += `<option value="${u.id}">${u.name} (${u.role})</option>`);
+  trainers.forEach(u => {
+    const label = u.jobTitle ? `${u.name} — ${u.jobTitle}` : `${u.name} (${u.role})`;
+    sel.innerHTML += `<option value="${u.id}">${label}</option>`;
+  });
 }
 
 // ===================== LOGIN / AUTH =====================
@@ -939,80 +922,23 @@ function showLogin() {
   document.getElementById('mainContent').style.display = 'none';
 }
 
-function loginStepPin() {
+function loginDirect() {
   const sel = document.getElementById('loginUserSelect');
-  if(!sel.value) return;
+  if(!sel.value) { sel.style.borderColor = '#c0303d'; return; }
+  sel.style.borderColor = '';
   const user = trainers.find(u => u.id === sel.value);
   if(!user) return;
-  document.getElementById('loginStep1').style.display = 'none';
-  document.getElementById('loginStep2').style.display = 'block';
-  document.getElementById('loginUserLabel').textContent = user.name;
-  document.getElementById('loginUserRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-  pinBuffer = '';
-  document.getElementById('loginNoPinNote').style.display = (!user.pin || user.pin === '') ? 'block' : 'none';
-  renderPinDots();
-}
-
-function loginBack() {
-  document.getElementById('loginStep1').style.display = 'block';
-  document.getElementById('loginStep2').style.display = 'none';
-  document.getElementById('loginPinError').textContent = '';
-}
-
-function pinPadPress(digit) {
-  if(pinBuffer.length >= 6) return;
-  pinBuffer += digit;
-  renderPinDots();
-  const sel = document.getElementById('loginUserSelect');
-  const user = trainers.find(u => u.id === sel.value);
-  if(user && (!user.pin || user.pin === '')) {
-    document.getElementById('pinSubmitBtn').style.visibility = 'visible';
-    document.getElementById('pinBackspaceBtn').style.visibility = 'visible';
-  } else if(pinBuffer.length >= 4) {
-    document.getElementById('pinSubmitBtn').style.visibility = 'visible';
-    document.getElementById('pinBackspaceBtn').style.visibility = 'visible';
-  } else {
-    document.getElementById('pinBackspaceBtn').style.visibility = pinBuffer.length > 0 ? 'visible' : 'hidden';
-  }
-}
-
-function pinPadBackspace() {
-  pinBuffer = pinBuffer.slice(0,-1);
-  renderPinDots();
-  if(pinBuffer.length < 4) document.getElementById('pinSubmitBtn').style.visibility = 'hidden';
-  if(pinBuffer.length === 0) document.getElementById('pinBackspaceBtn').style.visibility = 'hidden';
-}
-
-function renderPinDots() {
-  const container = document.getElementById('pinDots');
-  const len = Math.max(4, pinBuffer.length + (pinBuffer.length < 4 ? 0 : 0));
-  container.innerHTML = '';
-  for(let i = 0; i < 4; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'pin-dot' + (i < pinBuffer.length ? ' filled' : '');
-    container.appendChild(dot);
-  }
-}
-
-function loginConfirmPin() {
-  const sel = document.getElementById('loginUserSelect');
-  const user = trainers.find(u => u.id === sel.value);
-  if(!user) return;
-  const errEl = document.getElementById('loginPinError');
-  if(user.pin && user.pin !== '' && pinBuffer !== user.pin) {
-    errEl.textContent = 'Incorrect PIN. Try again.';
-    const dots = document.querySelectorAll('.pin-dot');
-    dots.forEach(d => { d.classList.add('error'); setTimeout(() => d.classList.remove('error'), 400); });
-    pinBuffer = '';
-    renderPinDots();
-    document.getElementById('pinSubmitBtn').style.visibility = 'hidden';
-    document.getElementById('pinBackspaceBtn').style.visibility = 'hidden';
-    return;
-  }
-  errEl.textContent = '';
   currentUser = user;
   enterDashboard();
 }
+
+// Stub functions kept for compatibility
+function loginStepPin() { loginDirect(); }
+function loginBack() {}
+function pinPadPress(d) {}
+function pinPadBackspace() {}
+function renderPinDots() {}
+function loginConfirmPin() { loginDirect(); }
 
 function enterDashboard() {
   document.getElementById('loginScreen').style.display = 'none';
@@ -1031,9 +957,6 @@ function enterDashboard() {
 function logout() {
   currentUser = null;
   showLogin();
-  document.getElementById('loginStep1').style.display = 'block';
-  document.getElementById('loginStep2').style.display = 'none';
-  pinBuffer = '';
 }
 
 function exitShadow() {
