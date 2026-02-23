@@ -1252,12 +1252,57 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
             </button>
           </div>
           <!-- HQ confirmation pill -->
-          <div id="reqLocHQConfirm" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:12px 14px;font-size:12px;color:#166534;display:none;align-items:flex-start;gap:10px;">
-            <span style="font-size:16px;flex-shrink:0;">&#9989;</span>
-            <div>
-              <div style="font-weight:700;margin-bottom:2px;">Street HQ confirmed</div>
-              <div style="color:#15803d;">North Square, 11–13 Spear St, Manchester M1 1JU</div>
-              <div style="margin-top:6px;color:#166534;opacity:0.8;font-size:11px;">Our team will share parking info and directions closer to the date.</div>
+          <div id="reqLocHQConfirm" style="display:none;border-radius:10px;overflow:hidden;border:1.5px solid #86efac;">
+            <!-- Green header -->
+            <div style="background:#f0fdf4;padding:12px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #bbf7d0;">
+              <span style="font-size:18px;flex-shrink:0;">✅</span>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#166534;">Street HQ — confirmed</div>
+                <div style="font-size:11px;color:#15803d;margin-top:1px;">We'll be ready for you — here's everything you need to know.</div>
+              </div>
+            </div>
+            <!-- Info rows -->
+            <div style="background:#fff;padding:14px;">
+              <!-- Address -->
+              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;">
+                <span style="font-size:15px;flex-shrink:0;margin-top:1px;">📍</span>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Location</div>
+                  <div style="font-size:12px;color:var(--text--dark--50);font-weight:600;">North Square, 11–13 Spear St<br>Manchester M1 1JU</div>
+                </div>
+              </div>
+              <!-- Parking -->
+              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;">
+                <span style="font-size:15px;flex-shrink:0;margin-top:1px;">🚗</span>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Parking</div>
+                  <div style="font-size:12px;color:var(--text--dark--50);">Nearby spaces available via Parkopedia —
+                    <a href="https://en.parkopedia.co.uk/parking/spear_street_manchester/?arriving=202602231000&amp;leaving=202602231200" target="_blank" style="color:var(--action-primary-blue);font-weight:600;text-decoration:none;">View parking options ↗</a>
+                  </div>
+                </div>
+              </div>
+              <!-- Transport -->
+              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:16px;">
+                <span style="font-size:15px;flex-shrink:0;margin-top:1px;">🚊</span>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">By Train — 9 min walk from</div>
+                  <div style="font-size:12px;color:var(--text--dark--50);">
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:#f3f4f6;border-radius:4px;padding:3px 8px;margin-right:6px;margin-bottom:4px;font-weight:600;">Manchester Piccadilly</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;background:#f3f4f6;border-radius:4px;padding:3px 8px;margin-bottom:4px;font-weight:600;">Manchester Victoria</span>
+                  </div>
+                </div>
+              </div>
+              <!-- Dietary requirements -->
+              <div style="border-top:1px solid var(--ui--underline--light-grey);padding-top:14px;">
+                <label style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;">
+                  <span style="font-size:15px;flex-shrink:0;margin-top:1px;">🍽️</span>
+                  <div style="flex:1;">
+                    <div style="font-size:11px;font-weight:700;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Dietary Requirements</div>
+                    <textarea class="req-textarea" id="reqDietaryReqs" rows="2" placeholder="Please list any dietary requirements for attendees, e.g. vegetarian, vegan, gluten-free, nut allergy… Leave blank if none."></textarea>
+                    <div class="req-hint" style="margin-top:4px;">We'll do our best to accommodate everyone — just let us know!</div>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
           <!-- Other location fields -->
@@ -1859,7 +1904,7 @@ function resolveOption(raw){
 
 function parseAppsScriptData(rows){
   if(!rows||rows.length<2)return [];
-  const C={STATUS:0,TIMESTAMP:1,EMAIL:2,CONTACT:3,PREFERRED_DATE:4,OPTION:5,ATTENDEES:8,COMPANY:13,VALUE:20,TRAINER:21,BOOKED_DATE:22,TRAINING_DAYS:23};
+  const C={STATUS:0,TIMESTAMP:1,EMAIL:2,CONTACT:3,PREFERRED_DATE:4,OPTION:5,ATTENDEES:8,COMPANY:13,VALUE:21,TRAINER:22,BOOKED_DATE:23,TRAINING_DAYS:24};
   const g=(row,idx)=>{const v=row[idx];if(v===undefined||v===null||v==='')return '';if(v instanceof Date||(typeof v==='object'&&v.getTime))return v.toISOString();return String(v).trim();};
   return rows.slice(1).map((row,i)=>{
     const rowIndex=i+2;
@@ -2726,7 +2771,7 @@ function resetRequestForm() {
   // Clear all inputs
   ['reqEmail','reqCompany','reqStakeholder','reqAttendees','reqGoLive','reqPreferredDate',
    'reqPriorities','reqFeatures','reqChallenges','reqLocAddress','reqLocParking','reqLocEquipOther','reqAnythingElse',
-   'reqReferredByName','reqReferredByTeam','reqReferralNotes','reqQuotedValue'].forEach(id => {
+   'reqReferredByName','reqReferredByTeam','reqReferralNotes','reqQuotedValue','reqDietaryReqs'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   _reqLocType = '';
@@ -2907,6 +2952,7 @@ function buildReqPayload() {
         ].filter(Boolean).join('\n'),
     followUp:        getChecked('followUp').join(', '),
     anythingElse:    getVal('reqAnythingElse'),
+    dietaryReqs:     getVal('reqDietaryReqs'),
     timestamp:       new Date().toISOString(),
     submittedBy:     getCurrentUser()?.name || 'Dashboard User',
   };
