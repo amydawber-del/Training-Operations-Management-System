@@ -879,32 +879,55 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// ---- CANONICAL USER LIST ----
+// This is the single source of truth for who appears on the login page.
+// Add or remove users here and the login page will update automatically.
+// localStorage only stores per-user overrides (role, color, pin) set via Manage Users.
+const CANONICAL_USERS = [
+  {id:'u1',  name:'Jack Cullen',        role:'viewer',  email:'jack.cullen@agentsoftware.net',        jobTitle:'Onboarding Specialist',    color:'#2147f4'},
+  {id:'u2',  name:'Emma Cockcroft',     role:'viewer',  email:'emma.cockcroft@agentsoftware.net',     jobTitle:'Onboarding Specialist',    color:'#e53935'},
+  {id:'u3',  name:'Sam Howat',          role:'viewer',  email:'sam.howat@agentsoftware.net',          jobTitle:'Onboarding Specialist',    color:'#22a06b'},
+  {id:'u4',  name:'Liam Sorah',         role:'viewer',  email:'liam.sorah@agentsoftware.net',         jobTitle:'Onboarding Specialist',    color:'#f59e0b'},
+  {id:'u5',  name:'Max Hornby',         role:'trainer', email:'max.hornby@agentsoftware.net',         jobTitle:'Product Trainer',          color:'#9c27b0'},
+  {id:'u6',  name:'Saskia Kirkham',     role:'viewer',  email:'saskia.kirkham@agentsoftware.net',     jobTitle:'Onboarding Specialist',    color:'#00bcd4'},
+  {id:'u7',  name:'Matt Hinawski',      role:'viewer',  email:'matthew.hinawski@agentsoftware.net',   jobTitle:'Onboarding Admin',         color:'#ff7043'},
+  {id:'u8',  name:'Tracy Kettle',       role:'viewer',  email:'tracy.kettle@agentsoftware.net',       jobTitle:'Onboarding Specialist',    color:'#3f51b5'},
+  {id:'u9',  name:'Lucie de Lison',     role:'viewer',  email:'lucie.delison@agentsoftware.net',      jobTitle:'Onboarding Specialist',    color:'#8bc34a'},
+  {id:'u10', name:'Karolina Pawlowicz', role:'viewer',  email:'karolina.pawlowicz@agentsoftware.net', jobTitle:'Onboarding Specialist',    color:'#e91e63'},
+  {id:'u11', name:'Amy Dawber',         role:'admin',   email:'amy.dawber@agentsoftware.net',         jobTitle:'Product Trainer',          color:'#f44336'},
+  {id:'u12', name:'Rob Kenyon',         role:'viewer',  email:'rob.kenyon@agentsoftware.net',         jobTitle:'Head of Street Onboarding',color:'#607d8b'},
+  {id:'u13', name:'Amy Lea',            role:'viewer',  email:'amy.lea@agentsoftware.net',            jobTitle:'Onboarding Specialist',    color:'#009688'},
+  {id:'u14', name:'Stella Nicol',       role:'viewer',  email:'stella@agentsoftware.net',             jobTitle:'Head of Client Onboarding',color:'#795548'},
+];
+
 function loadUsers() {
-  const saved = localStorage.getItem('dashUsers');
-  if(saved) { trainers = JSON.parse(saved); }
-  else {
-    trainers = [
-      {id:'u1', name:'Jack Cullen',         role:'viewer',   email:'jack.cullen@agentsoftware.net',       jobTitle:'Onboarding Specialist', color:'#2147f4', pin:'', icsUrl:''},
-      {id:'u2', name:'Emma Cockcroft',      role:'viewer',   email:'emma.cockcroft@agentsoftware.net',    jobTitle:'Onboarding Specialist', color:'#e53935', pin:'', icsUrl:''},
-      {id:'u3', name:'Sam Howat',           role:'viewer',   email:'sam.howat@agentsoftware.net',         jobTitle:'Onboarding Specialist', color:'#22a06b', pin:'', icsUrl:''},
-      {id:'u4', name:'Liam Sorah',          role:'viewer',   email:'liam.sorah@agentsoftware.net',        jobTitle:'Onboarding Specialist', color:'#f59e0b', pin:'', icsUrl:''},
-      {id:'u5', name:'Max Hornby',          role:'trainer',  email:'max.hornby@agentsoftware.net',        jobTitle:'Product Trainer',        color:'#9c27b0', pin:'', icsUrl:''},
-      {id:'u6', name:'Saskia Kirkham',      role:'viewer',   email:'saskia.kirkham@agentsoftware.net',    jobTitle:'Onboarding Specialist', color:'#00bcd4', pin:'', icsUrl:''},
-      {id:'u7', name:'Matt Hinawski',       role:'viewer',   email:'matthew.hinawski@agentsoftware.net',  jobTitle:'Onboarding Admin',       color:'#ff7043', pin:'', icsUrl:''},
-      {id:'u8', name:'Tracy Kettle',        role:'viewer',   email:'tracy.kettle@agentsoftware.net',      jobTitle:'Onboarding Specialist', color:'#3f51b5', pin:'', icsUrl:''},
-      {id:'u9', name:'Lucie de Lison',      role:'viewer',   email:'lucie.delison@agentsoftware.net',     jobTitle:'Onboarding Specialist', color:'#8bc34a', pin:'', icsUrl:''},
-      {id:'u10',name:'Karolina Pawlowicz',  role:'viewer',   email:'karolina.pawlowicz@agentsoftware.net',jobTitle:'Onboarding Specialist', color:'#e91e63', pin:'', icsUrl:''},
-      {id:'u11',name:'Amy Dawber',          role:'admin',    email:'amy.dawber@agentsoftware.net',        jobTitle:'Product Trainer',        color:'#f44336', pin:'', icsUrl:''},
-      {id:'u12',name:'Rob Kenyon',          role:'viewer',   email:'rob.kenyon@agentsoftware.net',        jobTitle:'Head of Street Onboarding', color:'#607d8b', pin:'', icsUrl:''},
-      {id:'u13',name:'Amy Lea',             role:'viewer',   email:'amy.lea@agentsoftware.net',           jobTitle:'Onboarding Specialist', color:'#009688', pin:'', icsUrl:''},
-      {id:'u14',name:'Stella Nicol',        role:'viewer',   email:'stella@agentsoftware.net',            jobTitle:'Head of Client Onboarding', color:'#795548', pin:'', icsUrl:''}
-    ];
-    saveUsers();
-  }
+  // Always start from the canonical list, then apply any saved overrides
+  const overrides = JSON.parse(localStorage.getItem('dashUserOverrides') || '{}');
+  trainers = CANONICAL_USERS.map(u => Object.assign({}, u, { pin: '', icsUrl: '' }, overrides[u.id] || {}));
+  // Also merge in any admin-added users stored separately
+  const extraUsers = JSON.parse(localStorage.getItem('dashExtraUsers') || '[]');
+  trainers = trainers.concat(extraUsers);
   populateLoginSelect();
 }
 
-function saveUsers() { localStorage.setItem('dashUsers', JSON.stringify(trainers)); }
+function saveUsers() {
+  // Save per-user overrides (role, color, pin, icsUrl) keyed by id
+  const overrides = {};
+  const canonicalIds = new Set(CANONICAL_USERS.map(u => u.id));
+  const extraUsers = [];
+  trainers.forEach(u => {
+    if(canonicalIds.has(u.id)) {
+      const canonical = CANONICAL_USERS.find(c => c.id === u.id);
+      const diff = {};
+      ['role','color','pin','icsUrl'].forEach(k => { if(u[k] !== canonical[k]) diff[k] = u[k]; });
+      if(Object.keys(diff).length) overrides[u.id] = diff;
+    } else {
+      extraUsers.push(u);
+    }
+  });
+  localStorage.setItem('dashUserOverrides', JSON.stringify(overrides));
+  localStorage.setItem('dashExtraUsers', JSON.stringify(extraUsers));
+}
 
 function populateLoginSelect() {
   const sel = document.getElementById('loginUserSelect');
