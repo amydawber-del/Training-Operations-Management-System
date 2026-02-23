@@ -1894,8 +1894,16 @@ function resolveOption(raw){
 
 function parseAppsScriptData(rows){
   if(!rows||rows.length<2)return [];
-  const C={STATUS:0,TIMESTAMP:1,EMAIL:2,CONTACT:3,PREFERRED_DATE:4,OPTION:5,ATTENDEES:8,COMPANY:13,VALUE:21,TRAINER:22,BOOKED_DATE:23,TRAINING_DAYS:24};
+  // Exact column positions matching the spreadsheet headers:
+  // 0 Status | 1 Timestamp | 2 Email | 3 Contact | 4 Preferred Date
+  // 5 Training Type | 6 Areas | 7 Features | 8 Attendees | 9 Location
+  // 10 Parking | 11 Venue Setup | 12 Score | 13 Company | 14 Familiarity
+  // 15 Priorities | 16 Follow-Up | 17 Anything Else | 18 Go-Live Date
+  // 19 Referred By | 20 Invoice Value | 21 Assigned Trainer | 22 Booked On Date | 23 Column 1 (Days)
+  const C={STATUS:0,TIMESTAMP:1,EMAIL:2,CONTACT:3,PREFERRED_DATE:4,OPTION:5,ATTENDEES:8,COMPANY:13,VALUE:20,TRAINER:21,BOOKED_DATE:22,TRAINING_DAYS:23};
   const g=(row,idx)=>{const v=row[idx];if(v===undefined||v===null||v==='')return '';if(v instanceof Date||(typeof v==='object'&&v.getTime))return v.toISOString();return String(v).trim();};
+  // Safe date parser: rejects dates before 2010 (catches "1 Jan 2001" from numeric Score values being misread)
+  const safeDate=(str)=>{if(!str)return null;const d=toDate(str);if(!d||d.getFullYear()<2010)return null;return d;};
   return rows.slice(1).map((row,i)=>{
     const rowIndex=i+2;
     const timestamp=g(row,C.TIMESTAMP),company=g(row,C.COMPANY),contact=g(row,C.CONTACT),email=g(row,C.EMAIL);
@@ -1905,13 +1913,20 @@ function parseAppsScriptData(rows){
     const option=resolveOption(optionRaw),numAttendees=parseInt(attendeesRaw)||1,basePrice=parseInt(OPTION_PRICES[option])||0;
     let revenue=parseFloat(String(revenueRaw).replace(/[^0-9.]/g,''))||0;
     if(!revenue)revenue=option==='5'?basePrice*numAttendees:basePrice;
-    const parsedDate=parseDate(timestamp||prefDate);const bookedOn=formatDateInput(bookedOnRaw);const trainingDays=parseInt(trainingDaysRaw)||OPTION_DAYS[option]||1;
+    // Use timestamp for display date, fall back to preferred date, then booked date.
+    // safeDate() guards against garbage values like "1" (Score column) → "1 Jan 2001"
+    const parsedDate=safeDate(timestamp)||safeDate(prefDate)||safeDate(bookedOnRaw)||null;
+    const bookedOn=formatDateInput(bookedOnRaw);
+    const trainingDays=parseInt(trainingDaysRaw)||OPTION_DAYS[option]||1;
     let status=rawStatus||(trainer?'Pending':'Unassigned');
     if(['New','Assigned','Complete','new','assigned','complete'].includes(status))status=trainer?'Pending':'Unassigned';
     if(['booked','BOOKED'].includes(status))status='Booked';
     if(['cancelled','CANCELLED','Canceled','canceled'].includes(status))status='Cancelled';
     if(!['Pending','Booked','Cancelled','Unassigned'].includes(status))status=trainer?'Pending':'Unassigned';
-    return{rowIndex,timestamp,date:parsedDate,company,contact,email,option,optionLabel:OPTION_LABELS[option]||('Option '+option),preferredDate:prefDate,attendees:numAttendees,trainer,status,notes:'',bookedOn,trainingDays,revenue};
+    // Needs Info: check anything-else column (17) for the skipped-section flag written by the form
+    const anythingElse=g(row,17);
+    const needsInfo=anythingElse.includes('NEEDS INFO');
+    return{rowIndex,timestamp,date:parsedDate,company,contact,email,option,optionLabel:OPTION_LABELS[option]||('Option '+option),preferredDate:prefDate,attendees:numAttendees,trainer,status,notes:'',bookedOn,trainingDays,revenue,needsInfo};
   }).filter(r=>r.company||r.contact);
 }
 
