@@ -1005,23 +1005,28 @@ async function loadData() {
   bar.style.display = 'block';
   bar.classList.add('active');
   try {
-    const res = await fetch(SCRIPT_URL + '?action=getAll&t=' + Date.now(), {
+    // No action param — Apps Script will use its default doGet handler
+    const res = await fetch(SCRIPT_URL + '?t=' + Date.now(), {
       method: 'GET',
       redirect: 'follow'
     });
     if(!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
     const json = await res.json();
-    if(json.rows) {
-      allData = json.rows.map(parseAppsScriptData).filter(Boolean);
+    // Accept common response shapes: {rows:[]}, {data:[]}, {values:[]}, or a bare array
+    const rows = json.rows || json.data || json.values || json.result || (Array.isArray(json) ? json : null);
+    if(rows) {
+      allData = rows.map(parseAppsScriptData).filter(Boolean);
       const now = new Date();
       document.getElementById('lastUpdated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
       renderAll();
+      console.log('Loaded', allData.length, 'rows. Response keys:', Object.keys(json));
     } else if(json.error) {
       showToast('Apps Script error: ' + json.error, 'error');
-      console.error('Apps Script error:', json);
+      console.error('Apps Script error:', json, '\nResponse keys available:', Object.keys(json));
+      showToast('Check console (F12) — response keys: ' + Object.keys(json).join(', '), 'error');
     } else {
-      showToast('Unexpected response from Apps Script — check console', 'error');
-      console.warn('Unexpected response:', json);
+      console.warn('Unexpected response shape:', json);
+      showToast('Connected but unrecognised response shape. Keys: ' + Object.keys(json).join(', ') + ' — check console', 'error');
     }
   } catch(e) {
     console.error('loadData error:', e);
@@ -2327,7 +2332,7 @@ async function testConnection(btn) {
   if(diagEl) diagEl.remove();
   try {
     console.log('Testing URL:', SCRIPT_URL);
-    const r = await fetch(SCRIPT_URL + '?action=ping&t=' + Date.now(), {
+    const r = await fetch(SCRIPT_URL + '?t=' + Date.now(), {
       method: 'GET',
       redirect: 'follow'
     });
