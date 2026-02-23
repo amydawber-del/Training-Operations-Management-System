@@ -385,6 +385,122 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   60%{transform:translateX(-4px)}
   80%{transform:translateX(4px)}
 }
+/* ── REQUEST TRAINING FORM ─────────────────────── */
+.req-modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:600;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity 0.2s;
+}
+.req-modal-overlay.open { opacity:1; pointer-events:all; }
+.req-modal {
+  background:#fff; border-radius:14px; width:620px; max-width:97vw;
+  max-height:92vh; display:flex; flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3); overflow:hidden;
+}
+.req-header {
+  background:linear-gradient(135deg,#19191e 0%,#2d2b31 100%);
+  padding:20px 24px 16px; flex-shrink:0;
+}
+.req-header-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.req-header-title { font-size:16px; font-weight:700; color:#fff; letter-spacing:-0.3px; display:flex; align-items:center; gap:8px; }
+.req-header-desc { font-size:11px; color:rgba(255,255,255,0.5); margin-top:4px; line-height:1.5; }
+.req-close { background:rgba(255,255,255,0.12); border:none; color:rgba(255,255,255,0.7); cursor:pointer; font-size:16px; padding:5px 9px; border-radius:6px; flex-shrink:0; transition:background 0.15s; }
+.req-close:hover { background:rgba(255,255,255,0.22); color:#fff; }
+/* Step progress bar */
+.req-progress { display:flex; align-items:center; gap:0; margin-top:16px; }
+.req-step-dot {
+  width:22px; height:22px; border-radius:50%; font-size:10px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.5);
+  border:2px solid rgba(255,255,255,0.2); transition:all 0.2s; position:relative; z-index:1;
+}
+.req-step-dot.active { background:var(--brand--yellow); color:#1a1a1a; border-color:var(--brand--yellow); }
+.req-step-dot.done { background:#22a06b; color:#fff; border-color:#22a06b; }
+.req-step-line { flex:1; height:2px; background:rgba(255,255,255,0.15); transition:background 0.3s; }
+.req-step-line.done { background:#22a06b; }
+.req-step-label { position:absolute; top:26px; left:50%; transform:translateX(-50%); font-size:9px; color:rgba(255,255,255,0.45); white-space:nowrap; font-weight:600; letter-spacing:0.3px; }
+.req-step-dot.active .req-step-label { color:var(--brand--yellow); }
+.req-step-dot.done .req-step-label { color:#22a06b; }
+/* Body */
+.req-body { flex:1; overflow-y:auto; padding:24px; }
+.req-step-pane { display:none; }
+.req-step-pane.active { display:block; animation:fadeStepIn 0.18s ease; }
+@keyframes fadeStepIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.req-step-title { font-size:14px; font-weight:700; color:var(--text--dark--50); margin-bottom:4px; }
+.req-step-sub { font-size:12px; color:var(--text--dark--30); margin-bottom:20px; line-height:1.5; }
+/* Requester type cards */
+.req-type-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:4px; }
+.req-type-card {
+  border:2px solid var(--ui--underline--light-grey); border-radius:10px; padding:16px 14px;
+  cursor:pointer; transition:border-color 0.15s, background 0.15s; text-align:center;
+}
+.req-type-card:hover { border-color:var(--accent--blue--300); background:#f6f8ff; }
+.req-type-card.selected { border-color:var(--action-primary-blue); background:#eff3ff; }
+.req-type-card-icon { font-size:28px; margin-bottom:8px; }
+.req-type-card-label { font-size:13px; font-weight:700; color:var(--text--dark--50); margin-bottom:4px; }
+.req-type-card-desc { font-size:11px; color:var(--text--dark--30); line-height:1.4; }
+/* Form elements within req modal */
+.req-field { margin-bottom:16px; }
+.req-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--text--dark--30); margin-bottom:6px; display:block; }
+.req-label.required::after { content:' *'; color:#c0303d; }
+.req-input, .req-select, .req-textarea {
+  width:100%; box-sizing:border-box; border:1.5px solid var(--ui--underline--light-grey);
+  border-radius:8px; padding:10px 13px; font-size:13px; font-family:Arial,sans-serif;
+  color:var(--text--dark--50); background:#fff; transition:border-color 0.15s; resize:vertical;
+}
+.req-input:focus, .req-select:focus, .req-textarea:focus { outline:none; border-color:var(--action-primary-blue); }
+.req-input.err, .req-select.err, .req-textarea.err { border-color:#c0303d; background:#fff7f7; }
+.req-hint { font-size:11px; color:var(--text--dark--30); margin-top:4px; line-height:1.4; }
+.req-2col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+/* Checkbox / radio groups */
+.req-check-group { display:flex; flex-direction:column; gap:8px; }
+.req-check-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1.5px solid var(--ui--underline--light-grey); border-radius:8px; cursor:pointer; transition:border-color 0.12s, background 0.12s; }
+.req-check-item:hover { border-color:var(--accent--blue--300); background:#f6f8ff; }
+.req-check-item input[type=checkbox], .req-check-item input[type=radio] { margin-top:1px; flex-shrink:0; width:15px; height:15px; accent-color:var(--action-primary-blue); cursor:pointer; }
+.req-check-item label { font-size:12px; color:var(--text--dark--50); cursor:pointer; font-weight:600; line-height:1.4; }
+.req-check-item .req-check-sub { font-size:11px; color:var(--text--dark--30); font-weight:400; margin-top:2px; }
+.req-radio-inline { display:flex; gap:8px; flex-wrap:wrap; }
+.req-radio-chip { display:flex; align-items:center; gap:7px; padding:8px 14px; border:1.5px solid var(--ui--underline--light-grey); border-radius:20px; cursor:pointer; transition:all 0.12s; font-size:12px; font-weight:600; color:var(--text--dark--40); }
+.req-radio-chip:hover { border-color:var(--accent--blue--300); color:var(--action-primary-blue); }
+.req-radio-chip input[type=radio] { width:13px; height:13px; accent-color:var(--action-primary-blue); }
+/* Section divider */
+.req-divider { height:1px; background:var(--ui--underline--light-grey); margin:20px 0; }
+.req-section-heading { font-size:12px; font-weight:700; color:var(--text--dark--40); text-transform:uppercase; letter-spacing:0.7px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.req-section-heading::after { content:''; flex:1; height:1px; background:var(--ui--underline--light-grey); }
+/* Footer */
+.req-footer {
+  padding:14px 24px; border-top:1px solid var(--ui--underline--light-grey);
+  background:var(--card-light-grey); display:flex; align-items:center;
+  justify-content:space-between; flex-shrink:0; gap:8px;
+}
+.req-footer-hint { font-size:11px; color:var(--text--dark--30); flex:1; }
+/* Success screen */
+.req-success { text-align:center; padding:40px 20px; }
+.req-success-icon { font-size:52px; margin-bottom:16px; }
+.req-success-title { font-size:18px; font-weight:700; color:var(--text--dark--50); margin-bottom:8px; }
+.req-success-sub { font-size:13px; color:var(--text--dark--30); line-height:1.6; }
+/* Location selector buttons */
+.req-loc-btn {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:5px; padding:16px 12px; border:2px solid var(--ui--underline--light-grey);
+  border-radius:10px; cursor:pointer; background:#fff; width:100%;
+  transition:border-color 0.15s, background 0.15s;
+  font-family:Arial,sans-serif;
+}
+.req-loc-btn:hover { border-color:var(--accent--blue--300); background:#f6f8ff; }
+.req-loc-btn.selected { border-color:var(--action-primary-blue); background:#eff3ff; }
+.req-loc-btn-label { font-size:13px; font-weight:700; color:var(--text--dark--50); }
+.req-loc-btn-sub { font-size:10px; color:var(--text--dark--30); }
+/* Equipment chips */
+.req-equip-chip {
+  display:flex; align-items:center; gap:6px; padding:7px 12px;
+  border:1.5px solid var(--ui--underline--light-grey); border-radius:20px;
+  cursor:pointer; font-size:12px; font-weight:600; color:var(--text--dark--40);
+  background:#fff; transition:all 0.12s; user-select:none;
+}
+.req-equip-chip:hover { border-color:var(--accent--blue--300); color:var(--action-primary-blue); }
+.req-equip-chip input[type=checkbox] { width:13px; height:13px; accent-color:var(--action-primary-blue); cursor:pointer; }
+.req-equip-chip:has(input:checked) { border-color:var(--action-primary-blue); background:#eff3ff; color:var(--action-primary-blue); }
 </style>
 </head>
 <body>
@@ -481,6 +597,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <span id="headerUserName" style="font-size:12px;font-weight:600;color:#ddd;">—</span>
       <span class="admin-badge" id="adminBadge" style="display:none;font-size:9px;padding:2px 6px;border-radius:8px;background:#2147f4;color:#fff;font-weight:700;letter-spacing:0.5px;">Admin</span>
     </div>
+    <button onclick="openRequestForm()" style="background:var(--brand--yellow);color:#1a1a1a;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;display:flex;align-items:center;gap:6px;flex-shrink:0;letter-spacing:-0.2px;">&#128203; Request Training</button>
     <button id="shadowBanner" onclick="exitShadow()" style="display:none;background:#f59e0b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">👁 Shadowing — Click to exit</button>
     <div class="user-selector-wrap" style="cursor:default;">
       <div class="user-avatar" id="headerAvatar">?</div>
@@ -962,6 +1079,256 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <button class="activity-clear-btn" onclick="clearActivityLog()">&#128465; Clear log</button>
   </div>
   <div class="activity-feed-body" id="activityFeedBody"><div class="activity-empty">&#128203; No activity yet</div></div>
+</div>
+
+<!-- ============================================================ REQUEST TRAINING MODAL ============================================================ -->
+<div class="req-modal-overlay" id="reqOverlay" onclick="if(event.target===this)closeRequestForm()">
+  <div class="req-modal">
+
+    <!-- Header + progress -->
+    <div class="req-header">
+      <div class="req-header-top">
+        <div>
+          <div class="req-header-title">&#128203; Request a Training Day</div>
+          <div class="req-header-desc">Fill in the details below and our team will be in touch to confirm your session.</div>
+        </div>
+        <button class="req-close" onclick="closeRequestForm()">&#10005;</button>
+      </div>
+      <div class="req-progress" id="reqProgress" style="margin-top:20px; padding-bottom:20px;"></div>
+    </div>
+
+    <!-- Steps body -->
+    <div class="req-body" id="reqBody">
+
+      <!-- STEP 1: Who's requesting -->
+      <div class="req-step-pane" id="reqStep1">
+        <div class="req-step-title">Who is making this request?</div>
+        <div class="req-step-sub">This helps us tailor the form and track referrals correctly.</div>
+        <div class="req-type-grid">
+          <div class="req-type-card" id="reqTypeCustomer" onclick="selectRequesterType('customer')">
+            <div class="req-type-card-icon">&#127968;</div>
+            <div class="req-type-card-label">Client / Customer</div>
+            <div class="req-type-card-desc">I'm a Street customer requesting training for my team</div>
+          </div>
+          <div class="req-type-card" id="reqTypeEmployee" onclick="selectRequesterType('employee')">
+            <div class="req-type-card-icon">&#127970;</div>
+            <div class="req-type-card-label">Street Employee</div>
+            <div class="req-type-card-desc">I'm referring a client or submitting on behalf of a customer</div>
+          </div>
+        </div>
+        <!-- Street employee extra: referred by -->
+        <div id="reqEmployeeFields" style="display:none;margin-top:16px;">
+          <div class="req-referred-banner">
+            <span>&#128275;</span>
+            <span>As a Street employee, please confirm who is referring this client and your name so we can log it correctly.</span>
+          </div>
+          <div class="req-2col">
+            <div class="req-field">
+              <label class="req-label required">Your Name (Street Employee)</label>
+              <input type="text" class="req-input" id="reqReferredByName" placeholder="e.g. Sarah Jones">
+            </div>
+            <div class="req-field">
+              <label class="req-label required">Your Team / Department</label>
+              <input type="text" class="req-input" id="reqReferredByTeam" placeholder="e.g. Onboarding, Sales">
+            </div>
+          </div>
+          <div class="req-field">
+            <label class="req-label">Invoice Value Quoted</label>
+            <div style="position:relative;">
+              <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text--dark--30);font-weight:600;">£</span>
+              <input type="number" class="req-input" id="reqQuotedValue" placeholder="0.00" min="0" step="0.01" style="padding-left:28px;">
+            </div>
+            <div class="req-hint">Leave blank if no value has been discussed with the client yet. This will be logged against the booking.</div>
+          </div>
+          <div class="req-field">
+            <label class="req-label">Referral Notes</label>
+            <input type="text" class="req-input" id="reqReferralNotes" placeholder="e.g. Client mentioned during onboarding call, keen to book ASAP">
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Contact & company -->
+      <div class="req-step-pane" id="reqStep2">
+        <div class="req-step-title">Contact &amp; Company Details</div>
+        <div class="req-step-sub">Tell us about the client and who will be authorising the training.</div>
+        <div class="req-field">
+          <label class="req-label required">Email Address</label>
+          <input type="email" class="req-input" id="reqEmail" placeholder="client@example.com">
+        </div>
+        <div class="req-field">
+          <label class="req-label required">Company / Business Name</label>
+          <input type="text" class="req-input" id="reqCompany" placeholder="e.g. Acorn Estates">
+        </div>
+        <div class="req-field">
+          <label class="req-label required">Client Stakeholder Name &amp; Phone Number</label>
+          <input type="text" class="req-input" id="reqStakeholder" placeholder="Full name + phone number of the person authorising training &amp; costs">
+          <div class="req-hint">This should be the decision-maker who can approve training packages and associated costs.</div>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Attendees</label>
+          <textarea class="req-textarea" id="reqAttendees" rows="3" placeholder="List the names, job titles and roles of everyone attending. Note if anyone needs to leave early."></textarea>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Target Go-Live Date</label>
+          <input type="date" class="req-input" id="reqGoLive">
+          <div class="req-hint">The date you're working towards going live with Street — helps us prioritise scheduling.</div>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Preferred Training Date</label>
+          <input type="date" class="req-input" id="reqPreferredDate">
+        </div>
+      </div>
+
+      <!-- STEP 3: Training details -->
+      <div class="req-step-pane" id="reqStep3">
+        <div class="req-step-title">Training Package &amp; Goals</div>
+        <div class="req-step-sub">Help us understand what you need so we can tailor the session perfectly.</div>
+
+        <div class="req-field">
+          <label class="req-label required">What type of training are you interested in?</label>
+          <div class="req-check-group" id="reqTrainingType">
+            <label class="req-check-item"><input type="radio" name="trainingType" value="Personalised Onsite Training – 1 Day"><div><label style="cursor:pointer;">Personalised Onsite Training – 1 Day <span style="color:#c0303d;font-size:10px;">**</span></label><div class="req-check-sub">One full day at your offices covering your team's core workflows</div></div></label>
+            <label class="req-check-item"><input type="radio" name="trainingType" value="Personalised Onsite Training – 2 Days"><div><label style="cursor:pointer;">Personalised Onsite Training – 2 Days <span style="color:#c0303d;font-size:10px;">**</span></label><div class="req-check-sub">Two days for a deeper, more comprehensive training programme</div></div></label>
+            <label class="req-check-item"><input type="radio" name="trainingType" value="Lettings Accounting Training + Go-Live Support"><div><label style="cursor:pointer;">Lettings Accounting + Go-Live Support <span style="color:#c0303d;font-size:10px;">**</span></label><div class="req-check-sub">Specialist accounting training with hands-on go-live assistance</div></div></label>
+            <label class="req-check-item"><input type="radio" name="trainingType" value="Live Training at Street HQ (Manchester)"><div><label style="cursor:pointer;">Live Training at Street HQ – Manchester <span style="color:#c0303d;font-size:10px;">**</span></label><div class="req-check-sub">Come to our Manchester office for an immersive group session</div></div></label>
+            <label class="req-check-item"><input type="radio" name="trainingType" value="Online Refresher"><div><label style="cursor:pointer;">Online Refresher <span style="color:#c0303d;font-size:10px;">**</span></label><div class="req-check-sub">A focused virtual session to refresh specific areas</div></div></label>
+            <label class="req-check-item"><input type="radio" name="trainingType" value="Not sure yet – please help me choose"><div><label style="cursor:pointer;">Not sure yet — please help me choose</label><div class="req-check-sub">Tell us your goals below and we'll recommend the right package</div></div></label>
+          </div>
+          <div class="req-hint" style="margin-top:8px;"><span style="color:#c0303d;">**</span> May incur additional costs — always discussed with your authorised decision-maker before confirmation.</div>
+        </div>
+
+        <div class="req-field" style="margin-top:20px;">
+          <label class="req-label required">How familiar is your team with Street?</label>
+          <div class="req-radio-inline">
+            <label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Complete Beginners"> Complete Beginners</label>
+            <label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Mixed Experience"> Mixed Experience</label>
+            <label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Experienced — need refresher"> Experienced — Need Refresher</label>
+          </div>
+        </div>
+
+        <div class="req-field" style="margin-top:20px;">
+          <label class="req-label required">Which areas of Street do you want to cover?</label>
+          <div class="req-check-group">
+            <label class="req-check-item"><input type="checkbox" name="areas" value="Sales"> <label style="cursor:pointer;">Sales</label></label>
+            <label class="req-check-item"><input type="checkbox" name="areas" value="Lettings Front End"> <label style="cursor:pointer;">Lettings Front End</label></label>
+            <label class="req-check-item"><input type="checkbox" name="areas" value="Accounting"> <label style="cursor:pointer;">Accounting</label></label>
+            <label class="req-check-item"><input type="checkbox" name="areas" value="Property Management"> <label style="cursor:pointer;">Property Management</label></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: Priorities, logistics, follow-up -->
+      <div class="req-step-pane" id="reqStep4">
+        <div class="req-step-title">Priorities &amp; Logistics</div>
+        <div class="req-step-sub">Help us make the day run smoothly and focus on what matters most.</div>
+
+        <div class="req-field">
+          <label class="req-label required">Top 3 priorities for this training day</label>
+          <textarea class="req-textarea" id="reqPriorities" rows="3" placeholder="e.g. 1. Getting the lettings team confident on compliance workflows&#10;2. Sales progression tracking&#10;3. Report building"></textarea>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Specific features or workflows to cover</label>
+          <textarea class="req-textarea" id="reqFeatures" rows="2" placeholder="e.g. sales progression, lettings compliance, accounting, reporting…"></textarea>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Current challenges or frustrations</label>
+          <textarea class="req-textarea" id="reqChallenges" rows="2" placeholder="Anything your team struggles with day-to-day — the more detail the better"></textarea>
+        </div>
+
+        <div class="req-section-heading">Logistics</div>
+
+        <div class="req-field">
+          <label class="req-label">Training Location</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <button type="button" class="req-loc-btn" id="reqLocHQBtn" onclick="selectLocation('hq')">
+              <span style="font-size:20px;">&#127970;</span>
+              <span class="req-loc-btn-label">Street HQ</span>
+              <span class="req-loc-btn-sub">North Square, Manchester</span>
+            </button>
+            <button type="button" class="req-loc-btn" id="reqLocOtherBtn" onclick="selectLocation('other')">
+              <span style="font-size:20px;">&#128205;</span>
+              <span class="req-loc-btn-label">Other Location</span>
+              <span class="req-loc-btn-sub">I'll provide the details</span>
+            </button>
+          </div>
+          <!-- HQ confirmation pill -->
+          <div id="reqLocHQConfirm" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:12px 14px;font-size:12px;color:#166534;display:none;align-items:flex-start;gap:10px;">
+            <span style="font-size:16px;flex-shrink:0;">&#9989;</span>
+            <div>
+              <div style="font-weight:700;margin-bottom:2px;">Street HQ confirmed</div>
+              <div style="color:#15803d;">North Square, 11–13 Spear St, Manchester M1 1JU</div>
+              <div style="margin-top:6px;color:#166534;opacity:0.8;font-size:11px;">Our team will share parking info and directions closer to the date.</div>
+            </div>
+          </div>
+          <!-- Other location fields -->
+          <div id="reqLocOtherFields" style="display:none;margin-top:4px;">
+            <div class="req-field" style="margin-bottom:12px;">
+              <label class="req-label required">Meeting Room Name &amp; Address</label>
+              <input type="text" class="req-input" id="reqLocAddress" placeholder="e.g. The Boardroom, 14 King Street, Leeds LS1 2AB">
+              <div class="req-hint">Please include the full postcode.</div>
+            </div>
+            <div class="req-field" style="margin-bottom:12px;">
+              <label class="req-label">Parking &amp; Access Instructions</label>
+              <textarea class="req-textarea" id="reqLocParking" rows="2" placeholder="e.g. NCP car park on the right, buzz flat 3 on arrival, ask for reception on the ground floor…"></textarea>
+            </div>
+            <div class="req-field" style="margin-bottom:0;">
+              <label class="req-label">Available Equipment</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;" id="reqEquipGrid">
+                <label class="req-equip-chip"><input type="checkbox" value="Projector"> Projector</label>
+                <label class="req-equip-chip"><input type="checkbox" value="Large Screen / TV"> Large Screen / TV</label>
+                <label class="req-equip-chip"><input type="checkbox" value="Wi-Fi"> Wi-Fi</label>
+                <label class="req-equip-chip"><input type="checkbox" value="HDMI Cable"> HDMI Cable</label>
+                <label class="req-equip-chip"><input type="checkbox" value="Extension Lead"> Extension Lead</label>
+                <label class="req-equip-chip"><input type="checkbox" value="Whiteboard"> Whiteboard</label>
+                <label class="req-equip-chip"><input type="checkbox" value="Video Conferencing"> Video Conferencing</label>
+              </div>
+              <div class="req-field" style="margin-top:10px;margin-bottom:0;">
+                <input type="text" class="req-input" id="reqLocEquipOther" placeholder="Any other equipment available…">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="req-section-heading">Follow-Up</div>
+
+        <div class="req-field">
+          <label class="req-label">How would you like post-training support?</label>
+          <div class="req-check-group">
+            <label class="req-check-item"><input type="checkbox" name="followUp" value="Email recap & resources"> <label style="cursor:pointer;">Email recap &amp; resources</label></label>
+            <label class="req-check-item"><input type="checkbox" name="followUp" value="Follow-up call"> <label style="cursor:pointer;">Follow-up call</label></label>
+            <label class="req-check-item"><input type="checkbox" name="followUp" value="Additional training session"><label style="cursor:pointer;">Additional training session <span style="color:#c0303d;font-size:10px;">**</span></label></label>
+          </div>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Anything else we should know?</label>
+          <textarea class="req-textarea" id="reqAnythingElse" rows="2" placeholder="Any other context that'll help us make the session as valuable as possible"></textarea>
+        </div>
+      </div>
+
+      <!-- STEP 5: Success -->
+      <div class="req-step-pane" id="reqStep5">
+        <div class="req-success">
+          <div class="req-success-icon">&#10003;&#65039;</div>
+          <div class="req-success-title">Request submitted!</div>
+          <div class="req-success-sub" id="reqSuccessMsg">Your training request has been sent. Our team will review it and be in touch to confirm the date and agenda.</div>
+          <div style="margin-top:24px;">
+            <button class="btn btn-primary" onclick="closeRequestForm()" style="padding:10px 24px;font-size:13px;">Close</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /req-body -->
+
+    <!-- Footer -->
+    <div class="req-footer" id="reqFooter">
+      <span class="req-footer-hint" id="reqFooterHint"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" id="reqBackBtn" onclick="reqPrevStep()" style="display:none;">&#8592; Back</button>
+        <button class="btn btn-primary" id="reqNextBtn" onclick="reqNextStep()">Continue &#8594;</button>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- TOAST -->
@@ -2271,8 +2638,292 @@ function openActivityPanel(){document.getElementById('activityPanel').classList.
 function closeActivityPanel(){document.getElementById('activityPanel').classList.remove('open');document.getElementById('activityPanelOverlay').classList.remove('open');}
 
 // =============================================
-// INIT
+// REQUEST TRAINING FORM
 // =============================================
+let _reqStep        = 1;
+let _reqType        = '';   // 'customer' | 'employee'
+const REQ_TOTAL_STEPS = 4;  // step 5 is success
+
+const REQ_STEP_LABELS = ['Who', 'Contact', 'Training', 'Logistics'];
+
+let _reqLocType = ''; // 'hq' | 'other'
+
+function selectLocation(type) {
+  _reqLocType = type;
+  document.getElementById('reqLocHQBtn').classList.toggle('selected', type === 'hq');
+  document.getElementById('reqLocOtherBtn').classList.toggle('selected', type === 'other');
+  const hqConfirm    = document.getElementById('reqLocHQConfirm');
+  const otherFields  = document.getElementById('reqLocOtherFields');
+  hqConfirm.style.display   = type === 'hq'    ? 'flex' : 'none';
+  otherFields.style.display = type === 'other' ? ''     : 'none';
+}
+
+function openRequestForm() {
+  _reqStep = 1;
+  _reqType = '';
+  resetRequestForm();
+  buildReqProgress();
+  showReqStep(1);
+  document.getElementById('reqOverlay').classList.add('open');
+}
+
+function closeRequestForm() {
+  document.getElementById('reqOverlay').classList.remove('open');
+}
+
+function resetRequestForm() {
+  // Clear all inputs
+  ['reqEmail','reqCompany','reqStakeholder','reqAttendees','reqGoLive','reqPreferredDate',
+   'reqPriorities','reqFeatures','reqChallenges','reqLocAddress','reqLocParking','reqLocEquipOther','reqAnythingElse',
+   'reqReferredByName','reqReferredByTeam','reqReferralNotes','reqQuotedValue'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  _reqLocType = '';
+  document.getElementById('reqLocHQBtn').classList.remove('selected');
+  document.getElementById('reqLocOtherBtn').classList.remove('selected');
+  document.getElementById('reqLocHQConfirm').style.display   = 'none';
+  document.getElementById('reqLocOtherFields').style.display = 'none';
+  document.querySelectorAll('#reqEquipGrid input[type=checkbox]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.req-type-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('reqEmployeeFields').style.display = 'none';
+  document.querySelectorAll('.req-input.err,.req-select.err,.req-textarea.err')
+    .forEach(el => el.classList.remove('err'));
+}
+
+function selectRequesterType(type) {
+  _reqType = type;
+  document.querySelectorAll('.req-type-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById(type === 'customer' ? 'reqTypeCustomer' : 'reqTypeEmployee').classList.add('selected');
+  document.getElementById('reqEmployeeFields').style.display = type === 'employee' ? '' : 'none';
+}
+
+function buildReqProgress() {
+  const el = document.getElementById('reqProgress'); if (!el) return;
+  let html = '';
+  REQ_STEP_LABELS.forEach((label, i) => {
+    const stepNum = i + 1;
+    const isDone   = _reqStep > stepNum;
+    const isActive = _reqStep === stepNum;
+    const cls = isDone ? 'done' : isActive ? 'active' : '';
+    const icon = isDone ? '✓' : stepNum;
+    html += '<div class="req-step-dot ' + cls + '" style="position:relative;">'
+      + icon
+      + '<span class="req-step-label">' + label + '</span>'
+      + '</div>';
+    if (i < REQ_STEP_LABELS.length - 1) {
+      html += '<div class="req-step-line ' + (isDone ? 'done' : '') + '"></div>';
+    }
+  });
+  el.innerHTML = html;
+}
+
+function showReqStep(step) {
+  _reqStep = step;
+  const isSuccess = step > REQ_TOTAL_STEPS;
+  // Toggle panes
+  for (let i = 1; i <= REQ_TOTAL_STEPS + 1; i++) {
+    const pane = document.getElementById('reqStep' + i);
+    if (pane) pane.classList.toggle('active', i === step);
+  }
+  // Progress
+  buildReqProgress();
+  // Footer
+  const footer  = document.getElementById('reqFooter');
+  const backBtn = document.getElementById('reqBackBtn');
+  const nextBtn = document.getElementById('reqNextBtn');
+  const hint    = document.getElementById('reqFooterHint');
+  if (isSuccess) {
+    footer.style.display = 'none';
+    return;
+  }
+  footer.style.display = '';
+  backBtn.style.display  = step > 1 ? '' : 'none';
+  const isLast = step === REQ_TOTAL_STEPS;
+  nextBtn.textContent    = isLast ? '✓ Submit Request' : 'Continue →';
+  nextBtn.className      = isLast ? 'btn btn-success' : 'btn btn-primary';
+  // Hint
+  const hints = [
+    'Step 1 of 4 — required',
+    'Step 2 of 4 — contact details',
+    'Step 3 of 4 — training package',
+    'Step 4 of 4 — priorities & logistics',
+  ];
+  hint.textContent = hints[step - 1] || '';
+}
+
+function reqNextStep() {
+  if (!validateReqStep(_reqStep)) return;
+  if (_reqStep === REQ_TOTAL_STEPS) {
+    submitTrainingRequest();
+  } else {
+    showReqStep(_reqStep + 1);
+    document.getElementById('reqBody').scrollTop = 0;
+  }
+}
+
+function reqPrevStep() {
+  if (_reqStep > 1) {
+    showReqStep(_reqStep - 1);
+    document.getElementById('reqBody').scrollTop = 0;
+  }
+}
+
+// ── Validation ───────────────────────────────
+function reqErr(el, msg) {
+  if (el) el.classList.add('err');
+  if (msg) showToast(msg, 'error');
+  return false;
+}
+function reqClear(el) { if (el) el.classList.remove('err'); }
+
+function validateReqStep(step) {
+  if (step === 1) {
+    if (!_reqType) { showToast('Please select who is making this request', 'error'); return false; }
+    if (_reqType === 'employee') {
+      const name = document.getElementById('reqReferredByName').value.trim();
+      const team = document.getElementById('reqReferredByTeam').value.trim();
+      if (!name) return reqErr(document.getElementById('reqReferredByName'), 'Please enter your name');
+      if (!team) return reqErr(document.getElementById('reqReferredByTeam'), 'Please enter your team/department');
+    }
+    return true;
+  }
+  if (step === 2) {
+    const email = document.getElementById('reqEmail').value.trim();
+    const company = document.getElementById('reqCompany').value.trim();
+    const stake   = document.getElementById('reqStakeholder').value.trim();
+    reqClear(document.getElementById('reqEmail'));
+    reqClear(document.getElementById('reqCompany'));
+    reqClear(document.getElementById('reqStakeholder'));
+    if (!email || !/\S+@\S+\.\S+/.test(email)) return reqErr(document.getElementById('reqEmail'), 'Please enter a valid email address');
+    if (!company) return reqErr(document.getElementById('reqCompany'), 'Please enter the company name');
+    if (!stake)   return reqErr(document.getElementById('reqStakeholder'), 'Please enter the stakeholder name and phone number');
+    return true;
+  }
+  if (step === 3) {
+    const type = document.querySelector('input[name="trainingType"]:checked');
+    const fam  = document.querySelector('input[name="teamFamiliarity"]:checked');
+    const areas = document.querySelectorAll('input[name="areas"]:checked');
+    if (!type) { showToast('Please select a training type', 'error'); return false; }
+    if (!fam)  { showToast('Please select your team\'s familiarity level', 'error'); return false; }
+    if (!areas.length) { showToast('Please select at least one area to cover', 'error'); return false; }
+    return true;
+  }
+  if (step === 4) {
+    const pri = document.getElementById('reqPriorities').value.trim();
+    reqClear(document.getElementById('reqPriorities'));
+    if (!pri) return reqErr(document.getElementById('reqPriorities'), 'Please enter your top priorities for the day');
+    return true;
+  }
+  return true;
+}
+
+// ── Build payload & submit ───────────────────
+function buildReqPayload() {
+  const getVal  = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const getChecked = name => Array.from(document.querySelectorAll('input[name="'+name+'"]:checked')).map(el => el.value);
+  const radioVal   = name => { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : ''; };
+
+  return {
+    action:          'submitRequest',
+    requesterType:   _reqType,
+    referredByName:  getVal('reqReferredByName'),
+    referredByTeam:  getVal('reqReferredByTeam'),
+    referralNotes:   getVal('reqReferralNotes'),
+    quotedValue:     getVal('reqQuotedValue') ? '£' + parseFloat(getVal('reqQuotedValue')).toFixed(2) : '',
+    email:           getVal('reqEmail'),
+    company:         getVal('reqCompany'),
+    stakeholder:     getVal('reqStakeholder'),
+    attendees:       getVal('reqAttendees'),
+    goLiveDate:      getVal('reqGoLive'),
+    preferredDate:   getVal('reqPreferredDate'),
+    trainingType:    radioVal('trainingType'),
+    teamFamiliarity: radioVal('teamFamiliarity'),
+    areas:           getChecked('areas').join(', '),
+    priorities:      getVal('reqPriorities'),
+    features:        getVal('reqFeatures'),
+    challenges:      getVal('reqChallenges'),
+    location: _reqLocType === 'hq'
+      ? 'Street HQ — North Square, 11–13 Spear St, Manchester M1 1JU'
+      : [
+          getVal('reqLocAddress'),
+          getVal('reqLocParking') ? 'Parking/Access: ' + getVal('reqLocParking') : '',
+          (() => {
+            const equip = Array.from(document.querySelectorAll('#reqEquipGrid input:checked')).map(el => el.value);
+            const other = getVal('reqLocEquipOther');
+            if (other) equip.push(other);
+            return equip.length ? 'Equipment: ' + equip.join(', ') : '';
+          })()
+        ].filter(Boolean).join('\n'),
+    followUp:        getChecked('followUp').join(', '),
+    anythingElse:    getVal('reqAnythingElse'),
+    timestamp:       new Date().toISOString(),
+    submittedBy:     getCurrentUser()?.name || 'Dashboard User',
+  };
+}
+
+async function submitTrainingRequest() {
+  const nextBtn = document.getElementById('reqNextBtn');
+  nextBtn.disabled = true;
+  nextBtn.textContent = '⏳ Submitting…';
+  const payload = buildReqPayload();
+  let submitted = false;
+
+  // Try Apps Script
+  try {
+    const params = new URLSearchParams(payload).toString();
+    await fetchWithTimeout(APPS_SCRIPT_URL + '?' + params, { method:'GET', redirect:'follow', mode:'no-cors' }, 10000);
+    submitted = true;
+  } catch(e) {
+    console.warn('Apps Script submit failed:', e.message);
+  }
+
+  // Log locally regardless
+  logActivity('request', payload.company,
+    (payload.requesterType === 'employee'
+      ? '📤 Employee referral by ' + payload.referredByName + ' (' + payload.referredByTeam + ')'
+      : '📋 Training request submitted')
+    + ' — ' + payload.trainingType,
+    payload.email
+  );
+
+  // Add optimistic row to local allData so it shows immediately in dashboard
+  const newRow = {
+    rowIndex: Date.now(), // temp key
+    timestamp: payload.timestamp,
+    date: toDate(payload.timestamp),
+    company: payload.company,
+    contact: payload.stakeholder,
+    email: payload.email,
+    option: resolveOption(payload.trainingType),
+    optionLabel: payload.trainingType,
+    preferredDate: payload.preferredDate,
+    attendees: 1,
+    trainer: '',
+    status: 'Unassigned',
+    notes: '',
+    bookedOn: '',
+    trainingDays: 0,
+    revenue: payload.quotedValue ? parseFloat(payload.quotedValue.replace('£','')) || 0 : 0,
+    _referredBy: payload.referredByName ? payload.referredByName + ' (' + payload.referredByTeam + ')' : '',
+    _requesterType: payload.requesterType,
+  };
+  allData.unshift(newRow);
+  processData();
+
+  nextBtn.disabled = false;
+
+  // Show success screen
+  const msg = submitted
+    ? 'Your request has been sent to our team. We\'ll be in touch to confirm the date and finalise the agenda.'
+    : 'Your request has been saved locally and will sync when the connection is restored.';
+  document.getElementById('reqSuccessMsg').textContent =
+    (payload.requesterType === 'employee'
+      ? 'Referral logged for ' + payload.company + '. '
+      : '')
+    + msg;
+  showReqStep(5);
+  showToast('✓ Training request submitted for ' + payload.company, 'success');
+}
 syncTrainers();
 initActivityFeed();
 clearSession();
