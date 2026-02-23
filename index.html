@@ -1615,8 +1615,8 @@ let _assignRowIndex=null, _bookRowIndex=null, _cancelRowIndex=null, _notesRowInd
 // OVERRIDES / NOTES CACHE
 // =============================================
 const OVERRIDE_KEY='streetDashboardOverrides_v2';
-function getOverrides(){try{return JSON.parse(sessionStorage.getItem(OVERRIDE_KEY)||'{}');}catch(e){return {};}}
-function saveOverride(ri,fields){const o=getOverrides();o[ri]=Object.assign(o[ri]||{},fields);try{sessionStorage.setItem(OVERRIDE_KEY,JSON.stringify(o));}catch(e){}}
+function getOverrides(){try{return JSON.parse(localStorage.getItem(OVERRIDE_KEY)||'{}');}catch(e){return {};}}
+function saveOverride(ri,fields){const o=getOverrides();o[ri]=Object.assign(o[ri]||{},fields);try{localStorage.setItem(OVERRIDE_KEY,JSON.stringify(o));}catch(e){}}
 function applyOverrides(rows){
   const o=getOverrides();
   return rows.map(r=>{const ov=o[r.rowIndex];if(!ov)return r;const merged=Object.assign({},r,ov);if(merged.date&&!(merged.date instanceof Date))merged.date=toDate(merged.date);return merged;});
@@ -1771,6 +1771,49 @@ function fetchWithTimeout(url,options={},timeoutMs=10000){
   const fp=fetch(url,{...options,redirect:'follow'});
   const tp=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timed out after '+timeoutMs+'ms')),timeoutMs));
   return Promise.race([fp,tp]);
+}
+
+// Write a change to the spreadsheet via Apps Script and confirm success.
+// Returns true if the sheet confirmed the write, false otherwise.
+async function syncToSheet(url) {
+  try {
+    const res = await fetchWithTimeout(url, { method:'GET' }, 12000);
+    const text = await res.text();
+    if (text && text.includes('"success":true')) {
+      return true;
+    }
+    console.warn('syncToSheet: sheet returned non-success:', text.slice(0, 120));
+    return false;
+  } catch(e) {
+    console.warn('syncToSheet failed:', e.message);
+    return false;
+  }
+}
+
+// Reload data silently in the background without showing the loading bar.
+// Clears local overrides for rows that are now confirmed in the sheet.
+let _silentRefreshTimer = null;
+async function silentRefresh(delayMs = 1500) {
+  // Debounce — if multiple writes happen rapidly, only refresh once
+  clearTimeout(_silentRefreshTimer);
+  _silentRefreshTimer = setTimeout(async () => {
+    try {
+      const res = await fetchWithTimeout(APPS_SCRIPT_URL+'?action=getData', {}, 10000);
+      const text = await res.text();
+      if (text && text.trim().startsWith('{')) {
+        const json = JSON.parse(text);
+        if (json && json.data && json.data.length > 1) {
+          // Clear all overrides — the sheet is now the source of truth
+          try { localStorage.removeItem(OVERRIDE_KEY); } catch(e) {}
+          allData = parseAppsScriptData(json.data);
+          processData();
+          document.getElementById('lastUpdated').textContent = '✓ Live — ' + new Date().toLocaleTimeString();
+        }
+      }
+    } catch(e) {
+      // Silent — don't bother the user if background refresh fails
+    }
+  }, delayMs);
 }
 
 async function loadData() {
@@ -1937,8 +1980,10 @@ async function confirmAssign(){
   closeAssignModal();logActivity('assign',row.company,'Assigned to '+trainer+', set to Pending',getCurrentUser()?.name||'Unknown');
   showToast('✓ Assigned to '+trainer,'success');
   const url=APPS_SCRIPT_URL+'?action=assign&row='+ri+'&trainer='+encodeURIComponent(trainer)+'&status=Pending';
-  try{await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'});}catch(e){}
+  const ok = await syncToSheet(url);
+  if (!ok) showToast('⚠ Saved locally — sheet sync failed, try Refresh','error');
   processData();
+  silentRefresh();
 }
 
 // =============================================
@@ -2034,8 +2079,10 @@ async function confirmBook(){
   closeBookModal();logActivity('book',row.company,'Booked on '+dateStr+' with '+trainer+' ('+numDays+'d, £'+value.toLocaleString()+')',getCurrentUser()?.name||'Unknown');
   showToast('✓ Booking confirmed — '+row.company,'success');
   const url=APPS_SCRIPT_URL+'?action=assign&row='+ri+'&status=Booked&bookedOn='+encodeURIComponent(dateStr)+'&trainer='+encodeURIComponent(trainer)+'&value='+value+'&trainingDays='+numDays;
-  try{await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'});}catch(e){}
+  const ok = await syncToSheet(url);
+  if (!ok) showToast('⚠ Saved locally — sheet sync failed, try Refresh','error');
   processData();
+  silentRefresh();
 }
 
 // =============================================
@@ -2139,8 +2186,10 @@ async function confirmEditBooking() {
   logActivity('edit', row.company, 'Booking amended: '+changes.join(', '), getCurrentUser()?.name||'Unknown');
   showToast('✓ Booking updated — '+row.company, 'success');
   const url = APPS_SCRIPT_URL+'?action=assign&row='+ri+'&status=Booked&bookedOn='+encodeURIComponent(dateStr)+'&trainer='+encodeURIComponent(trainer)+'&value='+value+'&trainingDays='+numDays;
-  try { await fetch(url, { method:'GET', redirect:'follow', mode:'no-cors' }); } catch(e) {}
+  const ok = await syncToSheet(url);
+  if (!ok) showToast('⚠ Saved locally — sheet sync failed, try Refresh','error');
   processData();
+  silentRefresh();
 }
 
 // =============================================
@@ -2166,8 +2215,10 @@ async function confirmCancel(){
   closeCancelModal();logActivity('cancel',row.company,'Cancelled — '+reason,who);
   showToast('Enquiry cancelled','');
   const url=APPS_SCRIPT_URL+'?action=assign&row='+ri+'&status=Cancelled';
-  try{await fetch(url,{method:'GET',redirect:'follow',mode:'no-cors'});}catch(e){}
+  const ok = await syncToSheet(url);
+  if (!ok) showToast('⚠ Saved locally — sheet sync failed, try Refresh','error');
   processData();
+  silentRefresh();
 }
 
 // =============================================
@@ -2867,14 +2918,25 @@ async function submitTrainingRequest() {
   nextBtn.textContent = '⏳ Submitting…';
   const payload = buildReqPayload();
   let submitted = false;
+  let scriptError = '';
 
-  // Try Apps Script
+  // Try with cors first so we can read success/error from Apps Script
   try {
     const params = new URLSearchParams(payload).toString();
-    await fetchWithTimeout(APPS_SCRIPT_URL + '?' + params, { method:'GET', redirect:'follow', mode:'no-cors' }, 10000);
-    submitted = true;
+    const res = await fetchWithTimeout(APPS_SCRIPT_URL + '?' + params, { method:'GET', redirect:'follow' }, 12000);
+    const text = await res.text();
+    if (text.includes('"success":true')) {
+      submitted = true;
+    } else {
+      try { scriptError = JSON.parse(text).error || 'Unknown error'; } catch(e) { scriptError = text.slice(0,80); }
+    }
   } catch(e) {
-    console.warn('Apps Script submit failed:', e.message);
+    // Fallback: fire-and-forget no-cors (can't confirm but best effort)
+    try {
+      const params = new URLSearchParams(payload).toString();
+      await fetch(APPS_SCRIPT_URL + '?' + params, { method:'GET', mode:'no-cors' });
+      submitted = true;
+    } catch(e2) { scriptError = e2.message; }
   }
 
   // Log locally regardless
@@ -2886,9 +2948,9 @@ async function submitTrainingRequest() {
     payload.email
   );
 
-  // Add optimistic row to local allData so it shows immediately in dashboard
+  // Optimistic row — shows up in dashboard immediately
   const newRow = {
-    rowIndex: Date.now(), // temp key
+    rowIndex: Date.now(),
     timestamp: payload.timestamp,
     date: toDate(payload.timestamp),
     company: payload.company,
@@ -2912,22 +2974,41 @@ async function submitTrainingRequest() {
 
   nextBtn.disabled = false;
 
-  // Show success screen
-  const msg = submitted
-    ? 'Your request has been sent to our team. We\'ll be in touch to confirm the date and finalise the agenda.'
-    : 'Your request has been saved locally and will sync when the connection is restored.';
+  const successMsg = submitted
+    ? 'Your request has been saved to the spreadsheet. Our team will review it and be in touch to confirm the date.'
+    : scriptError
+      ? 'We couldn\'t reach the spreadsheet (' + scriptError + '). Please try again or contact the team directly.'
+      : 'Request sent — we\'ll be in touch shortly.';
+
   document.getElementById('reqSuccessMsg').textContent =
-    (payload.requesterType === 'employee'
-      ? 'Referral logged for ' + payload.company + '. '
-      : '')
-    + msg;
+    (payload.requesterType === 'employee' ? 'Referral logged for ' + payload.company + '. ' : '')
+    + successMsg;
+
   showReqStep(5);
-  showToast('✓ Training request submitted for ' + payload.company, 'success');
+  if (submitted) {
+    showToast('✓ Training request saved to spreadsheet for ' + payload.company, 'success');
+  } else {
+    showToast('⚠ Could not reach spreadsheet — check connection and retry', 'error');
+  }
 }
 syncTrainers();
 initActivityFeed();
 clearSession();
 showLoginScreen();
+
+// ── Auto-refresh so all users see live data ──────────────────────
+// 1. Refresh when the user switches back to this tab after being away
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && allData.length) {
+    silentRefresh(500);
+  }
+});
+// 2. Poll every 2 minutes in the background
+setInterval(() => {
+  if (allData.length && document.visibilityState === 'visible') {
+    silentRefresh(0);
+  }
+}, 2 * 60 * 1000);
 
 // Load ICS feeds on startup (these don't require login)
 loadICSFeeds();
