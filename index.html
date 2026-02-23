@@ -1090,7 +1090,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="req-header-top">
         <div>
           <div class="req-header-title">&#128203; Request a Training Day</div>
-          <div class="req-header-desc">Fill in the details below and our team will be in touch to confirm your session.</div>
+          <div class="req-header-desc">Submit a training request on behalf of a client — our team will review and confirm the session.</div>
         </div>
         <button class="req-close" onclick="closeRequestForm()">&#10005;</button>
       </div>
@@ -1100,50 +1100,31 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <!-- Steps body -->
     <div class="req-body" id="reqBody">
 
-      <!-- STEP 1: Who's requesting -->
+      <!-- STEP 1: Your details (internal use only) -->
       <div class="req-step-pane" id="reqStep1">
-        <div class="req-step-title">Who is making this request?</div>
-        <div class="req-step-sub">This helps us tailor the form and track referrals correctly.</div>
-        <div class="req-type-grid">
-          <div class="req-type-card" id="reqTypeCustomer" onclick="selectRequesterType('customer')">
-            <div class="req-type-card-icon">&#127968;</div>
-            <div class="req-type-card-label">Client / Customer</div>
-            <div class="req-type-card-desc">I'm a Street customer requesting training for my team</div>
+        <div class="req-step-title">Your Details</div>
+        <div class="req-step-sub">Please confirm your name and team so we can log this referral correctly.</div>
+        <div class="req-2col">
+          <div class="req-field">
+            <label class="req-label required">Your Name</label>
+            <input type="text" class="req-input" id="reqReferredByName" placeholder="e.g. Sarah Jones">
           </div>
-          <div class="req-type-card" id="reqTypeEmployee" onclick="selectRequesterType('employee')">
-            <div class="req-type-card-icon">&#127970;</div>
-            <div class="req-type-card-label">Street Employee</div>
-            <div class="req-type-card-desc">I'm referring a client or submitting on behalf of a customer</div>
+          <div class="req-field">
+            <label class="req-label required">Your Team / Department</label>
+            <input type="text" class="req-input" id="reqReferredByTeam" placeholder="e.g. Onboarding, Sales">
           </div>
         </div>
-        <!-- Street employee extra: referred by -->
-        <div id="reqEmployeeFields" style="display:none;margin-top:16px;">
-          <div class="req-referred-banner">
-            <span>&#128275;</span>
-            <span>As a Street employee, please confirm who is referring this client and your name so we can log it correctly.</span>
+        <div class="req-field">
+          <label class="req-label">Invoice Value Quoted</label>
+          <div style="position:relative;">
+            <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text--dark--30);font-weight:600;">£</span>
+            <input type="number" class="req-input" id="reqQuotedValue" placeholder="0.00" min="0" step="0.01" style="padding-left:28px;">
           </div>
-          <div class="req-2col">
-            <div class="req-field">
-              <label class="req-label required">Your Name (Street Employee)</label>
-              <input type="text" class="req-input" id="reqReferredByName" placeholder="e.g. Sarah Jones">
-            </div>
-            <div class="req-field">
-              <label class="req-label required">Your Team / Department</label>
-              <input type="text" class="req-input" id="reqReferredByTeam" placeholder="e.g. Onboarding, Sales">
-            </div>
-          </div>
-          <div class="req-field">
-            <label class="req-label">Invoice Value Quoted</label>
-            <div style="position:relative;">
-              <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text--dark--30);font-weight:600;">£</span>
-              <input type="number" class="req-input" id="reqQuotedValue" placeholder="0.00" min="0" step="0.01" style="padding-left:28px;">
-            </div>
-            <div class="req-hint">Leave blank if no value has been discussed with the client yet. This will be logged against the booking.</div>
-          </div>
-          <div class="req-field">
-            <label class="req-label">Referral Notes</label>
-            <input type="text" class="req-input" id="reqReferralNotes" placeholder="e.g. Client mentioned during onboarding call, keen to book ASAP">
-          </div>
+          <div class="req-hint">Leave blank if no value has been discussed with the client yet. This will be logged against the booking.</div>
+        </div>
+        <div class="req-field">
+          <label class="req-label">Referral Notes</label>
+          <input type="text" class="req-input" id="reqReferralNotes" placeholder="e.g. Client mentioned during onboarding call, keen to book ASAP">
         </div>
       </div>
 
@@ -1183,6 +1164,10 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="req-step-pane" id="reqStep3">
         <div class="req-step-title">Training Package &amp; Goals</div>
         <div class="req-step-sub">Help us understand what you need so we can tailor the session perfectly.</div>
+        <div id="reqStep3SkippedBanner" style="display:none;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px;display:none;align-items:center;gap:8px;">
+          <span style="font-size:15px;">⚠️</span>
+          <span>This section was previously skipped — the trainer will need this info before the enquiry can be booked. Fill it in now or leave blank to flag it.</span>
+        </div>
 
         <div class="req-field">
           <label class="req-label required">What type of training are you interested in?</label>
@@ -1221,6 +1206,10 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="req-step-pane" id="reqStep4">
         <div class="req-step-title">Priorities &amp; Logistics</div>
         <div class="req-step-sub">Help us make the day run smoothly and focus on what matters most.</div>
+        <div id="reqStep4SkippedBanner" style="display:none;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e;margin-bottom:16px;display:none;align-items:center;gap:8px;">
+          <span style="font-size:15px;">⚠️</span>
+          <span>This section was previously skipped — the trainer will need this info before the enquiry can be booked. Fill it in now or leave blank to flag it.</span>
+        </div>
 
         <div class="req-field">
           <label class="req-label required">Top 3 priorities for this training day</label>
@@ -1367,8 +1356,9 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <!-- Footer -->
     <div class="req-footer" id="reqFooter">
       <span class="req-footer-hint" id="reqFooterHint"></span>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-ghost" id="reqBackBtn" onclick="reqPrevStep()" style="display:none;">&#8592; Back</button>
+        <button class="btn btn-ghost" id="reqSkipBtn" onclick="reqSkipStep()" style="display:none;color:var(--text--dark--30);border-color:var(--ui--underline--light-grey);">Skip for now &#8594;</button>
         <button class="btn btn-primary" id="reqNextBtn" onclick="reqNextStep()">Continue &#8594;</button>
       </div>
     </div>
@@ -2044,8 +2034,10 @@ function renderActionPanel(){
   tbody.innerHTML=rows.map(r=>{
     const stale=isStale(r),color=getTrainerColor(r.trainer);
     const trainerHtml=r.trainer?'<span class="trainer-pill" style="background:'+color+'22;color:'+color+';">'+esc(r.trainer)+'</span>':'<span style="color:var(--text--dark--20);font-size:12px;">&#8212;</span>';
+    const rowNeedsInfo=r.needsInfo||(getNotesForRow(r.rowIndex).some(n=>n.text&&n.text.includes('[NEEDS INFO]')));
     const actionBtns=[];
-    if(canBook)actionBtns.push('<button class="btn btn-success btn-sm" onclick="openBookModal('+r.rowIndex+')">&#128200; Book</button>');
+    if(canBook&&!rowNeedsInfo)actionBtns.push('<button class="btn btn-success btn-sm" onclick="openBookModal('+r.rowIndex+')">&#128200; Book</button>');
+    if(canBook&&rowNeedsInfo)actionBtns.push('<span title="Collect missing training info before this can be booked" style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;cursor:default;">⚠ Needs Info</span>');
     if(canCancel)actionBtns.push('<button class="btn btn-danger btn-sm" onclick="openCancelModal('+r.rowIndex+')">&#10007; Cancel</button>');
     const statusHtml=actionBtns.length?'<div style="display:flex;gap:6px;">'+actionBtns.join('')+'</div>':'<span class="status-badge status-pending">Pending</span>';
     const notesBtn=canNotes?'<div style="margin-top:4px;"><button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')">&#128221; Notes</button></div>':'';
@@ -2620,6 +2612,8 @@ function renderAllBookings(){
     const color=getTrainerColor(r.trainer);
     const tPill=r.trainer?'<span class="trainer-pill" style="background:'+color+'22;color:'+color+';">'+esc(r.trainer)+'</span>':'—';
     const days=(r.trainingDays||OPTION_DAYS[r.option]||0);
+    const rowNeedsInfo2=r.needsInfo||(getNotesForRow(r.rowIndex).some(n=>n.text&&n.text.includes('[NEEDS INFO]')));
+    const needsInfoBadge=rowNeedsInfo2?'<br><span title="Training info missing — must be collected before booking" style="display:inline-flex;align-items:center;gap:3px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;margin-top:3px;">⚠ Needs Info</span>':'';
     const editBtn=_adminAct&&r.status==='Booked'
       ?'<button class="btn btn-edit btn-sm" onclick="openEditBookingModal('+r.rowIndex+')" title="Edit booking details">&#9998;</button>':''
     const notesBtn='<button class="btn btn-ghost btn-sm" onclick="openNotesModal('+r.rowIndex+')" title="Notes">&#128221;</button>';
@@ -2631,7 +2625,7 @@ function renderAllBookings(){
       +'<td>'+tPill+'</td>'
       +'<td style="font-size:12px;text-align:center;">'+days+'</td>'
       +'<td style="font-size:13px;font-weight:600;">'+(r.revenue?'£'+r.revenue.toLocaleString():'—')+'</td>'
-      +'<td><span class="status-badge status-'+r.status.toLowerCase()+'">'+r.status+'</span></td>'
+      +'<td><span class="status-badge status-'+r.status.toLowerCase()+'">'+r.status+'</span>'+needsInfoBadge+'</td>'
       +'<td><div style="display:flex;gap:4px;">'+editBtn+notesBtn+'</div></td>'
       +'</tr>';
   }).join('');
@@ -2737,26 +2731,22 @@ function closeActivityPanel(){document.getElementById('activityPanel').classList
 // REQUEST TRAINING FORM
 // =============================================
 let _reqStep        = 1;
-let _reqType        = '';   // 'customer' | 'employee'
-const REQ_TOTAL_STEPS = 4;  // step 5 is success
-
-const REQ_STEP_LABELS = ['Who', 'Contact', 'Training', 'Logistics'];
-
-let _reqLocType = ''; // 'hq' | 'other'
+let _reqLocType     = ''; // 'hq' | 'other'
+let _skippedSteps   = new Set(); // tracks which steps were skipped
+const REQ_TOTAL_STEPS = 4;
+const REQ_STEP_LABELS = ['Your Details', 'Contact', 'Training', 'Logistics'];
 
 function selectLocation(type) {
   _reqLocType = type;
   document.getElementById('reqLocHQBtn').classList.toggle('selected', type === 'hq');
   document.getElementById('reqLocOtherBtn').classList.toggle('selected', type === 'other');
-  const hqConfirm    = document.getElementById('reqLocHQConfirm');
-  const otherFields  = document.getElementById('reqLocOtherFields');
-  hqConfirm.style.display   = type === 'hq'    ? 'flex' : 'none';
-  otherFields.style.display = type === 'other' ? ''     : 'none';
+  document.getElementById('reqLocHQConfirm').style.display   = type === 'hq'    ? '' : 'none';
+  document.getElementById('reqLocOtherFields').style.display = type === 'other' ? '' : 'none';
 }
 
 function openRequestForm() {
   _reqStep = 1;
-  _reqType = '';
+  _skippedSteps = new Set();
   resetRequestForm();
   buildReqProgress();
   showReqStep(1);
@@ -2768,7 +2758,6 @@ function closeRequestForm() {
 }
 
 function resetRequestForm() {
-  // Clear all inputs
   ['reqEmail','reqCompany','reqStakeholder','reqAttendees','reqGoLive','reqPreferredDate',
    'reqPriorities','reqFeatures','reqChallenges','reqLocAddress','reqLocParking','reqLocEquipOther','reqAnythingElse',
    'reqReferredByName','reqReferredByTeam','reqReferralNotes','reqQuotedValue','reqDietaryReqs'].forEach(id => {
@@ -2780,31 +2769,40 @@ function resetRequestForm() {
   document.getElementById('reqLocHQConfirm').style.display   = 'none';
   document.getElementById('reqLocOtherFields').style.display = 'none';
   document.querySelectorAll('#reqEquipGrid input[type=checkbox]').forEach(cb => cb.checked = false);
-  document.querySelectorAll('.req-type-card').forEach(el => el.classList.remove('selected'));
-  document.getElementById('reqEmployeeFields').style.display = 'none';
+  document.querySelectorAll('.req-modal input[type=radio], .req-modal input[type=checkbox]')
+    .forEach(el => el.checked = false);
   document.querySelectorAll('.req-input.err,.req-select.err,.req-textarea.err')
     .forEach(el => el.classList.remove('err'));
 }
 
-function selectRequesterType(type) {
-  _reqType = type;
-  document.querySelectorAll('.req-type-card').forEach(el => el.classList.remove('selected'));
-  document.getElementById(type === 'customer' ? 'reqTypeCustomer' : 'reqTypeEmployee').classList.add('selected');
-  document.getElementById('reqEmployeeFields').style.display = type === 'employee' ? '' : 'none';
+function reqSkipStep() {
+  _skippedSteps.add(_reqStep);
+  if (_reqStep === REQ_TOTAL_STEPS) {
+    submitTrainingRequest();
+  } else {
+    showReqStep(_reqStep + 1);
+    document.getElementById('reqBody').scrollTop = 0;
+  }
 }
 
 function buildReqProgress() {
   const el = document.getElementById('reqProgress'); if (!el) return;
   let html = '';
   REQ_STEP_LABELS.forEach((label, i) => {
-    const stepNum = i + 1;
+    const stepNum  = i + 1;
     const isDone   = _reqStep > stepNum;
     const isActive = _reqStep === stepNum;
-    const cls = isDone ? 'done' : isActive ? 'active' : '';
-    const icon = isDone ? '✓' : stepNum;
-    html += '<div class="req-step-dot ' + cls + '" style="position:relative;">'
+    const isSkipped = _skippedSteps.has(stepNum);
+    let cls = isDone ? 'done' : isActive ? 'active' : '';
+    // Skipped steps show a warning colour instead of green
+    const dotStyle = isSkipped && isDone
+      ? 'background:#f59e0b;border-color:#f59e0b;color:#fff;'
+      : '';
+    const icon = isSkipped && isDone ? '!' : isDone ? '✓' : stepNum;
+    html += '<div class="req-step-dot ' + cls + '" style="position:relative;' + dotStyle + '">'
       + icon
-      + '<span class="req-step-label">' + label + '</span>'
+      + '<span class="req-step-label" style="' + (isSkipped && isDone ? 'color:#f59e0b;' : '') + '">'
+      + label + (isSkipped && isDone ? ' ⚠' : '') + '</span>'
       + '</div>';
     if (i < REQ_STEP_LABELS.length - 1) {
       html += '<div class="req-step-line ' + (isDone ? 'done' : '') + '"></div>';
@@ -2816,35 +2814,46 @@ function buildReqProgress() {
 function showReqStep(step) {
   _reqStep = step;
   const isSuccess = step > REQ_TOTAL_STEPS;
-  // Toggle panes
   for (let i = 1; i <= REQ_TOTAL_STEPS + 1; i++) {
     const pane = document.getElementById('reqStep' + i);
     if (pane) pane.classList.toggle('active', i === step);
   }
-  // Progress
   buildReqProgress();
-  // Footer
   const footer  = document.getElementById('reqFooter');
   const backBtn = document.getElementById('reqBackBtn');
   const nextBtn = document.getElementById('reqNextBtn');
+  const skipBtn = document.getElementById('reqSkipBtn');
   const hint    = document.getElementById('reqFooterHint');
-  if (isSuccess) {
-    footer.style.display = 'none';
-    return;
-  }
+  if (isSuccess) { footer.style.display = 'none'; return; }
   footer.style.display = '';
-  backBtn.style.display  = step > 1 ? '' : 'none';
+  backBtn.style.display = step > 1 ? '' : 'none';
+
+  // Steps 3 and 4 are skippable
+  const canSkip = step === 3 || step === 4;
+  skipBtn.style.display = canSkip ? '' : 'none';
+
+  // Show skipped banner if returning to a previously skipped step
+  if (step === 3) {
+    const b = document.getElementById('reqStep3SkippedBanner');
+    if (b) b.style.display = _skippedSteps.has(3) ? 'flex' : 'none';
+  }
+  if (step === 4) {
+    const b = document.getElementById('reqStep4SkippedBanner');
+    if (b) b.style.display = _skippedSteps.has(4) ? 'flex' : 'none';
+  }
+
   const isLast = step === REQ_TOTAL_STEPS;
-  nextBtn.textContent    = isLast ? '✓ Submit Request' : 'Continue →';
-  nextBtn.className      = isLast ? 'btn btn-success' : 'btn btn-primary';
-  // Hint
+  nextBtn.textContent = isLast ? '✓ Submit Request' : 'Continue →';
+  nextBtn.className   = isLast ? 'btn btn-success' : 'btn btn-primary';
+
+  const skippedNote = _skippedSteps.size ? ' ⚠ ' + _skippedSteps.size + ' section(s) skipped' : '';
   const hints = [
     'Step 1 of 4 — required',
     'Step 2 of 4 — contact details',
-    'Step 3 of 4 — training package',
-    'Step 4 of 4 — priorities & logistics',
+    'Step 3 of 4 — training package' + (_skippedSteps.has(3) ? ' (skipped)' : ''),
+    'Step 4 of 4 — priorities & logistics' + (_skippedSteps.has(4) ? ' (skipped)' : ''),
   ];
-  hint.textContent = hints[step - 1] || '';
+  hint.textContent = (hints[step - 1] || '') + (step < 3 ? skippedNote : '');
 }
 
 function reqNextStep() {
@@ -2874,13 +2883,10 @@ function reqClear(el) { if (el) el.classList.remove('err'); }
 
 function validateReqStep(step) {
   if (step === 1) {
-    if (!_reqType) { showToast('Please select who is making this request', 'error'); return false; }
-    if (_reqType === 'employee') {
-      const name = document.getElementById('reqReferredByName').value.trim();
-      const team = document.getElementById('reqReferredByTeam').value.trim();
-      if (!name) return reqErr(document.getElementById('reqReferredByName'), 'Please enter your name');
-      if (!team) return reqErr(document.getElementById('reqReferredByTeam'), 'Please enter your team/department');
-    }
+    const name = document.getElementById('reqReferredByName').value.trim();
+    const team = document.getElementById('reqReferredByTeam').value.trim();
+    if (!name) return reqErr(document.getElementById('reqReferredByName'), 'Please enter your name');
+    if (!team) return reqErr(document.getElementById('reqReferredByTeam'), 'Please enter your team / department');
     return true;
   }
   if (step === 2) {
@@ -2896,18 +2902,22 @@ function validateReqStep(step) {
     return true;
   }
   if (step === 3) {
-    const type = document.querySelector('input[name="trainingType"]:checked');
-    const fam  = document.querySelector('input[name="teamFamiliarity"]:checked');
+    // If they're actively filling this in (not skipping), validate it
+    const type  = document.querySelector('input[name="trainingType"]:checked');
+    const fam   = document.querySelector('input[name="teamFamiliarity"]:checked');
     const areas = document.querySelectorAll('input[name="areas"]:checked');
-    if (!type) { showToast('Please select a training type', 'error'); return false; }
-    if (!fam)  { showToast('Please select your team\'s familiarity level', 'error'); return false; }
-    if (!areas.length) { showToast('Please select at least one area to cover', 'error'); return false; }
+    // Only block if they've partially filled it — empty is fine (skip handles it)
+    if (type && !fam)  { showToast('Please select your team\'s familiarity level', 'error'); return false; }
+    if (fam && !areas.length) { showToast('Please select at least one area to cover', 'error'); return false; }
+    // If anything is filled in, require the basics
+    if ((type || fam || areas.length) && !type) { showToast('Please select a training type', 'error'); return false; }
     return true;
   }
   if (step === 4) {
+    // Priorities only required if they haven't skipped and have started filling in
     const pri = document.getElementById('reqPriorities').value.trim();
+    // No hard block — skip button handles the empty case
     reqClear(document.getElementById('reqPriorities'));
-    if (!pri) return reqErr(document.getElementById('reqPriorities'), 'Please enter your top priorities for the day');
     return true;
   }
   return true;
@@ -2921,7 +2931,7 @@ function buildReqPayload() {
 
   return {
     action:          'submitRequest',
-    requesterType:   _reqType,
+    requesterType:   'employee',
     referredByName:  getVal('reqReferredByName'),
     referredByTeam:  getVal('reqReferredByTeam'),
     referralNotes:   getVal('reqReferralNotes'),
@@ -2953,6 +2963,10 @@ function buildReqPayload() {
     followUp:        getChecked('followUp').join(', '),
     anythingElse:    getVal('reqAnythingElse'),
     dietaryReqs:     getVal('reqDietaryReqs'),
+    needsInfo:       _skippedSteps.size > 0 ? 'true' : '',
+    skippedSections: _skippedSteps.size > 0
+      ? Array.from(_skippedSteps).map(s => s === 3 ? 'Training Package' : 'Priorities & Logistics').join(', ')
+      : '',
     timestamp:       new Date().toISOString(),
     submittedBy:     getCurrentUser()?.name || 'Dashboard User',
   };
@@ -2987,10 +3001,7 @@ async function submitTrainingRequest() {
 
   // Log locally regardless
   logActivity('request', payload.company,
-    (payload.requesterType === 'employee'
-      ? '📤 Employee referral by ' + payload.referredByName + ' (' + payload.referredByTeam + ')'
-      : '📋 Training request submitted')
-    + ' — ' + payload.trainingType,
+    '📤 Request by ' + payload.referredByName + ' (' + payload.referredByTeam + ') — ' + payload.trainingType,
     payload.email
   );
 
@@ -3014,8 +3025,18 @@ async function submitTrainingRequest() {
     revenue: payload.quotedValue ? parseFloat(payload.quotedValue.replace('£','')) || 0 : 0,
     _referredBy: payload.referredByName ? payload.referredByName + ' (' + payload.referredByTeam + ')' : '',
     _requesterType: payload.requesterType,
+    needsInfo: payload.needsInfo === 'true',
+    skippedSections: payload.skippedSections || '',
   };
   allData.unshift(newRow);
+
+  // Auto-note so trainers immediately see what info is still needed
+  if (payload.needsInfo === 'true') {
+    saveNoteForRow(newRow.rowIndex,
+      '⚠️ [NEEDS INFO] The following sections were skipped and must be collected before this enquiry can be booked: ' + payload.skippedSections,
+      payload.referredByName || 'System'
+    );
+  }
   processData();
 
   nextBtn.disabled = false;
@@ -3026,9 +3047,12 @@ async function submitTrainingRequest() {
       ? 'We couldn\'t reach the spreadsheet (' + scriptError + '). Please try again or contact the team directly.'
       : 'Request sent — we\'ll be in touch shortly.';
 
+  const skippedMsg = payload.skippedSections
+    ? ' ⚠️ Note: the following sections were skipped and will need to be collected by the trainer before booking: ' + payload.skippedSections + '.'
+    : '';
+
   document.getElementById('reqSuccessMsg').textContent =
-    (payload.requesterType === 'employee' ? 'Referral logged for ' + payload.company + '. ' : '')
-    + successMsg;
+    'Request logged for ' + payload.company + '. ' + successMsg + skippedMsg;
 
   showReqStep(5);
   if (submitted) {
