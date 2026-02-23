@@ -827,29 +827,44 @@ let revenueChartInst = null, optionChartInst = null;
 let calSettingsHolidayIcs = localStorage.getItem('calHolidayIcs') || HUMAANS_PUBLIC_HOLIDAYS_ICS;
 let calSettingsLeaveIcs = localStorage.getItem('calLeaveIcs') || HUMAANS_LEAVE_ICS;
 let currentReferralPerson = null;
+let unreadNotifs = 0;
 
 // ===================== INIT =====================
 window.addEventListener('DOMContentLoaded', () => {
-  loadUsers(); showLogin(); loadBankHolidays(); loadIcsData(); renderActivityFeed();
-  document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeAllModals(); closeNav(); closeProfileSidebar(); } });
-  document.addEventListener('click', e => { if(!e.target.closest('#notifWrapper')) document.getElementById('notifPanel').classList.remove('open'); });
+  loadUsers(); 
+  showLogin(); 
+  loadBankHolidays(); 
+  loadIcsData(); 
+  renderActivityFeed();
+  calcUnread();
+  
+  document.addEventListener('keydown', e => { 
+    if(e.key === 'Escape') { closeAllModals(); closeNav(); closeProfileSidebar(); } 
+  });
+  
+  document.addEventListener('click', e => { 
+    if(!e.target.closest('#notifWrapper')) {
+      const p = document.getElementById('notifPanel');
+      if(p) p.classList.remove('open'); 
+    }
+  });
 });
 
-// ---- USERS & AUTH ----
+// ===================== USERS & AUTH =====================
 const CANONICAL_USERS = [
-  {id:'u1', name:'Jack Cullen', role:'viewer', email:'jack.cullen@agentsoftware.net', jobTitle:'Onboarding', color:'#2147f4'},
-  {id:'u2', name:'Emma Cockcroft', role:'viewer', email:'emma.cockcroft@agentsoftware.net', jobTitle:'Onboarding', color:'#e53935'},
-  {id:'u3', name:'Sam Howat', role:'viewer', email:'sam.howat@agentsoftware.net', jobTitle:'Onboarding', color:'#22a06b'},
-  {id:'u4', name:'Liam Sorah', role:'viewer', email:'liam.sorah@agentsoftware.net', jobTitle:'Onboarding', color:'#f59e0b'},
+  {id:'u1', name:'Jack Cullen', role:'viewer', email:'jack.cullen@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#2147f4'},
+  {id:'u2', name:'Emma Cockcroft', role:'viewer', email:'emma.cockcroft@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#e53935'},
+  {id:'u3', name:'Sam Howat', role:'viewer', email:'sam.howat@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#22a06b'},
+  {id:'u4', name:'Liam Sorah', role:'viewer', email:'liam.sorah@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#f59e0b'},
   {id:'u5', name:'Max Hornby', role:'trainer', email:'max.hornby@agentsoftware.net', jobTitle:'Product Trainer', color:'#9c27b0'},
-  {id:'u6', name:'Saskia Kirkham', role:'viewer', email:'saskia.kirkham@agentsoftware.net', jobTitle:'Onboarding', color:'#00bcd4'},
+  {id:'u6', name:'Saskia Kirkham', role:'viewer', email:'saskia.kirkham@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#00bcd4'},
   {id:'u7', name:'Matt Hinawski', role:'viewer', email:'matthew.hinawski@agentsoftware.net', jobTitle:'Onboarding Admin', color:'#ff7043'},
-  {id:'u8', name:'Tracy Kettle', role:'viewer', email:'tracy.kettle@agentsoftware.net', jobTitle:'Onboarding', color:'#3f51b5'},
-  {id:'u9', name:'Lucie de Lison', role:'viewer', email:'lucie.delison@agentsoftware.net', jobTitle:'Onboarding', color:'#8bc34a'},
-  {id:'u10',name:'Karolina Pawlowicz',role:'viewer', email:'karolina.pawlowicz@agentsoftware.net', jobTitle:'Onboarding', color:'#e91e63'},
+  {id:'u8', name:'Tracy Kettle', role:'viewer', email:'tracy.kettle@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#3f51b5'},
+  {id:'u9', name:'Lucie de Lison', role:'viewer', email:'lucie.delison@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#8bc34a'},
+  {id:'u10',name:'Karolina Pawlowicz',role:'viewer', email:'karolina.pawlowicz@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#e91e63'},
   {id:'u11',name:'Amy Dawber', role:'admin', email:'amy.dawber@agentsoftware.net', jobTitle:'Product Trainer', color:'#f44336'},
   {id:'u12',name:'Rob Kenyon', role:'viewer', email:'rob.kenyon@agentsoftware.net', jobTitle:'Head of Street Onboarding',color:'#607d8b'},
-  {id:'u13',name:'Amy Lea', role:'viewer', email:'amy.lea@agentsoftware.net', jobTitle:'Onboarding', color:'#009688'},
+  {id:'u13',name:'Amy Lea', role:'viewer', email:'amy.lea@agentsoftware.net', jobTitle:'Onboarding Specialist', color:'#009688'},
   {id:'u14',name:'Stella Nicol', role:'viewer', email:'stella@agentsoftware.net', jobTitle:'Head of Client Onboarding',color:'#795548'},
 ];
 
@@ -862,30 +877,46 @@ function loadUsers() {
 }
 
 function saveUsers() {
-  const overrides = {}; const canonicalIds = new Set(CANONICAL_USERS.map(u => u.id)); const extraUsers = [];
+  const overrides = {}; 
+  const canonicalIds = new Set(CANONICAL_USERS.map(u => u.id)); 
+  const extraUsers = [];
+  
   trainers.forEach(u => {
     if(canonicalIds.has(u.id)) {
-      const canonical = CANONICAL_USERS.find(c => c.id === u.id); const diff = {};
+      const canonical = CANONICAL_USERS.find(c => c.id === u.id); 
+      const diff = {};
       ['role','color','pin','icsUrl'].forEach(k => { if(u[k] !== canonical[k]) diff[k] = u[k]; });
       if(Object.keys(diff).length) overrides[u.id] = diff;
-    } else { extraUsers.push(u); }
+    } else { 
+      extraUsers.push(u); 
+    }
   });
+  
   localStorage.setItem('dashUserOverrides', JSON.stringify(overrides));
   localStorage.setItem('dashExtraUsers', JSON.stringify(extraUsers));
 }
 
 function populateLoginSelect() {
   const sel = document.getElementById('loginUserSelect');
+  if(!sel) return;
   sel.innerHTML = '<option value="">— Choose account —</option>';
-  trainers.forEach(u => { sel.innerHTML += `<option value="${u.id}">${u.name} — ${u.jobTitle || u.role}</option>`; });
+  trainers.forEach(u => { 
+    sel.innerHTML += `<option value="${u.id}">${u.name} — ${u.jobTitle || u.role}</option>`; 
+  });
 }
 
-function showLogin() { document.getElementById('loginScreen').style.display='flex'; document.getElementById('mainHeader').style.display='none'; document.getElementById('mainContent').style.display='none'; }
+function showLogin() { 
+  document.getElementById('loginScreen').style.display='flex'; 
+  document.getElementById('mainHeader').style.display='none'; 
+  document.getElementById('mainContent').style.display='none'; 
+}
 
 function loginDirect() {
   const sel = document.getElementById('loginUserSelect');
   if(!sel.value) { sel.style.borderColor = '#c0303d'; return; }
-  sel.style.borderColor = ''; currentUser = trainers.find(u => u.id === sel.value); if(currentUser) enterDashboard();
+  sel.style.borderColor = ''; 
+  currentUser = trainers.find(u => u.id === sel.value); 
+  if(currentUser) enterDashboard();
 }
 
 function enterDashboard() {
@@ -902,29 +933,57 @@ function enterDashboard() {
   document.querySelectorAll('.admin-trainer-only').forEach(el => el.style.display = (currentUser.role === 'admin' || currentUser.role === 'trainer') ? '' : 'none');
   document.querySelectorAll('.admin-viewer-only').forEach(el => el.style.display = (currentUser.role === 'admin' || currentUser.role === 'viewer') ? '' : 'none');
 
-  updateCalTrainerFilter(); loadData();
+  updateCalTrainerFilter(); 
+  loadData();
 }
 
 function logout() { currentUser = null; showLogin(); }
 function shadowUser(idx) { 
   currentUser = trainers[idx]; 
   document.getElementById('shadowBanner').style.display = 'inline-block'; 
-  closeTrainerModal(); enterDashboard(); showToast('Shadowing ' + currentUser.name, 'success');
+  closeTrainerModal(); 
+  enterDashboard(); 
+  showToast('Shadowing ' + currentUser.name, 'success');
 }
 function exitShadow() { document.getElementById('shadowBanner').style.display = 'none'; logout(); }
 
+// ===================== NAVIGATION =====================
+function toggleNav() {
+  const open = document.getElementById('navDrawer').classList.toggle('open');
+  document.getElementById('navOverlay').classList.toggle('open', open);
+  document.getElementById('hamburgerBtn').classList.toggle('open', open);
+}
+function closeNav() {
+  document.getElementById('navDrawer').classList.remove('open');
+  document.getElementById('navOverlay').classList.remove('open');
+  document.getElementById('hamburgerBtn').classList.remove('open');
+}
+
 // ===================== DATA LOADING =====================
 async function loadData() {
-  const bar = document.getElementById('loadingBar'); bar.style.display = 'block'; bar.classList.add('active');
+  const bar = document.getElementById('loadingBar'); 
+  bar.style.display = 'block'; 
+  bar.classList.add('active');
+  
   try {
     const res = await fetch(SCRIPT_URL + '?action=getData&t=' + Date.now(), { method: 'GET', redirect: 'follow' });
     const json = await res.json();
-    if(!json.success) { showToast('Script error: ' + (json.error || 'Unknown'), 'error'); return; }
+    if(!json.success) { 
+      showToast('Script error: ' + (json.error || 'Unknown'), 'error'); 
+      return; 
+    }
+    
     allData = json.data.slice(1).map((row, i) => parseAppsScriptData(row, i, i + 2)).filter(Boolean);
     document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     renderAll();
-  } catch(e) { console.error(e); showToast('Could not load data', 'error'); } 
-  finally { bar.style.display = 'none'; bar.classList.remove('active'); }
+    
+  } catch(e) { 
+    console.error(e); 
+    showToast('Could not load data from spreadsheet', 'error'); 
+  } finally { 
+    bar.style.display = 'none'; 
+    bar.classList.remove('active'); 
+  }
 }
 
 const COL = { STATUS:0, TIMESTAMP:1, EMAIL:2, CONTACT:3, PREFERRED_DATE:4, OPTION:5, AREAS:6, FEATURES:7, ATTENDEES:8, LOCATION:9, PARKING:10, VENUE_SETUP:11, SCORE:12, COMPANY:13, TEAM_FAMILIARITY:14, PRIORITIES:15, FOLLOW_UP:16, ANYTHING_ELSE:17, GO_LIVE_DATE:18, REFERRED_BY:19, INVOICE_VALUE:20, TRAINER:21, BOOKED_DATE:22, TRAINING_DAYS:23 };
@@ -933,31 +992,49 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
   if(!row || !row[COL.STATUS]) return null;
   const rawPref = row[COL.PREFERRED_DATE] ? String(row[COL.PREFERRED_DATE]).trim() : '';
   let preferredDate = '';
+  
   if(rawPref && rawPref !== '—' && rawPref !== '--') {
-    const d = new Date(rawPref); preferredDate = isNaN(d.getTime()) ? rawPref : d.toISOString().split('T')[0];
+    const d = new Date(rawPref); 
+    preferredDate = isNaN(d.getTime()) ? rawPref : d.toISOString().split('T')[0];
   }
+  
   return {
-    _idx: arrayIdx, _rowNum: sheetRowNum, 
-    status: row[COL.STATUS].trim(), ts: row[COL.TIMESTAMP] ? new Date(row[COL.TIMESTAMP]) : null,
-    email: row[COL.EMAIL] || '', contact: row[COL.CONTACT] || '', company: row[COL.COMPANY] || '',
+    _idx: arrayIdx, 
+    _rowNum: sheetRowNum, 
+    status: row[COL.STATUS].trim(), 
+    ts: row[COL.TIMESTAMP] ? new Date(row[COL.TIMESTAMP]) : null,
+    email: row[COL.EMAIL] || '', 
+    contact: row[COL.CONTACT] || '', 
+    company: row[COL.COMPANY] || '',
     preferredDate, 
-    trainingOption: row[5] || 'Needs Selection', // Hard fallback if empty in col F
-    areas: row[COL.AREAS] || '', features: row[COL.FEATURES] || '', attendeesRaw: row[COL.ATTENDEES] || '',
-    locationRaw: row[COL.LOCATION] || '', parking: row[COL.PARKING] || '', venueSetup: row[COL.VENUE_SETUP] || '',
-    teamFamiliarity: row[COL.TEAM_FAMILIARITY] || '', priorities: row[COL.PRIORITIES] || '',
-    followUp: row[COL.FOLLOW_UP] || '', anythingElse: row[COL.ANYTHING_ELSE] || '', goLiveDate: row[COL.GO_LIVE_DATE] || '',
+    trainingOption: row[5] || 'Needs Selection', 
+    areas: row[COL.AREAS] || '', 
+    features: row[COL.FEATURES] || '', 
+    attendeesRaw: row[COL.ATTENDEES] || '',
+    locationRaw: row[COL.LOCATION] || '', 
+    parking: row[COL.PARKING] || '', 
+    venueSetup: row[COL.VENUE_SETUP] || '',
+    teamFamiliarity: row[COL.TEAM_FAMILIARITY] || '', 
+    priorities: row[COL.PRIORITIES] || '',
+    followUp: row[COL.FOLLOW_UP] || '', 
+    anythingElse: row[COL.ANYTHING_ELSE] || '', 
+    goLiveDate: row[COL.GO_LIVE_DATE] || '',
     referredBy: parseReferredByField(row[COL.REFERRED_BY] || ''),
     invoiceValue: row[COL.INVOICE_VALUE] ? parseFloat(String(row[COL.INVOICE_VALUE]).replace(/[£$,\s]/g,'')) : null,
-    trainer: row[21] || '', // Hardmapped Trainer assigned col V
+    trainer: row[21] || '', 
     bookedOn: row[COL.BOOKED_DATE] ? new Date(row[COL.BOOKED_DATE]) : null,
     trainingDays: row[COL.TRAINING_DAYS] ? parseInt(row[COL.TRAINING_DAYS]) || 1 : 1,
-    notes: tryParseNotes(localStorage.getItem('notes_' + arrayIdx)) // Load local notes
+    notes: tryParseNotes(localStorage.getItem('notes_' + arrayIdx))
   };
 }
 
-function tryParseNotes(val) { try { return JSON.parse(val) || []; } catch(e) { return []; } }
+function tryParseNotes(val) { 
+  try { return JSON.parse(val) || []; } catch(e) { return []; } 
+}
+
 function parseReferredByField(raw) {
-  if(!raw || !raw.trim()) return null; const str = raw.trim();
+  if(!raw || !raw.trim()) return null; 
+  const str = raw.trim();
   const m = str.match(/^(.+?)\s*\((.+?)\)(?:\s*[—–-]\s*(.*))?$/);
   if(m) return { name: m[1].trim(), team: m[2].trim(), notes: (m[3] || '').trim() };
   return { name: str, team: '', notes: '' };
@@ -966,96 +1043,195 @@ function parseReferredByField(raw) {
 // ===================== BANK HOLIDAYS & DATES =====================
 async function loadBankHolidays() {
   try {
-    const r = await fetch(UK_BANK_HOLIDAYS_API); const d = await r.json();
+    const r = await fetch(UK_BANK_HOLIDAYS_API); 
+    const d = await r.json();
     bankHolidays = (d['england-and-wales']?.events || []).map(e => e.date);
-  } catch(e) { bankHolidays = []; }
+  } catch(e) { 
+    bankHolidays = []; 
+  }
 }
-function isBankHoliday(date) { return bankHolidays.includes(date.toISOString().split('T')[0]); }
-function isWorkingDay(date) { const dow = date.getDay(); return dow !== 0 && dow !== 6 && !isBankHoliday(date); }
+function isBankHoliday(date) { 
+  return bankHolidays.includes(date.toISOString().split('T')[0]); 
+}
+function isWorkingDay(date) { 
+  const dow = date.getDay(); 
+  return dow !== 0 && dow !== 6 && !isBankHoliday(date); 
+}
+function addWorkingDays(fromDate, n) {
+  const d = new Date(fromDate);
+  let count = 0;
+  while(count < n) {
+    d.setDate(d.getDate() + 1);
+    if(isWorkingDay(d)) count++;
+  }
+  return d;
+}
 
-// ===================== ICS =====================
+// ===================== ICS / CALENDAR FEEDS =====================
 async function loadIcsData() {
-  calIcsEvents = []; calLeaveEvents = customLeave.map(l => ({ summary: l.trainer + ' Leave', start: new Date(l.start), end: new Date(l.end), type: 'leave' }));
-  if(calSettingsHolidayIcs) { try { const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(calSettingsHolidayIcs)); calIcsEvents = parseIcs(await r.text(), 'holiday'); } catch(e) {} }
-  if(calSettingsLeaveIcs) { try { const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(calSettingsLeaveIcs)); calLeaveEvents = calLeaveEvents.concat(parseIcs(await r.text(), 'leave')); } catch(e) {} }
-  updateIcsStatusBar(); if(allData.length) renderCalendar();
+  calIcsEvents = []; 
+  calLeaveEvents = customLeave.map(l => ({ summary: l.trainer + ' Leave', start: new Date(l.start), end: new Date(l.end), type: 'leave' }));
+  
+  // Using corsproxy.io instead of allorigins to fix the CORS blockage
+  if(calSettingsHolidayIcs) { 
+    try { 
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(calSettingsHolidayIcs)); 
+      calIcsEvents = parseIcs(await r.text(), 'holiday'); 
+    } catch(e) {
+      console.warn("Holiday feed failed");
+    } 
+  }
+  
+  if(calSettingsLeaveIcs) { 
+    try { 
+      const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(calSettingsLeaveIcs)); 
+      calLeaveEvents = calLeaveEvents.concat(parseIcs(await r.text(), 'leave')); 
+    } catch(e) {
+      console.warn("Leave feed failed");
+    } 
+  }
+  
+  updateIcsStatusBar(); 
+  if(allData.length) renderCalendar();
 }
+
 function parseIcs(text, type) {
-  const events = []; const blocks = text.split('BEGIN:VEVENT');
+  const events = []; 
+  const blocks = text.split('BEGIN:VEVENT');
   blocks.slice(1).forEach(block => {
     const get = key => { const m = block.match(new RegExp(key + ':([^\\r\\n]*)')); return m ? m[1].trim() : ''; };
-    const dtstart = get('DTSTART(?:;[^:]+)?'); if(!dtstart) return;
-    const parseD = s => { s = s.replace(/[^0-9T]/g,''); if(s.length === 8) return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)); return new Date(s); };
+    const dtstart = get('DTSTART(?:;[^:]+)?'); 
+    if(!dtstart) return;
+    const parseD = s => { 
+      s = s.replace(/[^0-9T]/g,''); 
+      if(s.length === 8) return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)); 
+      return new Date(s); 
+    };
     events.push({ summary: get('SUMMARY'), start: parseD(dtstart), end: parseD(get('DTEND(?:;[^:]+)?')), type });
   });
   return events;
 }
+
 function updateIcsStatusBar() {
   const bar = document.getElementById('icsStatusBar');
-  const okH = calIcsEvents.length > 0; const okL = calLeaveEvents.length > 0;
+  const okH = calIcsEvents.length > 0; 
+  const okL = calLeaveEvents.length > 0;
   bar.innerHTML = `<span class="ics-status"><span class="ics-dot ${okH?'ok':'error'}"></span>Holidays</span> | <span class="ics-status"><span class="ics-dot ${okL?'ok':'error'}"></span>Leave</span>`;
 }
 
 // ===================== NOTIFICATIONS / ACTIVITY =====================
-let unreadNotifs = 0;
 function logActivity(who, what, company, detail, type = 'events') {
   activityLog.unshift({ id: Date.now(), who, what, company, detail, type, ts: Date.now(), read: false });
   if(activityLog.length > 100) activityLog = activityLog.slice(0, 100);
   localStorage.setItem('dashActivityLog', JSON.stringify(activityLog));
   showToast(`${what} ${company?'- '+company:''}`);
-  calcUnread(); renderActivityFeed();
+  calcUnread(); 
+  renderActivityFeed();
 }
+
 function calcUnread() {
   unreadNotifs = activityLog.filter(x => !x.read).length;
   const dot = document.getElementById('bellDot');
-  if(unreadNotifs > 0) { dot.style.display = 'block'; } else { dot.style.display = 'none'; }
+  if(dot) {
+    if(unreadNotifs > 0) { dot.style.display = 'block'; } else { dot.style.display = 'none'; }
+  }
 }
+
 function toggleNotifPanel() { 
-  const p = document.getElementById('notifPanel'); p.classList.toggle('open'); 
+  const p = document.getElementById('notifPanel'); 
+  p.classList.toggle('open'); 
   if(p.classList.contains('open')) renderActivityFeed();
 }
+
 function switchNotifTab(tab) {
   document.getElementById('tabEvents').classList.toggle('active', tab==='events');
   document.getElementById('tabNotes').classList.toggle('active', tab==='notes');
   renderActivityFeed(tab);
 }
-function markAllRead() { activityLog.forEach(x => x.read = true); localStorage.setItem('dashActivityLog', JSON.stringify(activityLog)); calcUnread(); renderActivityFeed(document.querySelector('.notif-tab.active').id==='tabEvents'?'events':'notes'); }
-function renderActivityFeed(filterTab = document.querySelector('.notif-tab.active').id==='tabEvents'?'events':'notes') {
+
+function markAllRead() { 
+  activityLog.forEach(x => x.read = true); 
+  localStorage.setItem('dashActivityLog', JSON.stringify(activityLog)); 
+  calcUnread(); 
+  const currentTab = document.querySelector('.notif-tab.active')?.id === 'tabEvents' ? 'events' : 'notes';
+  renderActivityFeed(currentTab); 
+}
+
+function renderActivityFeed(filterTab) {
+  if(!filterTab) filterTab = document.querySelector('.notif-tab.active')?.id === 'tabEvents' ? 'events' : 'notes';
+  
   const body = document.getElementById('notifList');
+  if(!body) return;
+  
   const filtered = activityLog.filter(x => x.type === filterTab);
-  if(!filtered.length) { body.innerHTML = '<div class="activity-empty">No notifications</div>'; return; }
-  body.innerHTML = filtered.map(e => `<div class="notif-item ${e.read?'':'unread'}" onclick="this.classList.remove('unread');">
-    <div class="notif-title">${escHtml(e.who)}</div>
-    <div class="notif-desc">${escHtml(e.what)}${e.company ? ' — <strong>' + escHtml(e.company) + '</strong>' : ''}</div>
-    ${e.detail ? `<div class="notif-desc" style="color:var(--text--dark--30);">${escHtml(e.detail)}</div>` : ''}
-    <div class="notif-meta">${fmtDate(new Date(e.ts))} ${new Date(e.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
-  </div>`).join('');
+  if(!filtered.length) { 
+    body.innerHTML = '<div class="activity-empty">No notifications</div>'; 
+    return; 
+  }
+  
+  body.innerHTML = filtered.map(e => `
+    <div class="notif-item ${e.read?'':'unread'}" onclick="this.classList.remove('unread');">
+      <div class="notif-title">${escHtml(e.who)}</div>
+      <div class="notif-desc">${escHtml(e.what)}${e.company ? ' — <strong>' + escHtml(e.company) + '</strong>' : ''}</div>
+      ${e.detail ? `<div class="notif-desc" style="color:var(--text--dark--30);">${escHtml(e.detail)}</div>` : ''}
+      <div class="notif-meta">${fmtDate(new Date(e.ts))} ${new Date(e.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`).join('');
 }
 
 // ===================== RENDER HELPERS =====================
-function renderAll() { renderTrainerWorkload(); renderUnassigned(); renderActionNeeded(); renderKpis(); renderReferralLeaderboard(); renderUpcomingBookings(); renderCompletedBookings(); renderCalendar(); populateFilterDropdowns(); calcUnread(); }
+function renderAll() { 
+  renderTrainerWorkload(); 
+  renderUnassigned(); 
+  renderActionNeeded(); 
+  renderKpis(); 
+  renderReferralLeaderboard(); 
+  renderUpcomingBookings(); 
+  renderCompletedBookings(); 
+  renderCalendar(); 
+  populateFilterDropdowns(); 
+  calcUnread(); 
+}
+
 function getCompanyName(r) { return r.company || r.contact || '(Unknown)'; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtDate(d) { if(!d) return '—'; const dt = new Date(d); return isNaN(dt.getTime()) ? '—' : dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function fmtMoney(v) { return (v === null || v === undefined || isNaN(v)) ? '—' : '£' + Math.round(v).toLocaleString('en-GB'); }
+
+function companyCell(r) {
+  const name = getCompanyName(r);
+  return `<span class="company-link" onclick="openProfileSidebar(${r._idx})">${escHtml(name)}</span>`;
+}
+
 function optionBadge(opt) {
   if(!opt || opt === 'Needs Selection') return `<span class="option-badge opt-na">⚠️ Select Option</span>`;
-  const n = String(opt).replace(/[^0-9]/g,''); return n ? `<span class="option-badge opt-${n}">Option ${n}</span>` : `<span class="option-badge" style="background:#f3f4f6;">${escHtml(opt)}</span>`;
+  const n = String(opt).replace(/[^0-9]/g,''); 
+  return n ? `<span class="option-badge opt-${n}">Option ${n}</span>` : `<span class="option-badge" style="background:#f3f4f6;">${escHtml(opt)}</span>`;
 }
-function statusBadge(s) { const cls = {Unassigned:'status-unassigned',Pending:'status-pending',Booked:'status-booked',Cancelled:'status-cancelled'}[s] || ''; return `<span class="status-badge ${cls}">${escHtml(s)}</span>`; }
+
+function statusBadge(s) { 
+  const cls = {Unassigned:'status-unassigned',Pending:'status-pending',Booked:'status-booked',Cancelled:'status-cancelled'}[s] || ''; 
+  return `<span class="status-badge ${cls}">${escHtml(s)}</span>`; 
+}
+
 function trainerPill(name) {
   if(!name) return '<span style="color:var(--text--dark--20);font-size:11px;">Unassigned</span>';
   const color = trainers.find(u => u.name === name)?.color || '#888';
   return `<span class="trainer-pill" style="background:${color}22;color:${color};">${escHtml(name)}</span>`;
 }
-function staleBadge(r) { if(!r.ts || Math.floor((Date.now() - r.ts) / 86400000) < STALE_DAYS) return ''; return `<span class="stale-badge">⏱ ${Math.floor((Date.now() - r.ts) / 86400000)}d</span>`; }
+
+function staleBadge(r) { 
+  if(!r.ts || Math.floor((Date.now() - r.ts) / 86400000) < STALE_DAYS) return ''; 
+  return `<span class="stale-badge">⏱ ${Math.floor((Date.now() - r.ts) / 86400000)}d</span>`; 
+}
 
 // ===================== TRAINER WORKLOAD =====================
 function renderTrainerWorkload() {
   const grid = document.getElementById('trainerGrid');
   const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
   if(!trainerUsers.length) { grid.innerHTML = '<div style="padding:16px;color:var(--text--dark--30);">No trainers found.</div>'; return; }
-  const today = new Date(); today.setHours(0,0,0,0); const y30 = new Date(today); y30.setDate(y30.getDate()-30);
+  
+  const today = new Date(); today.setHours(0,0,0,0); 
+  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
   
   let workloadArr = trainerUsers.map((t, idx) => {
     const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
@@ -1064,18 +1240,29 @@ function renderTrainerWorkload() {
     const revLast30 = last30.reduce((s,r) => s + (r.invoiceValue||0), 0);
     const daysLast30 = last30.reduce((s,r) => s + (r.trainingDays||1), 0);
     const nextFree = getNextFreeDate(t.name);
-    return { t, color: t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length], last30, upcoming, revLast30, daysLast30, pct: Math.min(100, Math.round((daysLast30/20)*100)), nextFree };
+    
+    return { 
+      t, 
+      color: t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length], 
+      last30, 
+      upcoming, 
+      revLast30, 
+      daysLast30, 
+      pct: Math.min(100, Math.round((daysLast30/20)*100)), 
+      nextFree 
+    };
   });
 
-  grid.innerHTML = workloadArr.map(w => `<div class="trainer-card">
-    <div class="trainer-name"><div class="trainer-color-dot" style="background:${w.color};"></div>${escHtml(w.t.name)} <span class="status-badge" style="font-size:9px;padding:1px 5px;margin-left:auto;background:${w.color}22;color:${w.color};">${w.t.role}</span></div>
-    <div class="trainer-stat"><span>Sessions (30d)</span><span class="trainer-stat-val">${w.last30.length}</span></div>
-    <div class="trainer-stat"><span>Days (30d)</span><span class="trainer-stat-val">${w.daysLast30}</span></div>
-    <div class="trainer-stat"><span>Revenue (30d)</span><span class="trainer-stat-val">${fmtMoney(w.revLast30)}</span></div>
-    <div class="trainer-stat"><span>Upcoming</span><span class="trainer-stat-val">${w.upcoming.length}</span></div>
-    <div class="workload-bar-wrap"><div class="workload-bar" style="width:${w.pct}%;background:${w.color};"></div></div>
-    ${w.nextFree ? `<div class="next-free-tag">${w.nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`}
-  </div>`).join('');
+  grid.innerHTML = workloadArr.map(w => `
+    <div class="trainer-card">
+      <div class="trainer-name"><div class="trainer-color-dot" style="background:${w.color};"></div>${escHtml(w.t.name)} <span class="status-badge" style="font-size:9px;padding:1px 5px;margin-left:auto;background:${w.color}22;color:${w.color};">${w.t.role}</span></div>
+      <div class="trainer-stat"><span>Sessions (30d)</span><span class="trainer-stat-val">${w.last30.length}</span></div>
+      <div class="trainer-stat"><span>Days (30d)</span><span class="trainer-stat-val">${w.daysLast30}</span></div>
+      <div class="trainer-stat"><span>Revenue (30d)</span><span class="trainer-stat-val">${fmtMoney(w.revLast30)}</span></div>
+      <div class="trainer-stat"><span>Upcoming</span><span class="trainer-stat-val">${w.upcoming.length}</span></div>
+      <div class="workload-bar-wrap"><div class="workload-bar" style="width:${w.pct}%;background:${w.color};"></div></div>
+      ${w.nextFree ? `<div class="next-free-tag">${w.nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`}
+    </div>`).join('');
 }
 
 function getNextFreeDate(trainerName) {
@@ -1091,6 +1278,7 @@ function getNextFreeDate(trainerName) {
       const d = new Date(start); d.setDate(d.getDate()+i); busyDates.add(d.toISOString().split('T')[0]);
     }
     const travel = new Date(start); travel.setDate(travel.getDate()-1); busyDates.add(travel.toISOString().split('T')[0]);
+    
     // Admin day = First working day after training ends
     let adminD = new Date(start); adminD.setDate(adminD.getDate() + (r.trainingDays||1));
     while(!isWorkingDay(adminD)) adminD.setDate(adminD.getDate() + 1);
@@ -1118,9 +1306,15 @@ function getNextFreeDate(trainerName) {
 // ===================== UNASSIGNED & ACTION NEEDED =====================
 function renderUnassigned() {
   const rows = allData.filter(r => r.status === 'Unassigned');
-  document.getElementById('unassignedBadge').textContent = rows.length; document.getElementById('unassignedDot').style.display = rows.length ? 'block' : 'none';
+  document.getElementById('unassignedBadge').textContent = rows.length; 
+  document.getElementById('unassignedDot').style.display = rows.length ? 'block' : 'none';
+  
   const tbody = document.getElementById('unassignedBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
+  if(!rows.length) { 
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; 
+    return; 
+  }
+  
   tbody.innerHTML = rows.map(r => {
     const isStale = r.ts && (Date.now() - r.ts) >= STALE_DAYS*86400000;
     const missingInfo = !r.attendeesRaw || !r.preferredDate || !r.priorities || r.trainingOption === 'Needs Selection';
@@ -1140,12 +1334,22 @@ function renderUnassigned() {
 
 function renderActionNeeded() {
   const rows = allData.filter(r => r.status === 'Pending');
-  document.getElementById('actionBadge').textContent = rows.length; document.getElementById('actionDot').style.display = rows.length ? 'block' : 'none';
+  document.getElementById('actionBadge').textContent = rows.length; 
+  document.getElementById('actionDot').style.display = rows.length ? 'block' : 'none';
+  
   const tbody = document.getElementById('actionBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; return; }
+  if(!rows.length) { 
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; 
+    return; 
+  }
+  
   tbody.innerHTML = rows.map(r => `<tr>
-      <td>${fmtDate(r.ts)}</td><td>${companyCell(r)}</td><td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
-      <td>${optionBadge(r.trainingOption)}</td><td>${r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—'}</td><td>${trainerPill(r.trainer)}</td>
+      <td>${fmtDate(r.ts)}</td>
+      <td>${companyCell(r)}</td>
+      <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
+      <td>${optionBadge(r.trainingOption)}</td>
+      <td>${r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—'}</td>
+      <td>${trainerPill(r.trainer)}</td>
       <td style="display:flex;gap:6px;">
         ${(currentUser?.role==='admin' || currentUser?.role==='trainer') ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>` : ''}
         ${currentUser?.role==='admin' ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
@@ -1157,53 +1361,157 @@ function renderActionNeeded() {
 function isUpcoming(r) { return r.status !== 'Cancelled' && !(r.status === 'Booked' && r.bookedOn && r.bookedOn < new Date(new Date().setHours(0,0,0,0))); }
 function isCompleted(r) { return !isUpcoming(r); }
 
+function bookingTableHead() {
+  return `<th class="sortable" onclick="sortBookings('ts')">Submitted <span class="sort-icon">↕</span></th>
+    <th class="sortable" onclick="sortBookings('company')">Company <span class="sort-icon">↕</span></th>
+    <th>Contact</th>
+    <th class="sortable" onclick="sortBookings('trainingOption')">Option <span class="sort-icon">↕</span></th>
+    <th class="sortable" onclick="sortBookings('bookedOn')">Booked Date <span class="sort-icon">↕</span></th>
+    <th class="sortable" onclick="sortBookings('trainer')">Trainer <span class="sort-icon">↕</span></th>
+    <th class="sortable" onclick="sortBookings('invoiceValue')">Value <span class="sort-icon">↕</span></th>
+    <th>Status</th>
+    <th>Actions</th>`;
+}
+
 function renderUpcomingBookings() {
-  const sorted = sortData(getFilteredData().filter(isUpcoming)); const total = sorted.length; const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
-  upcomingPage = Math.min(upcomingPage, pages); const slice = sorted.slice((upcomingPage-1)*PAGE_SIZE, upcomingPage*PAGE_SIZE);
-  document.getElementById('upcomingBookingsHead').innerHTML = bookingTableHead(); document.getElementById('upcomingBadge').textContent = total;
-  document.getElementById('upcomingBookingsBody').innerHTML = slice.length ? slice.map(r => bookingRow(r)).join('') : '<tr><td colspan="9"><div class="empty-state">No upcoming bookings</div></td></tr>';
+  const sorted = sortData(getFilteredData().filter(isUpcoming)); 
+  const total = sorted.length; 
+  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  upcomingPage = Math.min(upcomingPage, pages); 
+  
+  const slice = sorted.slice((upcomingPage-1)*PAGE_SIZE, upcomingPage*PAGE_SIZE);
+  document.getElementById('upcomingBookingsHead').innerHTML = bookingTableHead(); 
+  document.getElementById('upcomingBadge').textContent = total;
+  
+  const tbody = document.getElementById('upcomingBookingsBody');
+  if(!slice.length) { 
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">No upcoming bookings</div></td></tr>'; 
+  } else {
+    tbody.innerHTML = slice.map(r => bookingRow(r)).join('');
+  }
   togglePagination('upcoming', total, pages);
 }
+
 function renderCompletedBookings() {
-  const sorted = sortData(getFilteredData().filter(isCompleted)); const total = sorted.length; const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
-  completedPage = Math.min(completedPage, pages); const slice = sorted.slice((completedPage-1)*PAGE_SIZE, completedPage*PAGE_SIZE);
-  document.getElementById('completedBookingsHead').innerHTML = bookingTableHead(); document.getElementById('completedBadge').textContent = total;
-  document.getElementById('completedBookingsBody').innerHTML = slice.length ? slice.map(r => bookingRow(r)).join('') : '<tr><td colspan="9"><div class="empty-state">No completed bookings</div></td></tr>';
+  const sorted = sortData(getFilteredData().filter(isCompleted)); 
+  const total = sorted.length; 
+  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
+  completedPage = Math.min(completedPage, pages); 
+  
+  const slice = sorted.slice((completedPage-1)*PAGE_SIZE, completedPage*PAGE_SIZE);
+  document.getElementById('completedBookingsHead').innerHTML = bookingTableHead(); 
+  document.getElementById('completedBadge').textContent = total;
+  
+  const tbody = document.getElementById('completedBookingsBody');
+  if(!slice.length) { 
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">No completed bookings</div></td></tr>'; 
+  } else {
+    tbody.innerHTML = slice.map(r => bookingRow(r)).join('');
+  }
   togglePagination('completed', total, pages);
 }
+
 function togglePagination(type, total, pages) {
   const pg = document.getElementById(type + 'Pagination');
-  if(total > PAGE_SIZE) { pg.style.display = 'flex'; document.getElementById(type+'PageInfo').textContent = `Page ${type==='upcoming'?upcomingPage:completedPage} of ${pages}`; document.getElementById(type+'PrevBtn').disabled = (type==='upcoming'?upcomingPage:completedPage) <= 1; document.getElementById(type+'NextBtn').disabled = (type==='upcoming'?upcomingPage:completedPage) >= pages; document.getElementById(type+'RowCount').textContent = `${total} bookings`; } else { pg.style.display = 'none'; }
+  if(!pg) return;
+  if(total > PAGE_SIZE) { 
+    pg.style.display = 'flex'; 
+    document.getElementById(type+'PageInfo').textContent = `Page ${type==='upcoming'?upcomingPage:completedPage} of ${pages}`; 
+    document.getElementById(type+'PrevBtn').disabled = (type==='upcoming'?upcomingPage:completedPage) <= 1; 
+    document.getElementById(type+'NextBtn').disabled = (type==='upcoming'?upcomingPage:completedPage) >= pages; 
+    document.getElementById(type+'RowCount').textContent = `${total} bookings`; 
+  } else { 
+    pg.style.display = 'none'; 
+  }
 }
 
 function bookingRow(r) {
   const isPastBooking = r.status === 'Booked' && r.bookedOn && r.bookedOn < new Date(new Date().setHours(0,0,0,0));
   const actions = [];
+  
   if(currentUser?.role === 'admin') {
     if(r.status === 'Booked') actions.push(`<button class="btn btn-edit btn-sm" onclick="openEditBookingModal(${r._idx})">✎ Edit</button>`);
     if(r.status === 'Pending' || r.status === 'Unassigned') actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
     if(r.status !== 'Cancelled' && !isPastBooking) actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
   }
-  return `<tr><td>${fmtDate(r.ts)}</td><td>${companyCell(r)}</td><td style="font-size:11px;">${escHtml(r.contact)}</td><td>${optionBadge(r.trainingOption)}</td><td>${fmtDate(r.bookedOn)}</td><td>${trainerPill(r.trainer)}</td><td>${r.invoiceValue !== null ? fmtMoney(r.invoiceValue) : '—'}</td><td>${statusBadge(r.status)}</td><td style="display:flex;gap:5px;flex-wrap:wrap;">${actions.join('')}</td></tr>`;
+  
+  return `<tr>
+    <td>${fmtDate(r.ts)}</td>
+    <td>${companyCell(r)}</td>
+    <td style="font-size:11px;">${escHtml(r.contact)}</td>
+    <td>${optionBadge(r.trainingOption)}</td>
+    <td>${fmtDate(r.bookedOn)}</td>
+    <td>${trainerPill(r.trainer)}</td>
+    <td>${r.invoiceValue !== null ? fmtMoney(r.invoiceValue) : '—'}</td>
+    <td>${statusBadge(r.status)}</td>
+    <td style="display:flex;gap:5px;flex-wrap:wrap;">${actions.join('')}</td>
+  </tr>`;
 }
 
 function getFilteredData() {
   const search = (document.getElementById('bookingSearch')?.value || '').toLowerCase();
-  const fStatus = document.getElementById('filterStatus')?.value || ''; const fTrainer = document.getElementById('filterTrainer')?.value || ''; const fOption = document.getElementById('filterOption')?.value || ''; const fFrom = document.getElementById('filterDateFrom')?.value || ''; const fTo = document.getElementById('filterDateTo')?.value || '';
+  const fStatus = document.getElementById('filterStatus')?.value || ''; 
+  const fTrainer = document.getElementById('filterTrainer')?.value || ''; 
+  const fOption = document.getElementById('filterOption')?.value || ''; 
+  const fFrom = document.getElementById('filterDateFrom')?.value || ''; 
+  const fTo = document.getElementById('filterDateTo')?.value || '';
+  
   return allData.filter(r => {
     if(search && !getCompanyName(r).toLowerCase().includes(search) && !r.contact.toLowerCase().includes(search)) return false;
-    if(fStatus && r.status !== fStatus) return false; if(fTrainer && r.trainer !== fTrainer) return false; if(fOption && String(r.trainingOption).indexOf(fOption) === -1) return false;
-    if(fFrom && r.bookedOn && r.bookedOn.toISOString().split('T')[0] < fFrom) return false; if(fTo && r.bookedOn && r.bookedOn.toISOString().split('T')[0] > fTo) return false; return true;
+    if(fStatus && r.status !== fStatus) return false; 
+    if(fTrainer && r.trainer !== fTrainer) return false; 
+    if(fOption && String(r.trainingOption).indexOf(fOption) === -1) return false;
+    if(fFrom && r.bookedOn && r.bookedOn.toISOString().split('T')[0] < fFrom) return false; 
+    if(fTo && r.bookedOn && r.bookedOn.toISOString().split('T')[0] > fTo) return false; 
+    return true;
   });
 }
+
+function sortBookings(col) {
+  if(sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  renderUpcomingBookings(); 
+  renderCompletedBookings();
+}
+
+function sortData(rows) {
+  if(!sortCol) return rows;
+  return [...rows].sort((a, b) => {
+    let av, bv;
+    if(sortCol === 'company') { av = getCompanyName(a).toLowerCase(); bv = getCompanyName(b).toLowerCase(); }
+    else if(sortCol === 'ts') { av = a.ts?.getTime()||0; bv = b.ts?.getTime()||0; }
+    else if(sortCol === 'bookedOn') { av = a.bookedOn?.getTime()||0; bv = b.bookedOn?.getTime()||0; }
+    else if(sortCol === 'invoiceValue') { av = a.invoiceValue||0; bv = b.invoiceValue||0; }
+    else { av = String(a[sortCol]||'').toLowerCase(); bv = String(b[sortCol]||'').toLowerCase(); }
+    return av < bv ? -sortDir : av > bv ? sortDir : 0;
+  });
+}
+
+function changeUpcomingPage(d) { upcomingPage += d; renderUpcomingBookings(); }
+function changeCompletedPage(d) { completedPage += d; renderCompletedBookings(); }
 function resetPageAndRender() { upcomingPage = 1; completedPage = 1; renderUpcomingBookings(); renderCompletedBookings(); }
-function clearBookingFilters() { ['bookingSearch','filterStatus','filterTrainer','filterOption','filterDateFrom','filterDateTo'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); resetPageAndRender(); }
-function populateFilterDropdowns() { const trainerSel = document.getElementById('filterTrainer'); if(trainerSel) { const current = trainerSel.value; trainerSel.innerHTML = '<option value="">All Trainers</option>'; [...new Set(allData.map(r => r.trainer).filter(Boolean))].sort().forEach(n => trainerSel.innerHTML += `<option value="${n}">${n}</option>`); trainerSel.value = current; } }
+
+function clearBookingFilters() { 
+  ['bookingSearch','filterStatus','filterTrainer','filterOption','filterDateFrom','filterDateTo'].forEach(id => { 
+    const el = document.getElementById(id); if(el) el.value = ''; 
+  }); 
+  resetPageAndRender(); 
+}
+
+function populateFilterDropdowns() { 
+  const trainerSel = document.getElementById('filterTrainer'); 
+  if(trainerSel) { 
+    const current = trainerSel.value; 
+    trainerSel.innerHTML = '<option value="">All Trainers</option>'; 
+    [...new Set(allData.map(r => r.trainer).filter(Boolean))].sort().forEach(n => trainerSel.innerHTML += `<option value="${n}">${n}</option>`); 
+    trainerSel.value = current; 
+  } 
+}
 
 // ===================== KPIs & CHARTS =====================
 function renderKpis() {
   const now = new Date(); const yr = now.getFullYear(); const mon = now.getMonth(); const lastMon = mon === 0 ? 11 : mon - 1; const lastMonYr = mon === 0 ? yr - 1 : yr;
   const booked = allData.filter(r => r.status === 'Booked');
+  
   const thisYear = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr);
   const thisMonth = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon);
   const lastMonth = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === lastMonYr && r.bookedOn.getMonth() === lastMon);
@@ -1227,78 +1535,156 @@ function renderKpis() {
   }
 
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('thisMonthLabel').textContent = monthNames[mon] + ' ' + yr; document.getElementById('lastMonthLabel').textContent = monthNames[lastMon] + ' ' + lastMonYr; document.getElementById('thisMonthRev').textContent = fmtMoney(revMonth); document.getElementById('lastMonthRev').textContent = fmtMoney(revLastMonth);
+  document.getElementById('thisMonthLabel').textContent = monthNames[mon] + ' ' + yr; 
+  document.getElementById('lastMonthLabel').textContent = monthNames[lastMon] + ' ' + lastMonYr; 
+  document.getElementById('thisMonthRev').textContent = fmtMoney(revMonth); 
+  document.getElementById('lastMonthRev').textContent = fmtMoney(revLastMonth);
 
-  if(revenueChartInst) revenueChartInst.destroy(); if(optionChartInst) optionChartInst.destroy();
+  if(revenueChartInst) revenueChartInst.destroy(); 
+  if(optionChartInst) optionChartInst.destroy();
+  
   if(document.getElementById('revenueChart')) {
     revenueChartInst = new Chart(document.getElementById('revenueChart'), {type:'bar',data:{labels:monthNames,datasets:[{label:String(yr),data:monthNames.map((_,m)=>thisYear.filter(r=>r.bookedOn.getMonth()===m).reduce((s,r)=>s+(r.invoiceValue||0),0)),backgroundColor:'rgba(33,71,244,0.7)',borderRadius:4},{label:String(yr-1),data:monthNames.map((_,m)=>booked.filter(r=>r.bookedOn&&r.bookedOn.getFullYear()===yr-1&&r.bookedOn.getMonth()===m).reduce((s,r)=>s+(r.invoiceValue||0),0)),backgroundColor:'rgba(33,71,244,0.2)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10}}},scales:{y:{ticks:{callback:v=>'£'+v.toLocaleString('en-GB')}}}}});
   }
+  
   if(document.getElementById('optionChart')) {
     optionChartInst = new Chart(document.getElementById('optionChart'), {type:'doughnut',data:{labels:['Opt 1','Opt 2','Opt 3','Opt 4','Opt 5'],datasets:[{data:[1,2,3,4,5].map(n=>thisYear.filter(r=>String(r.trainingOption||'').includes(String(n))).length),backgroundColor:['#2147f4','#8b5cf6','#f59e0b','#22a06b','#ef4444'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10}}}}});
   }
 }
 
+// KPI MODALS (Optional Details)
+function openKpiModal(type) {
+  const overlay = document.getElementById('kpiModalOverlay');
+  const title = document.getElementById('kpiModalTitle');
+  const sub = document.getElementById('kpiModalSubtitle');
+  const stats = document.getElementById('kpiStatGrid');
+  const thead = document.getElementById('kpiModalTableHead');
+  const tbody = document.getElementById('kpiModalTableBody');
+  overlay.classList.add('open');
+  
+  const now = new Date(); const yr = now.getFullYear();
+  if(type === 'revYear') {
+    title.textContent = 'Revenue This Year — Booked Sessions';
+    sub.textContent = `All booked sessions in ${yr} with invoice values`;
+    const rows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.invoiceValue);
+    const total = rows.reduce((s,r) => s+(r.invoiceValue||0),0);
+    stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(total)}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Sessions</div><div class="kpi-stat-value">${rows.length}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Avg Fee</div><div class="kpi-stat-value">${rows.length?fmtMoney(total/rows.length):'—'}</div></div><div class="kpi-stat"><div class="kpi-stat-label">With Value</div><div class="kpi-stat-value">${rows.length}</div></div>`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Value</th></tr>';
+    tbody.innerHTML = rows.sort((a,b) => (b.invoiceValue||0)-(a.invoiceValue||0)).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;font-weight:600;">${fmtMoney(r.invoiceValue)}</td></tr>`).join('');
+  } else if(type === 'days') {
+    title.textContent = 'Training Days This Year';
+    const rows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr);
+    const total = rows.reduce((s,r) => s+(r.trainingDays||1),0);
+    stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">Total Days</div><div class="kpi-stat-value">${total}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Sessions</div><div class="kpi-stat-value">${rows.length}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Avg Days/Session</div><div class="kpi-stat-value">${rows.length?(total/rows.length).toFixed(1):'—'}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Busiest Month</div><div class="kpi-stat-value">—</div></div>`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Days</th></tr>';
+    tbody.innerHTML = rows.sort((a,b) => (b.trainingDays||1)-(a.trainingDays||1)).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;font-weight:600;">${r.trainingDays||1}</td></tr>`).join('');
+  } else {
+    title.textContent = 'Overview'; sub.textContent = ''; stats.innerHTML = ''; thead.innerHTML = ''; tbody.innerHTML = '';
+  }
+}
+
 // ===================== CALENDAR =====================
 function calChangeMonth(dir) { currentCalMonth.setMonth(currentCalMonth.getMonth() + dir); renderCalendar(); }
-function updateCalTrainerFilter() { const sel = document.getElementById('calFilterTrainer'); if(sel) { sel.innerHTML = '<option value="">All Trainers</option>'; trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}">${t.name}</option>`); } }
+
+function updateCalTrainerFilter() { 
+  const sel = document.getElementById('calFilterTrainer'); 
+  if(sel) { 
+    sel.innerHTML = '<option value="">All Trainers</option>'; 
+    trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}">${t.name}</option>`); 
+  } 
+}
 
 function renderCalendar() {
-  const year = currentCalMonth.getFullYear(); const month = currentCalMonth.getMonth();
+  const year = currentCalMonth.getFullYear(); 
+  const month = currentCalMonth.getMonth();
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   document.getElementById('calMonthTitle').textContent = `${monthNames[month]} ${year}`;
   
   let startDow = new Date(year, month, 1).getDay(); if(startDow === 0) startDow = 7; startDow--;
-  const daysInMonth = new Date(year, month + 1, 0).getDate(); const today = new Date(); today.setHours(0,0,0,0);
+  const daysInMonth = new Date(year, month + 1, 0).getDate(); 
+  const today = new Date(); today.setHours(0,0,0,0);
   const trainerFilter = document.getElementById('calFilterTrainer')?.value || '';
+  
   const bookedRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === year && r.bookedOn.getMonth() === month && (!trainerFilter || r.trainer === trainerFilter));
   
   const eventsByDay = {};
+  
   bookedRows.forEach(r => {
     const color = trainers.find(u => u.name === r.trainer)?.color || '#2147f4';
     
     // Training Days
     for(let i = 0; i < (r.trainingDays || 1); i++) {
       const d = new Date(r.bookedOn); d.setDate(d.getDate() + i);
-      if(d.getMonth() === month) { const day = d.getDate(); if(!eventsByDay[day]) eventsByDay[day] = []; eventsByDay[day].push({ label: getCompanyName(r), color, rowIdx: r._idx }); }
+      if(d.getMonth() === month) { 
+        const day = d.getDate(); 
+        if(!eventsByDay[day]) eventsByDay[day] = []; 
+        eventsByDay[day].push({ label: getCompanyName(r), color, rowIdx: r._idx }); 
+      }
     }
+    
     // Travel Day
     const travel = new Date(r.bookedOn); travel.setDate(travel.getDate()-1);
-    if(travel.getMonth() === month) { const tDay = travel.getDate(); if(!eventsByDay[tDay]) eventsByDay[tDay] = []; eventsByDay[tDay].push({ label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', rowIdx: r._idx }); }
+    if(travel.getMonth() === month) { 
+      const tDay = travel.getDate(); 
+      if(!eventsByDay[tDay]) eventsByDay[tDay] = []; 
+      eventsByDay[tDay].push({ label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', rowIdx: r._idx }); 
+    }
     
     // Admin Day (first working day after training)
     let admin = new Date(r.bookedOn); admin.setDate(admin.getDate() + (r.trainingDays || 1));
     while(!isWorkingDay(admin)) admin.setDate(admin.getDate() + 1);
     if(admin.getMonth() === month && admin.getFullYear() === year) {
-      const aDay = admin.getDate(); if(!eventsByDay[aDay]) eventsByDay[aDay] = []; eventsByDay[aDay].push({ label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', rowIdx: r._idx });
+      const aDay = admin.getDate(); 
+      if(!eventsByDay[aDay]) eventsByDay[aDay] = []; 
+      eventsByDay[aDay].push({ label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', rowIdx: r._idx });
     }
   });
 
-  calIcsEvents.forEach(ev => { if(ev.start && ev.start.getFullYear() === year && ev.start.getMonth() === month) { const d = ev.start.getDate(); if(!eventsByDay[d]) eventsByDay[d] = []; eventsByDay[d].push({ label: ev.summary, color: '#fef9c3', textColor: '#92400e' }); } });
+  // ICS Events
+  calIcsEvents.forEach(ev => { 
+    if(ev.start && ev.start.getFullYear() === year && ev.start.getMonth() === month) { 
+      const d = ev.start.getDate(); 
+      if(!eventsByDay[d]) eventsByDay[d] = []; 
+      eventsByDay[d].push({ label: ev.summary, color: '#fef9c3', textColor: '#92400e' }); 
+    } 
+  });
+  
   calLeaveEvents.forEach(ev => { 
     if(!trainerFilter || ev.summary.includes(trainerFilter)) {
       let cur = new Date(ev.start);
       while(cur <= ev.end) {
         if(cur.getFullYear() === year && cur.getMonth() === month) {
-          const d = cur.getDate(); if(!eventsByDay[d]) eventsByDay[d] = []; eventsByDay[d].push({ label: ev.summary, color: '#f3e8ff', textColor: '#7c3aed' });
+          const d = cur.getDate(); 
+          if(!eventsByDay[d]) eventsByDay[d] = []; 
+          eventsByDay[d].push({ label: ev.summary, color: '#f3e8ff', textColor: '#7c3aed' });
         }
         cur.setDate(cur.getDate()+1);
       }
     }
   });
 
-  let html = ''; for(let i = 0; i < startDow; i++) html += '<div class="cal-day cal-day-empty"></div>';
+  // Render Grid
+  let html = ''; 
+  for(let i = 0; i < startDow; i++) html += '<div class="cal-day cal-day-empty"></div>';
+  
   for(let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month, d); const isHol = isBankHoliday(date);
+    const date = new Date(year, month, d); 
+    const isHol = isBankHoliday(date);
     let cls = 'cal-day' + ((date.getDay()===0||date.getDay()===6)?' cal-day-weekend':'') + (date.getTime()===today.getTime()?' cal-day-today':'') + (date<today?' cal-day-past':'') + (isHol?' cal-day-holiday':'');
+    
     let evHtml = (eventsByDay[d] || []).slice(0,3).map(ev => `<span class="cal-event" style="background:${ev.color};color:${ev.textColor||'#fff'};" ${ev.rowIdx!==undefined?`onclick="openCalEventModal(${ev.rowIdx})"`:''} title="${escHtml(ev.label)}">${escHtml(ev.label)}</span>`).join('');
+    
     if((eventsByDay[d]||[]).length > 3) evHtml += `<span class="cal-event-more">+${eventsByDay[d].length-3} more</span>`;
+    
     html += `<div class="${cls}"><span class="cal-day-num">${date.getTime()===today.getTime() ? `<span style="background:var(--action-primary-blue);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">${d}</span>` : d}</span>${evHtml}</div>`;
   }
+  
   document.getElementById('calDays').innerHTML = html;
   
   // Render Upcoming Sidebar
   const upcoming = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today).sort((a,b) => a.bookedOn - b.bookedOn).slice(0,8);
   document.getElementById('calUpcomingCount').textContent = upcoming.length + ' sessions';
+  
   document.getElementById('calUpcomingBody').innerHTML = upcoming.length ? upcoming.map(r => {
     const color = trainers.find(u => u.name === r.trainer)?.color || '#888';
     return `<div class="cal-upcoming-item"><div class="cal-upcoming-date"><div class="cal-upcoming-date-day">${r.bookedOn.getDate()}</div><div class="cal-upcoming-date-mon">${monthNames[r.bookedOn.getMonth()].substring(0,3)}</div></div><div class="cal-upcoming-body-text"><div class="cal-upcoming-company">${escHtml(getCompanyName(r))}</div><div class="cal-upcoming-meta" style="display:flex;align-items:center;gap:6px;"><span class="trainer-pill" style="background:${color}22;color:${color};font-size:10px;padding:1px 6px;">${escHtml(r.trainer||'TBC')}</span> ${r.trainingDays||1} day${(r.trainingDays||1)!==1?'s':''}</div></div></div>`;
@@ -1307,110 +1693,493 @@ function renderCalendar() {
 
 // ===================== LEAVE MODAL =====================
 function openLeaveModal() {
-  const sel = document.getElementById('leaveTrainer'); sel.innerHTML = '<option value="">— Select trainer —</option>';
+  const sel = document.getElementById('leaveTrainer'); 
+  sel.innerHTML = '<option value="">— Select trainer —</option>';
   trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}">${t.name}</option>`);
-  document.getElementById('leaveStart').value = ''; document.getElementById('leaveEnd').value = '';
+  document.getElementById('leaveStart').value = ''; 
+  document.getElementById('leaveEnd').value = '';
   document.getElementById('leaveModalOverlay').classList.add('open');
 }
+
 function closeLeaveModal() { document.getElementById('leaveModalOverlay').classList.remove('open'); }
+
 function saveLeave() {
-  const t = document.getElementById('leaveTrainer').value; const s = document.getElementById('leaveStart').value; const e = document.getElementById('leaveEnd').value;
+  const t = document.getElementById('leaveTrainer').value; 
+  const s = document.getElementById('leaveStart').value; 
+  const e = document.getElementById('leaveEnd').value;
+  
   if(!t || !s || !e) return alert('Fill all fields');
+  
   customLeave.push({ trainer: t, start: s, end: e });
   localStorage.setItem('dashCustomLeave', JSON.stringify(customLeave));
   logActivity(currentUser?.name||'?', 'Added Leave', t, `From ${s} to ${e}`);
-  closeLeaveModal(); loadIcsData(); renderTrainerWorkload(); showToast('Leave added');
+  
+  closeLeaveModal(); 
+  loadIcsData(); 
+  renderTrainerWorkload(); 
+  showToast('Leave added successfully');
 }
 
-// ===================== ASSIGN & BOOK =====================
+// ===================== MODALS & ACTIONS =====================
 function openAssignModal(idx) {
-  const r = allData.find(x => x._idx === idx); if(!r) return; currentAssignRow = r;
-  document.getElementById('assignModalCompany').textContent = getCompanyName(r); document.getElementById('assignModalContact').textContent = r.contact + ' · ' + r.email;
+  const r = allData.find(x => x._idx === idx); 
+  if(!r) return; 
+  currentAssignRow = r;
+  
+  document.getElementById('assignModalCompany').textContent = getCompanyName(r); 
+  document.getElementById('assignModalContact').textContent = r.contact + ' · ' + r.email;
   document.getElementById('assignModalOption').innerHTML = optionBadge(r.trainingOption) + ' ' + (r.preferredDate ? '· Preferred: ' + fmtDate(new Date(r.preferredDate)) : '');
-  const sel = document.getElementById('assignTrainerSel'); sel.innerHTML = '<option value="">— Select trainer —</option>'; trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}">${t.name}</option>`);
+  
+  const sel = document.getElementById('assignTrainerSel'); 
+  sel.innerHTML = '<option value="">— Select trainer —</option>'; 
+  trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}">${t.name}</option>`);
+  
   document.getElementById('assignOverlay').classList.add('open');
 }
-function closeAssignModal() { document.getElementById('assignOverlay').classList.remove('open'); currentAssignRow = null; }
+
+function closeAssignModal() { 
+  document.getElementById('assignOverlay').classList.remove('open'); 
+  currentAssignRow = null; 
+}
+
 async function confirmAssign() {
-  const trainer = document.getElementById('assignTrainerSel').value; if(!trainer || !currentAssignRow) return;
+  const trainer = document.getElementById('assignTrainerSel').value; 
+  if(!trainer || !currentAssignRow) return;
   const params = new URLSearchParams({ action: 'assign', row: currentAssignRow._rowNum, status: 'Pending', trainer });
-  try { await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' }); logActivity(currentUser?.name||'?', 'Assigned trainer', getCompanyName(currentAssignRow), `Trainer: ${trainer} → Pending`); showToast(`Assigned to ${trainer}`, 'success'); closeAssignModal(); await loadData(); } catch(e) { showToast('Error updating', 'error'); }
+  try { 
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' }); 
+    logActivity(currentUser?.name||'?', 'Assigned trainer', getCompanyName(currentAssignRow), `Trainer: ${trainer} → Pending`); 
+    showToast(`Assigned to ${trainer}`, 'success'); 
+    closeAssignModal(); 
+    await loadData(); 
+  } catch(e) { 
+    showToast('Error updating status', 'error'); 
+  }
 }
 
 function openBookModal(idx) {
-  const r = allData.find(x => x._idx === idx); if(!r) return; currentBookRow = r;
+  const r = allData.find(x => x._idx === idx); 
+  if(!r) return; 
+  currentBookRow = r;
+  
   document.getElementById('bookModalCompany').textContent = getCompanyName(r) + ' · ' + r.contact;
-  document.getElementById('bookDate').value = r.preferredDate || ''; document.getElementById('bookDays').value = r.trainingDays || 1; document.getElementById('bookValue').value = r.invoiceValue || '';
-  if(r.trainingOption !== 'Needs Selection') document.getElementById('bookOption').value = r.trainingOption;
-  const sel = document.getElementById('bookTrainer'); sel.innerHTML = '<option value="">— Select trainer —</option>'; trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}" ${r.trainer===t.name?'selected':''}>${t.name}</option>`);
-  document.getElementById('bookWarnings').innerHTML = ''; document.getElementById('bookingOverrideRow').style.display = 'none'; document.getElementById('bookingBlockMsg').style.display = 'none'; document.getElementById('confirmBookBtn').disabled = false;
+  document.getElementById('bookDate').value = r.preferredDate || ''; 
+  document.getElementById('bookDays').value = r.trainingDays || 1; 
+  document.getElementById('bookValue').value = r.invoiceValue || '';
+  
+  if(r.trainingOption !== 'Needs Selection') {
+    document.getElementById('bookOption').value = r.trainingOption;
+  }
+  
+  const sel = document.getElementById('bookTrainer'); 
+  sel.innerHTML = '<option value="">— Select trainer —</option>'; 
+  trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}" ${r.trainer===t.name?'selected':''}>${t.name}</option>`);
+  
+  document.getElementById('bookWarnings').innerHTML = ''; 
+  document.getElementById('bookingOverrideRow').style.display = 'none'; 
+  document.getElementById('bookingBlockMsg').style.display = 'none'; 
+  document.getElementById('confirmBookBtn').disabled = false;
+  
   document.getElementById('bookOverlay').classList.add('open');
 }
-function closeBookModal() { document.getElementById('bookOverlay').classList.remove('open'); currentBookRow = null; }
+
+function closeBookModal() { 
+  document.getElementById('bookOverlay').classList.remove('open'); 
+  currentBookRow = null; 
+}
+
 function checkBookingWarnings() {
   if(!currentBookRow) return;
-  const dStr = document.getElementById('bookDate').value; const t = document.getElementById('bookTrainer').value; const warnEl = document.getElementById('bookWarnings'); document.getElementById('bookingOverrideRow').style.display = 'none'; document.getElementById('bookingBlockMsg').style.display = 'none'; document.getElementById('confirmBookBtn').disabled = false; warnEl.innerHTML = '';
-  if(!dStr || !t) return; const bookD = new Date(dStr);
+  const dStr = document.getElementById('bookDate').value; 
+  const t = document.getElementById('bookTrainer').value; 
+  const warnEl = document.getElementById('bookWarnings'); 
+  
+  document.getElementById('bookingOverrideRow').style.display = 'none'; 
+  document.getElementById('bookingBlockMsg').style.display = 'none'; 
+  document.getElementById('confirmBookBtn').disabled = false; 
+  warnEl.innerHTML = '';
+  
+  if(!dStr || !t) return; 
+  const bookD = new Date(dStr);
+  
   let hasConflict = allData.some(r => r.trainer === t && r.status === 'Booked' && r.bookedOn && r._idx !== currentBookRow._idx && bookD >= r.bookedOn && bookD < new Date(r.bookedOn.getTime() + (r.trainingDays||1)*86400000));
-  if(hasConflict) { warnEl.innerHTML = `<div class="warning-box warn"><span>⚠️</span><span>${t} already has a booking around ${fmtDate(bookD)}.</span></div>`; document.getElementById('bookingOverrideRow').style.display = 'block'; if(!document.getElementById('bookingOverride')?.checked) { document.getElementById('bookingBlockMsg').style.display = 'block'; document.getElementById('confirmBookBtn').disabled = true; } }
-  if(isBankHoliday(bookD)) warnEl.innerHTML += `<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`;
+  
+  if(hasConflict) { 
+    warnEl.innerHTML = `<div class="warning-box warn"><span>⚠️</span><span>${t} already has a booking around ${fmtDate(bookD)}.</span></div>`; 
+    document.getElementById('bookingOverrideRow').style.display = 'block'; 
+    if(!document.getElementById('bookingOverride')?.checked) { 
+      document.getElementById('bookingBlockMsg').style.display = 'block'; 
+      document.getElementById('confirmBookBtn').disabled = true; 
+    } 
+  }
+  if(isBankHoliday(bookD)) {
+    warnEl.innerHTML += `<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`;
+  }
 }
+
 async function confirmBook() {
-  const date = document.getElementById('bookDate').value; const days = document.getElementById('bookDays').value; const trainer = document.getElementById('bookTrainer').value; const val = document.getElementById('bookValue').value; const opt = document.getElementById('bookOption').value;
+  const date = document.getElementById('bookDate').value; 
+  const days = document.getElementById('bookDays').value; 
+  const trainer = document.getElementById('bookTrainer').value; 
+  const val = document.getElementById('bookValue').value; 
+  const opt = document.getElementById('bookOption').value;
+  
   if(!date || !trainer || !currentBookRow) return;
+  
   const params = new URLSearchParams({ action: 'assign', row: currentBookRow._rowNum, status: 'Booked', trainer, bookedOn: date, trainingDays: days, value: val || '', option: opt });
-  try { await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' }); logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${fmtDate(new Date(date))}`); showToast('Booking confirmed!', 'success'); closeBookModal(); await loadData(); } catch(e) { showToast('Error confirming booking', 'error'); }
+  
+  try { 
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' }); 
+    logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${fmtDate(new Date(date))}`); 
+    showToast('Booking confirmed!', 'success'); 
+    closeBookModal(); 
+    await loadData(); 
+  } catch(e) { 
+    showToast('Error confirming booking', 'error'); 
+  }
 }
 
-function openEditBookingModal(idx) { const r = allData.find(x => x._idx === idx); if(!r) return; currentEditRow = r; document.getElementById('editBookingOverlay').classList.add('open'); /* omitted filling fields for brevity, works same as book modal */ }
+function openEditBookingModal(idx) { 
+  const r = allData.find(x => x._idx === idx); 
+  if(!r) return; 
+  currentEditRow = r; 
+  
+  document.getElementById('editBookingCompany').textContent = getCompanyName(r);
+  document.getElementById('editBookDate').value = r.bookedOn ? r.bookedOn.toISOString().split('T')[0] : '';
+  document.getElementById('editBookDays').value = r.trainingDays || 1;
+  document.getElementById('editBookValue').value = r.invoiceValue || '';
+  document.getElementById('editBookReason').value = '';
+  
+  const sel = document.getElementById('editBookTrainer');
+  sel.innerHTML = '<option value="">— Select trainer —</option>';
+  trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}" ${r.trainer===t.name?'selected':''}>${t.name}</option>`);
+  
+  document.getElementById('editBookingOverlay').classList.add('open'); 
+}
+
 function closeEditBookingModal() { document.getElementById('editBookingOverlay').classList.remove('open'); currentEditRow = null; }
-async function confirmEditBooking() { closeEditBookingModal(); showToast('Booking updated', 'success'); await loadData(); }
 
-function openCancelModal(idx) { const r = allData.find(x => x._idx === idx); if(!r) return; currentCancelRow = r; document.getElementById('cancelModalCompany').textContent = getCompanyName(r); document.getElementById('cancelReason').value = ''; document.getElementById('cancelOverlay').classList.add('open'); }
-function closeCancelModal() { document.getElementById('cancelOverlay').classList.remove('open'); currentCancelRow = null; }
-async function confirmCancel() {
-  const reason = document.getElementById('cancelReason').value.trim(); if(!reason || !currentCancelRow) return;
-  const params = new URLSearchParams({ action: 'assign', row: currentCancelRow._rowNum, status: 'Cancelled' });
-  try { await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' }); logActivity(currentUser?.name||'?', 'Cancelled enquiry', getCompanyName(currentCancelRow), reason); showToast('Cancelled', 'success'); closeCancelModal(); await loadData(); } catch(e) { showToast('Error', 'error'); }
+function checkEditWarnings() {
+  // Similar logic to book warnings
+  if(!currentEditRow) return;
+  const date = document.getElementById('editBookDate').value;
+  const trainer = document.getElementById('editBookTrainer').value;
+  const override = document.getElementById('editBookingOverride')?.checked;
+  const warnEl = document.getElementById('editBookingWarnings');
+  const overrideRow = document.getElementById('editBookingOverrideRow');
+  const blockMsg = document.getElementById('editBookingBlockMsg');
+  const btn = document.getElementById('confirmEditBookBtn');
+  
+  warnEl.innerHTML = ''; overrideRow.style.display = 'none'; blockMsg.style.display = 'none'; btn.disabled = false;
+  if(!date || !trainer) return;
+  
+  const bookD = new Date(date);
+  const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentEditRow._idx);
+  let hasConflict = conflicts.some(r => bookD >= r.bookedOn && bookD < new Date(r.bookedOn.getTime() + (r.trainingDays||1)*86400000));
+  
+  if(hasConflict) {
+    warnEl.innerHTML = `<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking around ${fmtDate(bookD)}.</span></div>`;
+    overrideRow.style.display = 'block';
+    if(!override) { blockMsg.style.display = 'block'; btn.disabled = true; }
+  }
 }
+
+async function confirmEditBooking() { 
+  const date = document.getElementById('editBookDate').value;
+  const days = parseInt(document.getElementById('editBookDays').value) || 1;
+  const trainer = document.getElementById('editBookTrainer').value;
+  const value = document.getElementById('editBookValue').value;
+  const reason = document.getElementById('editBookReason').value.trim();
+  
+  if(!date || !trainer || !currentEditRow) return;
+  
+  const params = new URLSearchParams({ action: 'assign', row: currentEditRow._rowNum, status: 'Booked', trainer, bookedOn: date, trainingDays: days, value: value || '' });
+  
+  try {
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
+    logActivity(currentUser?.name||'?', 'Edited booking', getCompanyName(currentEditRow), `${trainer} · ${fmtDate(new Date(date))} ${reason?' · '+reason:''}`);
+    showToast('Booking updated', 'success');
+    closeEditBookingModal();
+    await loadData();
+  } catch(e) {
+    showToast('Error updating booking', 'error');
+  }
+}
+
+function openCancelModal(idx) { 
+  const r = allData.find(x => x._idx === idx); 
+  if(!r) return; 
+  currentCancelRow = r; 
+  document.getElementById('cancelModalCompany').textContent = getCompanyName(r); 
+  document.getElementById('cancelReason').value = ''; 
+  document.getElementById('cancelOverlay').classList.add('open'); 
+}
+
+function closeCancelModal() { document.getElementById('cancelOverlay').classList.remove('open'); currentCancelRow = null; }
+
+async function confirmCancel() {
+  const reason = document.getElementById('cancelReason').value.trim(); 
+  if(!reason || !currentCancelRow) return;
+  const params = new URLSearchParams({ action: 'assign', row: currentCancelRow._rowNum, status: 'Cancelled' });
+  
+  try { 
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' }); 
+    logActivity(currentUser?.name||'?', 'Cancelled enquiry', getCompanyName(currentCancelRow), reason); 
+    showToast('Cancelled', 'success'); 
+    closeCancelModal(); 
+    await loadData(); 
+  } catch(e) { 
+    showToast('Error', 'error'); 
+  }
+}
+
+function openCalEventModal(idx) {
+  const r = allData.find(x => x._idx === idx);
+  if(!r) return;
+  document.getElementById('calEventTitle').textContent = getCompanyName(r);
+  document.getElementById('calEventSubtitle').textContent = fmtDate(r.bookedOn) + (r.trainer ? ' · ' + r.trainer : '');
+  document.getElementById('calEventBody').innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
+    <div class="profile-field"><span class="profile-field-label">Trainer</span><span>${trainerPill(r.trainer)}</span></div>
+    <div class="profile-field"><span class="profile-field-label">Booked Date</span><span>${fmtDate(r.bookedOn)}</span></div>
+    <div class="profile-field"><span class="profile-field-label">Days</span><span>${r.trainingDays||1}</span></div>
+    <div class="profile-field"><span class="profile-field-label">Option</span><span>${optionBadge(r.trainingOption)}</span></div>
+    <div class="profile-field"><span class="profile-field-label">Value</span><span>${r.invoiceValue!==null?fmtMoney(r.invoiceValue):'—'}</span></div>
+    <div class="profile-field"><span class="profile-field-label">Status</span><span>${statusBadge(r.status)}</span></div>
+  </div>`;
+  document.getElementById('calEventFooter').innerHTML = `<button class="btn btn-ghost" onclick="closeCalEventModal()">Close</button><button class="btn btn-primary btn-sm" onclick="closeCalEventModal();openProfileSidebar(${idx})">View Full Profile →</button>`;
+  document.getElementById('calEventOverlay').classList.add('open');
+}
+function closeCalEventModal() { document.getElementById('calEventOverlay').classList.remove('open'); }
 
 // ===================== PROFILE SIDEBAR & NOTES =====================
 function openProfileSidebar(idx) {
-  const r = allData.find(x => x._idx === idx); if(!r) return; currentProfileRow = r;
+  const r = allData.find(x => x._idx === idx); 
+  if(!r) return; 
+  currentProfileRow = r;
+  
   document.getElementById('profileCompany').textContent = getCompanyName(r);
   document.getElementById('profileMeta').innerHTML = `${statusBadge(r.status)} ${optionBadge(r.trainingOption)} <span style="font-size:11px;color:rgba(255,255,255,0.5);">Submitted ${fmtDate(r.ts)}</span>`;
+  
   const html = [
     { t: '📋 Enquiry', i: '📋', f: [['Status',statusBadge(r.status)],['Company',escHtml(r.company)],['Type',optionBadge(r.trainingOption)],['Submitted',fmtDate(r.ts)],['Pref Date',fmtDate(r.preferredDate)],['Go-Live',r.goLiveDate]] },
     { t: '👤 Contact', i: '👤', f: [['Email',escHtml(r.email)],['Stakeholder',r.contact],['Attendees',r.attendeesRaw]] },
     { t: '🎓 Training Details', i: '🎓', f: [['Team Familiarity',r.teamFamiliarity],['Areas',r.areas],['Priorities',r.priorities],['Features',r.features]] },
     { t: '📍 Logistics', i: '📍', f: [['Location',r.locationRaw],['Parking',r.parking],['Follow-Up',r.followUp],['Anything Else',r.anythingElse]] },
-    { t: '💷 Financials', i: '💷', f: [['Invoice Value',r.invoiceValue?fmtMoney(r.invoiceValue):'—'],['Booked',fmtDate(r.bookedOn)],['Days',r.trainingDays],['Trainer',r.trainer]] }
+    { t: '💷 Financials', i: '💷', f: [['Invoice Value',r.invoiceValue!==null?fmtMoney(r.invoiceValue):'—'],['Booked',fmtDate(r.bookedOn)],['Days',r.trainingDays],['Trainer',r.trainer]] }
   ].map((s, si) => `<div class="profile-section"><div class="profile-section-hdr" onclick="document.getElementById('ps${si}').classList.toggle('open')"><div class="profile-section-title">${s.i} ${s.t}</div></div><div class="profile-section-body ${si===0?'open':''}" id="ps${si}">${s.f.map(([l,v])=>`<div class="profile-field"><span class="profile-field-label">${l}</span><span class="profile-field-value">${v||'—'}</span></div>`).join('')}</div></div>`).join('');
-  document.getElementById('profileSections').innerHTML = html; renderProfileNotes(r);
-  document.getElementById('profileOverlay').classList.add('open'); document.getElementById('profilePanel').classList.add('open');
+  
+  document.getElementById('profileSections').innerHTML = html; 
+  renderProfileNotes(r);
+  document.getElementById('profileOverlay').classList.add('open'); 
+  document.getElementById('profilePanel').classList.add('open');
 }
-function closeProfileSidebar() { document.getElementById('profileOverlay').classList.remove('open'); document.getElementById('profilePanel').classList.remove('open'); currentProfileRow = null; }
-function renderProfileNotes(r) { document.getElementById('profileNotesList').innerHTML = (r.notes||[]).length ? r.notes.map(n => `<div class="profile-note-item"><div class="profile-note-meta">${escHtml(n.author)} — ${fmtDate(n.ts)}</div><div class="profile-note-text">${escHtml(n.text)}</div></div>`).join('') : '<div style="color:var(--text--dark--30);font-size:11px;">No notes yet.</div>'; }
+
+function closeProfileSidebar() { 
+  document.getElementById('profileOverlay').classList.remove('open'); 
+  document.getElementById('profilePanel').classList.remove('open'); 
+  currentProfileRow = null; 
+}
+
+function renderProfileNotes(r) { 
+  document.getElementById('profileNotesList').innerHTML = (r.notes||[]).length ? r.notes.map(n => `<div class="profile-note-item"><div class="profile-note-meta">${escHtml(n.author)} — ${fmtDate(n.ts)}</div><div class="profile-note-text">${escHtml(n.text)}</div></div>`).join('') : '<div style="color:var(--text--dark--30);font-size:11px;">No notes yet.</div>'; 
+}
+
 function saveProfileNote() {
-  const text = document.getElementById('profileNewNote').value.trim(); if(!text || !currentProfileRow) return;
+  const text = document.getElementById('profileNewNote').value.trim(); 
+  if(!text || !currentProfileRow) return;
+  
   const note = { text, author: currentUser?.name || 'Unknown', ts: Date.now() };
-  if(!currentProfileRow.notes) currentProfileRow.notes = []; currentProfileRow.notes.push(note);
+  if(!currentProfileRow.notes) currentProfileRow.notes = []; 
+  currentProfileRow.notes.push(note);
+  
   localStorage.setItem('notes_' + currentProfileRow._idx, JSON.stringify(currentProfileRow.notes));
-  document.getElementById('profileNewNote').value = ''; renderProfileNotes(currentProfileRow);
+  document.getElementById('profileNewNote').value = ''; 
+  renderProfileNotes(currentProfileRow);
+  
   logActivity(currentUser?.name||'?', 'Added note', getCompanyName(currentProfileRow), text.slice(0,60), 'notes');
 }
 
+// ===================== REFERRAL LEADERBOARD =====================
+function renderReferralLeaderboard() {
+  const board = document.getElementById('referralLeaderboard');
+  const counts = {};
+  allData.forEach(r => {
+    if(!r.referredBy || !r.referredBy.name) return;
+    const key = r.referredBy.name;
+    if(!counts[key]) counts[key] = { name: r.referredBy.name, team: r.referredBy.team, count: 0, bookedCount: 0, bookedValue: 0 };
+    counts[key].count++;
+    if(r.status === 'Booked') { counts[key].bookedCount++; counts[key].bookedValue += r.invoiceValue || 0; }
+  });
+  const entries = Object.values(counts).sort((a,b) => b.count - a.count);
+  if(!entries.length) {
+    board.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text--dark--30);font-size:12px;">No referrals recorded yet. Referrals are logged via Request Training form.</div>';
+    return;
+  }
+  board.innerHTML = entries.map((e, i) => {
+    const rank = i + 1;
+    const rankCls = rank === 1 ? 'referral-rank-1' : rank === 2 ? 'referral-rank-2' : rank === 3 ? 'referral-rank-3' : 'referral-rank-other';
+    return `<div class="referral-entry" onclick="openReferralModal('${escHtml(e.name)}')">
+      <div class="referral-rank ${rankCls}">${rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : rank}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(e.name)}</div>
+        <div style="font-size:11px;color:var(--text--dark--30);">${escHtml(e.team) || 'No team recorded'}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:14px;font-weight:700;color:var(--text--dark--50);">${e.count} <span style="font-size:11px;font-weight:400;color:var(--text--dark--30);">referral${e.count!==1?'s':''}</span></div>
+        <div style="font-size:11px;color:var(--text--dark--30);">${e.bookedCount} booked &middot; ${e.bookedValue > 0 ? fmtMoney(e.bookedValue) : '£0'}</div>
+      </div>
+      <div style="color:var(--text--dark--20);font-size:14px;">›</div>
+    </div>`;
+  }).join('');
+}
+
+function openReferralModal(name) {
+  currentReferralPerson = name;
+  const personData = allData.filter(r => r.referredBy && r.referredBy.name === name);
+  const team = personData[0]?.referredBy?.team || '';
+  document.getElementById('referralModalTitle').textContent = name + (team ? ` (${team})` : '');
+  document.getElementById('referralModalSub').textContent = `${personData.length} referral${personData.length!==1?'s':''} total`;
+  const booked = personData.filter(r => r.status === 'Booked');
+  const totalVal = booked.reduce((s,r) => s+(r.invoiceValue||0),0);
+  document.getElementById('referralModalStats').innerHTML = `<div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Total Referrals</div><div style="font-size:20px;font-weight:700;color:var(--text--dark--50);">${personData.length}</div></div>
+    <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Booked</div><div style="font-size:20px;font-weight:700;color:#2147f4;">${booked.length}</div></div>
+    <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Total Booked Value</div><div style="font-size:20px;font-weight:700;color:#22a06b;">${fmtMoney(totalVal)}</div></div>
+  </div>`;
+  document.getElementById('referralFilterDateFrom').value = '';
+  document.getElementById('referralFilterDateTo').value = '';
+  document.getElementById('referralFilterStatus').value = '';
+  renderReferralModalTable();
+  document.getElementById('referralModalOverlay').classList.add('open');
+}
+
+function renderReferralModalTable() {
+  if(!currentReferralPerson) return;
+  let rows = allData.filter(r => r.referredBy && r.referredBy.name === currentReferralPerson);
+  const fFrom = document.getElementById('referralFilterDateFrom').value;
+  const fTo = document.getElementById('referralFilterDateTo').value;
+  const fStatus = document.getElementById('referralFilterStatus').value;
+  
+  if(fFrom) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] >= fFrom);
+  if(fTo) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] <= fTo);
+  if(fStatus) rows = rows.filter(r => r.status === fStatus);
+  
+  document.getElementById('referralModalBody').innerHTML = rows.length ? rows.map(r => `<tr style="border-bottom:1px solid #f3f4f6;">
+    <td style="padding:9px 12px;">${fmtDate(r.ts)}</td>
+    <td style="padding:9px 12px;font-weight:600;">${escHtml(getCompanyName(r))}</td>
+    <td style="padding:9px 12px;">${optionBadge(r.trainingOption)}</td>
+    <td style="padding:9px 12px;">${fmtDate(r.bookedOn)}</td>
+    <td style="padding:9px 12px;">${r.invoiceValue!==null?fmtMoney(r.invoiceValue):'—'}</td>
+    <td style="padding:9px 12px;">${statusBadge(r.status)}</td>
+  </tr>`).join('') : '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">No referrals match the filters</td></tr>';
+}
+
+function clearReferralFilters() {
+  document.getElementById('referralFilterDateFrom').value = '';
+  document.getElementById('referralFilterDateTo').value = '';
+  document.getElementById('referralFilterStatus').value = '';
+  renderReferralModalTable();
+}
+
+function closeReferralModal() {
+  document.getElementById('referralModalOverlay').classList.remove('open');
+  currentReferralPerson = null;
+}
+
+// ===================== TRAINER MODAL =====================
+function openTrainerModal() { renderTrainerList(); document.getElementById('trainerModalOverlay').classList.add('open'); }
+function closeTrainerModal() { document.getElementById('trainerModalOverlay').classList.remove('open'); }
+function renderTrainerList() {
+  const list = document.getElementById('trainerList');
+  list.innerHTML = trainers.map((t, i) => `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ui--underline--light-grey);">
+    <div class="trainer-color-dot" style="background:${t.color||'#888'};width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(t.name)}</div>
+      <div style="font-size:11px;color:var(--text--dark--30);">PIN: ${t.pin ? '****' : '(none)'} &middot; Role: <strong>${t.role}</strong></div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="shadowUser(${i})" style="font-size:10px;padding:3px 6px;">👀 Shadow View</button>
+    <select style="border:1px solid var(--light-grey);border-radius:4px;padding:4px 8px;font-size:11px;font-family:Arial,sans-serif;" onchange="changeTrainerRole(${i}, this.value)">
+      <option value="trainer" ${t.role==='trainer'?'selected':''}>Trainer</option>
+      <option value="viewer" ${t.role==='viewer'?'selected':''}>Viewer</option>
+      <option value="admin" ${t.role==='admin'?'selected':''}>Admin</option>
+    </select>
+    <input type="color" value="${t.color||'#2147f4'}" title="Color" style="width:26px;height:26px;border:none;cursor:pointer;border-radius:50%;background:none;padding:0;" onchange="changeTrainerColor(${i}, this.value)">
+    <button class="btn btn-ghost btn-sm" onclick="setTrainerPin(${i})">Set PIN</button>
+    <button class="btn btn-danger btn-sm" onclick="removeTrainer(${i})" style="flex-shrink:0;">&#128465;</button>
+  </div>`).join('');
+}
+
+function changeTrainerRole(i, role) { trainers[i].role = role; saveUsers(); renderTrainerList(); }
+function changeTrainerColor(i, color) { trainers[i].color = color; saveUsers(); }
+function removeTrainer(i) { if(confirm('Remove ' + trainers[i].name + '?')) { trainers.splice(i, 1); saveUsers(); renderTrainerList(); } }
+function addTrainer() {
+  const name = document.getElementById('newTrainerName').value.trim();
+  const role = document.getElementById('newTrainerRole').value;
+  if(!name) return;
+  trainers.push({ id: 'u' + Date.now(), name, role, color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length], pin: '', icsUrl: '' });
+  saveUsers(); document.getElementById('newTrainerName').value = ''; renderTrainerList(); populateLoginSelect();
+}
+function setTrainerPin(i) {
+  const pin = prompt(`Set PIN for ${trainers[i].name} (4–6 digits, leave blank to clear):`);
+  if(pin === null) return;
+  if(pin !== '' && (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin))) { alert('PIN must be 4–6 digits'); return; }
+  trainers[i].pin = pin; saveUsers(); renderTrainerList(); showToast(`PIN ${pin ? 'set' : 'cleared'}`, 'success');
+}
+function changeMyPin() {
+  if(!currentUser) return;
+  const idx = trainers.findIndex(u => u.id === currentUser.id);
+  if(idx < 0) return;
+  const pin = prompt('Enter new PIN (4–6 digits, blank to clear):');
+  if(pin === null) return;
+  if(pin !== '' && (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin))) { alert('PIN must be 4–6 digits'); return; }
+  trainers[idx].pin = pin; currentUser.pin = pin; saveUsers(); showToast('PIN updated', 'success');
+}
+
+// ===================== CAL SETTINGS =====================
+function openCalSettings() {
+  document.getElementById('calHolidayIcsInput').value = calSettingsHolidayIcs;
+  document.getElementById('calLeaveIcsInput').value = calSettingsLeaveIcs;
+  document.getElementById('calSettingsStatus').textContent = '';
+  document.getElementById('calSettingsOverlay').classList.add('open');
+}
+function closeCalSettings() { document.getElementById('calSettingsOverlay').classList.remove('open'); }
+function saveCalSettings() {
+  calSettingsHolidayIcs = document.getElementById('calHolidayIcsInput').value.trim();
+  calSettingsLeaveIcs = document.getElementById('calLeaveIcsInput').value.trim();
+  localStorage.setItem('calHolidayIcs', calSettingsHolidayIcs);
+  localStorage.setItem('calLeaveIcs', calSettingsLeaveIcs);
+  document.getElementById('calSettingsStatus').textContent = 'Saved — syncing…';
+  closeCalSettings();
+  loadIcsData().then(() => showToast('Calendar settings saved', 'success'));
+}
+
 // ===================== REQUEST FORM =====================
-function openRequestForm() { reqCurrentStep = 1; reqSelectedLocation = ''; document.getElementById('reqOverlay').classList.add('open'); updateReqStep(); }
+let reqCurrentStep = 1;
+let reqSelectedLocation = '';
+
+function openRequestForm() { 
+  reqCurrentStep = 1; 
+  reqSelectedLocation = ''; 
+  document.getElementById('reqOverlay').classList.add('open'); 
+  updateReqStep(); 
+}
 function closeRequestForm() { document.getElementById('reqOverlay').classList.remove('open'); }
+function selectLocation(type) {
+  reqSelectedLocation = type;
+  document.getElementById('reqLocHQBtn').classList.toggle('selected', type === 'hq');
+  document.getElementById('reqLocOtherBtn').classList.toggle('selected', type === 'other');
+  document.getElementById('reqLocHQConfirm').style.display = type === 'hq' ? 'block' : 'none';
+  document.getElementById('reqLocOtherFields').style.display = type === 'other' ? 'block' : 'none';
+}
 function updateReqStep() {
   for(let i=1; i<=4; i++) { const el = document.getElementById(`reqStep${i}`); if(el) el.classList.toggle('active', i===reqCurrentStep); }
   document.getElementById('reqStep5').classList.toggle('active', reqCurrentStep > 4);
   document.getElementById('reqFooter').style.display = reqCurrentStep > 4 ? 'none' : '';
   document.getElementById('reqBackBtn').style.display = reqCurrentStep > 1 ? 'inline-flex' : 'none';
   document.getElementById('reqNextBtn').textContent = reqCurrentStep === 4 ? '✓ Submit Request' : 'Continue →';
-  document.getElementById('reqSkipBtn').style.display = reqCurrentStep === 1 || reqCurrentStep === 2 ? 'none' : 'inline-flex'; // Step 2 contact is mandatory
+  document.getElementById('reqSkipBtn').style.display = (reqCurrentStep === 1 || reqCurrentStep === 2) ? 'none' : 'inline-flex'; 
 }
+
 function reqNextStep() {
   if(reqCurrentStep === 2) {
     if(!document.getElementById('reqCompany').value || !document.getElementById('reqEmail').value || !document.getElementById('reqStakeholder').value) {
@@ -1422,10 +2191,92 @@ function reqNextStep() {
 }
 function reqPrevStep() { if(reqCurrentStep > 1) { reqCurrentStep--; updateReqStep(); } }
 function reqSkipStep() { if(reqCurrentStep < 4) { reqCurrentStep++; updateReqStep(); } }
+
 async function submitRequest() {
   const company = document.getElementById('reqCompany').value;
-  const params = new URLSearchParams({ action: 'submitRequest', company, email: document.getElementById('reqEmail').value, stakeholder: document.getElementById('reqStakeholder').value }); // Trimmed payload for brevity in code snippet
-  try { document.getElementById('reqSuccessMsg').textContent = `Thanks! Your request for ${company} has been submitted.`; reqCurrentStep = 5; updateReqStep(); logActivity(currentUser?.name || 'Form Submitter', 'Submitted training request', company, ''); showToast('Submitted!', 'success'); setTimeout(() => loadData(), 2000); } catch(e) {}
+  
+  // Checking if sections 3 or 4 were skipped
+  let skipped = [];
+  if(!document.getElementById('reqPreferredDate').value) skipped.push("3 (Date)");
+  if(!document.getElementById('reqPriorities').value) skipped.push("4 (Priorities)");
+  
+  const params = new URLSearchParams({ 
+    action: 'submitRequest', 
+    company, 
+    email: document.getElementById('reqEmail').value, 
+    stakeholder: document.getElementById('reqStakeholder').value,
+    referredByName: document.getElementById('reqReferredByName').value,
+    referredByTeam: document.getElementById('reqReferredByTeam').value,
+    referralNotes: document.getElementById('reqReferralNotes').value,
+    quotedValue: document.getElementById('reqQuotedValue').value,
+    attendees: document.getElementById('reqAttendees').value,
+    goLiveDate: document.getElementById('reqGoLive').value,
+    preferredDate: document.getElementById('reqPreferredDate').value,
+    trainingType: document.querySelector('[name="trainingType"]:checked')?.value || '',
+    teamFamiliarity: document.querySelector('[name="teamFamiliarity"]:checked')?.value || '',
+    areas: [...document.querySelectorAll('[name="areas"]:checked')].map(el => el.value).join(', '),
+    priorities: document.getElementById('reqPriorities').value,
+    features: document.getElementById('reqFeatures').value,
+    challenges: document.getElementById('reqChallenges').value,
+    location: reqSelectedLocation === 'hq' ? 'Street HQ' : document.getElementById('reqLocAddress').value,
+    parking: document.getElementById('reqLocParking').value,
+    dietaryReqs: document.getElementById('reqDietaryReqs').value,
+    followUp: [...document.querySelectorAll('[name="followUp"]:checked')].map(el => el.value).join(', '),
+    anythingElse: document.getElementById('reqAnythingElse').value,
+    skippedSections: skipped.join(', '),
+    submittedBy: currentUser?.name || 'Dashboard'
+  }); 
+  
+  try { 
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
+    document.getElementById('reqSuccessMsg').textContent = `Thanks! Your request for ${company} has been submitted.`; 
+    reqCurrentStep = 5; 
+    updateReqStep(); 
+    logActivity(currentUser?.name || 'Form Submitter', 'Submitted training request', company, ''); 
+    showToast('Submitted!', 'success'); 
+    setTimeout(() => loadData(), 2000); 
+  } catch(e) {
+    showToast('Submission error', 'error');
+  }
+}
+
+// ===================== UTILITY =====================
+function closeAllModals() {
+  ['assignOverlay','bookOverlay','editBookingOverlay','cancelOverlay','calEventOverlay','kpiModalOverlay','referralModalOverlay','reqOverlay','leaveModalOverlay'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.classList.remove('open');
+  });
+}
+
+function showToast(msg, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  if(!c) return;
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { 
+    t.style.opacity = '0'; 
+    t.style.transition = 'opacity 0.3s'; 
+    setTimeout(() => t.remove(), 300); 
+  }, 3000);
+}
+
+async function testConnection(btn) {
+  if(btn) { btn.textContent = '⌛ Testing…'; btn.disabled = true; }
+  try {
+    const r = await fetch(SCRIPT_URL + '?action=getData&t=' + Date.now(), { method: 'GET', redirect: 'follow' });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    const j = JSON.parse(text);
+    if(j.success) {
+      showToast('✅ Connected — ' + (j.data ? j.data.length - 1 : 0) + ' rows loaded', 'success');
+    } else {
+      showToast('⚠ Error: ' + j.error, 'error');
+    }
+  } catch(e) {
+    showToast('Connection failed: ' + e.message, 'error');
+  }
+  if(btn) { btn.innerHTML = '<span class="nav-item-icon">🔍</span> Test Connection'; btn.disabled = false; }
 }
 
 </script>
