@@ -1005,16 +1005,27 @@ async function loadData() {
   bar.style.display = 'block';
   bar.classList.add('active');
   try {
-    const res = await fetch(SCRIPT_URL + '?action=getAll&t=' + Date.now(), {cache:'no-store'});
+    const res = await fetch(SCRIPT_URL + '?action=getAll&t=' + Date.now(), {
+      method: 'GET',
+      redirect: 'follow'
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
     const json = await res.json();
     if(json.rows) {
       allData = json.rows.map(parseAppsScriptData).filter(Boolean);
       const now = new Date();
       document.getElementById('lastUpdated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
       renderAll();
+    } else if(json.error) {
+      showToast('Apps Script error: ' + json.error, 'error');
+      console.error('Apps Script error:', json);
+    } else {
+      showToast('Unexpected response from Apps Script — check console', 'error');
+      console.warn('Unexpected response:', json);
     }
   } catch(e) {
-    showToast('Could not load data — check connection', 'error');
+    console.error('loadData error:', e);
+    showToast('Could not load data: ' + e.message, 'error');
   } finally {
     bar.style.display = 'none';
     bar.classList.remove('active');
@@ -2311,13 +2322,45 @@ function showToast(msg, type = 'info') {
 }
 
 async function testConnection(btn) {
-  if(btn) btn.textContent = '⌛ Testing…';
+  if(btn) { btn.textContent = '⌛ Testing…'; btn.disabled = true; }
+  const diagEl = document.getElementById('connectionDiag');
+  if(diagEl) diagEl.remove();
   try {
-    const r = await fetch(SCRIPT_URL + '?action=ping&t=' + Date.now(), {cache:'no-store'});
-    const j = await r.json();
-    showToast(j.ok ? '✅ Connection OK — ' + j.message : '⚠ Connected but unexpected response', j.ok ? 'success' : 'error');
-  } catch(e) { showToast('❌ Could not reach Apps Script — check URL', 'error'); }
-  if(btn) btn.innerHTML = '<span class="nav-item-icon">🔍</span> Test Connection';
+    console.log('Testing URL:', SCRIPT_URL);
+    const r = await fetch(SCRIPT_URL + '?action=ping&t=' + Date.now(), {
+      method: 'GET',
+      redirect: 'follow'
+    });
+    console.log('Response status:', r.status, r.statusText);
+    console.log('Response headers:', [...r.headers.entries()]);
+    if(!r.ok) throw new Error('HTTP ' + r.status + ' ' + r.statusText);
+    const text = await r.text();
+    console.log('Response body:', text.slice(0, 500));
+    let j;
+    try { j = JSON.parse(text); } catch(pe) { throw new Error('Response is not JSON. Got: ' + text.slice(0, 100)); }
+    showToast(j.ok ? '✅ Connection OK — ' + (j.message||'') : '⚠ Connected — unexpected response: ' + JSON.stringify(j), j.ok ? 'success' : 'error');
+  } catch(e) {
+    console.error('Connection test failed:', e);
+    // Show a detailed diagnostic box
+    const diag = document.createElement('div');
+    diag.id = 'connectionDiag';
+    diag.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:9999;background:#fff;border:2px solid #c0303d;border-radius:8px;padding:16px;max-width:420px;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-size:12px;line-height:1.6;';
+    diag.innerHTML = '<div style="font-weight:700;color:#c0303d;margin-bottom:8px;font-size:13px;">&#10060; Connection Failed</div>'
+      + '<div style="color:#555;margin-bottom:10px;"><strong>Error:</strong> ' + escHtml(e.message) + '</div>'
+      + '<div style="color:#555;margin-bottom:6px;font-weight:600;">Checklist:</div>'
+      + '<ol style="color:#555;padding-left:16px;margin:0 0 10px;">'
+      + '<li>Open the Apps Script URL directly in a new tab &mdash; it should return JSON</li>'
+      + '<li>In Apps Script &rarr; Deploy &rarr; Manage Deployments: confirm access is set to <strong>&ldquo;Anyone&rdquo;</strong></li>'
+      + '<li>Make sure you are using the <strong>/exec</strong> URL (not /dev)</li>'
+      + '<li>Check the browser console (F12) for CORS or network errors</li>'
+      + '</ol>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+      + '<a href="' + SCRIPT_URL + '" target="_blank" style="background:#2147f4;color:#fff;padding:5px 10px;border-radius:4px;text-decoration:none;font-size:11px;font-weight:600;">Open Script URL &#8599;</a>'
+      + '<button onclick="this.parentNode.parentNode.remove()" style="background:#f3f4f6;border:1px solid #ddd;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:Arial,sans-serif;">Dismiss</button>'
+      + '</div>';
+    document.body.appendChild(diag);
+  }
+  if(btn) { btn.innerHTML = '<span class="nav-item-icon">🔍</span> Test Connection'; btn.disabled = false; }
 }
 </script>
 </body>
