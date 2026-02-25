@@ -274,27 +274,47 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .referral-rank-3 { background:#fde8c8;color:#92400e; }
 .referral-rank-other { background:var(--card-light-grey);color:var(--text--dark--30); }
 
-/* ACTIVITY PANEL */
-.activity-panel-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s; }
-.activity-panel-overlay.open { opacity:1;pointer-events:all; }
-.activity-panel { position:fixed;top:0;right:-380px;width:360px;height:100vh;background:#fff;z-index:301;transition:right 0.25s ease;box-shadow:-4px 0 24px rgba(0,0,0,0.12);display:flex;flex-direction:column; }
-.activity-panel.open { right:0; }
-.activity-panel-header { padding:16px 18px;background:var(--brand--black);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
-.activity-panel-title { font-size:14px;font-weight:700; }
-.activity-panel-sub { font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px; }
-.activity-close { background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;padding:5px 9px;border-radius:4px; }
-.activity-close:hover { background:rgba(255,255,255,0.2);color:#fff; }
-.activity-toolbar { padding:10px 16px;background:var(--card-light-grey);border-bottom:1px solid var(--ui--underline--light-grey);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
-.activity-count { font-size:11px;font-weight:600;color:var(--text--dark--30); }
-.activity-clear-btn { font-size:11px;background:none;border:none;cursor:pointer;color:#c0303d;font-family:Arial,sans-serif; }
-.activity-feed-body { flex:1;overflow-y:auto; }
-.activity-entry { padding:12px 16px;border-bottom:1px solid var(--ui--underline--light-grey); }
-.activity-entry:last-child { border-bottom:none; }
-.activity-who { font-size:11px;font-weight:700;color:var(--action-primary-blue); }
-.activity-what { font-size:12px;color:var(--text--dark--50);margin:2px 0; }
-.activity-detail { font-size:11px;color:var(--text--dark--30); }
-.activity-time { font-size:10px;color:var(--text--dark--20);margin-top:3px; }
-.activity-empty { padding:40px 20px;text-align:center;color:var(--text--dark--30); }
+/* NOTIFICATION PANEL */
+.notif-panel-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:300;opacity:0;pointer-events:none;transition:opacity 0.2s; }
+.notif-panel-overlay.open { opacity:1;pointer-events:all; }
+.notif-panel { position:fixed;top:0;right:-420px;width:400px;height:100vh;background:#fff;z-index:301;transition:right 0.25s ease;box-shadow:-4px 0 24px rgba(0,0,0,0.12);display:flex;flex-direction:column; }
+.notif-panel.open { right:0; }
+.notif-panel-header { padding:14px 18px;background:var(--brand--black);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.notif-panel-title { font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px; }
+.notif-unread-badge { background:var(--brand--yellow);color:#1a1a1a;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center; }
+.notif-close { background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:16px;padding:5px 9px;border-radius:4px; }
+.notif-close:hover { background:rgba(255,255,255,0.2);color:#fff; }
+.notif-tabs { display:flex;border-bottom:1px solid var(--ui--underline--light-grey);background:#f8f9fa;flex-shrink:0; }
+.notif-tab { flex:1;padding:10px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text--dark--30);font-family:Arial,sans-serif;border-bottom:2px solid transparent;transition:all 0.15s; }
+.notif-tab.active { color:var(--action-primary-blue);border-bottom-color:var(--action-primary-blue);background:#fff; }
+.notif-tab-badge { background:#e53935;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px; }
+.notif-toolbar { padding:8px 14px;background:var(--card-light-grey);border-bottom:1px solid var(--ui--underline--light-grey);display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.notif-count { font-size:11px;font-weight:600;color:var(--text--dark--30); }
+.notif-toolbar-btn { font-size:11px;background:none;border:none;cursor:pointer;font-family:Arial,sans-serif;padding:2px 6px;border-radius:4px; }
+.notif-toolbar-btn.mark-all { color:var(--action-primary-blue); }
+.notif-toolbar-btn.clear { color:#c0303d; }
+.notif-feed-body { flex:1;overflow-y:auto; }
+.notif-entry { padding:12px 14px 10px;border-bottom:1px solid var(--ui--underline--light-grey);position:relative;transition:background 0.1s; }
+.notif-entry.unread { background:#f0f7ff;border-left:3px solid var(--action-primary-blue); }
+.notif-entry.read { border-left:3px solid transparent; }
+.notif-entry:hover { background:#f6f8ff; }
+.notif-entry-top { display:flex;align-items:flex-start;justify-content:space-between;gap:8px; }
+.notif-who { font-size:11px;font-weight:700;color:var(--action-primary-blue); }
+.notif-what { font-size:12px;color:var(--text--dark--50);margin:2px 0;font-weight:600; }
+.notif-where { font-size:12px;color:var(--text--dark--40); }
+.notif-detail { font-size:11px;color:var(--text--dark--30);margin-top:2px;line-height:1.4; }
+.notif-time { font-size:10px;color:var(--text--dark--20);margin-top:4px; }
+.notif-mark-read-btn { background:none;border:none;cursor:pointer;font-size:10px;color:var(--text--dark--20);padding:2px 5px;border-radius:3px;white-space:nowrap;font-family:Arial,sans-serif;flex-shrink:0; }
+.notif-mark-read-btn:hover { color:var(--action-primary-blue);background:#e8f0fe; }
+.notif-type-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px; }
+.notif-type-dot.event { background:var(--action-primary-blue); }
+.notif-type-dot.note { background:#22a06b; }
+.notif-empty { padding:40px 20px;text-align:center;color:var(--text--dark--30);font-size:12px; }
+/* Bell button in header */
+.bell-btn { position:relative;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);cursor:pointer;font-size:16px;padding:5px 10px;border-radius:6px;display:flex;align-items:center;gap:0;font-family:Arial,sans-serif;transition:background 0.15s; }
+.bell-btn:hover { background:rgba(255,255,255,0.15);color:#fff; }
+.bell-dot { position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#e53935;border:1.5px solid var(--brand--black);display:none; }
+.bell-count { position:absolute;top:-5px;right:-5px;background:#e53935;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid var(--brand--black);font-family:Arial,sans-serif; }
 
 /* KPI MODAL */
 .kpi-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s; }
@@ -417,7 +437,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-s3SWoPSaIanCZLMLYNnVmu3NU-LY4Lm7Db12gHLv6LzVuQ/viewform" class="nav-item" target="_blank"><span class="nav-item-icon">&#128221;</span> Training Request Form</a>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Account</div>
-  <a class="nav-item" onclick="closeNav();openActivityPanel()" id="navActivityBtn"><span class="nav-item-icon">&#128336;</span> Activity Feed <span id="navActivityDot" style="width:7px;height:7px;border-radius:50%;background:#e53935;display:none;margin-left:auto;flex-shrink:0;"></span></a>
+  <a class="nav-item" onclick="closeNav();openNotifPanel()" id="navActivityBtn"><span class="nav-item-icon">&#128276;</span> Notifications <span id="navActivityDot" style="width:7px;height:7px;border-radius:50%;background:#e53935;display:none;margin-left:auto;flex-shrink:0;"></span></a>
   <a class="nav-item" onclick="closeNav();changeMyPin()"><span class="nav-item-icon">&#128272;</span> Change PIN</a>
   <div class="nav-divider admin-only"></div>
   <div class="nav-section-label admin-only">Admin</div>
@@ -448,6 +468,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">&#8212;</span>
     <button class="header-btn" onclick="loadData()">&#8635; Refresh</button>
+    <button class="bell-btn" id="bellBtn" onclick="openNotifPanel()" title="Notifications">&#128276;<span class="bell-dot" id="bellDot"></span><span class="bell-count" id="bellCount"></span></button>
     <button class="req-training-btn" onclick="openRequestForm()">&#128203; Request Training</button>
     <button id="shadowBanner" onclick="exitShadow()" style="display:none;background:#f59e0b;color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;">&#128065; Shadowing &#8212; Exit</button>
     <div class="user-info-wrap">
@@ -750,12 +771,25 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 </div>
 
-<!-- ACTIVITY PANEL -->
-<div class="activity-panel-overlay" id="activityPanelOverlay" onclick="closeActivityPanel()"></div>
-<div class="activity-panel" id="activityPanel">
-  <div class="activity-panel-header"><div><div class="activity-panel-title">&#128336; Activity Feed</div><div class="activity-panel-sub">All changes made on this dashboard</div></div><button class="activity-close" onclick="closeActivityPanel()">&#10005;</button></div>
-  <div class="activity-toolbar"><span class="activity-count" id="activityCount">0 events</span><button class="activity-clear-btn" onclick="clearActivityLog()">&#128465; Clear log</button></div>
-  <div class="activity-feed-body" id="activityFeedBody"><div class="activity-empty">&#128203; No activity yet</div></div>
+<!-- NOTIFICATION PANEL -->
+<div class="notif-panel-overlay" id="notifPanelOverlay" onclick="closeNotifPanel()"></div>
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-panel-header">
+    <div class="notif-panel-title">&#128276; Notifications <span class="notif-unread-badge" id="notifUnreadBadge" style="display:none;">0</span></div>
+    <button class="notif-close" onclick="closeNotifPanel()">&#10005;</button>
+  </div>
+  <div class="notif-tabs">
+    <button class="notif-tab active" id="notifTabEvents" onclick="switchNotifTab('events')">Events <span class="notif-tab-badge" id="notifTabEventsBadge" style="display:none;">0</span></button>
+    <button class="notif-tab" id="notifTabNotes" onclick="switchNotifTab('notes')">Notes <span class="notif-tab-badge" id="notifTabNotesBadge" style="display:none;">0</span></button>
+  </div>
+  <div class="notif-toolbar">
+    <span class="notif-count" id="notifCount">0 notifications</span>
+    <div style="display:flex;gap:8px;">
+      <button class="notif-toolbar-btn mark-all" onclick="markAllNotifRead()">&#10003; Mark all read</button>
+      <button class="notif-toolbar-btn clear" onclick="clearNotifLog()">&#128465; Clear</button>
+    </div>
+  </div>
+  <div class="notif-feed-body" id="notifFeedBody"><div class="notif-empty">&#128203; No notifications yet</div></div>
 </div>
 
 <!-- PROFILE SIDEBAR -->
@@ -872,6 +906,10 @@ let calIcsEvents = [];
 let calLeaveEvents = [];
 let bankHolidays = [];
 let activityLog = JSON.parse(localStorage.getItem('dashActivityLog') || '[]');
+// Migrate old log entries: ensure they all have a type field
+activityLog = activityLog.map(e => ({ type: 'event', ...e }));
+let notifUnread = new Set(JSON.parse(localStorage.getItem('dashNotifUnread') || '[]'));
+let notifCurrentTab = 'events';
 let currentAssignRow = null;
 let currentBookRow = null;
 let currentEditRow = null;
@@ -1236,6 +1274,7 @@ function renderAll() {
   renderUnassigned();
   renderActionNeeded();
   renderKpis();
+  updateBellBadge();
   renderReferralLeaderboard();
   renderUpcomingBookings();
   renderCompletedBookings();
@@ -1903,8 +1942,8 @@ function saveProfileNote() {
   textarea.value = '';
   renderProfileNotes(currentProfileRow);
   console.log('Note saved locally for row', currentProfileRow._rowNum);
-  logActivity(currentUser?.name || '?', 'Added note', getCompanyName(currentProfileRow), 'Note: ' + text.slice(0,60));
-  showToast('Note saved');
+  logNote(currentUser?.name || '?', 'Note added', getCompanyName(currentProfileRow), text.slice(0, 120));
+  showToast('Note saved', 'success');
 }
 
 function closeProfileSidebar() {
@@ -2239,6 +2278,7 @@ async function confirmEditBooking() {
     }
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Edited booking', getCompanyName(currentEditRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d${reason?' · '+reason:''}`);
+    if(reason) logNote(currentUser?.name||'?', 'Amendment note', getCompanyName(currentEditRow), reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`);
     showToast('Booking updated', 'success');
     closeEditBookingModal();
     await loadData();
@@ -2268,6 +2308,7 @@ async function confirmCancel() {
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Cancelled enquiry', getCompanyName(currentCancelRow), reason);
+  logNote(currentUser?.name||'?', 'Cancellation note', getCompanyName(currentCancelRow), reason);
     showToast('Enquiry cancelled', 'success');
     closeCancelModal();
     await loadData();
@@ -2361,32 +2402,134 @@ function saveCalSettings() {
   loadIcsData().then(() => showToast('Calendar settings saved & synced', 'success'));
 }
 
-// ===================== ACTIVITY =====================
-function openActivityPanel() { document.getElementById('activityPanel').classList.add('open'); document.getElementById('activityPanelOverlay').classList.add('open'); }
-function closeActivityPanel() { document.getElementById('activityPanel').classList.remove('open'); document.getElementById('activityPanelOverlay').classList.remove('open'); }
+// ===================== NOTIFICATIONS =====================
+function openNotifPanel() {
+  // Mark unread items as read after a short delay (user has seen them)
+  document.getElementById('notifPanel').classList.add('open');
+  document.getElementById('notifPanelOverlay').classList.add('open');
+  renderNotifPanel();
+}
 
-function logActivity(who, what, company, detail) {
-  activityLog.unshift({ who, what, company, detail, ts: Date.now() });
-  if(activityLog.length > 100) activityLog = activityLog.slice(0, 100);
+function closeNotifPanel() {
+  document.getElementById('notifPanel').classList.remove('open');
+  document.getElementById('notifPanelOverlay').classList.remove('open');
+}
+
+function switchNotifTab(tab) {
+  notifCurrentTab = tab;
+  document.getElementById('notifTabEvents').classList.toggle('active', tab === 'events');
+  document.getElementById('notifTabNotes').classList.toggle('active', tab === 'notes');
+  renderNotifPanel();
+}
+
+// Save a log entry of type 'event' or 'note'
+function _addNotif(type, who, what, company, detail) {
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const entry = { id, type, who, what, company, detail, ts: Date.now() };
+  activityLog.unshift(entry);
+  if(activityLog.length > 200) activityLog = activityLog.slice(0, 200);
+  notifUnread.add(id);
   localStorage.setItem('dashActivityLog', JSON.stringify(activityLog));
-  renderActivityFeed();
+  localStorage.setItem('dashNotifUnread', JSON.stringify([...notifUnread]));
+  updateBellBadge();
+  renderNotifPanel();
+  // Toast popup
+  const typeLabel = type === 'note' ? '📝 Note' : '🔔 Event';
+  showToast(`${typeLabel}: ${what}${company ? ' — ' + company : ''}`, 'info', 4000);
+  // Nav dot
   const dot = document.getElementById('navActivityDot');
   if(dot) dot.style.display = 'block';
 }
 
-function renderActivityFeed() {
-  const body = document.getElementById('activityFeedBody');
-  document.getElementById('activityCount').textContent = activityLog.length + ' events';
-  if(!activityLog.length) { body.innerHTML = '<div class="activity-empty">📋 No activity yet</div>'; return; }
-  body.innerHTML = activityLog.map(e => `<div class="activity-entry">
-    <div class="activity-who">${escHtml(e.who)}</div>
-    <div class="activity-what">${escHtml(e.what)}${e.company ? ' — <strong>' + escHtml(e.company) + '</strong>' : ''}</div>
-    ${e.detail ? `<div class="activity-detail">${escHtml(e.detail)}</div>` : ''}
-    <div class="activity-time">${fmtDate(new Date(e.ts))} ${new Date(e.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
-  </div>`).join('');
+function logActivity(who, what, company, detail) { _addNotif('event', who, what, company, detail); }
+function logNote(who, what, company, detail) { _addNotif('note', who, what, company, detail); }
+
+function markNotifRead(id) {
+  notifUnread.delete(id);
+  localStorage.setItem('dashNotifUnread', JSON.stringify([...notifUnread]));
+  updateBellBadge();
+  renderNotifPanel();
 }
 
-function clearActivityLog() { activityLog = []; localStorage.setItem('dashActivityLog', '[]'); renderActivityFeed(); }
+function markAllNotifRead() {
+  notifUnread.clear();
+  localStorage.setItem('dashNotifUnread', '[]');
+  updateBellBadge();
+  renderNotifPanel();
+}
+
+function clearNotifLog() {
+  const type = notifCurrentTab;
+  activityLog = activityLog.filter(e => e.type !== type);
+  // Clean up unread set for deleted entries
+  const remaining = new Set(activityLog.map(e => e.id));
+  notifUnread = new Set([...notifUnread].filter(id => remaining.has(id)));
+  localStorage.setItem('dashActivityLog', JSON.stringify(activityLog));
+  localStorage.setItem('dashNotifUnread', JSON.stringify([...notifUnread]));
+  updateBellBadge();
+  renderNotifPanel();
+}
+
+function updateBellBadge() {
+  const unreadEvents = activityLog.filter(e => e.type === 'event' && notifUnread.has(e.id)).length;
+  const unreadNotes  = activityLog.filter(e => e.type === 'note'  && notifUnread.has(e.id)).length;
+  const total = unreadEvents + unreadNotes;
+  const bellDot   = document.getElementById('bellDot');
+  const bellCount = document.getElementById('bellCount');
+  const unreadBadge = document.getElementById('notifUnreadBadge');
+  const navDot    = document.getElementById('navActivityDot');
+  if(bellDot)    { bellDot.style.display = total > 0 ? 'block' : 'none'; }
+  if(bellCount)  { bellCount.style.display = total > 0 ? 'flex' : 'none'; bellCount.textContent = total > 99 ? '99+' : total; }
+  if(unreadBadge){ unreadBadge.style.display = total > 0 ? 'inline-flex' : 'none'; unreadBadge.textContent = total; }
+  if(navDot)     { navDot.style.display = total > 0 ? 'block' : 'none'; }
+  // Tab badges
+  const evBadge = document.getElementById('notifTabEventsBadge');
+  const ntBadge = document.getElementById('notifTabNotesBadge');
+  if(evBadge) { evBadge.style.display = unreadEvents > 0 ? 'inline' : 'none'; evBadge.textContent = unreadEvents; }
+  if(ntBadge) { ntBadge.style.display = unreadNotes  > 0 ? 'inline' : 'none'; ntBadge.textContent = unreadNotes; }
+}
+
+function renderNotifPanel() {
+  const body = document.getElementById('notifFeedBody');
+  if(!body) return;
+  const filtered = activityLog.filter(e => (e.type || 'event') === notifCurrentTab);
+  const unreadInTab = filtered.filter(e => notifUnread.has(e.id)).length;
+  document.getElementById('notifCount').textContent =
+    filtered.length + ' ' + (notifCurrentTab === 'notes' ? 'note' : 'event') + (filtered.length !== 1 ? 's' : '') +
+    (unreadInTab > 0 ? ` · ${unreadInTab} unread` : '');
+
+  if(!filtered.length) {
+    body.innerHTML = `<div class="notif-empty">${notifCurrentTab === 'notes' ? '📝 No notes yet' : '📋 No events yet'}</div>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(e => {
+    const isUnread = notifUnread.has(e.id);
+    const d = new Date(e.ts);
+    const timeStr = fmtDate(d) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="notif-entry ${isUnread ? 'unread' : 'read'}" id="notif_${e.id}">
+      <div class="notif-entry-top">
+        <div style="display:flex;gap:8px;align-items:flex-start;min-width:0;">
+          <div class="notif-type-dot ${e.type || 'event'}" style="margin-top:5px;"></div>
+          <div style="min-width:0;">
+            <div class="notif-who">${escHtml(e.who || '—')}</div>
+            <div class="notif-what">${escHtml(e.what || '')}${e.company ? ' &mdash; <strong>' + escHtml(e.company) + '</strong>' : ''}</div>
+            ${e.detail ? `<div class="notif-detail">${escHtml(e.detail)}</div>` : ''}
+            <div class="notif-time">${timeStr}</div>
+          </div>
+        </div>
+        ${isUnread ? `<button class="notif-mark-read-btn" onclick="markNotifRead('${e.id}')" title="Mark as read">✓ Read</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  updateBellBadge();
+}
+
+// Legacy alias kept for compatibility
+function openActivityPanel() { openNotifPanel(); }
+function closeActivityPanel() { closeNotifPanel(); }
+function renderActivityFeed() { renderNotifPanel(); }
 
 // ===================== REQUEST FORM =====================
 let reqCurrentStep = 1;
@@ -2598,13 +2741,13 @@ function closeAllModals() {
   });
 }
 
-function showToast(msg, type = 'info') {
+function showToast(msg, type = 'info', duration = 3500) {
   const c = document.getElementById('toastContainer');
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.textContent = msg;
   c.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, duration);
 }
 
 async function testConnection(btn) {
