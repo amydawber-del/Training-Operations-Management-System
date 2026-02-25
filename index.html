@@ -171,6 +171,7 @@ th.sort-active .sort-icon { opacity: 1; }
 .cal-day-num { font-size: 11px; font-weight: 600; color: var(--text--dark--30); display: block; margin-bottom: 2px; line-height: 1; }
 .cal-day-past { opacity: 0.55; }
 .cal-event { display: block; font-size: 9px; font-weight: 600; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; max-width: 100%; }
+.cal-event.provisional { border: 1.5px dashed #f59e0b !important; background: #fffbeb !important; color: #92400e !important; opacity: 0.85; }
 .cal-event-more { display: block; font-size: 9px; color: var(--text--dark--30); padding: 1px 4px; cursor: pointer; }
 .cal-upcoming-card { background: #fff; border: 1px solid var(--ui--underline--light-grey); border-radius: 8px; overflow: hidden; max-height: 520px; display: flex; flex-direction: column; }
 .cal-upcoming-header { padding: 12px 16px; background: var(--card-light-grey); border-bottom: 1px solid var(--ui--underline--light-grey); font-size: 12px; font-weight: 700; color: var(--text--dark--40); display: flex; align-items: center; justify-content: space-between; }
@@ -813,6 +814,46 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 </div>
 
+<!-- PROVISIONAL DATE -->
+<div class="modal-overlay" id="provisionalOverlay" onclick="if(event.target===this)closeProvisionalModal()">
+  <div class="modal">
+    <div class="modal-header" style="background:#92400e;">
+      <div>
+        <div class="modal-title">📅 Set Provisional Date</div>
+        <div class="modal-subtitle" id="provisionalModalCompany">—</div>
+      </div>
+      <button class="modal-close" onclick="closeProvisionalModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="warning-box info" style="margin-bottom:16px;">
+        <span>ℹ️</span>
+        <span>A provisional date won't confirm the booking — it flags this date on the calendar so the team knows it's under discussion. Anyone trying to book the same trainer on this date will see a warning.</span>
+      </div>
+      <div class="form-2col">
+        <div class="form-row">
+          <label class="form-label required">Provisional Date</label>
+          <input type="date" class="form-input" id="provisionalDate">
+        </div>
+        <div class="form-row">
+          <label class="form-label required">Trainer Being Discussed</label>
+          <select class="form-select" id="provisionalTrainer">
+            <option value="">— Select trainer —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Note <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">optional</span></label>
+        <input type="text" class="form-input" id="provisionalNote" placeholder="e.g. Awaiting client confirmation of budget…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="provisionalClearBtn" onclick="clearProvisionalDate()" style="margin-right:auto;color:#c0303d;display:none;">🗑 Remove Provisional Date</button>
+      <button class="btn btn-ghost" onclick="closeProvisionalModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProvisionalDate()" style="background:#92400e;">📅 Set Provisional</button>
+    </div>
+  </div>
+</div>
+
 <!-- CALENDAR EVENT -->
 <div class="modal-overlay" id="calEventOverlay" onclick="if(event.target===this)closeCalEventModal()">
   <div class="modal">
@@ -1244,6 +1285,8 @@ let currentBookRow = null;
 let currentEditRow = null;
 let currentCancelRow = null;
 let currentProfileRow = null;
+// Provisional dates: { [rowNum]: { date:'YYYY-MM-DD', trainer:'Name', company:'Name' } }
+let provisionalDates = JSON.parse(localStorage.getItem('provisionalDates') || '{}');
 let sortCol = null, sortDir = 1;
 let upcomingPage = 1, completedPage = 1;
 const PAGE_SIZE = 15;
@@ -2506,6 +2549,7 @@ function renderActionNeeded() {
       <td>${trainerPill(r.trainer)}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${canDo('confirmBooking') ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm Booking</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openProvisionalModal(${r._idx})" title="Set a provisional discussion date" style="border-color:#f59e0b;color:#92400e;">📅 ${provisionalDates[r._rowNum] ? '<span style="font-weight:700;">'+provisionalDates[r._rowNum].date+'</span>' : 'Provisional'}</button>
         ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
       </td>
     </tr>`;
@@ -3126,8 +3170,18 @@ function renderCalendar() {
       addCalEvent(new Date(d), { label: ev.summary, color: '#e5e7eb', textColor: '#6b7280', type: 'leave' });
     }
   });
-  let html = '';
-  for(let i = 0; i < startDow; i++) html += '<div class="cal-day cal-day-empty"></div>';
+  // Provisional dates — dashed amber pill, non-blocking
+  Object.values(provisionalDates).forEach(prov => {
+    if(!prov.date) return;
+    const d = new Date(prov.date + 'T00:00:00');
+    addCalEvent(d, {
+      label:     '📅 ' + prov.company + ' (' + prov.trainer + ')',
+      color:     '#fffbeb',
+      textColor: '#92400e',
+      type:      'provisional',
+      provisional: true,
+    });
+  });
   for(let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
     const isToday = date.getTime() === today.getTime();
@@ -3144,7 +3198,8 @@ function renderCalendar() {
     let evHtml = events.slice(0,max).map(ev => {
       const bg = ev.color || ev.c; const tc = ev.textColor || '#fff';
       const onclick = ev.rowIdx !== undefined ? `onclick="openCalEventModal(${ev.rowIdx})"` : '';
-      return `<span class="cal-event" style="background:${bg};color:${tc};" ${onclick} title="${escHtml(ev.label)}">${escHtml(ev.label)}</span>`;
+      const extraCls = ev.provisional ? ' provisional' : '';
+      return `<span class="cal-event${extraCls}" style="background:${bg};color:${tc};" ${onclick} title="${escHtml(ev.label)}">${escHtml(ev.label)}</span>`;
     }).join('');
     if(events.length > max) evHtml += `<span class="cal-event-more">+${events.length-max} more</span>`;
     html += `<div class="${cls}"><span class="cal-day-num">${isToday ? `<span style="background:var(--action-primary-blue);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">${d}</span>` : d}</span>${evHtml}</div>`;
@@ -3355,7 +3410,18 @@ function checkBookingWarnings() {
     blocking = true;
   }
 
-  // 3. Bank holiday info
+  // 3. Provisional date soft warning — non-blocking, just a heads-up
+  Object.entries(provisionalDates).forEach(([rowNum, prov]) => {
+    if(prov.date === date && prov.trainer === trainer && String(rowNum) !== String(currentBookRow._rowNum)) {
+      warnings.push(`<div class="warning-box warn" style="background:#fffbeb;border-color:#f59e0b;">
+        <span>📅</span>
+        <span>This date is currently being <strong>discussed provisionally</strong> with <strong>${escHtml(prov.company)}</strong> for ${escHtml(trainer)}${prov.note ? ' — ' + escHtml(prov.note) : ''}. Are you sure you want to confirm a different booking here?</span>
+      </div>`);
+      // Soft warning only — does not block or require override
+    }
+  });
+
+  // 4. Bank holiday info
   if(isBankHoliday(bookD)) {
     warnings.push(`<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`);
   }
@@ -3526,6 +3592,68 @@ function openCancelModal(idx) {
 }
 
 function closeCancelModal() { document.getElementById('cancelOverlay').classList.remove('open'); currentCancelRow = null; }
+
+// ===================== PROVISIONAL DATES =====================
+let currentProvisionalRow = null;
+
+function openProvisionalModal(idx) {
+  const r = allData.find(x => x._idx === idx);
+  if(!r) return;
+  currentProvisionalRow = r;
+  document.getElementById('provisionalModalCompany').textContent = getCompanyName(r) + ' · ' + (r.trainer || 'No trainer assigned');
+  // Pre-fill trainer from record
+  const sel = document.getElementById('provisionalTrainer');
+  sel.innerHTML = '<option value="">— Select trainer —</option>';
+  trainers.filter(u => u.role === 'trainer' || u.role === 'admin')
+    .forEach(t => sel.innerHTML += `<option value="${t.name}" ${r.trainer===t.name?'selected':''}>${t.name}</option>`);
+  // Pre-fill existing provisional if set
+  const existing = provisionalDates[r._rowNum];
+  if(existing) {
+    document.getElementById('provisionalDate').value   = existing.date    || '';
+    document.getElementById('provisionalNote').value   = existing.note    || '';
+    sel.value = existing.trainer || (r.trainer || '');
+    document.getElementById('provisionalClearBtn').style.display = 'inline-flex';
+  } else {
+    document.getElementById('provisionalDate').value   = r.preferredDate  || '';
+    document.getElementById('provisionalNote').value   = '';
+    document.getElementById('provisionalClearBtn').style.display = 'none';
+  }
+  document.getElementById('provisionalOverlay').classList.add('open');
+}
+
+function closeProvisionalModal() {
+  document.getElementById('provisionalOverlay').classList.remove('open');
+  currentProvisionalRow = null;
+}
+
+function saveProvisionalDate() {
+  if(!currentProvisionalRow) return;
+  const date    = document.getElementById('provisionalDate').value;
+  const trainer = document.getElementById('provisionalTrainer').value;
+  const note    = document.getElementById('provisionalNote').value.trim();
+  if(!date || !trainer) { showToast('Please select a date and trainer', 'error'); return; }
+  const rowNum  = currentProvisionalRow._rowNum;
+  provisionalDates[rowNum] = {
+    date, trainer, note,
+    company: getCompanyName(currentProvisionalRow),
+    rowIdx:  currentProvisionalRow._idx,
+  };
+  localStorage.setItem('provisionalDates', JSON.stringify(provisionalDates));
+  showToast('Provisional date set — ' + fmtDate(new Date(date)) + ' with ' + trainer, 'success');
+  closeProvisionalModal();
+  renderActionNeeded();
+  renderCalendar();
+}
+
+function clearProvisionalDate() {
+  if(!currentProvisionalRow) return;
+  delete provisionalDates[currentProvisionalRow._rowNum];
+  localStorage.setItem('provisionalDates', JSON.stringify(provisionalDates));
+  showToast('Provisional date removed', 'success');
+  closeProvisionalModal();
+  renderActionNeeded();
+  renderCalendar();
+}
 
 async function confirmCancel() {
   const reason = document.getElementById('cancelReason').value.trim();
