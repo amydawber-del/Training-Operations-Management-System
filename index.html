@@ -1076,16 +1076,14 @@ function writeActivityLog(entry) {
 
 /**
  * writeNoteToSheet(rowRef, record, text, section)
- * Persists a progress note to the "Progress Notes" sheet immediately.
- * rowRef  - _rowNum of the booking row (used to reload notes onto the right record)
- * record  - company / client name shown in the sheet
- * text    - full note text
- * section - where it came from (default "Client Profile")
+ * Persists a progress note to the "Progress Notes" sheet.
+ * Uses GET (same as all other API calls - POST gets stripped by Apps Script redirect).
+ * Falls back to a localStorage retry queue if the request fails.
  */
 async function writeNoteToSheet(rowRef, record, text, section) {
   if(!SCRIPT_URL || !text) return;
   const u = currentUser || {};
-  const body = {
+  const entry = {
     action:   'saveNote',
     rowRef:   String(rowRef),
     record:   record  || '',
@@ -1095,22 +1093,42 @@ async function writeNoteToSheet(rowRef, record, text, section) {
     userRole: u.role || '',
     ts:       new Date().toISOString(),
   };
+  const ok = await _trySaveNote(entry);
+  if(!ok) {
+    // Queue for retry on next loadData
+    const queue = JSON.parse(localStorage.getItem('noteRetryQueue') || '[]');
+    queue.push(entry);
+    localStorage.setItem('noteRetryQueue', JSON.stringify(queue));
+    console.warn('Note queued for retry:', entry.text.slice(0, 40));
+  }
+}
+
+async function _trySaveNote(entry) {
   try {
-    // Use POST so long note text never hits GET URL length limits
-    const res  = await fetch(SCRIPT_URL, {
-      method:   'POST',
-      redirect: 'follow',
-      headers:  { 'Content-Type': 'text/plain' },  // text/plain avoids CORS preflight
-      body:     JSON.stringify(body),
-    });
+    const params = new URLSearchParams(entry);
+    const res  = await fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' });
     const json = await res.json();
-    if(!json.success) {
-      console.warn('saveNote sheet error:', json.error);
-      showToast('Note saved locally but sheet write failed: ' + (json.error||'unknown'), 'error');
-    }
+    if(json.success) return true;
+    console.warn('saveNote failed:', json.error);
+    return false;
   } catch(e) {
-    console.warn('Note save to sheet failed:', e.message);
-    showToast('Note saved locally but could not reach sheet. Will retry on next load.', 'error');
+    console.warn('saveNote fetch error:', e.message);
+    return false;
+  }
+}
+
+// Called at the start of loadData — flushes any queued notes that failed before
+async function flushNoteQueue() {
+  const queue = JSON.parse(localStorage.getItem('noteRetryQueue') || '[]');
+  if(!queue.length) return;
+  const remaining = [];
+  for(const entry of queue) {
+    const ok = await _trySaveNote(entry);
+    if(!ok) remaining.push(entry);
+  }
+  localStorage.setItem('noteRetryQueue', JSON.stringify(remaining));
+  if(remaining.length < queue.length) {
+    console.log('Flushed', queue.length - remaining.length, 'queued note(s) to sheet');
   }
 }
 const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
@@ -1819,6 +1837,8 @@ async function loadData() {
   const bar = document.getElementById('loadingBar');
   bar.style.display = 'block';
   bar.classList.add('active');
+  // Flush any notes that failed to save last time
+  flushNoteQueue();
   try {
     const res = await fetch(SCRIPT_URL + '?action=getData&t=' + Date.now(), {
       method: 'GET',
@@ -2820,17 +2840,24 @@ function renderProfileNotes(r) {
   }).join('');
 }
 
-function saveProfileNote() {
+async function saveProfileNote() {
   const textarea = document.getElementById('profileNewNote');
+  const btn      = document.querySelector('#profileNotesList ~ * button, .profile-note-add button') ||
+                   document.getElementById('profileAddNoteBtn');
   const text = textarea.value.trim();
   if(!text || !currentProfileRow) return;
+
+  // Immediately show locally so UI feels instant
   const note = { text, author: currentUser?.name || 'Unknown', ts: Date.now() };
   if(!currentProfileRow.notes) currentProfileRow.notes = [];
   currentProfileRow.notes.push(note);
   textarea.value = '';
   renderProfileNotes(currentProfileRow);
-  // Persist to Progress Notes sheet so it survives refresh/re-login
-  writeNoteToSheet(currentProfileRow._rowNum, getCompanyName(currentProfileRow), text, 'Client Profile');
+
+  // Persist to Progress Notes sheet
+  showToast('Saving note...', 'info');
+  await writeNoteToSheet(currentProfileRow._rowNum, getCompanyName(currentProfileRow), text, 'Client Profile');
+
   logNote(currentUser?.name || '?', 'Note added', getCompanyName(currentProfileRow), text.slice(0, 120));
   writeActivityLog({
     actionType:  'Note Added',
