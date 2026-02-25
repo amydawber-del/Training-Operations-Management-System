@@ -376,6 +376,8 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .ics-dot.error { background:#e53935; }
 .ics-dot.loading { background:#f59e0b;animation:pulse-dot 1s infinite; }
 
+/* Login search */
+.login-result-row:hover, .login-result-row:focus { background:#f0f4ff; outline:none; }
 /* PIN */
 .pin-key { display:flex;flex-direction:column;align-items:center;justify-content:center;border:none;border-radius:50%;width:72px;height:72px;margin:0 auto;background:#f3f4f6;cursor:pointer;font-family:Arial,sans-serif;transition:background 0.1s,transform 0.08s;user-select:none; }
 .pin-key:hover { background:#e5e7eb; }
@@ -488,12 +490,68 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#fff;">STREET<span style="color:var(--brand--yellow);">.</span><span style="font-size:12px;font-weight:400;">CO.UK</span></div>
     <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px;">Training Dashboard</div>
   </div>
-  <div style="background:#fff;border-radius:16px;padding:32px 28px;width:320px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
-    <div id="loginCardTitle" style="font-size:16px;font-weight:700;color:var(--text--dark--50);margin-bottom:6px;">Welcome back</div>
-    <div id="loginCardSub" style="font-size:12px;color:var(--text--dark--30);margin-bottom:20px;">Select your account to continue</div>
-    <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Select your account</label>
-    <select id="loginUserSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:13px;font-family:Arial,sans-serif;color:var(--text--dark--50);background:#fff;appearance:none;cursor:pointer;margin-bottom:16px;"><option value="">&#8212; Choose account &#8212;</option></select>
-    <button onclick="loginDirect()" style="width:100%;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Enter Dashboard &#8594;</button>
+
+  <!-- Step 1: Search for user -->
+  <div id="loginStep1" style="background:#fff;border-radius:16px;padding:32px 28px;width:340px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
+    <div style="font-size:16px;font-weight:700;color:var(--text--dark--50);margin-bottom:4px;">Welcome back</div>
+    <div style="font-size:12px;color:var(--text--dark--30);margin-bottom:22px;">Search for your name to continue</div>
+    <label style="font-size:11px;font-weight:600;color:var(--text--dark--40);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block;">Your name</label>
+    <div style="position:relative;">
+      <input id="loginSearchInput" type="text" placeholder="Start typing your name..." autocomplete="off" spellcheck="false"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--light-grey);border-radius:8px;font-size:13px;font-family:Arial,sans-serif;color:var(--text--dark--50);box-sizing:border-box;outline:none;"
+        oninput="loginSearchFilter()" onkeydown="loginSearchKey(event)">
+      <!-- Dropdown results -->
+      <div id="loginSearchResults" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--light-grey);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);max-height:220px;overflow-y:auto;z-index:10;"></div>
+    </div>
+    <div id="loginSearchError" style="font-size:11px;color:#c0303d;margin-top:8px;display:none;">No matching users found.</div>
+    <!-- Selected user chip -->
+    <div id="loginSelectedUser" style="display:none;margin-top:14px;padding:10px 12px;border-radius:8px;background:#f0f4ff;border:1.5px solid #c7d4ff;display:none;align-items:center;gap:10px;">
+      <div id="loginSelectedAvatar" style="width:32px;height:32px;border-radius:50%;background:#2147f4;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;"></div>
+      <div>
+        <div id="loginSelectedName" style="font-size:13px;font-weight:600;color:var(--text--dark--50);"></div>
+        <div id="loginSelectedRole" style="font-size:11px;color:var(--text--dark--30);margin-top:1px;"></div>
+      </div>
+      <button onclick="loginClearUser()" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:var(--text--dark--30);padding:2px 6px;" title="Change">&#10005;</button>
+    </div>
+    <button id="loginNextBtn" onclick="loginNext()" style="display:none;width:100%;margin-top:16px;padding:11px;background:var(--action-primary-blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;">Continue &#8594;</button>
+    <!-- Hidden select kept for backward compat -->
+    <select id="loginUserSelect" style="display:none;"></select>
+  </div>
+
+  <!-- Step 2: PIN entry -->
+  <div id="loginStep2" style="display:none;background:#fff;border-radius:16px;padding:32px 28px;width:340px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.4);">
+    <button onclick="loginBackToSearch()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text--dark--30);padding:0;margin-bottom:18px;display:flex;align-items:center;gap:4px;font-family:Arial,sans-serif;">&#8592; Back</button>
+    <!-- User identity -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;">
+      <div id="pinAvatar" style="width:40px;height:40px;border-radius:50%;background:#2147f4;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0;"></div>
+      <div>
+        <div id="pinName" style="font-size:15px;font-weight:700;color:var(--text--dark--50);"></div>
+        <div id="pinSubtitle" style="font-size:12px;color:var(--text--dark--30);margin-top:1px;"></div>
+      </div>
+    </div>
+    <!-- Dots -->
+    <div style="display:flex;justify-content:center;gap:10px;margin-bottom:24px;">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div id="pinError" style="text-align:center;font-size:12px;color:#c0303d;margin-bottom:10px;min-height:18px;"></div>
+    <!-- Numpad -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto;">
+      <button class="pin-key" onclick="pinPadPress('1')"><span class="pin-key-num">1</span></button>
+      <button class="pin-key" onclick="pinPadPress('2')"><span class="pin-key-num">2</span><span class="pin-key-sub">ABC</span></button>
+      <button class="pin-key" onclick="pinPadPress('3')"><span class="pin-key-num">3</span><span class="pin-key-sub">DEF</span></button>
+      <button class="pin-key" onclick="pinPadPress('4')"><span class="pin-key-num">4</span><span class="pin-key-sub">GHI</span></button>
+      <button class="pin-key" onclick="pinPadPress('5')"><span class="pin-key-num">5</span><span class="pin-key-sub">JKL</span></button>
+      <button class="pin-key" onclick="pinPadPress('6')"><span class="pin-key-num">6</span><span class="pin-key-sub">MNO</span></button>
+      <button class="pin-key" onclick="pinPadPress('7')"><span class="pin-key-num">7</span><span class="pin-key-sub">PQRS</span></button>
+      <button class="pin-key" onclick="pinPadPress('8')"><span class="pin-key-num">8</span><span class="pin-key-sub">TUV</span></button>
+      <button class="pin-key" onclick="pinPadPress('9')"><span class="pin-key-num">9</span><span class="pin-key-sub">WXYZ</span></button>
+      <button class="pin-key pin-key-ghost" onclick="loginBackToSearch()"><span style="font-size:12px;color:var(--text--dark--30);">&#8592;</span></button>
+      <button class="pin-key" onclick="pinPadPress('0')"><span class="pin-key-num">0</span></button>
+      <button class="pin-key pin-key-ghost" onclick="pinPadBackspace()"><span style="font-size:18px;color:var(--text--dark--40);">&#9003;</span></button>
+    </div>
   </div>
 </div>
 
@@ -1084,7 +1142,6 @@ let currentProfileRow = null;
 let sortCol = null, sortDir = 1;
 let upcomingPage = 1, completedPage = 1;
 const PAGE_SIZE = 15;
-let pinBuffer = '';
 let revenueChartInst = null, optionChartInst = null;
 let calSettingsHolidayIcs = localStorage.getItem('calHolidayIcs') || HUMAANS_PUBLIC_HOLIDAYS_ICS;
 let calSettingsLeaveIcs = localStorage.getItem('calLeaveIcs') || HUMAANS_LEAVE_ICS;
@@ -1353,28 +1410,242 @@ function populateLoginSelect() {
 }
 
 // ===================== LOGIN / AUTH =====================
+// ===================== LOGIN — SEARCH + PIN =====================
+let loginSelectedUserId = null;   // user chosen in step 1
+let pinBuffer = '';                // digits entered on PIN pad
+let pinMode   = 'verify';         // 'verify' | 'set' | 'confirm'
+let pinFirst  = '';                // stores first entry during set flow
+
 function showLogin() {
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('mainHeader').style.display = 'none';
   document.getElementById('mainContent').style.display = 'none';
+  _showLoginStep1();
 }
 
-function loginDirect() {
-  const sel = document.getElementById('loginUserSelect');
-  if(!sel.value) { sel.style.borderColor = '#c0303d'; return; }
-  sel.style.borderColor = '';
-  const user = trainers.find(u => u.id === sel.value);
-  if(!user) return;
-  currentUser = user;
+function _showLoginStep1() {
+  document.getElementById('loginStep1').style.display = 'block';
+  document.getElementById('loginStep2').style.display = 'none';
+  document.getElementById('loginSearchInput').value = '';
+  document.getElementById('loginSearchResults').style.display = 'none';
+  document.getElementById('loginSearchError').style.display = 'none';
+  document.getElementById('loginSelectedUser').style.display = 'none';
+  document.getElementById('loginNextBtn').style.display = 'none';
+  loginSelectedUserId = null;
+  setTimeout(() => document.getElementById('loginSearchInput').focus(), 120);
+}
+
+function loginSearchFilter() {
+  const q = document.getElementById('loginSearchInput').value.trim().toLowerCase();
+  const results = document.getElementById('loginSearchResults');
+  const errEl   = document.getElementById('loginSearchError');
+  errEl.style.display = 'none';
+
+  if(q.length < 1) { results.style.display = 'none'; return; }
+
+  const matches = trainers
+    .filter(u => u.active !== false && u.name.toLowerCase().includes(q))
+    .slice(0, 8);
+
+  if(!matches.length) {
+    results.style.display = 'none';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  results.innerHTML = matches.map((u, i) => {
+    const initials = u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+    return `<div class="login-result-row" data-id="${u.id}" tabindex="0"
+      style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:6px;"
+      onmousedown="loginSelectUser('${u.id}')"
+      onkeydown="if(event.key==='Enter')loginSelectUser('${u.id}')">
+      <div style="width:28px;height:28px;border-radius:50%;background:${u.color||'#2147f4'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(u.name)}</div>
+        <div style="font-size:11px;color:var(--text--dark--30);">${escHtml(u.department||u.jobTitle||u.role)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  results.style.display = 'block';
+}
+
+// Keyboard nav on the search input
+function loginSearchKey(e) {
+  const results = document.getElementById('loginSearchResults');
+  const rows = results.querySelectorAll('.login-result-row');
+  if(e.key === 'ArrowDown' && rows.length) { e.preventDefault(); rows[0].focus(); }
+  if(e.key === 'Enter' && rows.length === 1) loginSelectUser(rows[0].dataset.id);
+  if(e.key === 'Escape') { results.style.display = 'none'; }
+}
+
+function loginSelectUser(uid) {
+  const u = trainers.find(t => t.id === uid);
+  if(!u) return;
+  loginSelectedUserId = uid;
+
+  // Hide dropdown, show chip
+  document.getElementById('loginSearchResults').style.display = 'none';
+  document.getElementById('loginSearchInput').value = u.name;
+
+  const chip    = document.getElementById('loginSelectedUser');
+  const avatar  = document.getElementById('loginSelectedAvatar');
+  const nameEl  = document.getElementById('loginSelectedName');
+  const roleEl  = document.getElementById('loginSelectedRole');
+  const initials = u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  avatar.textContent   = initials;
+  avatar.style.background = u.color || '#2147f4';
+  nameEl.textContent   = u.name;
+  roleEl.textContent   = (u.department||u.jobTitle||'') + (u.role ? ' · ' + u.role : '');
+  chip.style.display   = 'flex';
+  document.getElementById('loginNextBtn').style.display = 'block';
+}
+
+function loginClearUser() {
+  loginSelectedUserId = null;
+  document.getElementById('loginSelectedUser').style.display = 'none';
+  document.getElementById('loginNextBtn').style.display = 'none';
+  document.getElementById('loginSearchInput').value = '';
+  document.getElementById('loginSearchInput').focus();
+}
+
+function loginNext() {
+  if(!loginSelectedUserId) return;
+  const u = trainers.find(t => t.id === loginSelectedUserId);
+  if(!u) return;
+
+  // Populate step 2 identity
+  const initials = u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('pinAvatar').textContent     = initials;
+  document.getElementById('pinAvatar').style.background = u.color || '#2147f4';
+  document.getElementById('pinName').textContent       = u.name;
+  document.getElementById('loginStep1').style.display  = 'none';
+  document.getElementById('loginStep2').style.display  = 'block';
+
+  pinBuffer = '';
+  pinFirst  = '';
+
+  if(u.pin) {
+    // PIN already set — verify it
+    pinMode = 'verify';
+    document.getElementById('pinSubtitle').textContent = 'Enter your PIN';
+  } else {
+    // No PIN set yet — first sign-in, ask them to create one
+    pinMode = 'set';
+    document.getElementById('pinSubtitle').textContent = 'Create a 4-digit PIN';
+  }
+
+  document.getElementById('pinError').textContent = '';
+  renderPinDots();
+}
+
+function loginBackToSearch() {
+  document.getElementById('loginStep2').style.display = 'none';
+  _showLoginStep1();
+}
+
+function pinPadPress(digit) {
+  if(pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  renderPinDots();
+  if(pinBuffer.length === 4) {
+    setTimeout(_pinSubmit, 180); // tiny delay so last dot animates
+  }
+}
+
+function pinPadBackspace() {
+  if(!pinBuffer.length) return;
+  pinBuffer = pinBuffer.slice(0, -1);
+  renderPinDots();
+}
+
+function renderPinDots() {
+  for(let i = 0; i < 4; i++) {
+    const d = document.getElementById('pd' + i);
+    if(!d) continue;
+    d.classList.toggle('filled', i < pinBuffer.length);
+    d.classList.remove('error');
+  }
+}
+
+function _pinError(msg) {
+  for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.classList.add('error');}
+  document.getElementById('pinError').textContent = msg;
+  pinBuffer = '';
+  setTimeout(renderPinDots, 600);
+}
+
+function _pinSubmit() {
+  const u = trainers.find(t => t.id === loginSelectedUserId);
+  if(!u) return;
+
+  if(pinMode === 'verify') {
+    if(pinBuffer === String(u.pin)) {
+      _loginSuccess(u);
+    } else {
+      _pinError('Incorrect PIN. Try again.');
+    }
+
+  } else if(pinMode === 'set') {
+    // Store first entry, ask to confirm
+    pinFirst = pinBuffer;
+    pinBuffer = '';
+    pinMode = 'confirm';
+    document.getElementById('pinSubtitle').textContent = 'Confirm your PIN';
+    document.getElementById('pinError').textContent = '';
+    renderPinDots();
+
+  } else if(pinMode === 'confirm') {
+    if(pinBuffer === pinFirst) {
+      // Save PIN to user object + sheet
+      u.pin = pinBuffer;
+      _savePinToSheet(u);
+      _loginSuccess(u);
+    } else {
+      pinFirst = '';
+      pinMode = 'set';
+      _pinError("PINs didn't match. Let's try again.");
+      document.getElementById('pinSubtitle').textContent = 'Create a 4-digit PIN';
+    }
+  }
+}
+
+async function _savePinToSheet(u) {
+  try {
+    const [fn, ...rest] = (u.name||'').split(' ');
+    const params = new URLSearchParams({
+      action:     'saveUser',
+      userId:     u.id,
+      firstName:  u.firstName || fn,
+      lastName:   u.lastName  || rest.join(' '),
+      department: u.department || u.jobTitle || '',
+      role:       u.role || 'viewer',
+      active:     'true',
+      pin:        u.pin,
+      color:      u.color || '',
+      email:      u.email || '',
+      customPerms: (u.customPerms && Object.keys(u.customPerms).length) ? JSON.stringify(u.customPerms) : '',
+      addedBy:    'Self (first sign-in)',
+    });
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' });
+    localStorage.setItem('dashUsersCache', JSON.stringify(trainers));
+  } catch(e) { console.warn('PIN save failed:', e.message); }
+}
+
+function _loginSuccess(u) {
+  currentUser = u;
   enterDashboard();
 }
 
-function loginStepPin() { loginDirect(); }
-function loginBack() {}
-function pinPadPress(d) {}
-function pinPadBackspace() {}
-function renderPinDots() {}
-function loginConfirmPin() { loginDirect(); }
+// legacy stubs
+function loginDirect() {
+  const uid = loginSelectedUserId || document.getElementById('loginUserSelect')?.value;
+  const u = trainers.find(t => t.id === uid);
+  if(u) { currentUser = u; enterDashboard(); }
+}
+function loginStepPin() { loginNext(); }
+function loginBack()    { loginBackToSearch(); }
+function loginConfirmPin() {}
+
 
 function enterDashboard() {
   document.getElementById('loginScreen').style.display = 'none';
