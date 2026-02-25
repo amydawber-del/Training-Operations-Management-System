@@ -1078,25 +1078,9 @@ const CANONICAL_USERS = [
 // ── User/Department/Permission state ────────────────────────────
 let departments = [];  // loaded from Departments sheet
 
-async function loadUsers() {
-  // Try to fetch users from the sheet; fall back to CANONICAL_USERS if offline
-  try {
-    const res  = await fetch(SCRIPT_URL + '?action=getUsers&t=' + Date.now(), { method:'GET', redirect:'follow' });
-    const json = await res.json();
-    if (json.success && json.users && json.users.length) {
-      // Merge localStorage display-prefs (colour, pin) over sheet data
-      const localPrefs = JSON.parse(localStorage.getItem('dashUserPrefs') || '{}');
-      trainers = json.users
-        .filter(u => u.active !== false)   // skip deactivated users
-        .map(u => Object.assign({}, u, localPrefs[u.id] || {}));
-      localStorage.setItem('dashUsersCache', JSON.stringify(trainers));
-      populateLoginSelect();
-      return;
-    }
-  } catch(e) {
-    console.warn('getUsers failed — falling back to cache/CANONICAL', e.message);
-  }
-  // Fallback: localStorage cache → CANONICAL_USERS
+function loadUsers() {
+  // Step 1: Populate immediately from cache or CANONICAL_USERS so the login
+  // dropdown is never empty while any network request is in flight.
   const cached = JSON.parse(localStorage.getItem('dashUsersCache') || 'null');
   if (cached && cached.length) {
     trainers = cached;
@@ -1107,6 +1091,21 @@ async function loadUsers() {
     trainers = trainers.concat(extra);
   }
   populateLoginSelect();
+
+  // Step 2: Refresh from the sheet in the background. If we get live data,
+  // update the dropdown immediately (deactivated users will be excluded).
+  fetch(SCRIPT_URL + '?action=getUsers&t=' + Date.now(), { method:'GET', redirect:'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (!json.success || !json.users || !json.users.length) return;
+      const localPrefs = JSON.parse(localStorage.getItem('dashUserPrefs') || '{}');
+      trainers = json.users.map(function(u) {
+        return Object.assign({}, u, localPrefs[u.id] || {});
+      });
+      localStorage.setItem('dashUsersCache', JSON.stringify(trainers));
+      populateLoginSelect();
+    })
+    .catch(function(e) { console.warn('getUsers background fetch failed:', e.message); });
 }
 
 // Save a single user back to the sheet (and keep local cache in sync)
