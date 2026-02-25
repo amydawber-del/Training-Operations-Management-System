@@ -2120,8 +2120,51 @@ function parseIcs(text, type) {
   return events;
 }
 
+// ── Trainer leave helpers ─────────────────────────────────────────
+
+/**
+ * Returns true if trainerName has a leave event covering the given date (YYYY-MM-DD string).
+ */
+function isTrainerOnLeave(trainerName, dateISO) {
+  if(!trainerName || !calLeaveEvents.length) return false;
+  const check = new Date(dateISO + 'T00:00:00');
+  const nameLower = trainerName.trim().toLowerCase();
+  return calLeaveEvents.some(ev => {
+    if(!ev.summary) return false;
+    if(!ev.summary.toLowerCase().includes(nameLower)) return false;
+    const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
+    const evEnd   = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
+    evEnd.setHours(0,0,0,0);
+    return check >= evStart && check < evEnd;
+  });
+}
+
+/**
+ * Returns a Set of ISO date strings (YYYY-MM-DD) when trainerName is on leave.
+ */
+function getTrainerLeaveDates(trainerName) {
+  const out = new Set();
+  if(!trainerName || !calLeaveEvents.length) return out;
+  const nameLower = trainerName.trim().toLowerCase();
+  calLeaveEvents.forEach(ev => {
+    if(!ev.summary || !ev.summary.toLowerCase().includes(nameLower)) return;
+    const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
+    const evEnd   = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
+    evEnd.setHours(0,0,0,0);
+    for(let d = new Date(evStart); d < evEnd; d.setDate(d.getDate() + 1)) {
+      out.add(d.toISOString().split('T')[0]);
+    }
+  });
+  return out;
+}
+
+/** Returns true if the named user is a trainer or admin (i.e. has a training calendar). */
+function isCalendarTrainer(name) {
+  const t = trainers.find(u => u.name === name);
+  return t && (t.role === 'trainer' || t.role === 'admin');
+}
+
 function updateIcsStatusBar(holResult, leaveResult) {
-  const bar   = document.getElementById('icsStatusBar');
   const parts = [];
 
   if(holResult) {
@@ -2305,25 +2348,25 @@ function getNextFreeDate(trainerName) {
   const earliest = addWorkingDays(today, 14);
   const booked = allData.filter(r => r.trainer === trainerName && r.status === 'Booked' && r.bookedOn);
   const busyDates = new Set();
+
   booked.forEach(r => {
     const start = new Date(r.bookedOn); start.setHours(0,0,0,0);
     const days = r.trainingDays || 1;
-    // All actual training days
     for (let i = 0; i < days; i++) {
       const d = new Date(start); d.setDate(d.getDate() + i);
       busyDates.add(d.toISOString().split('T')[0]);
     }
-    // Travel day = last working day before training starts
-    // (skips bank holidays & weekends e.g. if Mon is a BH, travel falls on Fri)
     const travel = prevWorkingDay(start);
     busyDates.add(travel.toISOString().split('T')[0]);
-    // Admin/recovery day = first working day after training ends
-    // (skips bank holidays & weekends e.g. if Mon after Fri session is a BH, admin is Tue)
     const trainingEnd = new Date(start); trainingEnd.setDate(trainingEnd.getDate() + days - 1);
     const admin = nextWorkingDay(trainingEnd);
     busyDates.add(admin.toISOString().split('T')[0]);
   });
-  // Walk forward from earliest, only on working days, find first free slot
+
+  // Also treat leave days as busy
+  const leaveDates = getTrainerLeaveDates(trainerName);
+  leaveDates.forEach(iso => busyDates.add(iso));
+
   for (let i = 0; i < 90; i++) {
     const d = new Date(earliest); d.setDate(d.getDate() + i);
     if (!isWorkingDay(d)) continue;
@@ -3014,14 +3057,15 @@ function renderCalendar() {
       addCalEvent(new Date(d), { label: ev.summary, color: '#fef9c3', textColor: '#92400e', type: 'holiday' });
     }
   });
-  // Team leave — show on each day within range
+  // Team leave — only show for trainers/admins, greyed out style
   calLeaveEvents.forEach(ev => {
     if(!ev.start) return;
+    if(!isCalendarTrainer(ev.summary?.split(/[-–—]/)[0]?.trim())) return; // skip non-trainer staff
     const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
     const evEnd   = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
     evEnd.setHours(0,0,0,0);
     for(let d = new Date(evStart); d < evEnd; d.setDate(d.getDate() + 1)) {
-      addCalEvent(new Date(d), { label: ev.summary, color: '#f3e8ff', textColor: '#7c3aed', type: 'leave' });
+      addCalEvent(new Date(d), { label: ev.summary, color: '#e5e7eb', textColor: '#6b7280', type: 'leave' });
     }
   });
   let html = '';
@@ -3198,20 +3242,48 @@ function checkBookingWarnings() {
   blockMsg.style.display = 'none';
   btn.disabled = false;
   if(!date || !trainer) return;
+
   const bookD = new Date(date);
+  let warnings = [];
+  let blocking = false;
+
+  // 1. Double-booking check (existing bookings)
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentBookRow._idx);
-  let hasConflict = false;
   conflicts.forEach(r => {
     const rStart = new Date(r.bookedOn); rStart.setHours(0,0,0,0);
     const rEnd = new Date(rStart); rEnd.setDate(rEnd.getDate() + (r.trainingDays||1));
-    if(bookD >= rStart && bookD < rEnd) hasConflict = true;
+    if(bookD >= rStart && bookD < rEnd) {
+      warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`);
+      blocking = true;
+    }
   });
-  if(hasConflict) {
-    warnEl.innerHTML = `<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`;
-    overrideRow.style.display = 'block';
-    if(!override) { blockMsg.textContent = 'Tick the override box to proceed despite conflict'; blockMsg.style.display = 'block'; btn.disabled = true; }
+
+  // 2. Trainer leave check — flag every training day that falls on leave
+  let leaveDays = [];
+  for(let i = 0; i < days; i++) {
+    const d = new Date(bookD); d.setDate(d.getDate() + i);
+    const iso = d.toISOString().split('T')[0];
+    if(isTrainerOnLeave(trainer, iso)) leaveDays.push(fmtDate(d));
   }
-  if(isBankHoliday(bookD)) warnEl.innerHTML += `<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`;
+  if(leaveDays.length) {
+    warnings.push(`<div class="warning-box warn" style="border-color:#c0303d;background:#fff0f0;"><span>🏖️</span><span><strong>${trainer} is on leave</strong> on: ${leaveDays.join(', ')}. Check their Humaans calendar before confirming.</span></div>`);
+    blocking = true;
+  }
+
+  // 3. Bank holiday info
+  if(isBankHoliday(bookD)) {
+    warnings.push(`<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`);
+  }
+
+  warnEl.innerHTML = warnings.join('');
+  if(blocking) {
+    overrideRow.style.display = 'block';
+    if(!override) {
+      blockMsg.textContent = 'Tick the override box to confirm despite the conflict above';
+      blockMsg.style.display = 'block';
+      btn.disabled = true;
+    }
+  }
 }
 
 async function confirmBook() {
@@ -3268,6 +3340,7 @@ function closeEditBookingModal() { document.getElementById('editBookingOverlay')
 function checkEditWarnings() {
   if(!currentEditRow) return;
   const date = document.getElementById('editBookDate').value;
+  const days = parseInt(document.getElementById('editBookDays').value) || 1;
   const trainer = document.getElementById('editBookTrainer').value;
   const override = document.getElementById('editBookingOverride')?.checked;
   const warnEl = document.getElementById('editBookingWarnings');
@@ -3276,18 +3349,38 @@ function checkEditWarnings() {
   const btn = document.getElementById('confirmEditBookBtn');
   warnEl.innerHTML = ''; overrideRow.style.display = 'none'; blockMsg.style.display = 'none'; btn.disabled = false;
   if(!date || !trainer) return;
+
   const bookD = new Date(date);
+  let warnings = [];
+  let blocking = false;
+
+  // 1. Double-booking check
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentEditRow._idx);
-  let hasConflict = false;
   conflicts.forEach(r => {
     const rStart = new Date(r.bookedOn); rStart.setHours(0,0,0,0);
     const rEnd = new Date(rStart); rEnd.setDate(rEnd.getDate() + (r.trainingDays||1));
-    if(bookD >= rStart && bookD < rEnd) hasConflict = true;
+    if(bookD >= rStart && bookD < rEnd) {
+      warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`);
+      blocking = true;
+    }
   });
-  if(hasConflict) {
-    warnEl.innerHTML = `<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`;
+
+  // 2. Leave check across all training days
+  let leaveDays = [];
+  for(let i = 0; i < days; i++) {
+    const d = new Date(bookD); d.setDate(d.getDate() + i);
+    const iso = d.toISOString().split('T')[0];
+    if(isTrainerOnLeave(trainer, iso)) leaveDays.push(fmtDate(d));
+  }
+  if(leaveDays.length) {
+    warnings.push(`<div class="warning-box warn" style="border-color:#c0303d;background:#fff0f0;"><span>🏖️</span><span><strong>${trainer} is on leave</strong> on: ${leaveDays.join(', ')}. Check their Humaans calendar before confirming.</span></div>`);
+    blocking = true;
+  }
+
+  warnEl.innerHTML = warnings.join('');
+  if(blocking) {
     overrideRow.style.display = 'block';
-    if(!override) { blockMsg.textContent = 'Tick the override box to proceed'; blockMsg.style.display = 'block'; btn.disabled = true; }
+    if(!override) { blockMsg.textContent = 'Tick the override box to confirm despite the conflict above'; blockMsg.style.display = 'block'; btn.disabled = true; }
   }
 }
 
