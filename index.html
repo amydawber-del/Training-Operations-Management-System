@@ -884,7 +884,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
             <div class="req-field"><label class="req-label required">First Name</label><input type="text" class="req-input" id="reqNewFirstName" placeholder="e.g. Sarah"></div>
             <div class="req-field"><label class="req-label required">Last Name</label><input type="text" class="req-input" id="reqNewLastName" placeholder="e.g. Jones"></div>
           </div>
-          <div class="req-field"><label class="req-label required">Department / Team</label><input type="text" class="req-input" id="reqNewDept" placeholder="e.g. Onboarding, Sales"></div>
+          <div class="req-field"><label class="req-label required">Department / Team</label><select class="req-input" id="reqNewDept"><option value="">— Select department —</option></select></div>
         </div>
         <div id="reqExistingTeamRow" style="display:none;" class="req-field">
           <label class="req-label">Team / Department</label>
@@ -1040,6 +1040,8 @@ let currentReferralPerson = null;
 // ===================== INIT =====================
 window.addEventListener('DOMContentLoaded', () => {
   loadUsers();
+  loadPermissions();
+  loadDepartments();
   showLogin();
   loadBankHolidays();
   loadIcsData();
@@ -1071,30 +1073,130 @@ const CANONICAL_USERS = [
   {id:'u14', name:'Stella Nicol',       role:'viewer',  email:'stella@agentsoftware.net',             jobTitle:'Head of Client Onboarding',color:'#795548'},
 ];
 
-function loadUsers() {
-  const overrides = JSON.parse(localStorage.getItem('dashUserOverrides') || '{}');
-  trainers = CANONICAL_USERS.map(u => Object.assign({}, u, { pin: '', icsUrl: '' }, overrides[u.id] || {}));
-  const extraUsers = JSON.parse(localStorage.getItem('dashExtraUsers') || '[]');
-  trainers = trainers.concat(extraUsers);
+// ── User/Department/Permission state ────────────────────────────
+let departments = [];  // loaded from Departments sheet
+
+async function loadUsers() {
+  // Try to fetch users from the sheet; fall back to CANONICAL_USERS if offline
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getUsers&t=' + Date.now(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if (json.success && json.users && json.users.length) {
+      // Merge localStorage display-prefs (colour, pin) over sheet data
+      const localPrefs = JSON.parse(localStorage.getItem('dashUserPrefs') || '{}');
+      trainers = json.users
+        .filter(u => u.active !== false)   // skip deactivated users
+        .map(u => Object.assign({}, u, localPrefs[u.id] || {}));
+      localStorage.setItem('dashUsersCache', JSON.stringify(trainers));
+      populateLoginSelect();
+      return;
+    }
+  } catch(e) {
+    console.warn('getUsers failed — falling back to cache/CANONICAL', e.message);
+  }
+  // Fallback: localStorage cache → CANONICAL_USERS
+  const cached = JSON.parse(localStorage.getItem('dashUsersCache') || 'null');
+  if (cached && cached.length) {
+    trainers = cached;
+  } else {
+    const overrides = JSON.parse(localStorage.getItem('dashUserOverrides') || '{}');
+    trainers = CANONICAL_USERS.map(u => Object.assign({}, u, { pin: '', icsUrl: '' }, overrides[u.id] || {}));
+    const extra = JSON.parse(localStorage.getItem('dashExtraUsers') || '[]');
+    trainers = trainers.concat(extra);
+  }
   populateLoginSelect();
 }
 
-function saveUsers() {
-  const overrides = {};
-  const canonicalIds = new Set(CANONICAL_USERS.map(u => u.id));
-  const extraUsers = [];
-  trainers.forEach(u => {
-    if(canonicalIds.has(u.id)) {
-      const canonical = CANONICAL_USERS.find(c => c.id === u.id);
-      const diff = {};
-      ['role','color','pin','icsUrl'].forEach(k => { if(u[k] !== canonical[k]) diff[k] = u[k]; });
-      if(Object.keys(diff).length) overrides[u.id] = diff;
-    } else {
-      extraUsers.push(u);
-    }
+// Save a single user back to the sheet (and keep local cache in sync)
+async function saveUsers() {
+  // Always persist to localStorage immediately so UI stays consistent
+  localStorage.setItem('dashUsersCache', JSON.stringify(trainers));
+
+  // Persist each changed user to the sheet
+  const saves = trainers.map(u => {
+    const [fn, ...rest] = (u.name || '').split(' ');
+    const ln = rest.join(' ');
+    const cp = (u.customPerms && Object.keys(u.customPerms).length)
+      ? JSON.stringify(u.customPerms) : '';
+    const params = new URLSearchParams({
+      action: 'saveUser',
+      userId: u.id || '',
+      firstName: u.firstName || fn || u.name || '',
+      lastName:  u.lastName  || ln || '',
+      department: u.department || u.jobTitle || '',
+      role: u.role || 'viewer',
+      active: u.active === false ? 'false' : 'true',
+      addedBy: currentUser?.name || '',
+      notes: u.notes || '',
+      customPerms: cp,
+      color: u.color || '',
+      pin:   u.pin   || '',
+      email: u.email || '',
+    });
+    return fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' })
+      .catch(e => console.warn('saveUser failed for', u.id, e.message));
   });
-  localStorage.setItem('dashUserOverrides', JSON.stringify(overrides));
-  localStorage.setItem('dashExtraUsers', JSON.stringify(extraUsers));
+  await Promise.allSettled(saves);
+}
+
+// Remove a user from the sheet (soft-delete: Active = FALSE)
+async function deleteUserFromSheet(userId) {
+  try {
+    await fetch(SCRIPT_URL + '?action=removeUser&userId=' + encodeURIComponent(userId), { method:'GET', redirect:'follow' });
+  } catch(e) { console.warn('removeUser failed:', e.message); }
+}
+
+// Load role permission matrix from the sheet and merge into ROLE_DEFAULTS
+async function loadPermissions() {
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getPermissions&t=' + Date.now(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if (json.success && json.permissions) {
+      // Merge sheet values into ROLE_DEFAULTS (sheet is source of truth)
+      ['admin','trainer','viewer'].forEach(role => {
+        if (json.permissions[role]) {
+          Object.assign(ROLE_DEFAULTS[role], json.permissions[role]);
+        }
+      });
+      localStorage.setItem('dashPermCache', JSON.stringify(json.permissions));
+    }
+  } catch(e) {
+    // Fall back to cached permissions
+    const cached = JSON.parse(localStorage.getItem('dashPermCache') || 'null');
+    if (cached) {
+      ['admin','trainer','viewer'].forEach(role => {
+        if (cached[role]) Object.assign(ROLE_DEFAULTS[role], cached[role]);
+      });
+    }
+    console.warn('getPermissions failed — using cache/defaults', e.message);
+  }
+}
+
+// Load departments for use in the request form dropdown
+async function loadDepartments() {
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getDepartments&t=' + Date.now(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if (json.success && json.departments) {
+      departments = json.departments;
+      localStorage.setItem('dashDeptCache', JSON.stringify(departments));
+      _populateDeptDropdowns();
+      return;
+    }
+  } catch(e) { console.warn('getDepartments failed — using cache', e.message); }
+  const cached = JSON.parse(localStorage.getItem('dashDeptCache') || 'null');
+  if (cached) { departments = cached; _populateDeptDropdowns(); }
+}
+
+function _populateDeptDropdowns() {
+  // Populate the new-user department field in the request form
+  const sel = document.getElementById('reqNewDept');
+  if (sel && sel.tagName === 'SELECT') {
+    sel.innerHTML = '<option value="">— Select department —</option>';
+    departments.forEach(d => {
+      sel.innerHTML += `<option value="${escHtml(d.name)}">${escHtml(d.name)}</option>`;
+    });
+  }
 }
 
 function populateLoginSelect() {
@@ -2536,7 +2638,12 @@ function selectPermUser(uid) {
     <div style="width:36px;height:36px;border-radius:50%;background:${t.color||'#888'};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;">${t.name.charAt(0).toUpperCase()}</div>
     <div style="flex:1;">
       <div style="font-size:14px;font-weight:700;color:var(--text--dark--50);">${escHtml(t.name)}</div>
-      <div style="font-size:11px;color:var(--text--dark--30);margin-top:2px;">Role: <strong>${t.role}</strong> &middot; PIN: ${t.pin?'set':'none'}</div>
+      <div style="font-size:11px;color:var(--text--dark--30);margin-top:2px;">
+        <strong>${t.role}</strong>
+        ${t.department ? ' &middot; ' + escHtml(t.department) : ''}
+        &middot; PIN: ${t.pin?'set':'none'}
+        ${t.email ? ' &middot; ' + escHtml(t.email) : ''}
+      </div>
     </div>
     <select style="border:1px solid var(--light-grey);border-radius:6px;padding:5px 10px;font-size:12px;font-family:Arial,sans-serif;" onchange="changePermUserRole('${uid}',this.value)">
       <option value="viewer" ${t.role==='viewer'?'selected':''}>Viewer</option>
@@ -2618,6 +2725,7 @@ function resetPermToRole(uid) {
 function removeTrainerById(uid) {
   const t = trainers.find(u => u.id === uid);
   if(!t || !confirm('Remove ' + t.name + '?')) return;
+  deleteUserFromSheet(uid);
   trainers.splice(trainers.findIndex(u => u.id === uid), 1);
   saveUsers();
   selectedPermUserId = null;
@@ -2637,7 +2745,21 @@ function addTrainer() {
   const name = document.getElementById('newTrainerName').value.trim();
   const role = document.getElementById('newTrainerRole').value;
   if(!name) return;
-  trainers.push({ id: 'u' + Date.now(), name, role, color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length], pin: '', icsUrl: '', customPerms: {} });
+  const [fn, ...rest] = name.split(' ');
+  const newUser = {
+    id: 'u_' + Date.now(),
+    name,
+    firstName: fn,
+    lastName: rest.join(' '),
+    role,
+    color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length],
+    pin: '', icsUrl: '', customPerms: {},
+    department: '', jobTitle: '',
+    active: true,
+    addedBy: currentUser?.name || '',
+    dateAdded: new Date().toISOString()
+  };
+  trainers.push(newUser);
   saveUsers();
   document.getElementById('newTrainerName').value = '';
   renderPermUserList();
