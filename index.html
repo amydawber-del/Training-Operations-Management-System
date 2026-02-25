@@ -1089,12 +1089,37 @@ function parseReferredByField(raw) {
 }
 
 // ===================== BANK HOLIDAYS =====================
+// England & Wales bank holidays 2024-2027 — used as fallback if the API is unreachable.
+// Source: https://www.gov.uk/bank-holidays
+const FALLBACK_BANK_HOLIDAYS = [
+  // 2024
+  '2024-01-01','2024-03-29','2024-04-01','2024-05-06','2024-05-27',
+  '2024-08-26','2024-12-25','2024-12-26',
+  // 2025
+  '2025-01-01','2025-04-18','2025-04-21','2025-05-05','2025-05-26',
+  '2025-08-25','2025-12-25','2025-12-26',
+  // 2026
+  '2026-01-01','2026-04-03','2026-04-06','2026-05-04','2026-05-25',
+  '2026-08-31','2026-12-25','2026-12-28',
+  // 2027
+  '2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31',
+  '2027-08-30','2027-12-27','2027-12-28',
+];
+
 async function loadBankHolidays() {
+  // Start with the hardcoded list so the calendar is never empty
+  bankHolidays = [...FALLBACK_BANK_HOLIDAYS];
   try {
     const r = await fetch(UK_BANK_HOLIDAYS_API);
     const d = await r.json();
-    bankHolidays = (d['england-wales']?.events || []).map(e => e.date);
-  } catch(e) { bankHolidays = []; }
+    const live = (d['england-wales']?.events || []).map(e => e.date);
+    if (live.length) {
+      // Merge: use live data as the authoritative set (covers future years too)
+      bankHolidays = [...new Set([...FALLBACK_BANK_HOLIDAYS, ...live])];
+    }
+  } catch(e) {
+    // Network unavailable — fallback list already set above, no action needed
+  }
 }
 
 function isBankHoliday(date) {
