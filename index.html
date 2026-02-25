@@ -489,6 +489,23 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     </div>
   </div>
 
+  <!-- NEEDS ACTION -->
+  <div id="actionSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title" style="color:#8a5a2a;">&#9888;&#65039; Needs Action &#8212; Pending<span class="badge orange" id="actionBadge">0</span></div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Update status to Booked or Cancelled &#8212; admin only</span>
+    </div>
+    <div class="requests-panel" style="border-color:var(--brand-accent--mandarin-light);">
+      <div class="requests-panel-header" style="background:var(--brand-accent--cream);">
+        <div style="display:flex;align-items:center;gap:8px;"><div class="alert-dot" id="actionDot" style="display:none;background:#f59e0b;"></div><span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">Pending bookings awaiting confirmation</span></div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Trainer</th><th>Actions</th></tr></thead>
+        <tbody id="actionBody"><tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
   <!-- CALENDAR -->
   <div id="calendarSection" style="margin-bottom:24px;">
     <div class="section-header">
@@ -518,23 +535,6 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="cal-upcoming-card">
         <div class="cal-upcoming-header"><span>Upcoming Sessions</span><span id="calUpcomingCount" style="font-size:10px;color:var(--text--dark--30);">&#8212;</span></div>
         <div class="cal-upcoming-body" id="calUpcomingBody"><div class="cal-upcoming-empty">Loading&#8230;</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- NEEDS ACTION -->
-  <div id="actionSection" style="margin-bottom:24px;">
-    <div class="section-header">
-      <div class="section-title" style="color:#8a5a2a;">&#9888;&#65039; Needs Action &#8212; Pending<span class="badge orange" id="actionBadge">0</span></div>
-      <span style="font-size:11px;color:var(--text--dark--30);">Update status to Booked or Cancelled &#8212; admin only</span>
-    </div>
-    <div class="requests-panel" style="border-color:var(--brand-accent--mandarin-light);">
-      <div class="requests-panel-header" style="background:var(--brand-accent--cream);">
-        <div style="display:flex;align-items:center;gap:8px;"><div class="alert-dot" id="actionDot" style="display:none;background:#f59e0b;"></div><span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">Pending bookings awaiting confirmation</span></div>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Trainer</th><th>Actions</th></tr></thead>
-        <tbody id="actionBody"><tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
   </div>
