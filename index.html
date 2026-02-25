@@ -478,7 +478,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <span style="font-size:11px;color:var(--text--dark--30);">Click company name to view full enquiry profile</span>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Actions</th></tr></thead>
+        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Suggested</th><th>Actions</th></tr></thead>
         <tbody id="unassignedBody"><tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
@@ -1349,6 +1349,31 @@ function getNextFreeDate(trainerName) {
   return null;
 }
 
+// ===================== TRAINER SUGGESTION (round-robin by workload) =====================
+// Returns the trainer object with the fewest upcoming booked training days.
+// Ties are broken by the order trainers appear in the list (stable round-robin).
+// Returns trainers sorted by ascending upcoming workload (fewest days first).
+// Ties are broken by list order for stability.
+function trainersByWorkload() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const eligible = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const load = {};
+  eligible.forEach(t => { load[t.name] = 0; });
+  allData.forEach(r => {
+    if (r.status !== 'Booked' || !r.bookedOn || r.bookedOn < today) return;
+    if (load[r.trainer] !== undefined) load[r.trainer] += (r.trainingDays || 1);
+  });
+  return [...eligible].sort((a, b) => load[a.name] - load[b.name]);
+}
+
+// Round-robin suggestion: position 0 → lightest load, 1 → second lightest, etc.
+// Cycles back if there are more unassigned requests than trainers.
+function suggestTrainer(position = 0) {
+  const ranked = trainersByWorkload();
+  if (!ranked.length) return null;
+  return ranked[position % ranked.length];
+}
+
 // ===================== UNASSIGNED =====================
 function renderUnassigned() {
   const rows = allData.filter(r => r.status === 'Unassigned');
@@ -1357,17 +1382,23 @@ function renderUnassigned() {
   badge.textContent = rows.length;
   dot.style.display = rows.length ? 'block' : 'none';
   const tbody = document.getElementById('unassignedBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
+  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
   const today = new Date(); today.setHours(0,0,0,0);
-  tbody.innerHTML = rows.map(r => {
+  tbody.innerHTML = rows.map((r, rowPos) => {
+    const suggested = suggestTrainer(rowPos);
     const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
     const isStale = r.ts && (Date.now() - r.ts) >= STALE_DAYS*86400000;
+    const suggColor = suggested ? (suggested.color || '#2147f4') : '#2147f4';
+    const suggChip = suggested
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:${suggColor}18;color:${suggColor};border:1px solid ${suggColor}33;">💡 ${escHtml(suggested.name)}</span>`
+      : '';
     return `<tr class="${isStale?'row-stale':''}">
       <td>${fmtDate(r.ts)} ${staleBadge(r)}</td>
       <td>${companyCell(r)}</td>
       <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
       <td>${optionBadge(r.trainingOption)}</td>
       <td>${pref}</td>
+      <td>${suggChip}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${currentUser?.role === 'admin' ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
         ${currentUser?.role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
@@ -1925,9 +1956,26 @@ function openAssignModal(idx) {
   document.getElementById('assignModalCompany').textContent = getCompanyName(r);
   document.getElementById('assignModalContact').textContent = r.contact + ' · ' + r.email;
   document.getElementById('assignModalOption').innerHTML = optionBadge(r.trainingOption) + ' ' + (r.preferredDate ? '· Preferred: ' + fmtDate(new Date(r.preferredDate)) : '');
+  const unassignedRows = allData.filter(x => x.status === 'Unassigned');
+  const rowPos = unassignedRows.findIndex(x => x._idx === idx);
+  const suggested = suggestTrainer(rowPos >= 0 ? rowPos : 0);
   const sel = document.getElementById('assignTrainerSel');
   sel.innerHTML = '<option value="">— Select trainer —</option>';
-  trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}">${t.name}</option>`);
+  trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => {
+    const isSugg = suggested && t.name === suggested.name;
+    sel.innerHTML += `<option value="${t.name}" ${isSugg ? 'selected' : ''}>${t.name}${isSugg ? ' 💡 Suggested' : ''}</option>`;
+  });
+  // Show suggestion callout inside modal
+  const existingCallout = document.getElementById('assignSuggCallout');
+  if (existingCallout) existingCallout.remove();
+  if (suggested) {
+    const callout = document.createElement('div');
+    callout.id = 'assignSuggCallout';
+    callout.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:6px;background:' + (suggested.color||'#2147f4') + '12;border:1px solid ' + (suggested.color||'#2147f4') + '30;font-size:12px;font-weight:600;color:' + (suggested.color||'#2147f4') + ';margin-bottom:12px;';
+    callout.innerHTML = '<span style="font-size:15px;">💡</span><span>Suggested based on workload: <strong>' + escHtml(suggested.name) + '</strong></span>';
+    const formRow = document.querySelector('#assignOverlay .form-row');
+    if (formRow) formRow.parentNode.insertBefore(callout, formRow);
+  }
   document.getElementById('assignOverlay').classList.add('open');
 }
 
