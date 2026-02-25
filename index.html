@@ -547,7 +547,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <div class="kpi-card kpi-accent-left kpi-accent-yellow clickable" onclick="openKpiModal('revMonth')"><div class="kpi-card-label">Revenue This Month <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevMonth">&#163;&#8212;</div><div id="kpiRevMonthDelta"></div></div>
       <div class="kpi-card kpi-accent-left kpi-accent-green clickable" onclick="openKpiModal('avgFee')"><div class="kpi-card-label">Avg Training Fee (Year)</div><div class="kpi-card-value" id="kpiAvgFee">&#163;&#8212;</div><div class="kpi-card-sub">Per booking &middot; click for detail</div></div>
       <div class="kpi-card kpi-accent-left kpi-accent-orange clickable" onclick="openKpiModal('days')"><div class="kpi-card-label">Training Days This Year</div><div class="kpi-card-value" id="kpiDaysYear">&#8212;</div><div class="kpi-card-sub" id="kpiDaysMonth">&#8212; this month</div></div>
-      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#9c27b0;" onclick="openKpiModal('bookings')"><div class="kpi-card-label">Total Bookings (Year)</div><div class="kpi-card-value" id="kpiBookingsYear">&#8212;</div><div class="kpi-card-sub" id="kpiBookingsMonth">&#8212; this month</div></div>
+      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#9c27b0;" onclick="openKpiModal('daysMonth')"><div class="kpi-card-label">Training Days This Month vs Last</div><div class="kpi-card-value" id="kpiDaysThisMonth">&#8212;</div><div class="kpi-card-sub" id="kpiDaysLastMonthSub">&#8212; last month</div></div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Monthly Revenue</div><div class="chart-subtitle">This year vs last year (exc. VAT)</div><div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div></div>
@@ -1594,10 +1594,11 @@ function renderKpis() {
   document.getElementById('kpiRevYear').textContent = fmtMoney(revYear);
   document.getElementById('kpiRevMonth').textContent = fmtMoney(revMonth);
   document.getElementById('kpiAvgFee').textContent = fmtMoney(avgFee);
+  const daysLastMonth = lastMonth.reduce((s,r) => s + (r.trainingDays||1), 0);
   document.getElementById('kpiDaysYear').textContent = daysYear;
   document.getElementById('kpiDaysMonth').textContent = daysMonth + ' this month';
-  document.getElementById('kpiBookingsYear').textContent = thisYear.length;
-  document.getElementById('kpiBookingsMonth').textContent = thisMonth.length + ' this month';
+  document.getElementById('kpiDaysThisMonth').textContent = daysMonth;
+  document.getElementById('kpiDaysLastMonthSub').textContent = daysLastMonth + ' last month';
   if(revLastMonth > 0) {
     const delta = Math.round(((revMonth - revLastMonth) / revLastMonth) * 100);
     const cls = delta >= 0 ? 'delta-up' : 'delta-down';
@@ -1650,8 +1651,23 @@ function openKpiModal(type) {
     stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">Total Days</div><div class="kpi-stat-value">${total}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Sessions</div><div class="kpi-stat-value">${rows.length}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Avg Days/Session</div><div class="kpi-stat-value">${rows.length?(total/rows.length).toFixed(1):'—'}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Busiest Month</div><div class="kpi-stat-value">—</div></div>`;
     thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Days</th></tr>';
     tbody.innerHTML = rows.sort((a,b) => (b.trainingDays||1)-(a.trainingDays||1)).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;font-weight:600;">${r.trainingDays||1}</td></tr>`).join('');
+  } else if(type === 'daysMonth') {
+    const lastMon2 = mon === 0 ? 11 : mon - 1;
+    const lastMonYr2 = mon === 0 ? yr - 1 : yr;
+    const monthNames2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const tmRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon);
+    const lmRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === lastMonYr2 && r.bookedOn.getMonth() === lastMon2);
+    const tmDays = tmRows.reduce((s,r) => s+(r.trainingDays||1),0);
+    const lmDays = lmRows.reduce((s,r) => s+(r.trainingDays||1),0);
+    const delta = lmDays > 0 ? Math.round(((tmDays - lmDays) / lmDays) * 100) : null;
+    const deltaHtml = delta !== null ? `<div class="kpi-stat"><div class="kpi-stat-label">Change</div><div class="kpi-stat-value" style="color:${delta>=0?'#22a06b':'#c0303d'}">${delta>=0?'▲':'▼'} ${Math.abs(delta)}%</div></div>` : '';
+    title.textContent = 'Training Days — Month Comparison';
+    sub.textContent = `${monthNames2[mon]} ${yr} vs ${monthNames2[lastMon2]} ${lastMonYr2}`;
+    stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">${monthNames2[mon]}</div><div class="kpi-stat-value">${tmDays} days</div></div><div class="kpi-stat"><div class="kpi-stat-label">${monthNames2[lastMon2]}</div><div class="kpi-stat-value">${lmDays} days</div></div>${deltaHtml}`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Days</th></tr>';
+    const allRows = [...tmRows.map(r => ({...r, _month: monthNames2[mon]})), ...lmRows.map(r => ({...r, _month: monthNames2[lastMon2]}))];
+    tbody.innerHTML = allRows.sort((a,b) => b.bookedOn - a.bookedOn).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;">${escHtml(r._month)}</td><td style="padding:8px 12px;font-weight:600;">${r.trainingDays||1}</td></tr>`).join('');
   } else {
-    title.textContent = 'Bookings Overview'; sub.textContent = 'All booking data';
     stats.innerHTML = ''; thead.innerHTML = ''; tbody.innerHTML = '';
   }
 }
