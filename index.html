@@ -893,8 +893,8 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <button class="notif-close" onclick="closeNotifPanel()">&#10005;</button>
   </div>
   <div class="notif-tabs">
-    <button class="notif-tab active" id="notifTabEvents" onclick="switchNotifTab('events')">Events <span class="notif-tab-badge" id="notifTabEventsBadge" style="display:none;">0</span></button>
-    <button class="notif-tab" id="notifTabNotes" onclick="switchNotifTab('notes')">Notes <span class="notif-tab-badge" id="notifTabNotesBadge" style="display:none;">0</span></button>
+    <button class="notif-tab active" id="notifTabEvents" onclick="switchNotifTab('event')">Events <span class="notif-tab-badge" id="notifTabEventsBadge" style="display:none;">0</span></button>
+    <button class="notif-tab" id="notifTabNotes" onclick="switchNotifTab('note')">Notes <span class="notif-tab-badge" id="notifTabNotesBadge" style="display:none;">0</span></button>
   </div>
   <div class="notif-toolbar">
     <span class="notif-count" id="notifCount">0 notifications</span>
@@ -1150,9 +1150,9 @@ function canDo(perm) {
 
 let activityLog = JSON.parse(localStorage.getItem('dashActivityLog') || '[]');
 // Migrate old log entries: ensure they all have a type field
-activityLog = activityLog.map(e => ({ type: 'event', ...e }));
+activityLog = activityLog.map(e => ({ ...e, type: e.type || 'event' })); // ensure type field exists
 let notifUnread = new Set(JSON.parse(localStorage.getItem('dashNotifUnread') || '[]'));
-let notifCurrentTab = 'events';
+let notifCurrentTab = 'event';  // matches stored entry type: 'event' | 'note'
 let currentAssignRow = null;
 let currentBookRow = null;
 let currentEditRow = null;
@@ -2460,6 +2460,85 @@ function openKpiModal(type) {
     thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Days</th></tr>';
     const allRows = [...tmRows.map(r => ({...r, _month: monthNames2[mon]})), ...lmRows.map(r => ({...r, _month: monthNames2[lastMon2]}))];
     tbody.innerHTML = allRows.sort((a,b) => b.bookedOn - a.bookedOn).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;">${escHtml(r._month)}</td><td style="padding:8px 12px;font-weight:600;">${r.trainingDays||1}</td></tr>`).join('');
+  } else if(type === 'revMonth') {
+    const monthNames3 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const lastMon3  = mon === 0 ? 11 : mon - 1;
+    const lastMonYr3 = mon === 0 ? yr - 1 : yr;
+    const thisMonRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon && r.invoiceValue);
+    const lastMonRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === lastMonYr3 && r.bookedOn.getMonth() === lastMon3 && r.invoiceValue);
+    const thisTotal = thisMonRows.reduce((s,r) => s+(r.invoiceValue||0),0);
+    const lastTotal = lastMonRows.reduce((s,r) => s+(r.invoiceValue||0),0);
+    const pctChange = lastTotal > 0 ? Math.round(((thisTotal - lastTotal)/lastTotal)*100) : null;
+    const changeHtml = pctChange !== null
+      ? `<div class="kpi-stat"><div class="kpi-stat-label">vs Last Month</div><div class="kpi-stat-value" style="color:${pctChange>=0?'#22a06b':'#c0303d'}">${pctChange>=0?'&#9650;':'&#9660;'} ${Math.abs(pctChange)}%</div></div>`
+      : '';
+    title.textContent = 'Revenue This Month — Booked Sessions';
+    sub.textContent = `${monthNames3[mon]} ${yr} vs ${monthNames3[lastMon3]} ${lastMonYr3}`;
+    stats.innerHTML = `
+      <div class="kpi-stat"><div class="kpi-stat-label">${monthNames3[mon]} Revenue</div><div class="kpi-stat-value">${fmtMoney(thisTotal)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">${monthNames3[lastMon3]} Revenue</div><div class="kpi-stat-value">${fmtMoney(lastTotal)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Sessions This Month</div><div class="kpi-stat-value">${thisMonRows.length}</div></div>
+      ${changeHtml}`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Value</th></tr>';
+    const allMonRows = [
+      ...thisMonRows.map(r => ({...r, _month: monthNames3[mon]})),
+      ...lastMonRows.map(r => ({...r, _month: monthNames3[lastMon3]}))
+    ];
+    tbody.innerHTML = allMonRows.sort((a,b) => b.bookedOn - a.bookedOn).map(r =>
+      `<tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td>
+        <td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td>
+        <td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td>
+        <td style="padding:8px 12px;">${escHtml(r._month)}</td>
+        <td style="padding:8px 12px;font-weight:600;">${fmtMoney(r.invoiceValue)}</td>
+      </tr>`).join('');
+
+  } else if(type === 'avgFee') {
+    const monthNames4 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const bookedWithVal = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.invoiceValue);
+    const totalVal = bookedWithVal.reduce((s,r) => s+(r.invoiceValue||0), 0);
+    const avgFee   = bookedWithVal.length ? totalVal / bookedWithVal.length : 0;
+    // Per-trainer breakdown
+    const byTrainer = {};
+    bookedWithVal.forEach(r => {
+      const t = r.trainer || 'Unassigned';
+      if(!byTrainer[t]) byTrainer[t] = { total:0, count:0 };
+      byTrainer[t].total += r.invoiceValue||0;
+      byTrainer[t].count++;
+    });
+    const trainerRows = Object.entries(byTrainer)
+      .map(([t, d]) => ({ trainer:t, avg: d.total/d.count, count: d.count, total: d.total }))
+      .sort((a,b) => b.avg - a.avg);
+    // Per-month average
+    const byMonth = {};
+    bookedWithVal.forEach(r => {
+      const m = r.bookedOn.getMonth();
+      if(!byMonth[m]) byMonth[m] = { total:0, count:0 };
+      byMonth[m].total += r.invoiceValue||0;
+      byMonth[m].count++;
+    });
+    title.textContent = 'Average Training Fee — ' + yr;
+    sub.textContent = `Based on ${bookedWithVal.length} booked session${bookedWithVal.length!==1?'s':''} with invoice values recorded`;
+    const highestFee = bookedWithVal.length ? Math.max(...bookedWithVal.map(r=>r.invoiceValue)) : 0;
+    const lowestFee  = bookedWithVal.length ? Math.min(...bookedWithVal.map(r=>r.invoiceValue)) : 0;
+    stats.innerHTML = `
+      <div class="kpi-stat"><div class="kpi-stat-label">Avg Fee (Year)</div><div class="kpi-stat-value">${fmtMoney(avgFee)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Highest Fee</div><div class="kpi-stat-value">${fmtMoney(highestFee)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Lowest Fee</div><div class="kpi-stat-value">${fmtMoney(lowestFee)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(totalVal)}</div></div>`;
+    // Show per-trainer averages
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Total</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Avg Fee</th></tr>';
+    tbody.innerHTML = trainerRows.map(r =>
+      `<tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:8px 12px;font-weight:600;">${escHtml(r.trainer)}</td>
+        <td style="padding:8px 12px;">${r.count}</td>
+        <td style="padding:8px 12px;">${fmtMoney(r.total)}</td>
+        <td style="padding:8px 12px;font-weight:700;color:var(--action-primary-blue);">${fmtMoney(r.avg)}</td>
+      </tr>`).join('');
+    if(!bookedWithVal.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No booked sessions with invoice values recorded yet.</td></tr>';
+    }
+
   } else {
     stats.innerHTML = ''; thead.innerHTML = ''; tbody.innerHTML = '';
   }
@@ -3471,8 +3550,8 @@ function closeNotifPanel() {
 
 function switchNotifTab(tab) {
   notifCurrentTab = tab;
-  document.getElementById('notifTabEvents').classList.toggle('active', tab === 'events');
-  document.getElementById('notifTabNotes').classList.toggle('active', tab === 'notes');
+  document.getElementById('notifTabEvents').classList.toggle('active', tab === 'event');
+  document.getElementById('notifTabNotes').classList.toggle('active', tab === 'note');
   renderNotifPanel();
 }
 
@@ -3549,11 +3628,11 @@ function renderNotifPanel() {
   const filtered = activityLog.filter(e => (e.type || 'event') === notifCurrentTab);
   const unreadInTab = filtered.filter(e => notifUnread.has(e.id)).length;
   document.getElementById('notifCount').textContent =
-    filtered.length + ' ' + (notifCurrentTab === 'notes' ? 'note' : 'event') + (filtered.length !== 1 ? 's' : '') +
+    filtered.length + ' ' + (notifCurrentTab === 'note' ? 'note' : 'event') + (filtered.length !== 1 ? 's' : '') +
     (unreadInTab > 0 ? ` · ${unreadInTab} unread` : '');
 
   if(!filtered.length) {
-    body.innerHTML = `<div class="notif-empty">${notifCurrentTab === 'notes' ? '📝 No notes yet' : '📋 No events yet'}</div>`;
+    body.innerHTML = `<div class="notif-empty">${notifCurrentTab === 'note' ? '&#128221; No notes yet' : '&#128203; No events yet'}</div>`;
     return;
   }
 
