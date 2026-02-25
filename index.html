@@ -754,6 +754,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <div style="padding:12px;">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);margin-bottom:8px;">Add User</div>
           <input type="text" class="form-input" id="newTrainerName" placeholder="Full name&#8230;" style="width:100%;margin-bottom:6px;font-size:12px;" onkeydown="if(event.key==='Enter')addTrainer()">
+          <select class="form-input" id="permUserDept" style="width:100%;margin-bottom:6px;font-size:12px;"><option value="">— Department —</option></select>
           <select class="form-input" id="newTrainerRole" style="width:100%;margin-bottom:6px;font-size:12px;"><option value="viewer">Viewer</option><option value="trainer">Trainer</option><option value="admin">Admin</option></select>
           <button class="btn btn-primary btn-sm" onclick="addTrainer()" style="width:100%;">+ Add User</button>
         </div>
@@ -766,6 +767,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
       <button class="btn btn-ghost" onclick="closePermModal()">Close</button>
       <button class="btn btn-primary btn-sm" onclick="savePermissions()" id="savePermBtn" style="display:none;">&#10003; Save Permissions</button>
       <button class="shadow-btn" onclick="startShadow()" id="shadowPermBtn" style="display:none;">&#128065; Shadow this user</button>
+      <button class="btn btn-sm" onclick="toggleDeactivateUser()" id="deactivatePermBtn" style="display:none;margin-left:auto;"></button>
     </div>
   </div>
 </div>
@@ -888,7 +890,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         </div>
         <div id="reqExistingTeamRow" style="display:none;" class="req-field">
           <label class="req-label">Team / Department</label>
-          <input type="text" class="req-input" id="reqReferredByTeam" placeholder="e.g. Onboarding, Sales">
+          <select class="req-input" id="reqReferredByTeam"><option value="">— Select department —</option></select>
         </div>
         <input type="hidden" id="reqReferredByName">
         <div class="req-field"><label class="req-label">Invoice Value Quoted</label><div style="position:relative;"><span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text--dark--30);font-weight:600;">&#163;</span><input type="number" class="req-input" id="reqQuotedValue" placeholder="0.00" min="0" step="0.01" style="padding-left:28px;"></div><div class="req-hint">Leave blank if no value has been discussed yet.</div></div>
@@ -1189,23 +1191,115 @@ async function loadDepartments() {
 }
 
 function _populateDeptDropdowns() {
-  // Populate the new-user department field in the request form
-  const sel = document.getElementById('reqNewDept');
-  if (sel && sel.tagName === 'SELECT') {
+  // IDs of every department <select> on the page
+  const selIds = ['reqNewDept', 'reqReferredByTeam', 'permUserDept'];
+  selIds.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel || sel.tagName !== 'SELECT') return;
+    // Remember current value so we can restore it after repopulating
+    const prev = sel.value;
     sel.innerHTML = '<option value="">— Select department —</option>';
     departments.forEach(d => {
       sel.innerHTML += `<option value="${escHtml(d.name)}">${escHtml(d.name)}</option>`;
     });
+    sel.innerHTML += '<option value="__add__" style="color:var(--action-primary-blue);font-weight:600;">+ Add department...</option>';
+    if (prev && prev !== '__add__') sel.value = prev;
+    // Attach change listener to catch "+ Add" selection
+    sel.onchange = function() {
+      if (this.value === '__add__') {
+        this.value = prev || '';
+        openAddDeptModal(id);
+      }
+    };
+  });
+}
+
+// ── Add Department modal ─────────────────────────────────────────
+function openAddDeptModal(returnSelectId) {
+  // Store which select to return focus to after adding
+  window._addDeptReturnSelect = returnSelectId;
+  let overlay = document.getElementById('addDeptOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'addDeptOverlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.zIndex = '900';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:400px;">
+        <div class="modal-header">
+          <div><div class="modal-title">Add Department</div>
+          <div class="modal-subtitle">New departments are saved to the sheet immediately</div></div>
+          <button class="modal-close" onclick="closeAddDeptModal()">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <label class="form-label required">Department Name</label>
+            <input type="text" class="form-input" id="addDeptName" placeholder="e.g. Operations"
+              onkeydown="if(event.key==='Enter')confirmAddDept()">
+            <div class="form-hint" id="addDeptHint"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeAddDeptModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="confirmAddDept()">+ Add Department</button>
+        </div>
+      </div>`;
+    overlay.onclick = function(e) { if(e.target === overlay) closeAddDeptModal(); };
+    document.body.appendChild(overlay);
+  }
+  document.getElementById('addDeptName').value = '';
+  document.getElementById('addDeptHint').textContent = '';
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('addDeptName').focus(), 100);
+}
+
+function closeAddDeptModal() {
+  const overlay = document.getElementById('addDeptOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+async function confirmAddDept() {
+  const name = document.getElementById('addDeptName').value.trim();
+  const hint = document.getElementById('addDeptHint');
+  if (!name) { hint.textContent = 'Please enter a department name.'; hint.style.color = '#c0303d'; return; }
+
+  // Duplicate check client-side first
+  if (departments.some(d => d.name.toLowerCase() === name.toLowerCase())) {
+    hint.textContent = '"' + name + '" already exists.';
+    hint.style.color = '#c0303d';
+    return;
+  }
+
+  hint.textContent = 'Saving...';
+  hint.style.color = 'var(--text--dark--30)';
+
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=addDepartment&name=' + encodeURIComponent(name), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Unknown error');
+    departments.push({ name });
+    localStorage.setItem('dashDeptCache', JSON.stringify(departments));
+    _populateDeptDropdowns();
+    // Set the value in the originating select
+    const returnSel = document.getElementById(window._addDeptReturnSelect || 'reqNewDept');
+    if (returnSel) returnSel.value = name;
+    closeAddDeptModal();
+    showToast('"' + name + '" added to Departments', 'success');
+  } catch(e) {
+    hint.textContent = 'Error: ' + e.message;
+    hint.style.color = '#c0303d';
   }
 }
 
 function populateLoginSelect() {
   const sel = document.getElementById('loginUserSelect');
   sel.innerHTML = '<option value="">— Choose account —</option>';
-  trainers.forEach(u => {
-    const label = u.jobTitle ? `${u.name} — ${u.jobTitle}` : `${u.name} (${u.role})`;
-    sel.innerHTML += `<option value="${u.id}">${label}</option>`;
-  });
+  trainers
+    .filter(u => u.active !== false)   // only active users can log in
+    .forEach(u => {
+      const label = u.jobTitle ? `${u.name} — ${u.jobTitle}` : `${u.name} (${u.role})`;
+      sel.innerHTML += `<option value="${u.id}">${label}</option>`;
+    });
 }
 
 // ===================== LOGIN / AUTH =====================
@@ -2603,10 +2697,12 @@ function closeTrainerModal() { closePermModal(); }
 function openPermModal() {
   selectedPermUserId = null;
   renderPermUserList();
+  _populateDeptDropdowns();
   document.getElementById('permOverlay').classList.add('open');
   document.getElementById('permDetail').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text--dark--30);font-size:12px;">👤 Select a user to configure their permissions</div>';
   document.getElementById('savePermBtn').style.display = 'none';
   document.getElementById('shadowPermBtn').style.display = 'none';
+  document.getElementById('deactivatePermBtn').style.display = 'none';
 }
 
 function closePermModal() { document.getElementById('permOverlay').classList.remove('open'); }
@@ -2614,14 +2710,24 @@ function closePermModal() { document.getElementById('permOverlay').classList.rem
 function renderPermUserList() {
   const list = document.getElementById('permUserList');
   if(!trainers.length) { list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text--dark--30);">No users.</div>'; return; }
-  list.innerHTML = trainers.map(t => {
-    const isActive = t.id === selectedPermUserId;
-    const roleTag = `<span class="perm-user-role-tag ${t.role}">${t.role}</span>`;
-    return `<div class="perm-user-row ${isActive?'active':''}" onclick="selectPermUser('${t.id}')">
-      <div style="width:10px;height:10px;border-radius:50%;background:${t.color||'#888'};flex-shrink:0;"></div>
+  // Show active users first, then inactive
+  const sorted = [...trainers].sort((a, b) => {
+    const aActive = a.active !== false;
+    const bActive = b.active !== false;
+    if(aActive === bActive) return (a.name||'').localeCompare(b.name||'');
+    return aActive ? -1 : 1;
+  });
+  list.innerHTML = sorted.map(t => {
+    const isSelected = t.id === selectedPermUserId;
+    const isActive   = t.active !== false;
+    const roleTag    = `<span class="perm-user-role-tag ${t.role}">${t.role}</span>`;
+    const inactiveTag = !isActive ? `<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#fee2e2;color:#991b1b;margin-left:4px;">inactive</span>` : '';
+    return `<div class="perm-user-row ${isSelected?'active':''}" onclick="selectPermUser('${t.id}')"
+      style="${!isActive ? 'opacity:0.5;' : ''}">
+      <div style="width:10px;height:10px;border-radius:50%;background:${isActive?(t.color||'#888'):'#ccc'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
         <div class="perm-user-name">${escHtml(t.name)}</div>
-        <div style="margin-top:2px;">${roleTag}</div>
+        <div style="margin-top:2px;display:flex;align-items:center;flex-wrap:wrap;gap:2px;">${roleTag}${inactiveTag}</div>
       </div>
     </div>`;
   }).join('');
@@ -2635,7 +2741,7 @@ function selectPermUser(uid) {
   const perms = userPerms(t);
   const defaults = ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer;
   let html = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--ui--underline--light-grey);">
-    <div style="width:36px;height:36px;border-radius:50%;background:${t.color||'#888'};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;">${t.name.charAt(0).toUpperCase()}</div>
+    <div style="width:36px;height:36px;border-radius:50%;background:${t.active!==false?(t.color||'#888'):'#ccc'};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;">${t.name.charAt(0).toUpperCase()}</div>
     <div style="flex:1;">
       <div style="font-size:14px;font-weight:700;color:var(--text--dark--50);">${escHtml(t.name)}</div>
       <div style="font-size:11px;color:var(--text--dark--30);margin-top:2px;">
@@ -2654,6 +2760,13 @@ function selectPermUser(uid) {
     <button class="btn btn-ghost btn-sm" onclick="setTrainerPin(trainers.findIndex(u=>u.id==='${uid}'))">PIN</button>
     <button class="btn btn-danger btn-sm" onclick="removeTrainerById('${uid}')">🗑</button>
   </div>`;
+
+  // Inactive banner
+  if(t.active === false) {
+    html += `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#991b1b;font-weight:600;">
+      &#9888; This user is deactivated and cannot log in. Use the Reactivate button below to restore access.
+    </div>`;
+  }
 
   Object.entries(PERM_SECTIONS).forEach(([section, keys]) => {
     html += `<div class="perm-section-title">${section}</div><div class="perm-grid">`;
@@ -2684,6 +2797,21 @@ function selectPermUser(uid) {
   // Don't allow shadowing yourself
   const isSelf = currentUser && currentUser.id === uid;
   document.getElementById('shadowPermBtn').style.display = isSelf ? 'none' : 'inline-flex';
+  // Deactivate / Reactivate button
+  const isActive = t.active !== false;
+  const deactBtn = document.getElementById('deactivatePermBtn');
+  deactBtn.style.display = isSelf ? 'none' : 'inline-flex';
+  if(isActive) {
+    deactBtn.textContent = 'Deactivate';
+    deactBtn.style.background = '#fff';
+    deactBtn.style.color = '#c0303d';
+    deactBtn.style.border = '1.5px solid #c0303d';
+  } else {
+    deactBtn.textContent = 'Reactivate';
+    deactBtn.style.background = '#fff';
+    deactBtn.style.color = '#22a06b';
+    deactBtn.style.border = '1.5px solid #22a06b';
+  }
 }
 
 function changePermUserRole(uid, role) {
@@ -2722,6 +2850,60 @@ function resetPermToRole(uid) {
   showToast('Reset to role defaults', 'info');
 }
 
+async function toggleDeactivateUser() {
+  if(!selectedPermUserId) return;
+  const t = trainers.find(u => u.id === selectedPermUserId);
+  if(!t) return;
+  const isActive   = t.active !== false;
+  const action     = isActive ? 'deactivate' : 'reactivate';
+  const confirmMsg = isActive
+    ? `Deactivate ${t.name}? They will not be able to log in until reactivated.`
+    : `Reactivate ${t.name}? They will be able to log in again.`;
+  if(!confirm(confirmMsg)) return;
+
+  t.active = !isActive;
+
+  // Write Active = TRUE/FALSE to col F on the Users sheet
+  // saveUsers() calls saveUser for every user — but we want to be precise here.
+  // Directly call saveUser with just the active flag change.
+  try {
+    const [fn, ...rest] = (t.name || '').split(' ');
+    const params = new URLSearchParams({
+      action:      'saveUser',
+      userId:      t.id,
+      firstName:   t.firstName || fn || t.name,
+      lastName:    t.lastName  || rest.join(' ') || '',
+      department:  t.department || t.jobTitle || '',
+      role:        t.role || 'viewer',
+      active:      t.active ? 'true' : 'false',
+      addedBy:     currentUser?.name || '',
+      notes:       t.notes || '',
+      customPerms: (t.customPerms && Object.keys(t.customPerms).length) ? JSON.stringify(t.customPerms) : '',
+      color:       t.color || '',
+      pin:         t.pin   || '',
+      email:       t.email || '',
+    });
+    await fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' });
+  } catch(e) {
+    console.warn('toggleDeactivateUser sheet write failed:', e.message);
+  }
+
+  // Keep local cache in sync
+  localStorage.setItem('dashUsersCache', JSON.stringify(trainers));
+
+  // Remove from login dropdown if deactivated
+  populateLoginSelect();
+
+  // Re-render so sidebar and detail panel reflect new state
+  selectPermUser(selectedPermUserId);
+  renderPermUserList();
+
+  showToast(
+    t.name + (t.active ? ' reactivated' : ' deactivated'),
+    t.active ? 'success' : 'info'
+  );
+}
+
 function removeTrainerById(uid) {
   const t = trainers.find(u => u.id === uid);
   if(!t || !confirm('Remove ' + t.name + '?')) return;
@@ -2732,6 +2914,7 @@ function removeTrainerById(uid) {
   document.getElementById('permDetail').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text--dark--30);font-size:12px;">👤 Select a user to configure their permissions</div>';
   document.getElementById('savePermBtn').style.display = 'none';
   document.getElementById('shadowPermBtn').style.display = 'none';
+  document.getElementById('deactivatePermBtn').style.display = 'none';
   renderPermUserList();
   populateLoginSelect();
 }
@@ -2744,6 +2927,7 @@ function removeTrainer(i) { removeTrainerById(trainers[i]?.id); }
 function addTrainer() {
   const name = document.getElementById('newTrainerName').value.trim();
   const role = document.getElementById('newTrainerRole').value;
+  const dept = document.getElementById('permUserDept')?.value || '';
   if(!name) return;
   const [fn, ...rest] = name.split(' ');
   const newUser = {
@@ -2754,7 +2938,7 @@ function addTrainer() {
     role,
     color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length],
     pin: '', icsUrl: '', customPerms: {},
-    department: '', jobTitle: '',
+    department: dept, jobTitle: dept,
     active: true,
     addedBy: currentUser?.name || '',
     dateAdded: new Date().toISOString()
@@ -2762,8 +2946,10 @@ function addTrainer() {
   trainers.push(newUser);
   saveUsers();
   document.getElementById('newTrainerName').value = '';
+  if(document.getElementById('permUserDept')) document.getElementById('permUserDept').value = '';
   renderPermUserList();
   populateLoginSelect();
+  _populateDeptDropdowns();
   showToast(name + ' added as ' + role, 'success');
 }
 
