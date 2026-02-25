@@ -1303,6 +1303,20 @@ function renderTrainerWorkload() {
   grid.innerHTML = html;
 }
 
+// Returns the last working day strictly before `date`
+function prevWorkingDay(date) {
+  const d = new Date(date);
+  do { d.setDate(d.getDate() - 1); } while (!isWorkingDay(d));
+  return d;
+}
+
+// Returns the first working day strictly after `date`
+function nextWorkingDay(date) {
+  const d = new Date(date);
+  do { d.setDate(d.getDate() + 1); } while (!isWorkingDay(d));
+  return d;
+}
+
 function getNextFreeDate(trainerName) {
   const today = new Date(); today.setHours(0,0,0,0);
   const earliest = addWorkingDays(today, 14);
@@ -1310,20 +1324,27 @@ function getNextFreeDate(trainerName) {
   const busyDates = new Set();
   booked.forEach(r => {
     const start = new Date(r.bookedOn); start.setHours(0,0,0,0);
-    for(let i=0; i < (r.trainingDays||1); i++) {
-      const d = new Date(start); d.setDate(d.getDate()+i);
+    const days = r.trainingDays || 1;
+    // All actual training days
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start); d.setDate(d.getDate() + i);
       busyDates.add(d.toISOString().split('T')[0]);
     }
-    const travel = new Date(start); travel.setDate(travel.getDate()-1);
+    // Travel day = last working day before training starts
+    // (skips bank holidays & weekends e.g. if Mon is a BH, travel falls on Fri)
+    const travel = prevWorkingDay(start);
     busyDates.add(travel.toISOString().split('T')[0]);
-    const after = new Date(start); after.setDate(after.getDate() + (r.trainingDays||1));
-    busyDates.add(after.toISOString().split('T')[0]);
+    // Admin/recovery day = first working day after training ends
+    // (skips bank holidays & weekends e.g. if Mon after Fri session is a BH, admin is Tue)
+    const trainingEnd = new Date(start); trainingEnd.setDate(trainingEnd.getDate() + days - 1);
+    const admin = nextWorkingDay(trainingEnd);
+    busyDates.add(admin.toISOString().split('T')[0]);
   });
-  for(let i=0; i < 90; i++) {
-    const d = new Date(earliest); d.setDate(d.getDate()+i);
-    if(!isWorkingDay(d)) continue;
-    const ds = d.toISOString().split('T')[0];
-    if(!busyDates.has(ds)) return 'Next free: ' + fmtDate(d);
+  // Walk forward from earliest, only on working days, find first free slot
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(earliest); d.setDate(d.getDate() + i);
+    if (!isWorkingDay(d)) continue;
+    if (!busyDates.has(d.toISOString().split('T')[0])) return 'Next free: ' + fmtDate(d);
   }
   return null;
 }
@@ -1782,25 +1803,39 @@ function renderCalendar() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date(); today.setHours(0,0,0,0);
   const trainerFilter = document.getElementById('calFilterTrainer')?.value || '';
-  const bookedRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === year && r.bookedOn.getMonth() === month && (!trainerFilter || r.trainer === trainerFilter));
+  // Widen query: include any booking whose training days, travel day, or admin day
+  // could touch the displayed month (± 1 month buffer is sufficient)
+  const prevMonth = new Date(year, month - 1, 1);
+  const nextMonth = new Date(year, month + 2, 0); // last day of month+1
+  const bookedRows = allData.filter(r =>
+    r.status === 'Booked' && r.bookedOn &&
+    r.bookedOn >= prevMonth && r.bookedOn <= nextMonth &&
+    (!trainerFilter || r.trainer === trainerFilter)
+  );
   const eventsByDay = {};
+  function addCalEvent(dateObj, event) {
+    if (dateObj.getFullYear() !== year || dateObj.getMonth() !== month) return;
+    const day = dateObj.getDate();
+    if (!eventsByDay[day]) eventsByDay[day] = [];
+    eventsByDay[day].push(event);
+  }
   bookedRows.forEach(r => {
     const days = r.trainingDays || 1;
     const t = trainers.find(u => u.name === r.trainer);
     const color = t ? t.color : '#2147f4';
-    for(let i = 0; i < days; i++) {
-      const d = new Date(r.bookedOn); d.setDate(d.getDate() + i);
-      if(d.getMonth() !== month) continue;
-      const day = d.getDate();
-      if(!eventsByDay[day]) eventsByDay[day] = [];
-      eventsByDay[day].push({ label: getCompanyName(r), color, type: 'training', rowIdx: r._idx });
+    const start = new Date(r.bookedOn); start.setHours(0,0,0,0);
+    // Training days
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start); d.setDate(d.getDate() + i);
+      addCalEvent(d, { label: getCompanyName(r), color, type: 'training', rowIdx: r._idx });
     }
-    const travel = new Date(r.bookedOn); travel.setDate(travel.getDate()-1);
-    if(travel.getMonth() === month && travel.getFullYear() === year) {
-      const tDay = travel.getDate();
-      if(!eventsByDay[tDay]) eventsByDay[tDay] = [];
-      eventsByDay[tDay].push({ label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', type: 'travel', rowIdx: r._idx });
-    }
+    // Travel day = last working day before training (respects bank holidays & weekends)
+    const travel = prevWorkingDay(start);
+    addCalEvent(travel, { label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', type: 'travel', rowIdx: r._idx });
+    // Admin day = first working day after training ends (respects bank holidays & weekends)
+    const trainingEnd = new Date(start); trainingEnd.setDate(trainingEnd.getDate() + days - 1);
+    const admin = nextWorkingDay(trainingEnd);
+    addCalEvent(admin, { label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', type: 'admin', rowIdx: r._idx });
   });
   calIcsEvents.forEach(ev => {
     if(ev.start && ev.start.getFullYear() === year && ev.start.getMonth() === month) {
