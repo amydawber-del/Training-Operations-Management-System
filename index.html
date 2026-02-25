@@ -333,6 +333,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .perm-user-name { font-size:12px;font-weight:600;color:var(--text--dark--50); }
 .perm-user-role-tag { font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px; }
 .perm-user-role-tag.admin { background:#fee2e2;color:#991b1b; }
+.perm-user-role-tag.manager { background:#fef3c7;color:#92400e; }
 .perm-user-role-tag.trainer { background:#dbeafe;color:#1e40af; }
 .perm-user-role-tag.viewer { background:#f3f4f6;color:#6b7280; }
 .perm-detail { flex:1;overflow-y:auto;padding:18px; }
@@ -823,7 +824,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);margin-bottom:8px;">Add User</div>
           <input type="text" class="form-input" id="newTrainerName" placeholder="Full name&#8230;" style="width:100%;margin-bottom:6px;font-size:12px;" onkeydown="if(event.key==='Enter')addTrainer()">
           <select class="form-input" id="permUserDept" style="width:100%;margin-bottom:6px;font-size:12px;"><option value="">— Department —</option></select>
-          <select class="form-input" id="newTrainerRole" style="width:100%;margin-bottom:6px;font-size:12px;"><option value="viewer">Viewer</option><option value="trainer">Trainer</option><option value="admin">Admin</option></select>
+          <select class="form-input" id="newTrainerRole" style="width:100%;margin-bottom:6px;font-size:12px;"><option value="viewer">Viewer</option><option value="manager">Manager</option><option value="trainer">Trainer</option><option value="admin">Admin</option></select>
           <button class="btn btn-primary btn-sm" onclick="addTrainer()" style="width:100%;">+ Add User</button>
         </div>
       </div>
@@ -1162,17 +1163,23 @@ const ROLE_DEFAULTS = {
     assignTrainer:true, confirmBooking:true, editBooking:true, cancelBooking:true,
     manageUsers:true, viewActivityFeed:true, requestTraining:true, addNotes:true
   },
-  trainer: {
-    viewKpis:false, viewCalendar:true, viewUnassigned:false, viewPending:true,
-    viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:true,
+  manager: {
+    viewKpis:true, viewCalendar:true, viewUnassigned:true, viewPending:true,
+    viewAllBookings:true, viewReferrals:true, viewTrainerWorkload:true,
     assignTrainer:false, confirmBooking:false, editBooking:true, cancelBooking:false,
-    manageUsers:false, viewActivityFeed:false, requestTraining:true, addNotes:true
+    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true
   },
-  viewer: {
+  trainer: {
     viewKpis:false, viewCalendar:true, viewUnassigned:false, viewPending:false,
     viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:false,
+    assignTrainer:false, confirmBooking:false, editBooking:true, cancelBooking:false,
+    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true
+  },
+  viewer: {
+    viewKpis:false, viewCalendar:true, viewUnassigned:true, viewPending:true,
+    viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:true,
     assignTrainer:false, confirmBooking:false, editBooking:false, cancelBooking:false,
-    manageUsers:false, viewActivityFeed:false, requestTraining:true, addNotes:false
+    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true
   }
 };
 
@@ -1342,27 +1349,29 @@ async function deleteUserFromSheet(userId) {
 
 // Load role permission matrix from the sheet and merge into ROLE_DEFAULTS
 async function loadPermissions() {
+  const ALL_ROLES = ['admin', 'manager', 'trainer', 'viewer'];
   try {
     const res  = await fetch(SCRIPT_URL + '?action=getPermissions&t=' + Date.now(), { method:'GET', redirect:'follow' });
     const json = await res.json();
     if (json.success && json.permissions) {
-      // Merge sheet values into ROLE_DEFAULTS (sheet is source of truth)
-      ['admin','trainer','viewer'].forEach(role => {
+      // Sheet is source of truth — merge into ROLE_DEFAULTS
+      ALL_ROLES.forEach(role => {
         if (json.permissions[role]) {
           Object.assign(ROLE_DEFAULTS[role], json.permissions[role]);
         }
       });
       localStorage.setItem('dashPermCache', JSON.stringify(json.permissions));
+      console.log('Permissions loaded from sheet');
     }
   } catch(e) {
-    // Fall back to cached permissions
+    // Fall back to cached permissions if sheet is unreachable
     const cached = JSON.parse(localStorage.getItem('dashPermCache') || 'null');
     if (cached) {
-      ['admin','trainer','viewer'].forEach(role => {
+      ALL_ROLES.forEach(role => {
         if (cached[role]) Object.assign(ROLE_DEFAULTS[role], cached[role]);
       });
+      console.warn('getPermissions failed — using cache:', e.message);
     }
-    console.warn('getPermissions failed — using cache/defaults', e.message);
   }
 }
 
@@ -3089,10 +3098,14 @@ function renderCalendar() {
       addCalEvent(new Date(d), { label: ev.summary, color: '#fef9c3', textColor: '#92400e', type: 'holiday' });
     }
   });
-  // Team leave — only show for trainers/admins, greyed out style
+  // Team leave — only show for trainers + admins, greyed out style
+  // Match by checking if any trainer/admin's full name appears anywhere in the summary
+  const calendarUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
   calLeaveEvents.forEach(ev => {
-    if(!ev.start) return;
-    if(!isCalendarTrainer(ev.summary?.split(/[-–—]/)[0]?.trim())) return; // skip non-trainer staff
+    if(!ev.start || !ev.summary) return;
+    const summaryLower = ev.summary.toLowerCase();
+    const matchedUser = calendarUsers.find(u => summaryLower.includes(u.name.toLowerCase()));
+    if(!matchedUser) return; // not a trainer/admin — skip
     const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
     const evEnd   = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
     evEnd.setHours(0,0,0,0);
@@ -3565,9 +3578,10 @@ function selectPermUser(uid) {
       </div>
     </div>
     <select style="border:1px solid var(--light-grey);border-radius:6px;padding:5px 10px;font-size:12px;font-family:Arial,sans-serif;" onchange="changePermUserRole('${uid}',this.value)">
-      <option value="viewer" ${t.role==='viewer'?'selected':''}>Viewer</option>
+      <option value="viewer"  ${t.role==='viewer' ?'selected':''}>Viewer</option>
+      <option value="manager" ${t.role==='manager'?'selected':''}>Manager</option>
       <option value="trainer" ${t.role==='trainer'?'selected':''}>Trainer</option>
-      <option value="admin" ${t.role==='admin'?'selected':''}>Admin</option>
+      <option value="admin"   ${t.role==='admin'  ?'selected':''}>Admin</option>
     </select>
     <input type="color" value="${t.color||'#2147f4'}" title="Colour" style="width:28px;height:28px;border:none;cursor:pointer;border-radius:50%;background:none;padding:0;" onchange="changeTrainerColor(trainers.findIndex(u=>u.id==='${uid}'),this.value)">
     <button class="btn btn-ghost btn-sm" onclick="setTrainerPin(trainers.findIndex(u=>u.id==='${uid}'))">PIN</button>
@@ -3643,9 +3657,26 @@ function setPermOverride(uid, key, val) {
   if(!t.customPerms) t.customPerms = {};
   const defaultVal = (ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer)[key];
   if(val === defaultVal) {
-    delete t.customPerms[key]; // no override needed — matches role default
+    delete t.customPerms[key];
   } else {
     t.customPerms[key] = val;
+  }
+
+  // Auto-enable logic: if an action right is turned on, force the
+  // relevant queue views on too so they can actually see what to act on.
+  const ACTION_NEEDS_QUEUES = ['assignTrainer', 'confirmBooking', 'cancelBooking'];
+  if(val === true && ACTION_NEEDS_QUEUES.includes(key)) {
+    ['viewUnassigned', 'viewPending'].forEach(viewKey => {
+      const viewDefault = (ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer)[viewKey];
+      if(!userPerms(t)[viewKey]) {
+        t.customPerms[viewKey] = true;
+        // Reflect in the UI immediately
+        const chk = document.querySelector(`input[onchange*="'${viewKey}'"]`);
+        if(chk) chk.checked = true;
+      }
+      // Clean up override if it now matches role default
+      if(t.customPerms[viewKey] === viewDefault) delete t.customPerms[viewKey];
+    });
   }
 }
 
