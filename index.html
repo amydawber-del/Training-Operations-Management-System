@@ -1323,9 +1323,9 @@ function renderTrainerWorkload() {
     const nextFreeHtml = nextFree ? `<div class="next-free-tag">${nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`;
     html += `<div class="trainer-card">
       <div class="trainer-name"><div class="trainer-color-dot" style="background:${color};"></div>${escHtml(t.name)} <span class="status-badge" style="font-size:9px;padding:1px 5px;margin-left:auto;background:${color}22;color:${color};">${t.role}</span></div>
-      <div class="trainer-stat"><span>Sessions (30d)</span><span class="trainer-stat-val">${last30.length}</span></div>
-      <div class="trainer-stat"><span>Days (30d)</span><span class="trainer-stat-val">${daysLast30}</span></div>
-      <div class="trainer-stat"><span>Upcoming</span><span class="trainer-stat-val">${upcoming.length}</span></div>
+      <div class="trainer-stat"><span>Client Visits (Last 30 Days)</span><span class="trainer-stat-val">${last30.length}</span></div>
+      <div class="trainer-stat"><span>Training Days in Total</span><span class="trainer-stat-val">${daysLast30}</span></div>
+      <div class="trainer-stat"><span>Upcoming Client Visits</span><span class="trainer-stat-val">${upcoming.length}</span></div>
       <div class="workload-bar-wrap"><div class="workload-bar" style="width:${pct}%;background:${color};"></div></div>
       ${nextFreeHtml}
     </div>`;
