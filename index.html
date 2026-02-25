@@ -758,6 +758,19 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <div class="modal-header"><div><div class="modal-title">&#128200; Confirm Booking</div><div class="modal-subtitle" id="bookModalCompany">&#8212;</div></div><button class="modal-close" onclick="closeBookModal()">&#10005;</button></div>
     <div class="modal-body">
       <div id="bookWarnings"></div>
+      <!-- Training type — required before confirming; must not be "Help me choose" -->
+      <div class="form-row" id="bookTypeRow">
+        <label class="form-label required">Training Type</label>
+        <select class="form-select" id="bookTrainingType" onchange="checkBookingWarnings()">
+          <option value="">— Select training type —</option>
+          <option value="Personalised Onsite Training - 1 Day">1-Day Onsite</option>
+          <option value="Personalised Onsite Training - 2 Days">2-Day Onsite</option>
+          <option value="Lettings Accounting Training + Go-Live Support">Accounting + Go-Live Support</option>
+          <option value="Live Training at Street HQ (Manchester)">HQ Manchester</option>
+          <option value="Online Refresher">Online Refresher</option>
+        </select>
+        <div class="form-hint" id="bookTypeHint"></div>
+      </div>
       <div class="form-2col">
         <div class="form-row"><label class="form-label required">Training Date</label><input type="date" class="form-input" id="bookDate" oninput="checkBookingWarnings()"><div class="form-hint">Date training takes place</div></div>
         <div class="form-row"><label class="form-label required">Training Days</label><input type="number" class="form-input" id="bookDays" min="1" max="14" value="1" oninput="checkBookingWarnings()"></div>
@@ -3248,6 +3261,23 @@ function openBookModal(idx) {
   document.getElementById('bookDays').value = r.trainingDays || 1;
   document.getElementById('bookValue').value = r.invoiceValue || '';
   document.getElementById('bookValueHint').textContent = r.quotedValue ? 'Quoted: ' + fmtMoney(r.quotedValue) : 'No quoted value on record';
+
+  // Pre-fill training type — clear it if it's "Help me choose" so admin must pick a real one
+  const typeEl   = document.getElementById('bookTrainingType');
+  const hintEl   = document.getElementById('bookTypeHint');
+  const HELP_VAL = 'Not sure yet - please help me choose';
+  const currentType = (r.trainingOption || '').trim();
+  if(currentType && currentType !== HELP_VAL && TRAINING_OPTIONS[currentType]) {
+    typeEl.value = currentType;
+    hintEl.textContent = '';
+  } else {
+    typeEl.value = '';
+    hintEl.textContent = currentType === HELP_VAL
+      ? '⚠️ Client selected "Help me choose" — please confirm the actual type before booking.'
+      : 'No training type selected yet.';
+    hintEl.style.color = '#c0303d';
+  }
+
   const sel = document.getElementById('bookTrainer');
   sel.innerHTML = '<option value="">— Select trainer —</option>';
   trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => sel.innerHTML += `<option value="${t.name}" ${r.trainer===t.name?'selected':''}>${t.name}</option>`);
@@ -3274,36 +3304,46 @@ function closeBookModal() { document.getElementById('bookOverlay').classList.rem
 
 function checkBookingWarnings() {
   if(!currentBookRow) return;
-  const date = document.getElementById('bookDate').value;
-  const days = parseInt(document.getElementById('bookDays').value) || 1;
-  const trainer = document.getElementById('bookTrainer').value;
+  const date     = document.getElementById('bookDate').value;
+  const days     = parseInt(document.getElementById('bookDays').value) || 1;
+  const trainer  = document.getElementById('bookTrainer').value;
+  const typeVal  = document.getElementById('bookTrainingType').value;
   const override = document.getElementById('bookingOverride')?.checked;
-  const warnEl = document.getElementById('bookWarnings');
+  const warnEl     = document.getElementById('bookWarnings');
   const overrideRow = document.getElementById('bookingOverrideRow');
-  const blockMsg = document.getElementById('bookingBlockMsg');
-  const btn = document.getElementById('confirmBookBtn');
+  const blockMsg   = document.getElementById('bookingBlockMsg');
+  const btn        = document.getElementById('confirmBookBtn');
   warnEl.innerHTML = '';
   overrideRow.style.display = 'none';
   blockMsg.style.display = 'none';
   btn.disabled = false;
+
+  // Training type is always required — block immediately if not set
+  if(!typeVal) {
+    blockMsg.textContent = '⚠️ Please select a training type before confirming.';
+    blockMsg.style.display = 'block';
+    btn.disabled = true;
+    return;
+  }
+
   if(!date || !trainer) return;
 
   const bookD = new Date(date);
   let warnings = [];
-  let blocking = false;
+  let blocking  = false;
 
   // 1. Double-booking check (existing bookings)
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentBookRow._idx);
   conflicts.forEach(r => {
     const rStart = new Date(r.bookedOn); rStart.setHours(0,0,0,0);
-    const rEnd = new Date(rStart); rEnd.setDate(rEnd.getDate() + (r.trainingDays||1));
+    const rEnd   = new Date(rStart); rEnd.setDate(rEnd.getDate() + (r.trainingDays||1));
     if(bookD >= rStart && bookD < rEnd) {
       warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`);
       blocking = true;
     }
   });
 
-  // 2. Trainer leave check — flag every training day that falls on leave
+  // 2. Trainer leave check across all training days
   let leaveDays = [];
   for(let i = 0; i < days; i++) {
     const d = new Date(bookD); d.setDate(d.getDate() + i);
@@ -3332,12 +3372,18 @@ function checkBookingWarnings() {
 }
 
 async function confirmBook() {
-  const date = document.getElementById('bookDate').value;
-  const days = parseInt(document.getElementById('bookDays').value) || 1;
-  const trainer = document.getElementById('bookTrainer').value;
-  const value = document.getElementById('bookValue').value;
-  if(!date || !trainer || !currentBookRow) return;
-  const params = new URLSearchParams({ action: 'assign', row: currentBookRow._rowNum, status: 'Booked', trainer, bookedOn: date, trainingDays: days, value: value || '' });
+  const date      = document.getElementById('bookDate').value;
+  const days      = parseInt(document.getElementById('bookDays').value) || 1;
+  const trainer   = document.getElementById('bookTrainer').value;
+  const value     = document.getElementById('bookValue').value;
+  const typeVal   = document.getElementById('bookTrainingType').value;
+  if(!date || !trainer || !typeVal || !currentBookRow) return;
+  const params = new URLSearchParams({
+    action: 'assign', row: currentBookRow._rowNum,
+    status: 'Booked', trainer, bookedOn: date,
+    trainingDays: days, value: value || '',
+    option: typeVal,   // save confirmed training type back to sheet
+  });
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`);
