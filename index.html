@@ -1663,11 +1663,12 @@ function renderReferralLeaderboard() {
     board.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text--dark--30);font-size:12px;">No referrals recorded yet. Referrals are logged when the Request Training form is submitted with a referrer name.</div>';
     return;
   }
-  let html = '';
-  entries.forEach((e, i) => {
+  const TOP = 5;
+
+  function entryHtml(e, i) {
     const rank = i + 1;
     const rankCls = rank === 1 ? 'referral-rank-1' : rank === 2 ? 'referral-rank-2' : rank === 3 ? 'referral-rank-3' : 'referral-rank-other';
-    html += `<div class="referral-entry" onclick="openReferralModal('${escHtml(e.name)}')">
+    return `<div class="referral-entry" onclick="openReferralModal('${escHtml(e.name)}')">
       <div class="referral-rank ${rankCls}">${rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : rank}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(e.name)}</div>
@@ -1679,8 +1680,18 @@ function renderReferralLeaderboard() {
       </div>
       <div style="color:var(--text--dark--20);font-size:14px;">›</div>
     </div>`;
-  });
-  board.innerHTML = html;
+  }
+
+  const topHtml = entries.slice(0, TOP).map((e, i) => entryHtml(e, i)).join('');
+
+  let restHtml = '';
+  if (entries.length > TOP) {
+    restHtml = `<div id="referralRest" style="max-height:220px;overflow-y:auto;border-top:1px solid var(--ui--underline--light-grey);">
+      ${entries.slice(TOP).map((e, i) => entryHtml(e, TOP + i)).join('')}
+    </div>`;
+  }
+
+  board.innerHTML = topHtml + restHtml;
 }
 
 function openReferralModal(name) {
