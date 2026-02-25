@@ -1082,21 +1082,36 @@ function writeActivityLog(entry) {
  * text    - full note text
  * section - where it came from (default "Client Profile")
  */
-function writeNoteToSheet(rowRef, record, text, section) {
+async function writeNoteToSheet(rowRef, record, text, section) {
   if(!SCRIPT_URL || !text) return;
   const u = currentUser || {};
-  const params = new URLSearchParams({
+  const body = {
     action:   'saveNote',
     rowRef:   String(rowRef),
     record:   record  || '',
     section:  section || 'Client Profile',
-    text,
+    text:     text,
     author:   u.name || u.email || 'Unknown',
     userRole: u.role || '',
     ts:       new Date().toISOString(),
-  });
-  fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' })
-    .catch(e => console.warn('Note save to sheet failed:', e.message));
+  };
+  try {
+    // Use POST so long note text never hits GET URL length limits
+    const res  = await fetch(SCRIPT_URL, {
+      method:   'POST',
+      redirect: 'follow',
+      headers:  { 'Content-Type': 'text/plain' },  // text/plain avoids CORS preflight
+      body:     JSON.stringify(body),
+    });
+    const json = await res.json();
+    if(!json.success) {
+      console.warn('saveNote sheet error:', json.error);
+      showToast('Note saved locally but sheet write failed: ' + (json.error||'unknown'), 'error');
+    }
+  } catch(e) {
+    console.warn('Note save to sheet failed:', e.message);
+    showToast('Note saved locally but could not reach sheet. Will retry on next load.', 'error');
+  }
 }
 const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
 const HUMAANS_LEAVE_ICS = '';
