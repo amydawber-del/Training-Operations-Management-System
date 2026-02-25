@@ -259,7 +259,12 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .profile-note-text { font-size:12px;color:var(--text--dark--50); }
 
 /* REFERRAL LEADERBOARD */
-.referral-board { border:1px solid var(--ui--underline--light-grey);border-radius:4px;overflow:hidden;background:#fff; }
+.referral-board { border:1px solid var(--ui--underline--light-grey);border-radius:8px;overflow:hidden;background:#fff;display:flex;align-items:stretch; }
+.referral-board-left { flex:0 0 55%;min-width:0;border-right:1px solid var(--ui--underline--light-grey); }
+.referral-board-right { flex:1;min-width:0;display:flex;flex-direction:column; }
+.referral-board-right-header { padding:10px 16px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey); }
+.referral-board-right-scroll { overflow-y:auto;max-height:280px; }
+.referral-board-empty-right { display:flex;align-items:center;justify-content:center;padding:32px 16px;font-size:11px;color:var(--text--dark--20);text-align:center; }
 .referral-entry { display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid var(--ui--underline--light-grey);cursor:pointer;transition:background 0.12s; }
 .referral-entry:last-child { border-bottom:none; }
 .referral-entry:hover { background:#f6f8ff; }
@@ -1684,14 +1689,19 @@ function renderReferralLeaderboard() {
 
   const topHtml = entries.slice(0, TOP).map((e, i) => entryHtml(e, i)).join('');
 
-  let restHtml = '';
+  let rightContent;
   if (entries.length > TOP) {
-    restHtml = `<div id="referralRest" style="max-height:220px;overflow-y:auto;border-top:1px solid var(--ui--underline--light-grey);">
-      ${entries.slice(TOP).map((e, i) => entryHtml(e, TOP + i)).join('')}
-    </div>`;
+    const restItems = entries.slice(TOP).map((e, i) => entryHtml(e, TOP + i)).join('');
+    rightContent = `
+      <div class="referral-board-right-header">Others &mdash; ${entries.length - TOP} more</div>
+      <div class="referral-board-right-scroll">${restItems}</div>`;
+  } else {
+    rightContent = `<div class="referral-board-empty-right">All referrers<br>in top 5</div>`;
   }
 
-  board.innerHTML = topHtml + restHtml;
+  board.innerHTML = `
+    <div class="referral-board-left">${topHtml}</div>
+    <div class="referral-board-right">${rightContent}</div>`;
 }
 
 function openReferralModal(name) {
