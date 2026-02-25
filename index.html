@@ -945,6 +945,57 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 <script>
 // ===================== CONFIGURATION =====================
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCvBhFSPyyoaVsui0DCxvGQQa0V7e_UCJ5LfqvcSysTHTFlNRcx4ewlET5TyouJ0ZYow/exec';
+
+// ── Activity Log ──────────────────────────────────────────────────
+// Unique session ID generated once per page load
+const SESSION_ID = 'S-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+
+/**
+ * writeActivityLog(entry)
+ * Fire-and-forget write to the ACTIVITY LOG sheet.
+ * Call this from any action that should be audited.
+ *
+ * @param {object} entry
+ *   actionType   - "Status Change" | "Note Added" | "Login" | "Form Submission" |
+ *                  "Button Click" | "User Management" | "Cancellation" | "Assignment"
+ *   description  - human-readable summary, e.g. "Pending changed to Booked"
+ *   module       - "Dashboard" | "Calendar" | "Training Requests" | "Settings" | "Client Profile"
+ *   recordType   - "Booking" | "Enquiry" | "User" | "Note"
+ *   recordId     - row number, company name, or other reference
+ *   before       - value before change (or "—")
+ *   after        - value after change
+ *   reason       - "Manual" | "Auto" | "Form Submit" | free text
+ *   source       - "Dashboard Button" | "Google Form" | "Apps Script" | "System"
+ *   company      - client / company name
+ *   trainer      - affected trainer name
+ *   notes        - any extra context
+ */
+function writeActivityLog(entry) {
+  if(!SCRIPT_URL) return;
+  const u = currentUser || {};
+  const params = new URLSearchParams({
+    action:      'logActivity',
+    ts:          new Date().toISOString(),
+    user:        u.name  || u.email || 'System',
+    userRole:    u.role  || 'system',
+    actionType:  entry.actionType  || '',
+    description: entry.description || '',
+    module:      entry.module      || 'Dashboard',
+    recordType:  entry.recordType  || '',
+    recordId:    entry.recordId    || '',
+    before:      entry.before      || '',
+    after:       entry.after       || '',
+    reason:      entry.reason      || 'Manual',
+    source:      entry.source      || 'Dashboard Button',
+    company:     entry.company     || '',
+    trainer:     entry.trainer     || '',
+    notes:       entry.notes       || '',
+    sessionId:   SESSION_ID,
+  });
+  // Fire and forget — never block UI for a log write
+  fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' })
+    .catch(e => console.warn('Activity log write failed:', e.message));
+}
 const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
 const HUMAANS_LEAVE_ICS = '';
 const STALE_DAYS = 5;
@@ -1338,6 +1389,16 @@ function enterDashboard() {
   updateCalTrainerFilter();
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
+  writeActivityLog({
+    actionType: 'Login',
+    description: currentUser.name + ' logged in',
+    module: 'Dashboard',
+    recordType: 'User',
+    recordId: currentUser.id,
+    after: 'Logged in',
+    reason: 'Manual',
+    source: 'Dashboard',
+  });
 }
 
 function logout() {
@@ -2316,6 +2377,19 @@ function saveProfileNote() {
   renderProfileNotes(currentProfileRow);
   console.log('Note saved locally for row', currentProfileRow._rowNum);
   logNote(currentUser?.name || '?', 'Note added', getCompanyName(currentProfileRow), text.slice(0, 120));
+  writeActivityLog({
+    actionType:  'Note Added',
+    description: 'Progress note added to client profile',
+    module:      'Client Profile',
+    recordType:  'Enquiry',
+    recordId:    String(currentProfileRow._rowNum),
+    before:      '—',
+    after:       text.slice(0, 200),
+    reason:      'Manual entry',
+    source:      'Dashboard Button',
+    company:     getCompanyName(currentProfileRow),
+    trainer:     currentProfileRow.trainer || '',
+  });
   showToast('Note saved', 'success');
 }
 
@@ -2499,6 +2573,19 @@ async function confirmAssign() {
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Assigned trainer', getCompanyName(currentAssignRow), `Trainer: ${trainer} → Pending`);
+    writeActivityLog({
+      actionType:  'Assignment',
+      description: 'Trainer assigned - status set to Pending',
+      module:      'Dashboard',
+      recordType:  'Enquiry',
+      recordId:    String(currentAssignRow._rowNum),
+      before:      currentAssignRow.status || 'Unassigned',
+      after:       'Pending - Trainer: ' + trainer,
+      reason:      'Manual',
+      source:      'Dashboard Button',
+      company:     getCompanyName(currentAssignRow),
+      trainer,
+    });
     showToast(`Assigned to ${trainer} — status set to Pending`, 'success');
     closeAssignModal();
     await loadData();
@@ -2580,6 +2667,19 @@ async function confirmBook() {
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`);
+    writeActivityLog({
+      actionType:  'Status Change',
+      description: 'Status changed from ' + (currentBookRow.status||'Pending') + ' to Booked',
+      module:      'Dashboard',
+      recordType:  'Booking',
+      recordId:    String(currentBookRow._rowNum),
+      before:      currentBookRow.status || 'Pending',
+      after:       `Booked — ${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`,
+      reason:      'Manual',
+      source:      'Dashboard Button',
+      company:     getCompanyName(currentBookRow),
+      trainer,
+    });
     showToast('Booking confirmed!', 'success');
     closeBookModal();
     await loadData();
@@ -2652,6 +2752,20 @@ async function confirmEditBooking() {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Edited booking', getCompanyName(currentEditRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d${reason?' · '+reason:''}`);
     if(reason) logNote(currentUser?.name||'?', 'Amendment note', getCompanyName(currentEditRow), reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`);
+    writeActivityLog({
+      actionType:  'Status Change',
+      description: 'Booking edited',
+      module:      'Dashboard',
+      recordType:  'Booking',
+      recordId:    String(currentEditRow._rowNum),
+      before:      `${currentEditRow.trainer||'?'} · ${fmtDate(currentEditRow.bookedOn)} · ${currentEditRow.trainingDays||1}d · ${fmtMoney(currentEditRow.invoiceValue||0)}`,
+      after:       `${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`,
+      reason:      reason || 'Manual edit',
+      source:      'Dashboard Button',
+      company:     getCompanyName(currentEditRow),
+      trainer,
+      notes:       reason || '',
+    });
     showToast('Booking updated', 'success');
     closeEditBookingModal();
     await loadData();
@@ -2681,7 +2795,21 @@ async function confirmCancel() {
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Cancelled enquiry', getCompanyName(currentCancelRow), reason);
-  logNote(currentUser?.name||'?', 'Cancellation note', getCompanyName(currentCancelRow), reason);
+    logNote(currentUser?.name||'?', 'Cancellation note', getCompanyName(currentCancelRow), reason);
+    writeActivityLog({
+      actionType:  'Cancellation',
+      description: 'Enquiry cancelled',
+      module:      'Dashboard',
+      recordType:  'Enquiry',
+      recordId:    String(currentCancelRow._rowNum),
+      before:      currentCancelRow.status || 'Active',
+      after:       'Cancelled',
+      reason:      reason,
+      source:      'Dashboard Button',
+      company:     getCompanyName(currentCancelRow),
+      trainer:     currentCancelRow.trainer || '',
+      notes:       reason,
+    });
     showToast('Enquiry cancelled', 'success');
     closeCancelModal();
     await loadData();
@@ -2837,6 +2965,23 @@ function setPermOverride(uid, key, val) {
 
 function savePermissions() {
   saveUsers();
+  if(selectedPermUserId) {
+    const t = trainers.find(u => u.id === selectedPermUserId);
+    if(t) writeActivityLog({
+      actionType:  'User Management',
+      description: 'Permissions updated for ' + t.name,
+      module:      'Settings',
+      recordType:  'User',
+      recordId:    t.id,
+      before:      t.role + ' defaults',
+      after:       Object.keys(t.customPerms||{}).length
+        ? 'Custom: ' + JSON.stringify(t.customPerms).slice(0,120)
+        : t.role + ' defaults (no overrides)',
+      reason:      'Manual',
+      source:      'Dashboard Button',
+      notes:       'Role: ' + t.role,
+    });
+  }
   showToast('Permissions saved', 'success');
 }
 
@@ -2897,6 +3042,20 @@ async function toggleDeactivateUser() {
   selectPermUser(selectedPermUserId);
   renderPermUserList();
 
+  writeActivityLog({
+    actionType:  'User Management',
+    description: t.name + (t.active ? ' reactivated' : ' deactivated'),
+    module:      'Settings',
+    recordType:  'User',
+    recordId:    t.id,
+    before:      t.active ? 'Inactive' : 'Active',
+    after:       t.active ? 'Active'   : 'Inactive',
+    reason:      'Manual',
+    source:      'Dashboard Button',
+    company:     '—',
+    trainer:     t.role === 'trainer' ? t.name : '',
+    notes:       'Role: ' + t.role,
+  });
   showToast(
     t.name + (t.active ? ' reactivated' : ' deactivated'),
     t.active ? 'success' : 'info'
@@ -2949,6 +3108,18 @@ function addTrainer() {
   renderPermUserList();
   populateLoginSelect();
   _populateDeptDropdowns();
+  writeActivityLog({
+    actionType:  'User Management',
+    description: name + ' added as ' + role,
+    module:      'Settings',
+    recordType:  'User',
+    recordId:    newUser.id,
+    before:      '—',
+    after:       'Active — ' + role + (dept ? ' — ' + dept : ''),
+    reason:      'Manual',
+    source:      'Dashboard Button',
+    notes:       'Department: ' + (dept || 'not set'),
+  });
   showToast(name + ' added as ' + role, 'success');
 }
 
@@ -3322,6 +3493,20 @@ async function submitRequest() {
     reqCurrentStep = REQ_TOTAL_STEPS + 1;
     updateReqStep();
     logActivity(name || currentUser?.name || 'Form Submitter', 'Submitted training request', company, trainingType);
+    writeActivityLog({
+      actionType:  'Form Submission',
+      description: 'New training request submitted',
+      module:      'Training Requests',
+      recordType:  'Enquiry',
+      recordId:    company || '—',
+      before:      '—',
+      after:       'Status: Unassigned',
+      reason:      'Form Submit',
+      source:      'Dashboard Form',
+      company:     company,
+      trainer:     '—',
+      notes:       trainingType || '',
+    });
     showToast('Training request submitted!', 'success');
     setTimeout(() => loadData(), 2000);
   } catch(e) { showToast('Error submitting request — try again', 'error'); }
