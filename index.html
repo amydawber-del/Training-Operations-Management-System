@@ -1531,10 +1531,14 @@ function renderCompletedBookings() {
 
 function bookingRow(r) {
   const isAdmin = currentUser?.role === 'admin';
+  const completed = isCompleted(r); // past-dated Booked, or any Cancelled
   const actions = [];
+  // Edit: admin only — allowed on both upcoming and completed (past) Booked rows for corrections
   if(isAdmin && r.status === 'Booked') actions.push(`<button class="btn btn-edit btn-sm" onclick="openEditBookingModal(${r._idx})">✎ Edit</button>`);
+  // Confirm: upcoming Pending/Unassigned, admin only
   if(isAdmin && (r.status === 'Pending' || r.status === 'Unassigned')) actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
-  if(isAdmin && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
+  // Cancel: only on upcoming non-Cancelled rows; completed/past bookings cannot be cancelled
+  if(isAdmin && !completed && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
   return `<tr>
     <td>${fmtDate(r.ts)}</td>
     <td>${companyCell(r)}</td>
