@@ -841,7 +841,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     <div class="modal-body">
       <div class="warning-box info" style="margin-bottom:16px;"><span>&#8505;&#65039;</span><div>ICS feeds load automatically on startup. Update URLs here if needed.</div></div>
       <div class="form-row"><label class="form-label">Public Holidays ICS URL</label><input type="text" class="form-input" id="calHolidayIcsInput" placeholder="https://app.humaans.io/&#8230;"><div class="form-hint">Defaults to Humaans UK public holidays feed</div></div>
-      <div class="form-row"><label class="form-label">Team Annual Leave ICS URL</label><input type="text" class="form-input" id="calLeaveIcsInput" placeholder="https://app.humaans.io/&#8230;"><div class="form-hint">Defaults to Humaans team leave feed</div></div>
+      <div class="form-row"><label class="form-label">Team Annual Leave ICS URL</label><input type="text" class="form-input" id="calLeaveIcsInput" placeholder="https://app.humaans.io/calendar-feeds/…"><div class="form-hint">Humaans team leave feed — your onboarding team URL is pre-configured</div></div>
     </div>
     <div class="modal-footer"><span id="calSettingsStatus" style="font-size:11px;color:var(--text--dark--30);margin-right:auto;"></span><button class="btn btn-ghost" onclick="closeCalSettings()">Cancel</button><button class="btn btn-primary" onclick="saveCalSettings()">Save &amp; Sync</button></div>
   </div>
@@ -1132,7 +1132,7 @@ async function flushNoteQueue() {
   }
 }
 const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
-const HUMAANS_LEAVE_ICS = '';
+const HUMAANS_LEAVE_ICS = 'https://app.humaans.io/calendar-feeds/5GazIsnzjxJnLUPrls2lrPcs?filter=my-teams';
 const STALE_DAYS = 5;
 const UK_BANK_HOLIDAYS_API = 'https://www.gov.uk/bank-holidays.json';
 const TRAINER_COLORS = ['#2147f4','#e53935','#22a06b','#f59e0b','#9c27b0','#00bcd4','#ff7043','#3f51b5'];
@@ -2031,54 +2031,122 @@ function addWorkingDays(fromDate, n) {
 }
 
 // ===================== ICS / CALENDAR =====================
+
+// CORS proxies tried in order until one works
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+async function fetchIcs(url) {
+  let lastErr = '';
+  for(const proxy of CORS_PROXIES) {
+    try {
+      const res = await fetch(proxy(url), { cache: 'no-cache' });
+      if(!res.ok) { lastErr = 'HTTP ' + res.status; continue; }
+      const txt = await res.text();
+      // Validate it looks like iCal data
+      if(txt.includes('BEGIN:VCALENDAR') || txt.includes('BEGIN:VEVENT')) return txt;
+      lastErr = 'Not valid iCal data';
+    } catch(e) { lastErr = e.message; }
+  }
+  throw new Error('All proxies failed. Last error: ' + lastErr);
+}
+
 async function loadIcsData() {
-  calIcsEvents = [];
+  calIcsEvents   = [];
   calLeaveEvents = [];
-  if(calSettingsHolidayIcs) {
-    try {
-      const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(calSettingsHolidayIcs));
-      const txt = await r.text();
-      calIcsEvents = parseIcs(txt, 'holiday');
-    } catch(e) {}
-  }
-  if(calSettingsLeaveIcs) {
-    try {
-      const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(calSettingsLeaveIcs));
-      const txt = await r.text();
-      calLeaveEvents = parseIcs(txt, 'leave');
-    } catch(e) {}
-  }
-  updateIcsStatusBar();
+
+  const holiday = calSettingsHolidayIcs;
+  const leave   = calSettingsLeaveIcs;
+
+  const [holResult, leaveResult] = await Promise.allSettled([
+    holiday ? fetchIcs(holiday) : Promise.reject(new Error('No URL')),
+    leave   ? fetchIcs(leave)   : Promise.reject(new Error('No URL')),
+  ]);
+
+  if(holResult.status === 'fulfilled')   calIcsEvents   = parseIcs(holResult.value,   'holiday');
+  else if(holiday) console.warn('Holiday feed failed:', holResult.reason?.message);
+
+  if(leaveResult.status === 'fulfilled') calLeaveEvents = parseIcs(leaveResult.value, 'leave');
+  else if(leave)   console.warn('Leave feed failed:',   leaveResult.reason?.message);
+
+  updateIcsStatusBar(
+    holiday ? holResult   : null,
+    leave   ? leaveResult : null,
+  );
   if(allData.length) renderCalendar();
 }
 
 function parseIcs(text, type) {
   const events = [];
-  const blocks = text.split('BEGIN:VEVENT');
+  // Unfold lines (RFC 5545: lines folded with CRLF + whitespace)
+  const unfolded = text.replace(/\r?\n[ \t]/g, '');
+  const blocks = unfolded.split(/BEGIN:VEVENT/);
   blocks.slice(1).forEach(block => {
-    const get = key => { const m = block.match(new RegExp(key + ':([^\\r\\n]*)')); return m ? m[1].trim() : ''; };
-    const summary = get('SUMMARY');
-    const dtstart = get('DTSTART(?:;[^:]+)?');
-    const dtend = get('DTEND(?:;[^:]+)?');
-    if(!dtstart) return;
-    const parseD = s => { s = s.replace(/[^0-9T]/g,''); if(s.length === 8) return new Date(s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)); return new Date(s); };
-    events.push({ summary, start: parseD(dtstart), end: parseD(dtend), type });
+    // Match DTSTART and DTEND regardless of VALUE=DATE or TZID params
+    const getVal = key => {
+      const m = block.match(new RegExp(key + '(?:;[^:]*)?:([^\\r\\n]+)'));
+      return m ? m[1].trim() : '';
+    };
+    const summary  = getVal('SUMMARY');
+    const dtstartRaw = getVal('DTSTART');
+    const dtendRaw   = getVal('DTEND');
+    if(!dtstartRaw) return;
+
+    const parseD = s => {
+      // Strip any non-numeric except T and Z
+      const clean = s.replace(/[^0-9TZ]/g, '');
+      if(clean.length === 8) {
+        // All-day: YYYYMMDD
+        return new Date(clean.slice(0,4) + '-' + clean.slice(4,6) + '-' + clean.slice(6,8) + 'T00:00:00');
+      }
+      // DateTime: 20260224T090000Z or 20260224T090000
+      return new Date(
+        clean.slice(0,4) + '-' + clean.slice(4,6) + '-' + clean.slice(6,8) + 'T' +
+        clean.slice(9,11) + ':' + clean.slice(11,13) + ':' + (clean.slice(13,15)||'00') +
+        (clean.endsWith('Z') ? 'Z' : '')
+      );
+    };
+
+    const start = parseD(dtstartRaw);
+    // DTEND for all-day events is exclusive (day after last day) per RFC 5545
+    const end   = dtendRaw ? parseD(dtendRaw) : new Date(start.getTime() + 86400000);
+    if(isNaN(start.getTime())) return;
+
+    events.push({ summary, start, end, type });
   });
   return events;
 }
 
-function updateIcsStatusBar() {
-  const bar = document.getElementById('icsStatusBar');
+function updateIcsStatusBar(holResult, leaveResult) {
+  const bar   = document.getElementById('icsStatusBar');
   const parts = [];
-  if(calSettingsHolidayIcs) {
-    const ok = calIcsEvents.length > 0;
-    parts.push(`<span class="ics-status"><span class="ics-dot ${ok?'ok':'error'}"></span>${ok ? calIcsEvents.length + ' holidays loaded' : 'Holiday feed error'}</span>`);
+
+  if(holResult) {
+    if(holResult.status === 'fulfilled' && calIcsEvents.length > 0) {
+      parts.push(`<span class="ics-status"><span class="ics-dot ok"></span>${calIcsEvents.length} holidays loaded</span>`);
+    } else {
+      const msg = holResult.reason?.message || 'empty response';
+      parts.push(`<span class="ics-status" title="${escHtml(msg)}"><span class="ics-dot error"></span>Holiday feed error</span>`);
+    }
   }
-  if(calSettingsLeaveIcs) {
-    const ok = calLeaveEvents.length > 0;
-    parts.push(`<span class="ics-status"><span class="ics-dot ${ok?'ok':'error'}"></span>${ok ? calLeaveEvents.length + ' leave events' : 'Leave feed error'}</span>`);
+
+  if(leaveResult) {
+    if(leaveResult.status === 'fulfilled' && calLeaveEvents.length > 0) {
+      parts.push(`<span class="ics-status"><span class="ics-dot ok"></span>${calLeaveEvents.length} leave events loaded</span>`);
+    } else {
+      const msg = leaveResult.reason?.message || 'empty response';
+      parts.push(`<span class="ics-status" title="${escHtml(msg)}"><span class="ics-dot error"></span>Leave feed error — ${escHtml(msg)}</span>`);
+    }
   }
-  bar.innerHTML = parts.join('<span style="color:var(--text--dark--20);">|</span>');
+
+  if(!holResult && !leaveResult) {
+    parts.push(`<span class="ics-status"><span class="ics-dot"></span>No ICS feeds configured</span>`);
+  }
+
+  bar.innerHTML = parts.join('<span style="color:var(--text--dark--20);margin:0 4px;">|</span>');
 }
 
 // ===================== RENDER ALL =====================
@@ -2935,18 +3003,25 @@ function renderCalendar() {
     const admin = nextWorkingDay(trainingEnd);
     addCalEvent(admin, { label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', type: 'admin', rowIdx: r._idx });
   });
+  // Bank holidays from ICS — show on each day within range
   calIcsEvents.forEach(ev => {
-    if(ev.start && ev.start.getFullYear() === year && ev.start.getMonth() === month) {
-      const day = ev.start.getDate();
-      if(!eventsByDay[day]) eventsByDay[day] = [];
-      eventsByDay[day].push({ label: ev.summary, color: '#fef9c3', textColor: '#92400e', type: 'holiday' });
+    if(!ev.start) return;
+    const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
+    // DTEND is exclusive for all-day events, so go up to (end - 1 day)
+    const evEnd = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
+    evEnd.setHours(0,0,0,0);
+    for(let d = new Date(evStart); d < evEnd; d.setDate(d.getDate() + 1)) {
+      addCalEvent(new Date(d), { label: ev.summary, color: '#fef9c3', textColor: '#92400e', type: 'holiday' });
     }
   });
+  // Team leave — show on each day within range
   calLeaveEvents.forEach(ev => {
-    if(ev.start && ev.start.getFullYear() === year && ev.start.getMonth() === month) {
-      const day = ev.start.getDate();
-      if(!eventsByDay[day]) eventsByDay[day] = [];
-      eventsByDay[day].push({ label: ev.summary, color: '#f3e8ff', textColor: '#7c3aed', type: 'leave' });
+    if(!ev.start) return;
+    const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
+    const evEnd   = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
+    evEnd.setHours(0,0,0,0);
+    for(let d = new Date(evStart); d < evEnd; d.setDate(d.getDate() + 1)) {
+      addCalEvent(new Date(d), { label: ev.summary, color: '#f3e8ff', textColor: '#7c3aed', type: 'leave' });
     }
   });
   let html = '';
