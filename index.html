@@ -880,9 +880,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // ---- CANONICAL USER LIST ----
-// This is the single source of truth for who appears on the login page.
-// Add or remove users here and the login page will update automatically.
-// localStorage only stores per-user overrides (role, color, pin) set via Manage Users.
 const CANONICAL_USERS = [
   {id:'u1',  name:'Jack Cullen',        role:'viewer',  email:'jack.cullen@agentsoftware.net',        jobTitle:'Onboarding Specialist',    color:'#2147f4'},
   {id:'u2',  name:'Emma Cockcroft',     role:'viewer',  email:'emma.cockcroft@agentsoftware.net',     jobTitle:'Onboarding Specialist',    color:'#e53935'},
@@ -901,17 +898,14 @@ const CANONICAL_USERS = [
 ];
 
 function loadUsers() {
-  // Always start from the canonical list, then apply any saved overrides
   const overrides = JSON.parse(localStorage.getItem('dashUserOverrides') || '{}');
   trainers = CANONICAL_USERS.map(u => Object.assign({}, u, { pin: '', icsUrl: '' }, overrides[u.id] || {}));
-  // Also merge in any admin-added users stored separately
   const extraUsers = JSON.parse(localStorage.getItem('dashExtraUsers') || '[]');
   trainers = trainers.concat(extraUsers);
   populateLoginSelect();
 }
 
 function saveUsers() {
-  // Save per-user overrides (role, color, pin, icsUrl) keyed by id
   const overrides = {};
   const canonicalIds = new Set(CANONICAL_USERS.map(u => u.id));
   const extraUsers = [];
@@ -955,7 +949,6 @@ function loginDirect() {
   enterDashboard();
 }
 
-// Stub functions kept for compatibility
 function loginStepPin() { loginDirect(); }
 function loginBack() {}
 function pinPadPress(d) {}
@@ -1016,7 +1009,6 @@ async function loadData() {
       console.error('Apps Script error:', json);
       return;
     }
-    // data[0] is the header row — skip it. Row i in data (after header) = spreadsheet row i+2
     const rawRows = json.data || [];
     allData = rawRows.slice(1).map((row, i) => parseAppsScriptData(row, i, i + 2)).filter(Boolean);
     const now = new Date();
@@ -1032,7 +1024,6 @@ async function loadData() {
   }
 }
 
-// Column indices matching the Apps Script COL map exactly
 const COL = {
   STATUS:0, TIMESTAMP:1, EMAIL:2, CONTACT:3, PREFERRED_DATE:4, OPTION:5,
   AREAS:6, FEATURES:7, ATTENDEES:8, LOCATION:9, PARKING:10, VENUE_SETUP:11,
@@ -1057,7 +1048,7 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
   const bookedOn = row[COL.BOOKED_DATE] ? new Date(row[COL.BOOKED_DATE]) : null;
   return {
     _idx:           arrayIdx,
-    _rowNum:        sheetRowNum,   // 1-based spreadsheet row for assign action
+    _rowNum:        sheetRowNum,
     status, ts,
     email:          row[COL.EMAIL]            || '',
     contact:        row[COL.CONTACT]          || '',
@@ -1294,7 +1285,6 @@ function renderTrainerWorkload() {
     const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
     const last30 = booked.filter(r => r.bookedOn && r.bookedOn >= y30 && r.bookedOn <= today);
     const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
-    const revLast30 = last30.reduce((s,r) => s + (r.invoiceValue||0), 0);
     const daysLast30 = last30.reduce((s,r) => s + (r.trainingDays||1), 0);
     const maxLoad = 20;
     const pct = Math.min(100, Math.round((daysLast30/maxLoad)*100));
@@ -1305,7 +1295,6 @@ function renderTrainerWorkload() {
       <div class="trainer-name"><div class="trainer-color-dot" style="background:${color};"></div>${escHtml(t.name)} <span class="status-badge" style="font-size:9px;padding:1px 5px;margin-left:auto;background:${color}22;color:${color};">${t.role}</span></div>
       <div class="trainer-stat"><span>Sessions (30d)</span><span class="trainer-stat-val">${last30.length}</span></div>
       <div class="trainer-stat"><span>Days (30d)</span><span class="trainer-stat-val">${daysLast30}</span></div>
-      <div class="trainer-stat"><span>Revenue (30d)</span><span class="trainer-stat-val">${fmtMoney(revLast30)}</span></div>
       <div class="trainer-stat"><span>Upcoming</span><span class="trainer-stat-val">${upcoming.length}</span></div>
       <div class="workload-bar-wrap"><div class="workload-bar" style="width:${pct}%;background:${color};"></div></div>
       ${nextFreeHtml}
@@ -1762,7 +1751,6 @@ function saveProfileNote() {
   currentProfileRow.notes.push(note);
   textarea.value = '';
   renderProfileNotes(currentProfileRow);
-  // Notes are stored client-side only (Apps Script has no notes column)
   console.log('Note saved locally for row', currentProfileRow._rowNum);
   logActivity(currentUser?.name || '?', 'Added note', getCompanyName(currentProfileRow), 'Note: ' + text.slice(0,60));
   showToast('Note saved');
@@ -2094,7 +2082,6 @@ function renderTrainerList() {
   const list = document.getElementById('trainerList');
   if(!trainers.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text--dark--30);">No users found.</div>'; return; }
   list.innerHTML = trainers.map((t, i) => {
-    const perms = { canBook: t.role==='admin'||t.role==='trainer', canCancel: t.role==='admin', canView: true, admin: t.role==='admin' };
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ui--underline--light-grey);">
       <div class="trainer-color-dot" style="background:${t.color||'#888'};width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
@@ -2339,10 +2326,8 @@ async function testConnection(btn) {
       redirect: 'follow'
     });
     console.log('Response status:', r.status, r.statusText);
-    console.log('Response headers:', [...r.headers.entries()]);
     if(!r.ok) throw new Error('HTTP ' + r.status + ' ' + r.statusText);
     const text = await r.text();
-    console.log('Response body:', text.slice(0, 200));
     let j;
     try { j = JSON.parse(text); } catch(pe) { throw new Error('Response is not JSON. Got: ' + text.slice(0, 100)); }
     if(j.success) {
@@ -2353,7 +2338,6 @@ async function testConnection(btn) {
     }
   } catch(e) {
     console.error('Connection test failed:', e);
-    // Show a detailed diagnostic box
     const diag = document.createElement('div');
     diag.id = 'connectionDiag';
     diag.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:9999;background:#fff;border:2px solid #c0303d;border-radius:8px;padding:16px;max-width:420px;box-shadow:0 8px 24px rgba(0,0,0,0.2);font-size:12px;line-height:1.6;';
