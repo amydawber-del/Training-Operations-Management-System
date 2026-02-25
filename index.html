@@ -689,7 +689,15 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
         <input class="filter-input" id="bookingSearch" type="text" placeholder="Search company or contact&#8230;" oninput="resetPageAndRender()" style="width:200px;">
         <select class="filter-select" id="filterStatus" onchange="resetPageAndRender()"><option value="">All Statuses</option><option value="Pending">Pending</option><option value="Booked">Booked</option><option value="Cancelled">Cancelled</option></select>
         <select class="filter-select" id="filterTrainer" onchange="resetPageAndRender()"><option value="">All Trainers</option></select>
-        <select class="filter-select" id="filterOption" onchange="resetPageAndRender()"><option value="">All Options</option><option value="1">Option 1</option><option value="2">Option 2</option><option value="3">Option 3</option><option value="4">Option 4</option><option value="5">Option 5</option></select>
+        <select class="filter-select" id="filterOption" onchange="resetPageAndRender()">
+          <option value="">All Types</option>
+          <option value="Personalised Onsite Training - 1 Day">1-Day Onsite</option>
+          <option value="Personalised Onsite Training - 2 Days">2-Day Onsite</option>
+          <option value="Lettings Accounting Training + Go-Live Support">Accounting</option>
+          <option value="Live Training at Street HQ (Manchester)">HQ Manchester</option>
+          <option value="Online Refresher">Online Refresher</option>
+          <option value="Not sure yet - please help me choose">Help me choose</option>
+        </select>
         <input class="filter-input" id="filterDateFrom" type="date" onchange="resetPageAndRender()" style="width:130px;">
         <input class="filter-input" id="filterDateTo" type="date" onchange="resetPageAndRender()" style="width:130px;">
         <button class="btn btn-ghost btn-sm" onclick="clearBookingFilters()">&#10005; Clear</button>
@@ -2274,10 +2282,32 @@ function fmtMoney(v) {
   return '£' + Math.round(Number(v)).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0});
 }
 
+const TRAINING_OPTIONS = {
+  'Personalised Onsite Training - 1 Day':             { short: '1-Day Onsite',   cls: 'opt-1' },
+  'Personalised Onsite Training - 2 Days':            { short: '2-Day Onsite',   cls: 'opt-2' },
+  'Lettings Accounting Training + Go-Live Support':   { short: 'Accounting',     cls: 'opt-3' },
+  'Live Training at Street HQ (Manchester)':          { short: 'HQ Manchester',  cls: 'opt-4' },
+  'Online Refresher':                                 { short: 'Online',         cls: 'opt-5' },
+  'Not sure yet - please help me choose':             { short: 'Help me choose', cls: '' },
+};
+
 function optionBadge(opt) {
-  const n = String(opt||'').replace(/[^0-9]/g,'');
-  if(!n) return `<span class="option-badge" style="background:#f3f4f6;color:#888;">N/A</span>`;
-  return `<span class="option-badge opt-${n}">Option ${n}</span>`;
+  const raw = (opt || '').trim();
+  if(!raw) return `<span class="option-badge" style="background:#f3f4f6;color:#888;">N/A</span>`;
+  // Exact match first
+  if(TRAINING_OPTIONS[raw]) {
+    const { short, cls } = TRAINING_OPTIONS[raw];
+    return `<span class="option-badge ${cls}" title="${escHtml(raw)}">${escHtml(short)}</span>`;
+  }
+  // Legacy numeric (Option 1–5) — map to short label
+  const n = raw.replace(/[^0-9]/g, '');
+  const byIndex = Object.values(TRAINING_OPTIONS)[parseInt(n) - 1];
+  if(n && byIndex) {
+    return `<span class="option-badge opt-${n}" title="${escHtml(byIndex.short)}">${escHtml(byIndex.short)}</span>`;
+  }
+  // Fallback: show the raw value truncated
+  const display = raw.length > 22 ? raw.slice(0, 20) + '…' : raw;
+  return `<span class="option-badge" style="background:#f3f4f6;color:#555;" title="${escHtml(raw)}">${escHtml(display)}</span>`;
 }
 
 function statusBadge(s) {
@@ -2474,7 +2504,7 @@ function bookingTableHead() {
   return `<th class="sortable" onclick="sortBookings('ts')">Submitted <span class="sort-icon">↕</span></th>
     <th class="sortable" onclick="sortBookings('company')">Company <span class="sort-icon">↕</span></th>
     <th>Contact</th>
-    <th class="sortable" onclick="sortBookings('trainingOption')">Option <span class="sort-icon">↕</span></th>
+    <th class="sortable" onclick="sortBookings('trainingOption')">Type <span class="sort-icon">↕</span></th>
     <th class="sortable" onclick="sortBookings('bookedOn')">Booked Date <span class="sort-icon">↕</span></th>
     <th class="sortable" onclick="sortBookings('trainer')">Trainer <span class="sort-icon">↕</span></th>
     <th class="sortable" onclick="sortBookings('invoiceValue')">Value <span class="sort-icon">↕</span></th>
@@ -2610,7 +2640,9 @@ function renderKpis() {
   document.getElementById('lastMonthLabel').textContent = lmLabel;
   document.getElementById('thisMonthRev').textContent = fmtMoney(revMonth);
   document.getElementById('lastMonthRev').textContent = fmtMoney(revLastMonth);
-  const optCounts = [1,2,3,4,5].map(n => thisYear.filter(r => String(r.trainingOption||'').includes(String(n))).length);
+  const OPT_KEYS = Object.keys(TRAINING_OPTIONS);
+  const OPT_SHORTS = Object.values(TRAINING_OPTIONS).map(o => o.short);
+  const optCounts = OPT_KEYS.map(key => thisYear.filter(r => (r.trainingOption||'').trim() === key).length);
   if(revenueChartInst) { revenueChartInst.destroy(); revenueChartInst = null; }
   if(optionChartInst) { optionChartInst.destroy(); optionChartInst = null; }
   const rc = document.getElementById('revenueChart');
@@ -2619,7 +2651,7 @@ function renderKpis() {
   }
   const oc = document.getElementById('optionChart');
   if(oc) {
-    optionChartInst = new Chart(oc, {type:'doughnut',data:{labels:['Opt 1','Opt 2','Opt 3','Opt 4','Opt 5'],datasets:[{data:optCounts,backgroundColor:['#2147f4','#8b5cf6','#f59e0b','#22a06b','#ef4444'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
+    optionChartInst = new Chart(oc, {type:'doughnut',data:{labels:OPT_SHORTS,datasets:[{data:optCounts,backgroundColor:['#2147f4','#8b5cf6','#f59e0b','#22a06b','#ef4444','#6b7280'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
   }
 }
 
