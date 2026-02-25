@@ -316,6 +316,42 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .bell-dot { position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#e53935;border:1.5px solid var(--brand--black);display:none; }
 .bell-count { position:absolute;top:-5px;right:-5px;background:#e53935;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid var(--brand--black);font-family:Arial,sans-serif; }
 
+
+/* PERMISSIONS PANEL */
+.perm-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:600;opacity:0;pointer-events:none;transition:opacity 0.2s; }
+.perm-overlay.open { opacity:1;pointer-events:all; }
+.perm-modal { background:#fff;border-radius:10px;width:780px;max-width:97vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 12px 48px rgba(0,0,0,0.25);overflow:hidden; }
+.perm-header { background:var(--brand--black);color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.perm-title { font-size:14px;font-weight:700;display:flex;align-items:center;gap:10px; }
+.perm-user-dot { width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0; }
+.perm-body { display:flex;flex:1;overflow:hidden; }
+.perm-sidebar { width:220px;border-right:1px solid var(--ui--underline--light-grey);overflow-y:auto;flex-shrink:0;background:#fafafa; }
+.perm-sidebar-header { padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey); }
+.perm-user-row { display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background 0.12s; }
+.perm-user-row:hover { background:#f0f4ff; }
+.perm-user-row.active { background:#e8f0fe;border-left:3px solid var(--action-primary-blue); }
+.perm-user-name { font-size:12px;font-weight:600;color:var(--text--dark--50); }
+.perm-user-role-tag { font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px; }
+.perm-user-role-tag.admin { background:#fee2e2;color:#991b1b; }
+.perm-user-role-tag.trainer { background:#dbeafe;color:#1e40af; }
+.perm-user-role-tag.viewer { background:#f3f4f6;color:#6b7280; }
+.perm-detail { flex:1;overflow-y:auto;padding:18px; }
+.perm-section-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text--dark--30);margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--ui--underline--light-grey); }
+.perm-section-title:first-child { margin-top:0; }
+.perm-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px; }
+.perm-toggle-row { display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:var(--card-light-grey);border:1px solid #f0f0f0; }
+.perm-toggle-label { font-size:12px;color:var(--text--dark--50); }
+.perm-toggle-sub { font-size:10px;color:var(--text--dark--30);margin-top:1px; }
+.perm-toggle { position:relative;width:32px;height:18px;flex-shrink:0; }
+.perm-toggle input { opacity:0;width:0;height:0; }
+.perm-toggle-slider { position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:10px;transition:.2s; }
+.perm-toggle-slider:before { position:absolute;content:"";width:12px;height:12px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s; }
+.perm-toggle input:checked + .perm-toggle-slider { background:var(--action-primary-blue); }
+.perm-toggle input:checked + .perm-toggle-slider:before { transform:translateX(14px); }
+.perm-footer { padding:12px 18px;border-top:1px solid var(--ui--underline--light-grey);display:flex;align-items:center;gap:10px;background:#fafafa; }
+.shadow-btn { background:#f59e0b;color:#000;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;display:flex;align-items:center;gap:6px; }
+.shadow-btn:hover { background:#d97706; }
+
 /* KPI MODAL */
 .kpi-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s; }
 .kpi-modal-overlay.open { opacity:1;pointer-events:all; }
@@ -704,21 +740,37 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   </div>
 </div>
 
-<!-- MANAGE TRAINERS -->
-<div class="modal-overlay" id="trainerModalOverlay" onclick="if(event.target===this)closeTrainerModal()">
-  <div class="modal" style="max-width:700px;width:95%;">
-    <div class="modal-header"><div><div class="modal-title">&#128100; Manage Users &amp; Permissions</div><div class="modal-subtitle">Configure roles and what each user can see or do</div></div><button class="modal-close" onclick="closeTrainerModal()">&#10005;</button></div>
-    <div class="modal-body" style="padding:0;">
-      <div id="trainerList" style="max-height:55vh;overflow-y:auto;"></div>
-      <div style="display:flex;gap:8px;padding:16px;border-top:1px solid var(--light-grey);background:#fafafa;">
-        <input type="text" class="form-input" id="newTrainerName" placeholder="New user name&#8230;" style="flex:1;" onkeydown="if(event.key==='Enter')addTrainer()">
-        <select class="form-input" id="newTrainerRole" style="width:110px;"><option value="trainer">Trainer</option><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
-        <button class="btn btn-primary" onclick="addTrainer()">+ Add</button>
+<!-- MANAGE USERS & PERMISSIONS -->
+<div class="perm-overlay" id="permOverlay" onclick="if(event.target===this)closePermModal()">
+  <div class="perm-modal">
+    <div class="perm-header">
+      <div class="perm-title">&#128100; Manage Users &amp; Permissions</div>
+      <button class="notif-close" onclick="closePermModal()">&#10005;</button>
+    </div>
+    <div class="perm-body">
+      <div class="perm-sidebar">
+        <div class="perm-sidebar-header">Users</div>
+        <div id="permUserList"></div>
+        <div style="padding:12px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);margin-bottom:8px;">Add User</div>
+          <input type="text" class="form-input" id="newTrainerName" placeholder="Full name&#8230;" style="width:100%;margin-bottom:6px;font-size:12px;" onkeydown="if(event.key==='Enter')addTrainer()">
+          <select class="form-input" id="newTrainerRole" style="width:100%;margin-bottom:6px;font-size:12px;"><option value="viewer">Viewer</option><option value="trainer">Trainer</option><option value="admin">Admin</option></select>
+          <button class="btn btn-primary btn-sm" onclick="addTrainer()" style="width:100%;">+ Add User</button>
+        </div>
+      </div>
+      <div class="perm-detail" id="permDetail">
+        <div style="padding:40px;text-align:center;color:var(--text--dark--30);font-size:12px;">&#128100; Select a user to configure their permissions</div>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeTrainerModal()">Close</button></div>
+    <div class="perm-footer">
+      <button class="btn btn-ghost" onclick="closePermModal()">Close</button>
+      <button class="btn btn-primary btn-sm" onclick="savePermissions()" id="savePermBtn" style="display:none;">&#10003; Save Permissions</button>
+      <button class="shadow-btn" onclick="startShadow()" id="shadowPermBtn" style="display:none;">&#128065; Shadow this user</button>
+    </div>
   </div>
 </div>
+<!-- legacy id alias needed by other code -->
+<div id="trainerModalOverlay" style="display:none;"></div>
 
 <!-- CAL SETTINGS -->
 <div class="modal-overlay" id="calSettingsOverlay" onclick="if(event.target===this)closeCalSettings()">
@@ -803,7 +855,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div class="profile-notes-footer">
     <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--text--dark--40);margin-bottom:10px;">&#128221; Progress Notes</div>
     <div id="profileNotesList" style="max-height:160px;overflow-y:auto;margin-bottom:10px;"></div>
-    <div style="display:flex;gap:8px;">
+    <div style="display:flex;gap:8px;" id="profileNoteInput">
       <textarea id="profileNewNote" rows="2" placeholder="Add a note&#8230;" style="flex:1;border:1.5px solid var(--ui--underline--light-grey);border-radius:6px;padding:8px 10px;font-size:12px;font-family:Arial,sans-serif;resize:none;color:var(--text--dark--50);"></textarea>
       <button class="btn btn-primary btn-sm" onclick="saveProfileNote()" style="align-self:flex-end;">Add</button>
     </div>
@@ -905,6 +957,67 @@ let currentCalMonth = new Date();
 let calIcsEvents = [];
 let calLeaveEvents = [];
 let bankHolidays = [];
+
+// ===================== PERMISSIONS =====================
+const ROLE_DEFAULTS = {
+  admin: {
+    viewKpis:true, viewCalendar:true, viewUnassigned:true, viewPending:true,
+    viewAllBookings:true, viewReferrals:true, viewTrainerWorkload:true,
+    assignTrainer:true, confirmBooking:true, editBooking:true, cancelBooking:true,
+    manageUsers:true, viewActivityFeed:true, requestTraining:true, addNotes:true
+  },
+  trainer: {
+    viewKpis:false, viewCalendar:true, viewUnassigned:false, viewPending:true,
+    viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:true,
+    assignTrainer:false, confirmBooking:false, editBooking:true, cancelBooking:false,
+    manageUsers:false, viewActivityFeed:false, requestTraining:true, addNotes:true
+  },
+  viewer: {
+    viewKpis:false, viewCalendar:true, viewUnassigned:false, viewPending:false,
+    viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:false,
+    assignTrainer:false, confirmBooking:false, editBooking:false, cancelBooking:false,
+    manageUsers:false, viewActivityFeed:false, requestTraining:true, addNotes:false
+  }
+};
+
+const PERM_LABELS = {
+  viewKpis:          { label:'View KPI Cards',          sub:'Revenue, training days overview' },
+  viewCalendar:      { label:'View Calendar',            sub:'Training & booking calendar' },
+  viewUnassigned:    { label:'View Unassigned Requests', sub:'New requests awaiting trainer' },
+  viewPending:       { label:'View Needs Action',        sub:'Pending bookings panel' },
+  viewAllBookings:   { label:'View All Bookings',        sub:'Upcoming + completed table' },
+  viewReferrals:     { label:'View Referral Leaderboard',sub:'Referral stats' },
+  viewTrainerWorkload:{ label:'View Trainer Workload',   sub:'Trainer cards' },
+  assignTrainer:     { label:'Assign Trainer',           sub:'Assign button on requests' },
+  confirmBooking:    { label:'Confirm Bookings',         sub:'Confirm button on pending' },
+  editBooking:       { label:'Edit Bookings',            sub:'Edit date / trainer / value' },
+  cancelBooking:     { label:'Cancel Bookings',          sub:'Cancel button on requests' },
+  manageUsers:       { label:'Manage Users',             sub:'Access user permissions' },
+  viewActivityFeed:  { label:'View Notifications',       sub:'Bell & activity panel' },
+  requestTraining:   { label:'Request Training',         sub:'Submit training request form' },
+  addNotes:          { label:'Add Notes',                sub:'Profile progress notes' }
+};
+
+const PERM_SECTIONS = {
+  'Visible Widgets': ['viewKpis','viewCalendar','viewUnassigned','viewPending','viewAllBookings','viewReferrals','viewTrainerWorkload'],
+  'Action Buttons':  ['assignTrainer','confirmBooking','editBooking','cancelBooking'],
+  'Features':        ['manageUsers','viewActivityFeed','requestTraining','addNotes']
+};
+
+let selectedPermUserId = null;
+
+// Get effective permissions for a user object
+function userPerms(u) {
+  const defaults = ROLE_DEFAULTS[u.role] || ROLE_DEFAULTS.viewer;
+  return Object.assign({}, defaults, u.customPerms || {});
+}
+
+// Central permission check — use this everywhere instead of role checks
+function canDo(perm) {
+  if(!currentUser) return false;
+  return userPerms(currentUser)[perm] === true;
+}
+
 let activityLog = JSON.parse(localStorage.getItem('dashActivityLog') || '[]');
 // Migrate old log entries: ensure they all have a type field
 activityLog = activityLog.map(e => ({ type: 'event', ...e }));
@@ -1026,6 +1139,7 @@ function enterDashboard() {
   document.getElementById('headerUserName').textContent = currentUser.name;
   document.getElementById('adminBadge').style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
+  applyPermVisibility();
   updateCalTrainerFilter();
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
@@ -1036,10 +1150,71 @@ function logout() {
   showLogin();
 }
 
-function exitShadow() {
-  document.getElementById('shadowBanner').style.display = 'none';
-  enterDashboard();
+function startShadow() {
+  if(!selectedPermUserId) return;
+  const target = trainers.find(u => u.id === selectedPermUserId);
+  if(!target) return;
+  closePermModal();
+  const realUser = currentUser;
+  currentUser = target;
+  document.getElementById('shadowBanner').style.display = 'inline-flex';
+  document.getElementById('shadowBanner').textContent = '👁 Shadowing ' + target.name + ' — Exit Shadow';
+  // Re-apply view for shadowed user
+  document.getElementById('headerAvatar').textContent = target.name.charAt(0).toUpperCase();
+  document.getElementById('headerAvatar').style.background = target.color || '#2147f4';
+  document.getElementById('headerUserName').textContent = target.name;
+  document.getElementById('adminBadge').style.display = target.role === 'admin' ? 'inline-flex' : 'none';
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = target.role === 'admin' ? '' : 'none');
+  applyPermVisibility();
+  // Store real user for exit
+  window._shadowRealUser = realUser;
+  renderAll();
+  showToast('Shadowing ' + target.name, 'info');
 }
+
+function exitShadow() {
+  if(window._shadowRealUser) {
+    currentUser = window._shadowRealUser;
+    window._shadowRealUser = null;
+  }
+  document.getElementById('shadowBanner').style.display = 'none';
+  document.getElementById('headerAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+  document.getElementById('headerAvatar').style.background = currentUser.color || '#2147f4';
+  document.getElementById('headerUserName').textContent = currentUser.name;
+  document.getElementById('adminBadge').style.display = currentUser.role === 'admin' ? 'inline-flex' : 'none';
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
+  applyPermVisibility();
+  renderAll();
+  showToast('Exited shadow mode', 'info');
+}
+
+// Apply section/widget visibility based on current user permissions
+function applyPermVisibility() {
+  const p = canDo;
+  const sectionMap = {
+    kpiSection:                p('viewKpis'),
+    calendarSection:           p('viewCalendar'),
+    unassignedSection:         p('viewUnassigned'),
+    actionSection:             p('viewPending'),
+    allBookingsSection:        p('viewAllBookings'),
+    referralLeaderboardSection:p('viewReferrals'),
+    trainerWorkloadSection:    p('viewTrainerWorkload'),
+  };
+  Object.entries(sectionMap).forEach(([id, show]) => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = show ? '' : 'none';
+  });
+  // Bell/notifications
+  const bellBtn = document.getElementById('bellBtn');
+  if(bellBtn) bellBtn.style.display = p('viewActivityFeed') ? '' : 'none';
+  // Request training button
+  const reqBtn = document.querySelector('.req-training-btn');
+  if(reqBtn) reqBtn.style.display = p('requestTraining') ? '' : 'none';
+  // Admin-only elements
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
+}
+
+// renderAll defined below
 
 // ===================== NAV =====================
 function toggleNav() {
@@ -1275,6 +1450,7 @@ function renderAll() {
   renderActionNeeded();
   renderKpis();
   updateBellBadge();
+  applyPermVisibility();
   renderReferralLeaderboard();
   renderUpcomingBookings();
   renderCompletedBookings();
@@ -1502,8 +1678,8 @@ function renderUnassigned() {
       <td>${pref}</td>
       <td>${skippedFlags ? skippedFlags : suggChip}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
-        ${currentUser?.role === 'admin' ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
-        ${currentUser?.role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
+        ${canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
+        ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1528,8 +1704,8 @@ function renderActionNeeded() {
       <td>${pref}</td>
       <td>${trainerPill(r.trainer)}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
-        ${currentUser?.role === 'admin' ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm Booking</button>` : ''}
-        ${currentUser?.role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
+        ${canDo('confirmBooking') ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm Booking</button>` : ''}
+        ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1602,15 +1778,14 @@ function renderCompletedBookings() {
 }
 
 function bookingRow(r) {
-  const isAdmin = currentUser?.role === 'admin';
   const completed = isCompleted(r); // past-dated Booked, or any Cancelled
   const actions = [];
-  // Edit: admin only — allowed on both upcoming and completed (past) Booked rows for corrections
-  if(isAdmin && r.status === 'Booked') actions.push(`<button class="btn btn-edit btn-sm" onclick="openEditBookingModal(${r._idx})">✎ Edit</button>`);
-  // Confirm: upcoming Pending/Unassigned, admin only
-  if(isAdmin && (r.status === 'Pending' || r.status === 'Unassigned')) actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
-  // Cancel: only on upcoming non-Cancelled rows; completed/past bookings cannot be cancelled
-  if(isAdmin && !completed && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
+  // Edit: allowed on Booked rows if user has editBooking permission
+  if(canDo('editBooking') && r.status === 'Booked') actions.push(`<button class="btn btn-edit btn-sm" onclick="openEditBookingModal(${r._idx})">✎ Edit</button>`);
+  // Confirm: upcoming Pending/Unassigned
+  if(canDo('confirmBooking') && (r.status === 'Pending' || r.status === 'Unassigned')) actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
+  // Cancel: only on upcoming non-Cancelled rows
+  if(canDo('cancelBooking') && !completed && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
   return `<tr>
     <td>${fmtDate(r.ts)}</td>
     <td>${companyCell(r)}</td>
@@ -1912,6 +2087,9 @@ function openProfileSidebar(idx) {
   renderProfileNotes(r);
   document.getElementById('profileOverlay').classList.add('open');
   document.getElementById('profilePanel').classList.add('open');
+  // Hide note input for users without permission
+  const noteInput = document.getElementById('profileNoteInput');
+  if(noteInput) noteInput.style.display = canDo('addNotes') ? 'flex' : 'none';
 }
 
 function toggleProfileSection(idx) {
@@ -2316,47 +2494,155 @@ async function confirmCancel() {
 }
 
 // ===================== TRAINER MODAL =====================
-function openTrainerModal() {
-  renderTrainerList();
-  document.getElementById('trainerModalOverlay').classList.add('open');
+// ===================== USER PERMISSIONS MODAL =====================
+function openTrainerModal() { openPermModal(); }
+function closeTrainerModal() { closePermModal(); }
+
+function openPermModal() {
+  selectedPermUserId = null;
+  renderPermUserList();
+  document.getElementById('permOverlay').classList.add('open');
+  document.getElementById('permDetail').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text--dark--30);font-size:12px;">👤 Select a user to configure their permissions</div>';
+  document.getElementById('savePermBtn').style.display = 'none';
+  document.getElementById('shadowPermBtn').style.display = 'none';
 }
 
-function closeTrainerModal() { document.getElementById('trainerModalOverlay').classList.remove('open'); }
+function closePermModal() { document.getElementById('permOverlay').classList.remove('open'); }
 
-function renderTrainerList() {
-  const list = document.getElementById('trainerList');
-  if(!trainers.length) { list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text--dark--30);">No users found.</div>'; return; }
-  list.innerHTML = trainers.map((t, i) => {
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ui--underline--light-grey);">
-      <div class="trainer-color-dot" style="background:${t.color||'#888'};width:14px;height:14px;border-radius:50%;flex-shrink:0;"></div>
+function renderPermUserList() {
+  const list = document.getElementById('permUserList');
+  if(!trainers.length) { list.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text--dark--30);">No users.</div>'; return; }
+  list.innerHTML = trainers.map(t => {
+    const isActive = t.id === selectedPermUserId;
+    const roleTag = `<span class="perm-user-role-tag ${t.role}">${t.role}</span>`;
+    return `<div class="perm-user-row ${isActive?'active':''}" onclick="selectPermUser('${t.id}')">
+      <div style="width:10px;height:10px;border-radius:50%;background:${t.color||'#888'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(t.name)}</div>
-        <div style="font-size:11px;color:var(--text--dark--30);">PIN: ${t.pin ? '****' : '(none)'} &middot; Role: <strong>${t.role}</strong></div>
+        <div class="perm-user-name">${escHtml(t.name)}</div>
+        <div style="margin-top:2px;">${roleTag}</div>
       </div>
-      <select style="border:1px solid var(--light-grey);border-radius:4px;padding:4px 8px;font-size:11px;font-family:Arial,sans-serif;" onchange="changeTrainerRole(${i}, this.value)">
-        <option value="trainer" ${t.role==='trainer'?'selected':''}>Trainer</option>
-        <option value="viewer" ${t.role==='viewer'?'selected':''}>Viewer</option>
-        <option value="admin" ${t.role==='admin'?'selected':''}>Admin</option>
-      </select>
-      <input type="color" value="${t.color||'#2147f4'}" title="Color" style="width:26px;height:26px;border:none;cursor:pointer;border-radius:50%;background:none;padding:0;" onchange="changeTrainerColor(${i}, this.value)">
-      <button class="btn btn-ghost btn-sm" onclick="setTrainerPin(${i})">Set PIN</button>
-      <button class="btn btn-danger btn-sm" onclick="removeTrainer(${i})" style="flex-shrink:0;">&#128465;</button>
     </div>`;
   }).join('');
 }
 
-function changeTrainerRole(i, role) { trainers[i].role = role; saveUsers(); renderTrainerList(); }
+function selectPermUser(uid) {
+  selectedPermUserId = uid;
+  renderPermUserList();
+  const t = trainers.find(u => u.id === uid);
+  if(!t) return;
+  const perms = userPerms(t);
+  const defaults = ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer;
+  let html = `<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--ui--underline--light-grey);">
+    <div style="width:36px;height:36px;border-radius:50%;background:${t.color||'#888'};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;">${t.name.charAt(0).toUpperCase()}</div>
+    <div style="flex:1;">
+      <div style="font-size:14px;font-weight:700;color:var(--text--dark--50);">${escHtml(t.name)}</div>
+      <div style="font-size:11px;color:var(--text--dark--30);margin-top:2px;">Role: <strong>${t.role}</strong> &middot; PIN: ${t.pin?'set':'none'}</div>
+    </div>
+    <select style="border:1px solid var(--light-grey);border-radius:6px;padding:5px 10px;font-size:12px;font-family:Arial,sans-serif;" onchange="changePermUserRole('${uid}',this.value)">
+      <option value="viewer" ${t.role==='viewer'?'selected':''}>Viewer</option>
+      <option value="trainer" ${t.role==='trainer'?'selected':''}>Trainer</option>
+      <option value="admin" ${t.role==='admin'?'selected':''}>Admin</option>
+    </select>
+    <input type="color" value="${t.color||'#2147f4'}" title="Colour" style="width:28px;height:28px;border:none;cursor:pointer;border-radius:50%;background:none;padding:0;" onchange="changeTrainerColor(trainers.findIndex(u=>u.id==='${uid}'),this.value)">
+    <button class="btn btn-ghost btn-sm" onclick="setTrainerPin(trainers.findIndex(u=>u.id==='${uid}'))">PIN</button>
+    <button class="btn btn-danger btn-sm" onclick="removeTrainerById('${uid}')">🗑</button>
+  </div>`;
+
+  Object.entries(PERM_SECTIONS).forEach(([section, keys]) => {
+    html += `<div class="perm-section-title">${section}</div><div class="perm-grid">`;
+    keys.forEach(key => {
+      const info = PERM_LABELS[key] || { label: key, sub: '' };
+      const checked = perms[key] ? 'checked' : '';
+      const isDefault = perms[key] === defaults[key];
+      html += `<div class="perm-toggle-row">
+        <div>
+          <div class="perm-toggle-label">${info.label}${!isDefault?'<span style="color:#f59e0b;font-size:9px;margin-left:4px;">●</span>':''}</div>
+          <div class="perm-toggle-sub">${info.sub}</div>
+        </div>
+        <label class="perm-toggle">
+          <input type="checkbox" ${checked} onchange="setPermOverride('${uid}','${key}',this.checked)">
+          <span class="perm-toggle-slider"></span>
+        </label>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  html += `<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--ui--underline--light-grey);">
+    <button class="btn btn-ghost btn-sm" onclick="resetPermToRole('${uid}')" style="font-size:11px;">↺ Reset to role defaults</button>
+  </div>`;
+
+  document.getElementById('permDetail').innerHTML = html;
+  document.getElementById('savePermBtn').style.display = 'inline-flex';
+  // Don't allow shadowing yourself
+  const isSelf = currentUser && currentUser.id === uid;
+  document.getElementById('shadowPermBtn').style.display = isSelf ? 'none' : 'inline-flex';
+}
+
+function changePermUserRole(uid, role) {
+  const t = trainers.find(u => u.id === uid);
+  if(!t) return;
+  t.role = role;
+  saveUsers();
+  // Re-render with new defaults
+  selectPermUser(uid);
+  renderPermUserList();
+}
+
+function setPermOverride(uid, key, val) {
+  const t = trainers.find(u => u.id === uid);
+  if(!t) return;
+  if(!t.customPerms) t.customPerms = {};
+  const defaultVal = (ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer)[key];
+  if(val === defaultVal) {
+    delete t.customPerms[key]; // no override needed — matches role default
+  } else {
+    t.customPerms[key] = val;
+  }
+}
+
+function savePermissions() {
+  saveUsers();
+  showToast('Permissions saved', 'success');
+}
+
+function resetPermToRole(uid) {
+  const t = trainers.find(u => u.id === uid);
+  if(!t) return;
+  t.customPerms = {};
+  saveUsers();
+  selectPermUser(uid);
+  showToast('Reset to role defaults', 'info');
+}
+
+function removeTrainerById(uid) {
+  const t = trainers.find(u => u.id === uid);
+  if(!t || !confirm('Remove ' + t.name + '?')) return;
+  trainers.splice(trainers.findIndex(u => u.id === uid), 1);
+  saveUsers();
+  selectedPermUserId = null;
+  document.getElementById('permDetail').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text--dark--30);font-size:12px;">👤 Select a user to configure their permissions</div>';
+  document.getElementById('savePermBtn').style.display = 'none';
+  document.getElementById('shadowPermBtn').style.display = 'none';
+  renderPermUserList();
+  populateLoginSelect();
+}
+
+function renderTrainerList() { renderPermUserList(); }
+
+function changeTrainerRole(i, role) { trainers[i].role = role; saveUsers(); renderPermUserList(); }
 function changeTrainerColor(i, color) { trainers[i].color = color; saveUsers(); }
-function removeTrainer(i) { if(confirm('Remove ' + trainers[i].name + '?')) { trainers.splice(i, 1); saveUsers(); renderTrainerList(); } }
+function removeTrainer(i) { removeTrainerById(trainers[i]?.id); }
 function addTrainer() {
   const name = document.getElementById('newTrainerName').value.trim();
   const role = document.getElementById('newTrainerRole').value;
   if(!name) return;
-  trainers.push({ id: 'u' + Date.now(), name, role, color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length], pin: '', icsUrl: '' });
+  trainers.push({ id: 'u' + Date.now(), name, role, color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length], pin: '', icsUrl: '', customPerms: {} });
   saveUsers();
   document.getElementById('newTrainerName').value = '';
-  renderTrainerList();
+  renderPermUserList();
   populateLoginSelect();
+  showToast(name + ' added as ' + role, 'success');
 }
 
 function setTrainerPin(i) {
