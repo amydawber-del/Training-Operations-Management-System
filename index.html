@@ -785,8 +785,26 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     </div>
     <div class="req-body" id="reqBody">
       <div class="req-step-pane" id="reqStep1">
-        <div class="req-step-title">Your Details</div><div class="req-step-sub">Confirm your name and team so we can log this referral correctly.</div>
-        <div class="req-2col"><div class="req-field"><label class="req-label required">Your Name</label><input type="text" class="req-input" id="reqReferredByName" placeholder="e.g. Sarah Jones"></div><div class="req-field"><label class="req-label required">Your Team / Department</label><input type="text" class="req-input" id="reqReferredByTeam" placeholder="e.g. Onboarding, Sales"></div></div>
+        <div class="req-step-title">Your Details</div><div class="req-step-sub">Select your name from the team list, or add yourself as a new user.</div>
+        <div class="req-field">
+          <label class="req-label required">Who is submitting this request?</label>
+          <select class="req-input" id="reqUserPicker" onchange="handleReqUserPicker()">
+            <option value="">— Select your name —</option>
+          </select>
+        </div>
+        <div id="reqNewUserFields" style="display:none;margin-top:4px;">
+          <div class="warning-box info" style="margin-bottom:12px;"><span>ℹ️</span><span>New users are added as <strong>Viewer</strong> by default. An admin can update their role later.</span></div>
+          <div class="req-2col">
+            <div class="req-field"><label class="req-label required">First Name</label><input type="text" class="req-input" id="reqNewFirstName" placeholder="e.g. Sarah"></div>
+            <div class="req-field"><label class="req-label required">Last Name</label><input type="text" class="req-input" id="reqNewLastName" placeholder="e.g. Jones"></div>
+          </div>
+          <div class="req-field"><label class="req-label required">Department / Team</label><input type="text" class="req-input" id="reqNewDept" placeholder="e.g. Onboarding, Sales"></div>
+        </div>
+        <div id="reqExistingTeamRow" style="display:none;" class="req-field">
+          <label class="req-label">Team / Department</label>
+          <input type="text" class="req-input" id="reqReferredByTeam" placeholder="e.g. Onboarding, Sales">
+        </div>
+        <input type="hidden" id="reqReferredByName">
         <div class="req-field"><label class="req-label">Invoice Value Quoted</label><div style="position:relative;"><span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text--dark--30);font-weight:600;">&#163;</span><input type="number" class="req-input" id="reqQuotedValue" placeholder="0.00" min="0" step="0.01" style="padding-left:28px;"></div><div class="req-hint">Leave blank if no value has been discussed yet.</div></div>
         <div class="req-field"><label class="req-label">Referral Notes</label><input type="text" class="req-input" id="reqReferralNotes" placeholder="e.g. Client mentioned during onboarding call, keen to book ASAP"></div>
       </div>
@@ -1137,6 +1155,20 @@ function isWorkingDay(date) {
   return dow !== 0 && dow !== 6 && !isBankHoliday(date);
 }
 
+// Returns array of skipped section names for a row (from comma-separated string)
+function getSkippedSections(r) {
+  if(!r.skippedSections) return [];
+  return r.skippedSections.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function skippedFlagHtml(r) {
+  const skipped = getSkippedSections(r);
+  if(!skipped.length) return '';
+  return skipped.map(s =>
+    `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;" title="Trainer must complete before booking">⚠️ ${s}</span>`
+  ).join(' ');
+}
+
 function addWorkingDays(fromDate, n) {
   const d = new Date(fromDate);
   let count = 0;
@@ -1422,13 +1454,14 @@ function renderUnassigned() {
     const suggChip = suggested
       ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:${suggColor}18;color:${suggColor};border:1px solid ${suggColor}33;">💡 ${escHtml(suggested.name)}</span>`
       : '';
+    const skippedFlags = skippedFlagHtml(r);
     return `<tr class="${isStale?'row-stale':''}">
       <td>${fmtDate(r.ts)} ${staleBadge(r)}</td>
       <td>${companyCell(r)}</td>
       <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
       <td>${optionBadge(r.trainingOption)}</td>
       <td>${pref}</td>
-      <td>${suggChip}</td>
+      <td>${skippedFlags ? skippedFlags : suggChip}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${currentUser?.role === 'admin' ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
         ${currentUser?.role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
@@ -2077,10 +2110,22 @@ function openBookModal(idx) {
   document.getElementById('bookingOverrideRow').style.display = 'none';
   document.getElementById('bookingBlockMsg').style.display = 'none';
   document.getElementById('confirmBookBtn').disabled = false;
+  // Gate: if skipped sections exist, block booking date until trainer completes them
+  const skipped = getSkippedSections(r);
+  const blockMsg = document.getElementById('bookingBlockMsg');
+  const confirmBtn = document.getElementById('confirmBookBtn');
+  if(skipped.length) {
+    blockMsg.style.display = 'block';
+    blockMsg.textContent = '⚠️ Cannot set a booking date until the following sections are completed: ' + skipped.join(', ') + '. Open the enquiry profile to fill them in.';
+    confirmBtn.disabled = true;
+    document.getElementById('bookDate').disabled = true;
+  } else {
+    document.getElementById('bookDate').disabled = false;
+  }
   document.getElementById('bookOverlay').classList.add('open');
 }
 
-function closeBookModal() { document.getElementById('bookOverlay').classList.remove('open'); currentBookRow = null; }
+function closeBookModal() { document.getElementById('bookOverlay').classList.remove('open'); document.getElementById('bookDate').disabled = false; currentBookRow = null; }
 
 function checkBookingWarnings() {
   if(!currentBookRow) return;
@@ -2186,6 +2231,12 @@ async function confirmEditBooking() {
   if(!date || !trainer || !currentEditRow) return;
   const params = new URLSearchParams({ action: 'assign', row: currentEditRow._rowNum, status: 'Booked', trainer, bookedOn: date, trainingDays: days, value: value || '' });
   try {
+    // Auto-save amendment note into profile progress notes before fetch
+    if(reason) {
+      if(!currentEditRow.notes) currentEditRow.notes = [];
+      const amendNote = { text: '✏️ Amendment: ' + reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`, author: currentUser?.name || 'Admin', ts: Date.now() };
+      currentEditRow.notes.push(amendNote);
+    }
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Edited booking', getCompanyName(currentEditRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d${reason?' · '+reason:''}`);
     showToast('Booking updated', 'success');
@@ -2209,6 +2260,10 @@ function closeCancelModal() { document.getElementById('cancelOverlay').classList
 async function confirmCancel() {
   const reason = document.getElementById('cancelReason').value.trim();
   if(!reason || !currentCancelRow) return;
+  // Auto-save cancellation reason into profile progress notes
+  if(!currentCancelRow.notes) currentCancelRow.notes = [];
+  const cancelNote = { text: '❌ Cancellation: ' + reason, author: currentUser?.name || 'Admin', ts: Date.now() };
+  currentCancelRow.notes.push(cancelNote);
   const params = new URLSearchParams({ action: 'assign', row: currentCancelRow._rowNum, status: 'Cancelled' });
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
@@ -2337,21 +2392,67 @@ function clearActivityLog() { activityLog = []; localStorage.setItem('dashActivi
 let reqCurrentStep = 1;
 const REQ_TOTAL_STEPS = 4;
 let reqSelectedLocation = '';
+const REQ_SKIPPABLE_STEPS = new Set([3, 4]); // Training Details, Priorities & Logistics
+const REQ_SKIP_LABELS = { 3: 'Training Details', 4: 'Priorities & Logistics' };
+let reqSkippedSteps = new Set();
 
 function openRequestForm() {
   reqCurrentStep = 1;
   reqSelectedLocation = '';
+  reqSkippedSteps = new Set();
   document.getElementById('reqOverlay').classList.add('open');
-  ['reqReferredByName','reqReferredByTeam','reqReferralNotes','reqEmail','reqCompany','reqStakeholder','reqAttendees','reqPriorities','reqFeatures','reqChallenges','reqLocAddress','reqLocParking','reqLocEquipOther','reqAnythingElse','reqDietaryReqs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['reqReferredByTeam','reqReferralNotes','reqEmail','reqCompany','reqStakeholder','reqAttendees','reqPriorities','reqFeatures','reqChallenges','reqLocAddress','reqLocParking','reqLocEquipOther','reqAnythingElse','reqDietaryReqs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('reqReferredByName').value = '';
   document.getElementById('reqQuotedValue').value = '';
   document.querySelectorAll('[name="trainingType"],[name="teamFamiliarity"],[name="areas"],[name="followUp"]').forEach(el => el.checked = false);
-  if(currentUser) document.getElementById('reqReferredByName').value = currentUser.name;
   document.getElementById('reqLocHQConfirm').style.display = 'none';
   document.getElementById('reqLocOtherFields').style.display = 'none';
   document.getElementById('reqLocHQBtn').classList.remove('selected');
   document.getElementById('reqLocOtherBtn').classList.remove('selected');
+  document.getElementById('reqNewUserFields').style.display = 'none';
+  document.getElementById('reqExistingTeamRow').style.display = 'none';
   document.querySelectorAll('#reqEquipGrid input').forEach(el => el.checked = false);
+  // Populate user picker
+  const picker = document.getElementById('reqUserPicker');
+  picker.innerHTML = '<option value="">— Select your name —</option>';
+  trainers.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.name;
+    opt.textContent = t.name + (t.jobTitle ? ' — ' + t.jobTitle : '');
+    if(currentUser && t.name === currentUser.name) opt.selected = true;
+    picker.appendChild(opt);
+  });
+  picker.innerHTML += '<option value="__new__">➕ Add me as a new user…</option>';
+  // Pre-fill team if current user known
+  if(currentUser) {
+    document.getElementById('reqReferredByName').value = currentUser.name;
+    const tu = trainers.find(t => t.name === currentUser.name);
+    if(tu && tu.jobTitle) document.getElementById('reqReferredByTeam').value = tu.jobTitle;
+    document.getElementById('reqExistingTeamRow').style.display = '';
+  }
   updateReqStep();
+}
+
+function handleReqUserPicker() {
+  const val = document.getElementById('reqUserPicker').value;
+  const newFields = document.getElementById('reqNewUserFields');
+  const teamRow = document.getElementById('reqExistingTeamRow');
+  if(val === '__new__') {
+    newFields.style.display = '';
+    teamRow.style.display = 'none';
+    document.getElementById('reqReferredByName').value = '';
+    document.getElementById('reqReferredByTeam').value = '';
+  } else if(val) {
+    newFields.style.display = 'none';
+    teamRow.style.display = '';
+    document.getElementById('reqReferredByName').value = val;
+    const tu = trainers.find(t => t.name === val);
+    document.getElementById('reqReferredByTeam').value = (tu && tu.jobTitle) ? tu.jobTitle : '';
+  } else {
+    newFields.style.display = 'none';
+    teamRow.style.display = 'none';
+    document.getElementById('reqReferredByName').value = '';
+  }
 }
 
 function closeRequestForm() { document.getElementById('reqOverlay').classList.remove('open'); }
@@ -2378,7 +2479,7 @@ function updateReqStep() {
   if(!isSuccess) {
     document.getElementById('reqBackBtn').style.display = reqCurrentStep > 1 ? 'inline-flex' : 'none';
     document.getElementById('reqNextBtn').textContent = isLast ? '✓ Submit Request' : 'Continue →';
-    document.getElementById('reqSkipBtn').style.display = reqCurrentStep === 1 ? 'none' : 'inline-flex';
+    document.getElementById('reqSkipBtn').style.display = (reqCurrentStep <= 2) ? 'none' : 'inline-flex';
   }
   const prog = document.getElementById('reqProgress');
   prog.innerHTML = '';
@@ -2391,18 +2492,59 @@ function updateReqStep() {
   });
 }
 
+function reqValidateStep(step) {
+  if(step === 1) {
+    const picker = document.getElementById('reqUserPicker').value;
+    if(!picker) { showToast('Please select who is submitting this request', 'error'); return false; }
+    if(picker === '__new__') {
+      const fn = document.getElementById('reqNewFirstName').value.trim();
+      const ln = document.getElementById('reqNewLastName').value.trim();
+      const dept = document.getElementById('reqNewDept').value.trim();
+      if(!fn || !ln || !dept) { showToast('Please enter first name, last name and department', 'error'); return false; }
+      // Create the new user as Viewer and add to trainers
+      const fullName = fn + ' ' + ln;
+      const newUser = { id: 'u_req_' + Date.now(), name: fullName, role: 'viewer', color: TRAINER_COLORS[trainers.length % TRAINER_COLORS.length], jobTitle: dept, pin: '', icsUrl: '' };
+      trainers.push(newUser);
+      document.getElementById('reqReferredByName').value = fullName;
+      document.getElementById('reqReferredByTeam').value = dept;
+      showToast(fullName + ' added as Viewer', 'success');
+    }
+    if(!document.getElementById('reqReferredByName').value.trim()) { showToast('Please select or enter your name', 'error'); return false; }
+  }
+  if(step === 2) {
+    const email = document.getElementById('reqEmail').value.trim();
+    const company = document.getElementById('reqCompany').value.trim();
+    const stakeholder = document.getElementById('reqStakeholder').value.trim();
+    const msgs = [];
+    if(!email) msgs.push('Company email');
+    if(!company) msgs.push('Business name');
+    if(!stakeholder) msgs.push('Stakeholder name');
+    if(msgs.length) { showToast('Required: ' + msgs.join(', '), 'error'); return false; }
+    if(!/^[^@]+@[^@]+\.[^@]+$/.test(email)) { showToast('Please enter a valid email address', 'error'); return false; }
+  }
+  return true;
+}
+
 function reqNextStep() {
+  if(!reqValidateStep(reqCurrentStep)) return;
   if(reqCurrentStep === REQ_TOTAL_STEPS) { submitRequest(); return; }
   reqCurrentStep++;
   updateReqStep();
 }
 
 function reqPrevStep() { if(reqCurrentStep > 1) { reqCurrentStep--; updateReqStep(); } }
-function reqSkipStep() { if(reqCurrentStep < REQ_TOTAL_STEPS) { reqCurrentStep++; updateReqStep(); } }
+
+function reqSkipStep() {
+  if(reqCurrentStep < REQ_TOTAL_STEPS && REQ_SKIPPABLE_STEPS.has(reqCurrentStep)) {
+    reqSkippedSteps.add(reqCurrentStep);
+    reqCurrentStep++;
+    updateReqStep();
+  }
+}
 
 async function submitRequest() {
   const name = document.getElementById('reqReferredByName').value.trim();
-  const team = document.getElementById('reqReferredByTeam').value.trim();
+  const team = document.getElementById('reqReferredByTeam').value.trim() || document.getElementById('reqNewDept')?.value.trim() || '';
   const notes = document.getElementById('reqReferralNotes').value.trim();
   const quotedVal = document.getElementById('reqQuotedValue').value.trim();
   const email = document.getElementById('reqEmail').value.trim();
@@ -2435,6 +2577,7 @@ async function submitRequest() {
     quotedValue: quotedVal,
     referredByName: name, referredByTeam: team, referralNotes: notes,
     submittedBy: currentUser?.name || 'Dashboard',
+    skippedSections: [...reqSkippedSteps].map(s => REQ_SKIP_LABELS[s]).join(','),
     timestamp: new Date().toISOString()
   });
   try {
