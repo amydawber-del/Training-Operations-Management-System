@@ -3182,6 +3182,8 @@ function renderCalendar() {
       provisional: true,
     });
   });
+  let html = '';
+  for(let i = 0; i < startDow; i++) html += '<div class="cal-day cal-day-empty"></div>';
   for(let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
     const isToday = date.getTime() === today.getTime();
