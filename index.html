@@ -378,6 +378,8 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 
 /* Login search */
 .login-result-row:hover, .login-result-row:focus { background:#f0f4ff; outline:none; }
+/* Request form user search */
+.req-user-result-row:hover, .req-user-result-row:focus { background:#f0f4ff; outline:none; }
 /* PIN */
 .pin-key { display:flex;flex-direction:column;align-items:center;justify-content:center;border:none;border-radius:50%;width:72px;height:72px;margin:0 auto;background:#f3f4f6;cursor:pointer;font-family:Arial,sans-serif;transition:background 0.1s,transform 0.08s;user-select:none; }
 .pin-key:hover { background:#e5e7eb; }
@@ -931,15 +933,32 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
     </div>
     <div class="req-body" id="reqBody">
       <div class="req-step-pane" id="reqStep1">
-        <div class="req-step-title">Your Details</div><div class="req-step-sub">Select your name from the team list, or add yourself as a new user.</div>
+        <div class="req-step-title">Your Details</div><div class="req-step-sub">Search for your name, or click <strong>Add me as a new user</strong> if you're not listed.</div>
         <div class="req-field">
           <label class="req-label required">Who is submitting this request?</label>
-          <select class="req-input" id="reqUserPicker" onchange="handleReqUserPicker()">
-            <option value="">— Select your name —</option>
-          </select>
+          <div style="position:relative;">
+            <input id="reqUserSearch" type="text" class="req-input" placeholder="Start typing your name..." autocomplete="off" spellcheck="false"
+              oninput="reqSearchFilter()" onkeydown="reqSearchKey(event)"
+              style="padding-right:32px;">
+            <span id="reqUserSearchClear" onclick="reqClearUser()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:16px;color:var(--text--dark--30);line-height:1;">&#10005;</span>
+            <!-- Dropdown -->
+            <div id="reqUserResults" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--light-grey);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);max-height:240px;overflow-y:auto;z-index:100;">
+            </div>
+          </div>
+          <!-- Hidden field keeping actual name value for form submission -->
+          <input type="hidden" id="reqUserPicker">
         </div>
+        <!-- Selected user chip -->
+        <div id="reqUserChip" style="display:none;margin-top:-4px;margin-bottom:8px;padding:10px 12px;border-radius:8px;background:#f0f4ff;border:1.5px solid #c7d4ff;align-items:center;gap:10px;">
+          <div id="reqUserChipAvatar" style="width:30px;height:30px;border-radius:50%;background:#2147f4;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div id="reqUserChipName" style="font-size:13px;font-weight:600;color:var(--text--dark--50);"></div>
+            <div id="reqUserChipSub" style="font-size:11px;color:var(--text--dark--30);margin-top:1px;"></div>
+          </div>
+        </div>
+
         <div id="reqNewUserFields" style="display:none;margin-top:4px;">
-          <div class="warning-box info" style="margin-bottom:12px;"><span>ℹ️</span><span>New users are added as <strong>Viewer</strong> by default. An admin can update their role later.</span></div>
+          <div class="warning-box info" style="margin-bottom:12px;"><span>&#8505;&#65039;</span><span>New users are added as <strong>Viewer</strong> by default. An admin can update their role later.</span></div>
           <div class="req-2col">
             <div class="req-field"><label class="req-label required">First Name</label><input type="text" class="req-input" id="reqNewFirstName" placeholder="e.g. Sarah"></div>
             <div class="req-field"><label class="req-label required">Last Name</label><input type="text" class="req-input" id="reqNewLastName" placeholder="e.g. Jones"></div>
@@ -3590,48 +3609,129 @@ function openRequestForm() {
   document.getElementById('reqNewUserFields').style.display = 'none';
   document.getElementById('reqExistingTeamRow').style.display = 'none';
   document.querySelectorAll('#reqEquipGrid input').forEach(el => el.checked = false);
-  // Populate user picker
-  const picker = document.getElementById('reqUserPicker');
-  picker.innerHTML = '<option value="">— Select your name —</option>';
-  trainers.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t.name;
-    opt.textContent = t.name + (t.jobTitle ? ' — ' + t.jobTitle : '');
-    if(currentUser && t.name === currentUser.name) opt.selected = true;
-    picker.appendChild(opt);
-  });
-  picker.innerHTML += '<option value="__new__">➕ Add me as a new user…</option>';
-  // Pre-fill team if current user known
+  // Reset and initialise search field
+  const reqSearch = document.getElementById('reqUserSearch');
+  if(reqSearch) reqSearch.value = '';
+  document.getElementById('reqUserResults') && (document.getElementById('reqUserResults').style.display = 'none');
+  document.getElementById('reqUserChip')    && (document.getElementById('reqUserChip').style.display = 'none');
+  document.getElementById('reqUserSearchClear') && (document.getElementById('reqUserSearchClear').style.display = 'none');
+  document.getElementById('reqUserPicker').value = '';
+
+  // Pre-fill with current logged-in user
   if(currentUser) {
-    document.getElementById('reqReferredByName').value = currentUser.name;
-    const tu = trainers.find(t => t.name === currentUser.name);
-    if(tu && tu.jobTitle) document.getElementById('reqReferredByTeam').value = tu.jobTitle;
-    document.getElementById('reqExistingTeamRow').style.display = '';
+    reqSelectUser(currentUser.name);
   }
   updateReqStep();
 }
 
-function handleReqUserPicker() {
-  const val = document.getElementById('reqUserPicker').value;
-  const newFields = document.getElementById('reqNewUserFields');
-  const teamRow = document.getElementById('reqExistingTeamRow');
-  if(val === '__new__') {
-    newFields.style.display = '';
-    teamRow.style.display = 'none';
-    document.getElementById('reqReferredByName').value = '';
-    document.getElementById('reqReferredByTeam').value = '';
-  } else if(val) {
-    newFields.style.display = 'none';
-    teamRow.style.display = '';
-    document.getElementById('reqReferredByName').value = val;
-    const tu = trainers.find(t => t.name === val);
-    document.getElementById('reqReferredByTeam').value = (tu && tu.jobTitle) ? tu.jobTitle : '';
-  } else {
-    newFields.style.display = 'none';
-    teamRow.style.display = 'none';
-    document.getElementById('reqReferredByName').value = '';
+function reqSearchFilter() {
+  const q   = document.getElementById('reqUserSearch').value.trim().toLowerCase();
+  const box = document.getElementById('reqUserResults');
+
+  // If user already confirmed a selection, clear it when they type again
+  if(document.getElementById('reqUserPicker').value && q !== document.getElementById('reqUserSearch').dataset.confirmed) {
+    reqClearUser(true); // silent clear — don't wipe the input text
+  }
+
+  if(q.length < 1) { box.style.display = 'none'; return; }
+
+  const matches = trainers
+    .filter(u => u.active !== false && u.name.toLowerCase().includes(q))
+    .slice(0, 8);
+
+  // Build rows including "+ Add me" at the bottom
+  let html = matches.map(u => {
+    const initials = u.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const dept = escHtml(u.department || u.jobTitle || u.role || '');
+    return `<div class="req-user-result-row" data-name="${escHtml(u.name)}" tabindex="0"
+      style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-radius:6px;"
+      onmousedown="reqSelectUser('${u.name.replace(/'/g,"\\'")}')">
+      <div style="width:28px;height:28px;border-radius:50%;background:${u.color||'#2147f4'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(u.name)}</div>
+        <div style="font-size:11px;color:var(--text--dark--30);">${dept}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Always show "+ Add me as a new user" at the bottom
+  html += `<div style="border-top:1px solid var(--ui--underline--light-grey);margin-top:2px;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--action-primary-blue);"
+    onmousedown="reqShowNewUser()">
+    <span style="font-size:16px;">&#43;</span> Add me as a new user...
+  </div>`;
+
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+function reqSearchKey(e) {
+  const box  = document.getElementById('reqUserResults');
+  const rows = box.querySelectorAll('.req-user-result-row');
+  if(e.key === 'ArrowDown' && rows.length) { e.preventDefault(); rows[0].focus(); return; }
+  if(e.key === 'Escape') { box.style.display = 'none'; return; }
+  if(e.key === 'Enter' && rows.length === 1) reqSelectUser(rows[0].dataset.name);
+}
+
+function reqSelectUser(name) {
+  const u = trainers.find(t => t.name === name);
+
+  // Hide dropdown + show chip
+  document.getElementById('reqUserResults').style.display = 'none';
+  document.getElementById('reqUserSearch').value = name;
+  document.getElementById('reqUserSearch').dataset.confirmed = name.toLowerCase();
+  document.getElementById('reqUserSearchClear').style.display = 'block';
+
+  if(u) {
+    const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const chip  = document.getElementById('reqUserChip');
+    document.getElementById('reqUserChipAvatar').textContent      = initials;
+    document.getElementById('reqUserChipAvatar').style.background = u.color || '#2147f4';
+    document.getElementById('reqUserChipName').textContent        = name;
+    document.getElementById('reqUserChipSub').textContent         = (u.department||u.jobTitle||'') + (u.role ? ' · ' + u.role : '');
+    chip.style.display = 'flex';
+  }
+
+  // Set hidden fields
+  document.getElementById('reqUserPicker').value     = name;
+  document.getElementById('reqReferredByName').value = name;
+  document.getElementById('reqNewUserFields').style.display = 'none';
+
+  if(u) {
+    document.getElementById('reqExistingTeamRow').style.display = '';
+    const dept = u.department || u.jobTitle || '';
+    document.getElementById('reqReferredByTeam').value = dept;
   }
 }
+
+function reqClearUser(silent) {
+  document.getElementById('reqUserPicker').value     = '';
+  document.getElementById('reqReferredByName').value = '';
+  document.getElementById('reqUserChip').style.display = 'none';
+  document.getElementById('reqExistingTeamRow').style.display = 'none';
+  document.getElementById('reqNewUserFields').style.display = 'none';
+  document.getElementById('reqUserSearchClear').style.display = 'none';
+  document.getElementById('reqUserSearch').dataset.confirmed = '';
+  if(!silent) {
+    document.getElementById('reqUserSearch').value = '';
+    document.getElementById('reqUserSearch').focus();
+  }
+}
+
+function reqShowNewUser() {
+  document.getElementById('reqUserResults').style.display = 'none';
+  document.getElementById('reqUserPicker').value     = '__new__';
+  document.getElementById('reqReferredByName').value = '';
+  document.getElementById('reqUserChip').style.display = 'none';
+  document.getElementById('reqExistingTeamRow').style.display = 'none';
+  document.getElementById('reqNewUserFields').style.display = '';
+  document.getElementById('reqUserSearch').value = '';
+  document.getElementById('reqUserSearchClear').style.display = 'none';
+  document.getElementById('reqNewFirstName').focus();
+}
+
+// Keep old handler name as alias (called by form validation)
+function handleReqUserPicker() {}
+
 
 function closeRequestForm() { document.getElementById('reqOverlay').classList.remove('open'); }
 
