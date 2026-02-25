@@ -1073,6 +1073,31 @@ function writeActivityLog(entry) {
   fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' })
     .catch(e => console.warn('Activity log write failed:', e.message));
 }
+
+/**
+ * writeNoteToSheet(rowRef, record, text, section)
+ * Persists a progress note to the "Progress Notes" sheet immediately.
+ * rowRef  - _rowNum of the booking row (used to reload notes onto the right record)
+ * record  - company / client name shown in the sheet
+ * text    - full note text
+ * section - where it came from (default "Client Profile")
+ */
+function writeNoteToSheet(rowRef, record, text, section) {
+  if(!SCRIPT_URL || !text) return;
+  const u = currentUser || {};
+  const params = new URLSearchParams({
+    action:   'saveNote',
+    rowRef:   String(rowRef),
+    record:   record  || '',
+    section:  section || 'Client Profile',
+    text,
+    author:   u.name || u.email || 'Unknown',
+    userRole: u.role || '',
+    ts:       new Date().toISOString(),
+  });
+  fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' })
+    .catch(e => console.warn('Note save to sheet failed:', e.message));
+}
 const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
 const HUMAANS_LEAVE_ICS = '';
 const STALE_DAYS = 5;
@@ -1795,6 +1820,8 @@ async function loadData() {
     allData = rawRows.slice(1).map((row, i) => parseAppsScriptData(row, i, i + 2)).filter(Boolean);
     const now = new Date();
     document.getElementById('lastUpdated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    // Load persisted notes and attach to records before rendering
+    await loadNotes();
     renderAll();
     console.log('Loaded', allData.length, 'data rows.');
   } catch(e) {
@@ -1853,6 +1880,7 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
     trainer:        row[COL.TRAINER]          || '',
     bookedOn,
     trainingDays:   row[COL.TRAINING_DAYS] ? parseInt(row[COL.TRAINING_DAYS]) || 1 : 1,
+    notes:          [],   // populated by loadNotes() after fetch
     rawRow: row
   };
 }
@@ -1860,6 +1888,35 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
 function tryParseNotes(val) {
   if(!val) return [];
   try { return JSON.parse(val); } catch(e) { return []; }
+}
+
+/**
+ * loadNotes()
+ * Fetches all rows from the "Progress Notes" sheet and attaches them
+ * to the matching records in allData by sheet row number (rowRef).
+ * Called automatically after loadData() rebuilds allData.
+ */
+async function loadNotes() {
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getNotes&t=' + Date.now(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if(!json.success || !json.notes) return;
+    // json.notes is { "75": [{text,author,ts,...}], "82": [...] }
+    Object.entries(json.notes).forEach(([rowRef, notes]) => {
+      const record = allData.find(r => String(r._rowNum) === String(rowRef));
+      if(record) {
+        // Normalise ts to milliseconds for consistent sorting with locally-added notes
+        record.notes = notes.map(n => ({
+          text:   n.text,
+          author: n.author,
+          role:   n.role,
+          ts:     n.ts,  // stored as "dd/mm/yyyy, hh:mm:ss" string — keep as-is for display
+        }));
+      }
+    });
+  } catch(e) {
+    console.warn('loadNotes failed:', e.message);
+  }
 }
 
 function parseReferredByField(raw) {
@@ -2729,10 +2786,23 @@ function renderProfileNotes(r) {
   const list = document.getElementById('profileNotesList');
   const notes = r.notes || [];
   if(!notes.length) { list.innerHTML = '<div style="font-size:11px;color:var(--text--dark--30);padding:4px 0;">No notes yet.</div>'; return; }
-  list.innerHTML = notes.map(n => `<div class="profile-note-item">
-    <div class="profile-note-meta">${escHtml(n.author || 'Unknown')} &mdash; ${fmtDate(n.ts ? new Date(n.ts) : null)}</div>
-    <div class="profile-note-text">${escHtml(n.text)}</div>
-  </div>`).join('');
+  list.innerHTML = notes.map(n => {
+    // ts can be a ms number (local) or a "dd/mm/yyyy, hh:mm:ss" string (from sheet)
+    let tsDisplay = '';
+    if(n.ts) {
+      if(typeof n.ts === 'number') {
+        tsDisplay = fmtDate(new Date(n.ts));
+      } else {
+        // Already formatted by Apps Script - use as-is
+        tsDisplay = String(n.ts);
+      }
+    }
+    const roleTag = n.role ? ` <span style="font-size:9px;background:#f3f4f6;padding:1px 5px;border-radius:4px;color:var(--text--dark--30);">${escHtml(n.role)}</span>` : '';
+    return `<div class="profile-note-item">
+      <div class="profile-note-meta">${escHtml(n.author || 'Unknown')}${roleTag} &mdash; ${tsDisplay}</div>
+      <div class="profile-note-text">${escHtml(n.text)}</div>
+    </div>`;
+  }).join('');
 }
 
 function saveProfileNote() {
@@ -2744,7 +2814,8 @@ function saveProfileNote() {
   currentProfileRow.notes.push(note);
   textarea.value = '';
   renderProfileNotes(currentProfileRow);
-  console.log('Note saved locally for row', currentProfileRow._rowNum);
+  // Persist to Progress Notes sheet so it survives refresh/re-login
+  writeNoteToSheet(currentProfileRow._rowNum, getCompanyName(currentProfileRow), text, 'Client Profile');
   logNote(currentUser?.name || '?', 'Note added', getCompanyName(currentProfileRow), text.slice(0, 120));
   writeActivityLog({
     actionType:  'Note Added',
@@ -3115,8 +3186,10 @@ async function confirmEditBooking() {
     // Auto-save amendment note into profile progress notes before fetch
     if(reason) {
       if(!currentEditRow.notes) currentEditRow.notes = [];
-      const amendNote = { text: '✏️ Amendment: ' + reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`, author: currentUser?.name || 'Admin', ts: Date.now() };
+      const amendText = 'Amendment: ' + reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`;
+      const amendNote = { text: amendText, author: currentUser?.name || 'Admin', ts: Date.now() };
       currentEditRow.notes.push(amendNote);
+      writeNoteToSheet(currentEditRow._rowNum, getCompanyName(currentEditRow), amendText, 'Booking Edit');
     }
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(currentUser?.name||'?', 'Edited booking', getCompanyName(currentEditRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d${reason?' · '+reason:''}`);
@@ -3158,8 +3231,10 @@ async function confirmCancel() {
   if(!reason || !currentCancelRow) return;
   // Auto-save cancellation reason into profile progress notes
   if(!currentCancelRow.notes) currentCancelRow.notes = [];
-  const cancelNote = { text: '❌ Cancellation: ' + reason, author: currentUser?.name || 'Admin', ts: Date.now() };
+  const cancelText = 'Cancellation: ' + reason;
+  const cancelNote = { text: cancelText, author: currentUser?.name || 'Admin', ts: Date.now() };
   currentCancelRow.notes.push(cancelNote);
+  writeNoteToSheet(currentCancelRow._rowNum, getCompanyName(currentCancelRow), cancelText, 'Cancellation');
   const params = new URLSearchParams({ action: 'assign', row: currentCancelRow._rowNum, status: 'Cancelled' });
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
