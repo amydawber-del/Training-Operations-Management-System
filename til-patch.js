@@ -1,39 +1,30 @@
 /**
  * =====================================================================
- * STREET TRAINING DASHBOARD — TIL TRACKER INTEGRATION PATCH
+ * STREET TRAINING DASHBOARD — TIL TRACKER INTEGRATION PATCH  v1.1
  * =====================================================================
- * Drop this file next to your dashboard HTML and add ONE line at the
- * very end of the <body> (just before </body>):
- *
- *   <script src="til-patch.js"></script>
- *
- * That's it. No other changes needed.
+ * Changes in v1.1:
+ *   - Robust balance field resolution: tries every plausible column-name
+ *     variant returned by Google Sheets / Apps Script.
+ *   - Falls back to calculating balance from entry types if no balance
+ *     column is found at all.
+ *   - Logs the raw first entry to console (once) so field names are
+ *     visible if further debugging is needed.
  * =====================================================================
  */
 
 (function () {
   'use strict';
 
-  // ── State ──────────────────────────────────────────────────────────
-  // tilData is keyed by trainer name and holds:
-  //   .pending  – count of entries where Approval Status = "Pending"
-  //   .balance  – Remaining Balance After Entry from the latest row
-  //   .entries  – raw array of all entries from the sheet
   var tilData = {};
 
   // ── 1. Inject Nav Link ─────────────────────────────────────────────
-  // Adds "Time in Lieu Tracker" to the side-drawer Resources section
-  // as soon as the DOM is ready (or immediately if it's already ready).
   function injectNavLink() {
-    // Find the Training Request Form link in the nav drawer
     var links = document.querySelectorAll('.nav-item');
     var refLink = null;
     links.forEach(function (el) {
       if (el.textContent.includes('Training Request Form')) refLink = el;
     });
-    if (!refLink) return; // drawer not rendered yet – retry below
-
-    // Only inject once
+    if (!refLink) return;
     if (document.getElementById('navTilLink')) return;
 
     var a = document.createElement('a');
@@ -47,21 +38,103 @@
     refLink.insertAdjacentElement('afterend', a);
   }
 
-  // ── 2. Load TiL Data ───────────────────────────────────────────────
-  // Fetches all entries from the "Time in Lieu Log" sheet and groups
-  // them by trainer, calculating pending count and current balance.
+  // ── 2. Resolve balance from an entry ─────────────────────────────
+  // Google Sheets / Apps Script can return column headers in many formats.
+  // We try every plausible variant before falling back to calculation.
+  var BALANCE_FIELDS = [
+    'balance',
+    'Balance',
+    'remainingBalance',
+    'Remaining Balance',
+    'remaining_balance',
+    'RemainingBalance',
+    'balanceAfterEntry',
+    'Balance After Entry',
+    'Remaining Balance After Entry',
+    'remaining balance after entry',
+    'remainingBalanceAfterEntry',
+    'currentBalance',
+    'Current Balance',
+    'tilBalance',
+    'TIL Balance',
+    'til_balance',
+    'hoursBalance',
+    'Hours Balance',
+    'running_balance',
+    'Running Balance',
+  ];
+
+  function resolveBalance(entry) {
+    for (var i = 0; i < BALANCE_FIELDS.length; i++) {
+      var v = entry[BALANCE_FIELDS[i]];
+      if (v !== undefined && v !== null && v !== '') {
+        var n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
+        if (!isNaN(n)) return n;
+      }
+    }
+    return null;   // not found — will calculate below
+  }
+
+  // ── 3. Calculate balance from scratch if no balance column exists ─
+  // Sums hours for each entry using the type/direction column.
+  var ACCRUAL_FIELDS  = ['type', 'Type', 'entryType', 'Entry Type', 'direction', 'Direction', 'category', 'Category'];
+  var HOURS_FIELDS    = ['hours', 'Hours', 'hoursAdded', 'hoursDeducted', 'tilHours', 'TIL Hours', 'amount', 'Amount', 'duration', 'Duration'];
+  var ACCRUAL_KEYWORDS = ['accrued', 'accrual', 'earned', 'added', 'credit', 'in', 'add'];
+
+  function resolveHours(entry) {
+    for (var i = 0; i < HOURS_FIELDS.length; i++) {
+      var v = entry[HOURS_FIELDS[i]];
+      if (v !== undefined && v !== null && v !== '') {
+        var n = parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
+        if (!isNaN(n)) return n;
+      }
+    }
+    return 0;
+  }
+
+  function isAccrual(entry) {
+    for (var i = 0; i < ACCRUAL_FIELDS.length; i++) {
+      var v = String(entry[ACCRUAL_FIELDS[i]] || '').toLowerCase();
+      if (!v) continue;
+      for (var j = 0; j < ACCRUAL_KEYWORDS.length; j++) {
+        if (v.includes(ACCRUAL_KEYWORDS[j])) return true;
+      }
+    }
+    // No type field — assume positive hours = accrual
+    return resolveHours(entry) >= 0;
+  }
+
+  function calculateBalance(entries) {
+    var total = 0;
+    entries.forEach(function (e) {
+      var hrs = Math.abs(resolveHours(e));
+      if (isAccrual(e)) { total += hrs; } else { total -= hrs; }
+    });
+    return Math.round(total * 10) / 10;
+  }
+
+  // ── 4. Load TiL Data ───────────────────────────────────────────────
   async function loadTilData() {
-    // SCRIPT_URL is defined in the main dashboard JS
     if (typeof SCRIPT_URL === 'undefined' || !SCRIPT_URL) return;
     try {
       var res  = await fetch(SCRIPT_URL + '?action=getTilLog&t=' + Date.now(),
                              { method: 'GET', redirect: 'follow' });
       var json = await res.json();
-      if (!json.success || !Array.isArray(json.entries)) return;
+      if (!json.success || !Array.isArray(json.entries)) {
+        console.warn('[TilPatch] getTilLog response:', json);
+        return;
+      }
+
+      // Log first entry once so field names are visible in the console
+      // for debugging — remove once balance is confirmed correct.
+      if (json.entries.length > 0) {
+        console.log('[TilPatch] First entry fields:', Object.keys(json.entries[0]));
+        console.log('[TilPatch] First entry sample:', json.entries[0]);
+      }
 
       tilData = {};
       json.entries.forEach(function (entry) {
-        var name = (entry.trainer || '').trim();
+        var name = (entry.trainer || entry.Trainer || entry.name || entry.Name || '').trim();
         if (!name) return;
         if (!tilData[name]) tilData[name] = { entries: [] };
         tilData[name].entries.push(entry);
@@ -70,20 +143,50 @@
       Object.keys(tilData).forEach(function (name) {
         var entries = tilData[name].entries;
 
-        // Count entries awaiting manager approval
         tilData[name].pending = entries.filter(function (e) {
-          return (e.approvalStatus || '').toLowerCase() === 'pending';
+          var status = (
+            e.approvalStatus || e['Approval Status'] || e.approval_status ||
+            e.status || e.Status || ''
+          ).toLowerCase();
+          return status === 'pending';
         }).length;
 
-        // Current balance = Remaining Balance After Entry on the most recent row
-        var sorted = entries
-          .filter(function (e) { return e.date; })
-          .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+        // Sort by date ascending to find most recent entry
+        var DATE_FIELDS = ['date', 'Date', 'entryDate', 'Entry Date', 'createdAt', 'Created At'];
+        var sorted = entries.filter(function (e) {
+          for (var i = 0; i < DATE_FIELDS.length; i++) {
+            if (e[DATE_FIELDS[i]]) return true;
+          }
+          return false;
+        }).sort(function (a, b) {
+          var da = '', db = '';
+          for (var i = 0; i < DATE_FIELDS.length; i++) {
+            if (a[DATE_FIELDS[i]]) { da = a[DATE_FIELDS[i]]; break; }
+            if (b[DATE_FIELDS[i]]) { db = b[DATE_FIELDS[i]]; break; }
+          }
+          return da < db ? -1 : 1;
+        });
+
         var last = sorted[sorted.length - 1];
-        tilData[name].balance = last ? (parseFloat(last.balance) || 0) : 0;
+
+        if (last) {
+          var bal = resolveBalance(last);
+          if (bal !== null) {
+            tilData[name].balance = bal;
+            tilData[name].balanceSource = 'sheet';
+          } else {
+            // No balance column — calculate from all entries
+            tilData[name].balance = calculateBalance(entries);
+            tilData[name].balanceSource = 'calculated';
+            console.warn('[TilPatch] No balance column found for', name,
+              '— calculated from entries:', tilData[name].balance);
+          }
+        } else {
+          tilData[name].balance = 0;
+          tilData[name].balanceSource = 'none';
+        }
       });
 
-      // Refresh the workload cards so TiL data appears
       if (typeof renderTrainerWorkload === 'function') renderTrainerWorkload();
 
     } catch (err) {
@@ -91,37 +194,36 @@
     }
   }
 
-  // ── 3. Patch renderTrainerWorkload ────────────────────────────────
-  // Wraps the original function so after it runs we enhance each
-  // trainer card in-place with a TiL summary panel.
+  // ── 5. Patch renderTrainerWorkload ────────────────────────────────
   function patchRenderTrainerWorkload() {
     if (typeof window.renderTrainerWorkload !== 'function') return;
     var _orig = window.renderTrainerWorkload;
 
     window.renderTrainerWorkload = function () {
-      // Run original rendering first
       _orig.apply(this, arguments);
 
-      // Now enhance every trainer card with TiL data
       var cards = document.querySelectorAll('#trainerGrid .trainer-card');
       cards.forEach(function (card) {
-        // Identify trainer name from the first .trainer-name element
         var nameEl = card.querySelector('.trainer-name');
         if (!nameEl) return;
-        var trainerName = nameEl.textContent.replace(/\s*(admin|trainer|viewer|manager)\s*/gi, '').trim();
+        var trainerName = nameEl.textContent
+          .replace(/\s*(admin|trainer|viewer|manager)\s*/gi, '').trim();
 
-        // Remove any existing TiL panel (prevents duplicates on re-render)
         var existing = card.querySelector('.til-panel');
         if (existing) existing.remove();
 
         var info = tilData[trainerName] || null;
 
-        // Build TiL panel HTML
-        var balStr    = info ? info.balance.toFixed(1) + ' hrs' : '— hrs';
-        var balColor  = !info       ? 'var(--text--dark--20)'
-                      : info.balance > 0  ? '#22a06b'
-                      : info.balance < 0  ? '#c0303d'
-                      : 'var(--text--dark--40)';
+        var balStr   = info ? info.balance.toFixed(1) + ' hrs' : '— hrs';
+        var balColor = !info           ? 'var(--text--dark--20)'
+                     : info.balance > 0 ? '#22a06b'
+                     : info.balance < 0 ? '#c0303d'
+                     : 'var(--text--dark--40)';
+
+        // Show source hint when balance was calculated rather than read from sheet
+        var sourceHint = (info && info.balanceSource === 'calculated')
+          ? '<div style="font-size:9px;color:#f59e0b;margin-top:3px;">⚠ calculated — check sheet</div>'
+          : '';
 
         var pendingHtml = '';
         if (info && info.pending > 0) {
@@ -142,6 +244,7 @@
           + '<span style="color:var(--text--dark--30);font-weight:600;">TiL Balance</span>'
           + '<span style="font-weight:700;color:' + balColor + ';">' + balStr + '</span>'
           + '</div>'
+          + sourceHint
           + pendingHtml;
 
         card.appendChild(panel);
@@ -149,26 +252,19 @@
     };
   }
 
-  // ── 4. Hook into enterDashboard ───────────────────────────────────
-  // The dashboard calls enterDashboard() after login. We wrap it to
-  // trigger the initial TiL load and set up a refresh interval.
+  // ── 6. Hook into enterDashboard ───────────────────────────────────
   function patchEnterDashboard() {
     if (typeof window.enterDashboard !== 'function') return;
     var _orig = window.enterDashboard;
 
     window.enterDashboard = function () {
       _orig.apply(this, arguments);
-      // Load TiL data shortly after main data is fetched
       setTimeout(loadTilData, 2000);
-      // Refresh every 10 minutes
       setInterval(loadTilData, 10 * 60 * 1000);
     };
   }
 
   // ── Bootstrap ─────────────────────────────────────────────────────
-  // Apply patches once the page is ready. We use a small polling loop
-  // because the main dashboard functions are defined inside its own
-  // DOMContentLoaded handler and may not exist yet at script parse time.
   var _patchAttempts = 0;
   function bootstrap() {
     _patchAttempts++;
@@ -184,7 +280,6 @@
     patchRenderTrainerWorkload();
     patchEnterDashboard();
 
-    // If the user is already logged in when the patch loads, pull TiL data now
     if (typeof currentUser !== 'undefined' && currentUser) {
       loadTilData();
     }
@@ -198,4 +293,4 @@
     bootstrap();
   }
 
-})();
+}());
