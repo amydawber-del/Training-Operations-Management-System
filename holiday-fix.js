@@ -27,6 +27,14 @@
 
     if (!ready && _attempts < 80) { setTimeout(bootstrap, 150); return; }
 
+    // Purge the dead URL from localStorage immediately so it is never
+    // read back into calSettingsHolidayIcs on the next page load.
+    var _DEAD = 'app.humaans.io/api/public-holidays/ical/';
+    if ((localStorage.getItem('calHolidayIcs') || '').includes(_DEAD)) {
+      localStorage.removeItem('calHolidayIcs');
+      _log('Removed dead holiday URL from localStorage.');
+    }
+
     patch_loadIcsData();
     patch_calSettings();
     console.log('[HolidayFix] Loaded after', _attempts, 'attempt(s).');
@@ -36,13 +44,25 @@
   // After the original runs (and potentially fails the holiday feed),
   // we backfill calIcsEvents from window.bankHolidays so the calendar
   // always has bank holiday markers — even if the ICS URL is dead.
+  var DEAD_URL_FRAGMENT = 'app.humaans.io/api/public-holidays/ical/';
+
   function patch_loadIcsData() {
     var _orig = window.loadIcsData;
 
     window.loadIcsData = async function () {
+      // ── Silence the dead URL before the original even tries it ──
+      // calSettingsHolidayIcs is the runtime variable the dashboard reads.
+      // If it still points at the dead Humaans endpoint, blank it so the
+      // original skips that fetch entirely (no 404, no console warning).
+      if (typeof window.calSettingsHolidayIcs === 'string'
+          && window.calSettingsHolidayIcs.includes(DEAD_URL_FRAGMENT)) {
+        window.calSettingsHolidayIcs = '';
+        _log('Cleared dead Humaans holiday URL — will backfill from GOV.UK.');
+      }
+
       await _orig.apply(this, arguments);
 
-      // If the holiday ICS fetch already succeeded, leave calIcsEvents alone.
+      // If a working ICS URL was configured and returned data, leave it alone.
       if (window.calIcsEvents && window.calIcsEvents.length > 0) {
         _log('Holiday ICS feed OK — no backfill needed.');
         return;
@@ -51,6 +71,31 @@
       // Backfill from the gov.uk bank holidays already stored in bankHolidays[].
       _backfillFromBankHolidays();
     };
+
+    // Fix the retry button onclick so the promise is handled cleanly
+    // (prevents "unhandled promise rejection" warnings in the console).
+    var _origRefreshBanner = null;
+    if (typeof window._refreshFeedBanner === 'function') {
+      _origRefreshBanner = window._refreshFeedBanner;
+    }
+    // Patch the retry button at DOM level whenever the banner is injected.
+    var _bannerObserver = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.id === 'ux-feed-banner') {
+            var retryBtn = node.querySelector('button');
+            if (retryBtn && retryBtn.textContent.includes('Retry')) {
+              retryBtn.onclick = function () {
+                window.loadIcsData().catch(function (e) {
+                  console.warn('[HolidayFix] Retry failed:', e && e.message);
+                });
+              };
+            }
+          }
+        });
+      });
+    });
+    _bannerObserver.observe(document.body, { childList: true });
   }
 
   function _backfillFromBankHolidays() {
