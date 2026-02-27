@@ -1149,7 +1149,16 @@ function App() {
           .notes-print-hide { display: none !important; }
           body { background: white !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .notes-input { border: 1px dashed #bbb !important; min-height: 28px !important; }
+          .notes-input {
+            border: 1px dashed #bbb !important;
+            min-height: 0 !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            resize: none !important;
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+          }
         }
       `}</style>
 
