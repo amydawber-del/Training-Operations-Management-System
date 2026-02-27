@@ -486,26 +486,142 @@ function TrainerView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
 }
 
 // ─── CLIENT DOC VIEW ──────────────────────────────────────────────────────
-function ClientView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
+
+// Curated agenda definition — each section only shows if its area tag is detected
+const CLIENT_AGENDA = [
+  {
+    day: "Session 1", title: "Sales & Lettings Front End",
+    tags: ["sales", "letting", "tenancy", "landlord", "applicant", "pipeline"],
+    sections: [
+      { heading: "Sales Workflow & Progression", items: [
+        "Structured progression stages", "Offer handling and memo of sale",
+        "Chain visibility and updates", "Task automation and follow-ups",
+      ]},
+      { heading: "Lettings Front End", items: [
+        "Applicant management and matching", "Offer submission and tenancy creation",
+        "Right to Rent and compliance tracking", "Rent review workflow",
+        "Sales to Lettings handover best practice",
+      ]},
+    ],
+  },
+  {
+    day: "Session 2", title: "Accounting & Property Management",
+    tags: ["account", "invoice", "ledger", "debt", "receipt", "maintenance", "property management", "contractor", "inspection"],
+    sections: [
+      { heading: "Lettings Invoicing", items: [
+        "Recurring charges vs one-off charges", "Split landlord ownership handling",
+        "Invoice configuration and numbering", "Credit notes and voiding entries",
+      ]},
+      { heading: "Receipting & Allocation", items: [
+        "Importing bank statements", "Receipt and reconcile",
+        "Allocating part-payments", "Suspense accounts",
+      ]},
+      { heading: "Arrears & Reporting", items: [
+        "Aged debt generation", "Automated reminders",
+        "Interest handling", "Portfolio landlords",
+      ]},
+      { heading: "Property Management", items: [
+        "Maintenance workflow", "Contractor payments and commissions",
+        "Inspections and move-out process", "Owner preferences and floats",
+      ]},
+    ],
+  },
+];
+
+// Derive outcome-led objectives from areas + priorities
+function buildClientObjectives(areasStr, prioritiesStr) {
+  const s = (areasStr || "").toLowerCase();
+  const objectives = [];
+  const hasSales    = s.includes("sales") || s.includes("pipeline") || s.includes("offer") || s.includes("applicant");
+  const hasLettings = s.includes("letting") || s.includes("tenancy") || s.includes("landlord");
+  const hasAccounts = s.includes("account") || s.includes("invoice") || s.includes("ledger") || s.includes("debt") || s.includes("receipt");
+  const hasPM       = s.includes("property management") || s.includes("maintenance") || s.includes("contractor") || s.includes("inspection");
+  const hasReporting= s.includes("report") || s.includes("dashboard") || s.includes("analytics");
+
+  objectives.push("Ensure your team is utilising Street to its full capacity" +
+    (hasSales && hasLettings ? " across Sales and Lettings" :
+     hasSales ? " across Sales" :
+     hasLettings ? " across Lettings" : "") + ".");
+
+  if (hasLettings && hasAccounts)
+    objectives.push("Strengthen confidence in the Lettings invoicing workflow.");
+  if (hasAccounts)
+    objectives.push("Improve visibility and control over money movement, arrears and landlord statements.");
+  if (hasPM)
+    objectives.push("Streamline property management workflows including maintenance, contractors and inspections.");
+  if (hasReporting)
+    objectives.push("Build confidence in reporting and dashboard use for management oversight.");
+  objectives.push("Identify opportunities to streamline admin and reduce manual duplication.");
+  if (hasSales && hasLettings)
+    objectives.push("Align Sales and Lettings processes to support smoother handovers.");
+
+  // If the client entered specific priorities, append unique ones
+  if (prioritiesStr && prioritiesStr !== "—") {
+    const extras = prioritiesStr.split(/\n/).map(s => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
+    extras.forEach(e => { if (!objectives.some(o => o.toLowerCase().includes(e.toLowerCase().slice(0, 20)))) objectives.push(e); });
+  }
+  return objectives;
+}
+
+function ClientAgendaBlock({ day, title, sections }) {
+  return (
+    <div style={{ marginBottom: 20, border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
+      {/* Day header */}
+      <div style={{ background: C.dark, padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", flexShrink: 0 }}>{day}</span>
+        <div style={{ width: 1, height: 12, background: "rgba(255,255,255,0.2)" }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>{title}</span>
+      </div>
+      {/* Sections */}
+      {sections.map((sec, si) => (
+        <div key={si} style={{ padding: "12px 16px", borderBottom: si < sections.length - 1 ? `1px solid ${C.border}` : "none" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{sec.heading}</div>
+          {sec.items.map((item, ii) => (
+            <div key={ii} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
+              <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+      {/* Close row */}
+      <div style={{ background: C.blueLight, padding: "8px 16px", borderTop: `1px solid ${C.blueBorder}`, display: "flex", gap: 16 }}>
+        {["Q&A", "Workflow optimisation discussion", "Agreed next steps"].map((item, i) => (
+          <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.blue, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: C.blue }}>{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ClientView({ row, notes, setNotes }) {
   const n = k => notes[k] || "";
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
+
+  const areasStr = h(row, "areas");
+  const areasLow = (areasStr || "").toLowerCase();
+
+  // Decide which agenda days to show based on requested areas
+  const visibleDays = CLIENT_AGENDA.filter(day =>
+    day.tags.some(tag => areasLow.includes(tag))
+  );
+
+  const objectives = buildClientObjectives(areasStr, h(row, "priorities"));
+
   const DataRow = ({ label, value }) => (
     <div style={{ display: "flex", gap: 16, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
       <div style={{ fontSize: 12, color: C.dark30, fontWeight: 600, minWidth: 160, flexShrink: 0 }}>{label}</div>
       <div style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{value || "—"}</div>
     </div>
   );
-  const BulletList = ({ text }) => {
-    if (!text || text === "—") return <div style={{ color: C.dark30 }}>—</div>;
-    return <div>{text.split(/\n/).map(s => s.trim()).filter(Boolean).map((item, i) => (
-      <div key={i} style={{ display: "flex", gap: 10, marginBottom: 7, alignItems: "flex-start" }}>
-        <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
-        <span style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{item}</span>
-      </div>
-    ))}</div>;
-  };
+
   return (
     <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
+
+      {/* Header */}
       <div style={{ borderLeft: `3px solid ${C.blue}`, paddingLeft: 20, marginBottom: 28 }}>
         <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Street Product Training</div>
         <h1 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 700, lineHeight: 1.15 }}>{h(row, "company")}</h1>
@@ -515,38 +631,83 @@ function ClientView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
           ))}
         </div>
       </div>
+
+      {/* Training Objectives */}
       <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "16px 20px", marginBottom: 28 }}>
-        <div style={{ fontSize: 11, color: C.blue, textTransform: "uppercase", marginBottom: 10, fontWeight: 700 }}>Training Objectives</div>
-        <p style={{ margin: "0 0 10px", fontSize: 14, color: C.dark40 }}>This session is designed to ensure your team is fully utilising Street, with particular focus on:</p>
-        <BulletList text={h(row, "priorities")} />
+        <div style={{ fontSize: 11, color: C.blue, textTransform: "uppercase", marginBottom: 10, fontWeight: 700, letterSpacing: "0.06em" }}>Training Objectives</div>
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: C.dark40 }}>This session is designed to:</p>
+        {objectives.map((obj, i) => (
+          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 7, alignItems: "flex-start" }}>
+            <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
+            <span style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{obj}</span>
+          </div>
+        ))}
       </div>
+
+      {/* Attendees */}
       <Section num="1" title="Attendees">
-        <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "14px 16px", marginBottom: 10 }}>
-          <p style={{ margin: 0 }}>{h(row, "attendees")}</p>
+        <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 16px", marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: 13, color: C.dark40, fontStyle: "italic" }}>Attendee details confirmed with your team prior to the session.</p>
         </div>
-        <DataRow label="Authorising Contact" value={h(row, "stakeholder")} />
-        <NotesBlock label="Attendee Notes" placeholder="Notes about specific attendees or group dynamics…" value={n("attendees")} onChange={sn("attendees")} />
+        <NotesBlock label="Attendee Notes" placeholder="e.g. Mixed seniority across Sales and Lettings. Strong admin presence supporting daily operations. Focus on aligning workflows across departments." value={n("attendees")} onChange={sn("attendees")} minHeight={72} />
       </Section>
+
+      {/* Session Agenda */}
       <Section num="2" title="Session Agenda">
-        <div style={{ fontSize: 12, color: C.dark30, marginBottom: 10 }}>Areas covered: <strong style={{ color: C.dark }}>{h(row, "areas")}</strong></div>
-        <DynamicAgenda agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} areasRaw={h(row, "areas")} />
-        <NotesBlock label="Session Notes" placeholder="Custom agenda items or session notes for the client…" value={n("session")} onChange={sn("session")} />
-      </Section>
-      <Section num="3" title="Post-Training Support">
-        <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "14px 16px" }}>
-          <p style={{ margin: 0 }}>{h(row, "followUp")}</p>
+        {visibleDays.length > 0
+          ? visibleDays.map((day, i) => (
+              <ClientAgendaBlock key={i} day={day.day} title={day.title} sections={day.sections} />
+            ))
+          : (
+            <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: C.dark40 }}>Agenda to be confirmed based on your team's priorities and focus areas.</div>
+            </div>
+          )
+        }
+        {/* Always show the Operational Settings block */}
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 20 }}>
+          <div style={{ background: C.grey, borderBottom: `1px solid ${C.border}`, padding: "10px 16px" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
+          </div>
+          <div style={{ padding: "12px 16px" }}>
+            {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <NotesBlock label="Support Notes" placeholder="Agreed follow-up commitments…" value={n("support")} onChange={sn("support")} />
+        <NotesBlock label="Session Notes" placeholder="Summarise on the day: key workflow improvements agreed, areas of high confidence, areas requiring further support, feature suggestions discussed…" value={n("session")} onChange={sn("session")} minHeight={88} />
       </Section>
+
+      {/* Post-Training Support */}
+      <Section num="3" title="Post-Training Support">
+        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 4, padding: "14px 18px", marginBottom: 10 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 13, color: C.dark40 }}>Following the session you will receive:</p>
+          {[
+            "A written recap of key workflows covered",
+            "Agreed actions and optimisation points",
+            "Relevant Help Centre and Streetwise resources",
+            "A follow-up call if required",
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 6, alignItems: "flex-start" }}>
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
+              <span style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{item}</span>
+            </div>
+          ))}
+        </div>
+        <NotesBlock label="Support Notes" placeholder="Any specific commitments or follow-up arrangements agreed with the client…" value={n("support")} onChange={sn("support")} />
+      </Section>
+
+      {/* Location & Logistics */}
       <Section num="4" title="Location & Logistics">
         <DataRow label="Venue" value={h(row, "location")} />
         <DataRow label="Parking / Info" value={h(row, "parking")} />
         <DataRow label="Setup Confirmed" value={h(row, "venueSetup")} />
         <NotesBlock label="Logistics Notes" placeholder="Additional venue or setup details…" value={n("logistics")} onChange={sn("logistics")} />
       </Section>
-      <Section num="5" title="Additional Notes">
-        <NotesBlock label="General Notes" placeholder="Any other information to include…" value={n("clientGeneral")} onChange={sn("clientGeneral")} minHeight={100} />
-      </Section>
+
       <div style={{ marginTop: 32, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
         <div style={{ fontSize: 11, color: C.dark20 }}>STREET.CO.UK — CONFIDENTIAL</div>
         <div style={{ fontSize: 11, color: C.dark20 }}>TRAINING DOCUMENT</div>
@@ -1296,7 +1457,7 @@ function App() {
             )}
             {loading && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>Loading…</div>}
             {!loading && currentRow && view === "trainer" && <TrainerView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} />}
-            {!loading && currentRow && view === "client" && <ClientView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} />}
+            {!loading && currentRow && view === "client" && <ClientView row={currentRow} notes={notes} setNotes={setNotes} />}
             {!loading && currentRow && view === "post-client" && <PostTrainingClientView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} />}
             {!loading && currentRow && view === "post-internal" && <PostTrainingInternalView row={currentRow} notes={notes} setNotes={setNotes} />}
             {!loading && rows.length === 0 && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>No records found.</div>}
