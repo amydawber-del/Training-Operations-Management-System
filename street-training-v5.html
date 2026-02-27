@@ -598,18 +598,36 @@ function ClientAgendaBlock({ day, title, sections }) {
 }
 
 function ClientView({ row, notes, setNotes }) {
-  const n = k => notes[k] || "";
+  const n = k => notes[k] !== undefined ? notes[k] : "";
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
 
-  const areasStr = h(row, "areas");
-  const areasLow = (areasStr || "").toLowerCase();
+  const objectives = buildClientObjectives(h(row, "areas"), h(row, "priorities"));
 
-  // Decide which agenda days to show based on requested areas
-  const visibleDays = CLIENT_AGENDA.filter(day =>
-    day.tags.some(tag => areasLow.includes(tag))
-  );
+  // Build a flat list of all selectable sections (including Operational Settings)
+  const ALL_SECTIONS = [
+    ...CLIENT_AGENDA.flatMap((day, di) =>
+      day.sections.map((sec, si) => ({ key: `d${di}s${si}`, dayIdx: di, secIdx: si, label: sec.heading, dayTitle: day.title, day: day.day }))
+    ),
+    { key: "ops", label: "Operational Settings Review", dayIdx: -1, secIdx: -1, dayTitle: null, day: null },
+  ];
 
-  const objectives = buildClientObjectives(areasStr, h(row, "priorities"));
+  // Selected section keys — stored in notes; default all ticked on first open
+  const defaultSelected = ALL_SECTIONS.map(s => s.key);
+  const selected = notes.agendaSections !== undefined ? notes.agendaSections : defaultSelected;
+  const isSelected = key => selected.includes(key);
+  const toggle = key => {
+    const next = isSelected(key) ? selected.filter(k => k !== key) : [...selected, key];
+    sn("agendaSections")(next);
+  };
+  const toggleAll = () => sn("agendaSections")(selected.length === ALL_SECTIONS.length ? [] : defaultSelected);
+
+  // Build what actually renders in the doc — grouped back by day
+  const selectedSections = ALL_SECTIONS.filter(s => isSelected(s.key));
+  const showOps = isSelected("ops");
+  const renderedDays = CLIENT_AGENDA.map((day, di) => ({
+    ...day,
+    sections: day.sections.filter((_, si) => isSelected(`d${di}s${si}`)),
+  })).filter(day => day.sections.length > 0);
 
   const DataRow = ({ label, value }) => (
     <div style={{ display: "flex", gap: 16, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -618,8 +636,64 @@ function ClientView({ row, notes, setNotes }) {
     </div>
   );
 
+  const Tick = ({ checked }) => (
+    <div style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0, marginTop: 1,
+      background: checked ? C.blue : "#fff",
+      border: `1.5px solid ${checked ? C.blue : C.border}`,
+      display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+    </div>
+  );
+
   return (
     <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
+
+      {/* ── Agenda Picker (screen only) ─────────────────────────────────── */}
+      <div className="no-print" style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "14px 16px", marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Agenda Sections — tick to include in document
+          </div>
+          <button onClick={toggleAll} style={{ fontSize: 11, color: C.blue, background: "none", border: `1px solid ${C.blueBorder}`, borderRadius: 3, padding: "3px 10px", cursor: "pointer", fontFamily: "Arial" }}>
+            {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
+          </button>
+        </div>
+        {/* Group checkboxes by day */}
+        {CLIENT_AGENDA.map((day, di) => (
+          <div key={di} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{day.day} — {day.title}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {day.sections.map((sec, si) => {
+                const key = `d${di}s${si}`;
+                const checked = isSelected(key);
+                return (
+                  <div key={key} onClick={() => toggle(key)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
+                    background: checked ? C.blueLight : "#fff",
+                    border: `1px solid ${checked ? C.blueBorder : C.border}` }}>
+                    <Tick checked={checked} />
+                    <span style={{ fontSize: 12, color: checked ? C.blue : C.dark40, fontWeight: checked ? 600 : 400 }}>{sec.heading}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {/* Operational Settings */}
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Always Available</div>
+          <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
+            background: isSelected("ops") ? C.blueLight : "#fff",
+            border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}` }}>
+            <Tick checked={isSelected("ops")} />
+            <span style={{ fontSize: 12, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
+          </div>
+        </div>
+        {selectedSections.length === 0 && (
+          <div style={{ marginTop: 10, fontSize: 12, color: C.redDark, background: C.red, border: `1px solid #f9b4bc`, borderRadius: 3, padding: "5px 10px" }}>
+            No sections selected — agenda will be empty in the document.
+          </div>
+        )}
+      </div>
 
       {/* Header */}
       <div style={{ borderLeft: `3px solid ${C.blue}`, paddingLeft: 20, marginBottom: 28 }}>
@@ -652,32 +726,34 @@ function ClientView({ row, notes, setNotes }) {
         <NotesBlock label="Attendee Notes" placeholder="e.g. Mixed seniority across Sales and Lettings. Strong admin presence supporting daily operations. Focus on aligning workflows across departments." value={n("attendees")} onChange={sn("attendees")} minHeight={72} />
       </Section>
 
-      {/* Session Agenda */}
+      {/* Session Agenda — only ticked sections */}
       <Section num="2" title="Session Agenda">
-        {visibleDays.length > 0
-          ? visibleDays.map((day, i) => (
+        {renderedDays.length === 0 && !showOps ? (
+          <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: C.dark40 }}>Agenda to be confirmed based on your team's priorities and focus areas.</div>
+          </div>
+        ) : (
+          <>
+            {renderedDays.map((day, i) => (
               <ClientAgendaBlock key={i} day={day.day} title={day.title} sections={day.sections} />
-            ))
-          : (
-            <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
-              <div style={{ fontSize: 13, color: C.dark40 }}>Agenda to be confirmed based on your team's priorities and focus areas.</div>
-            </div>
-          )
-        }
-        {/* Always show the Operational Settings block */}
-        <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 20 }}>
-          <div style={{ background: C.grey, borderBottom: `1px solid ${C.border}`, padding: "10px 16px" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
-          </div>
-          <div style={{ padding: "12px 16px" }}>
-            {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, i) => (
-              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
-                <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
-              </div>
             ))}
-          </div>
-        </div>
+            {showOps && (
+              <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 20 }}>
+                <div style={{ background: C.grey, borderBottom: `1px solid ${C.border}`, padding: "10px 16px" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
+                </div>
+                <div style={{ padding: "12px 16px" }}>
+                  {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
         <NotesBlock label="Session Notes" placeholder="Summarise on the day: key workflow improvements agreed, areas of high confidence, areas requiring further support, feature suggestions discussed…" value={n("session")} onChange={sn("session")} minHeight={88} />
       </Section>
 
