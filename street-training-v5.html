@@ -10,6 +10,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; font-size: 14px; line-height: 20px; color: #333; background: #fff; }
+  .notes-print-only { display: none; }
   </style>
 </head>
 <body>
@@ -179,14 +180,18 @@ function parseCSV(text) {
   });
 }
 function buildAgendaFromAreas(areasStr, agendaData) {
-  if (!agendaData.length || !areasStr || areasStr === "—") return [];
-  const requested = areasStr.split(/,|;|\n/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!agendaData.length) return [];
+  const requested = (areasStr && areasStr !== "—")
+    ? areasStr.split(/,|;|\n/).map(s => s.trim().toLowerCase()).filter(Boolean)
+    : [];
   const grouped = {};
   agendaData.forEach(row => {
     const area = (row["Area of Street"] || "").trim();
     if (!area) return;
     const areaLow = area.toLowerCase();
-    const matches = requested.some(r => areaLow.includes(r) || r.includes(areaLow) || r.split(" ").some(w => w.length > 3 && areaLow.includes(w)));
+    // Always include General; otherwise match against requested areas
+    const isGeneral = areaLow === "general";
+    const matches = isGeneral || requested.some(r => areaLow.includes(r) || r.includes(areaLow) || r.split(" ").some(w => w.length > 3 && areaLow.includes(w)));
     if (matches) {
       if (!grouped[area]) grouped[area] = [];
       const item = row["Street Agenda"] || "";
@@ -242,8 +247,13 @@ function NotesBlock({ label, placeholder, value, onChange, minHeight = 68 }) {
   return (
     <div style={{ marginTop: 10 }} className={!value || value.trim() === "" ? "notes-print-hide" : ""}>
       <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-      <textarea className="notes-input" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      {/* Editable textarea — shown on screen, hidden on print */}
+      <textarea className="notes-input notes-screen-only" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{ width: "100%", minHeight, padding: "8px 12px", fontFamily: "Arial, sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 4, resize: "vertical", outline: "none" }} />
+      {/* Print-only div — auto-expands to fit all content */}
+      <div className="notes-print-only" style={{ width: "100%", padding: "8px 12px", fontFamily: "Arial, sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: C.yellowBg, border: "1px dashed #bbb", borderRadius: 4, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -1147,18 +1157,10 @@ function App() {
         @media print {
           .no-print { display: none !important; }
           .notes-print-hide { display: none !important; }
+          .notes-screen-only { display: none !important; }
+          .notes-print-only { display: block !important; }
           body { background: white !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .notes-input {
-            border: 1px dashed #bbb !important;
-            min-height: 0 !important;
-            height: auto !important;
-            max-height: none !important;
-            overflow: visible !important;
-            resize: none !important;
-            white-space: pre-wrap !important;
-            word-break: break-word !important;
-          }
         }
       `}</style>
 
