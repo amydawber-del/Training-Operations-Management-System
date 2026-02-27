@@ -141,6 +141,20 @@ function h(row, key) {
   if (!header || !row) return "—";
   return row[header] || "—";
 }
+function fmtTrainingDate(raw) {
+  if (!raw || raw === "—") return "—";
+  // Handle ISO format (2025-02-14)
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  // Handle Date objects or parseable strings
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) {
+    const day   = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${d.getFullYear()}`;
+  }
+  return raw; // fallback — return as-is
+}
 function mapRow(headers, row) {
   const obj = {};
   headers.forEach((header, i) => { obj[header] = row[i] || ""; });
@@ -226,7 +240,7 @@ const StreetLogo = () => (
 
 function NotesBlock({ label, placeholder, value, onChange, minHeight = 68 }) {
   return (
-    <div style={{ marginTop: 10 }}>
+    <div style={{ marginTop: 10 }} className={!value || value.trim() === "" ? "notes-print-hide" : ""}>
       <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
       <textarea className="notes-input" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         style={{ width: "100%", minHeight, padding: "8px 12px", fontFamily: "Arial, sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 4, resize: "vertical", outline: "none" }} />
@@ -409,7 +423,7 @@ function TrainerView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
         <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>TRAINER INTERNAL — NOT CLIENT FACING</div>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 24, marginTop: 14, flexWrap: "wrap" }}>
-          {[["Status", h(row, "status")], ["Trainer", h(row, "trainer")], ["Date", h(row, "date")], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
+          {[["Status", h(row, "status")], ["Trainer", h(row, "trainer")], ["Date", fmtTrainingDate(h(row, "date"))], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
             <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{v}</div></div>
           ))}
         </div>
@@ -486,7 +500,7 @@ function ClientView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
         <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Street Product Training</div>
         <h1 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 700, lineHeight: 1.15 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 24, marginTop: 14, flexWrap: "wrap" }}>
-          {[["Assigned Trainer", h(row, "trainer")], ["Training Date", h(row, "date")], ["Target Go-Live", h(row, "goLive")]].map(([l, v]) => (
+          {[["Assigned Trainer", h(row, "trainer")], ["Training Date", fmtTrainingDate(h(row, "date"))], ["Target Go-Live", h(row, "goLive")]].map(([l, v]) => (
             <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{v}</div></div>
           ))}
         </div>
@@ -572,7 +586,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
         <div style={{ fontSize: 11, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Post-Training Summary Pack</div>
         <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 700, lineHeight: 1.1 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
-          {[["Training Date", h(row, "date")], ["Trainer", h(row, "trainer")], ["Attendees", h(row, "attendees")]].map(([l, v]) => (
+          {[["Training Date", fmtTrainingDate(h(row, "date"))], ["Trainer", h(row, "trainer")], ["Attendees", h(row, "attendees")]].map(([l, v]) => (
             <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600, maxWidth: 300 }}>{v}</div></div>
           ))}
         </div>
@@ -760,7 +774,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
     setSaveStatus("saving");
     setSaveMsg("");
     try {
-      const result = await saveDebriefToSheet(row, notes);
+      const result = await saveDebriefToSheet(row, notes, allNotes, selected);
       setSaveStatus("saved");
       setSaveMsg(result.action === "updated" ? "Updated existing record ✓" : "New record saved ✓");
       setTimeout(() => setSaveStatus("idle"), 4000);
@@ -795,7 +809,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
         <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>POST-TRAINING INTERNAL DEBRIEF — NOT CLIENT FACING</div>
         <h1 style={{ margin: "0 0 12px", fontSize: 20, fontWeight: 700 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-          {[["Date", h(row, "date")], ["Trainer", h(row, "trainer")], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
+          {[["Date", fmtTrainingDate(h(row, "date"))], ["Trainer", h(row, "trainer")], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
             <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{v}</div></div>
           ))}
         </div>
@@ -985,7 +999,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
 }
 
 // ─── SAVE DEBRIEF TO SHEET ────────────────────────────────────────────────
-async function saveDebriefToSheet(row, notes) {
+async function saveDebriefToSheet(row, notes, allNotes, selected) {
   if (!DEBRIEF_SHEET_URL || DEBRIEF_SHEET_URL === "YOUR_APPS_SCRIPT_EXEC_URL_HERE") {
     throw new Error("DEBRIEF_SHEET_URL is not configured. See apps-script.gs setup instructions.");
   }
@@ -1007,7 +1021,7 @@ async function saveDebriefToSheet(row, notes) {
     action:              "saveDebrief",
     company:             h(row, "company"),
     trainer:             h(row, "trainer"),
-    trainingDate:        h(row, "date"),
+    trainingDate:        fmtTrainingDate(h(row, "date")),
     invoiceValue:        h(row, "invoice"),
     theme,
     deliveryType:        notes.session_delivery_type || "",
@@ -1038,6 +1052,24 @@ async function saveDebriefToSheet(row, notes) {
     riskNotes:           notes.riskNotes        || "",
     debriefGeneral:      notes.debriefGeneral   || "",
     timeNotes:           notes.timeNotes        || "",
+    // ── Trainer Prep notes ──────────────────────────────────────────────────
+    trainerStakeholderNotes: (allNotes[`${selected}-trainer`] || {}).stakeholder    || "",
+    trainerRiskNotes:        (allNotes[`${selected}-trainer`] || {}).risk           || "",
+    trainerPrepNotes:        (allNotes[`${selected}-trainer`] || {}).prep           || "",
+    trainerAgendaNotes:      (allNotes[`${selected}-trainer`] || {}).agendaExtra    || "",
+    trainerLogisticsNotes:   (allNotes[`${selected}-trainer`] || {}).logistics      || "",
+    trainerFollowUpNotes:    (allNotes[`${selected}-trainer`] || {}).followup       || "",
+    trainerGeneralNotes:     (allNotes[`${selected}-trainer`] || {}).general        || "",
+    // ── Client Doc notes ────────────────────────────────────────────────────
+    clientAttendeeNotes:     (allNotes[`${selected}-client`] || {}).attendees       || "",
+    clientSessionNotes:      (allNotes[`${selected}-client`] || {}).session         || "",
+    clientSupportNotes:      (allNotes[`${selected}-client`] || {}).support         || "",
+    clientLogisticsNotes:    (allNotes[`${selected}-client`] || {}).logistics       || "",
+    clientGeneralNotes:      (allNotes[`${selected}-client`] || {}).clientGeneral   || "",
+    // ── Summary Pack notes ──────────────────────────────────────────────────
+    summaryOverviewNotes:    (allNotes[`${selected}-post`] || {}).overviewNotes     || "",
+    summaryResourceNotes:    (allNotes[`${selected}-post`] || {}).resources         || "",
+    summaryNextStepsNotes:   (allNotes[`${selected}-post`] || {}).nextSteps         || "",
   };
 
   const url = DEBRIEF_SHEET_URL + "?" + new URLSearchParams(payload).toString();
@@ -1114,6 +1146,7 @@ function App() {
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @media print {
           .no-print { display: none !important; }
+          .notes-print-hide { display: none !important; }
           body { background: white !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           .notes-input { border: 1px dashed #bbb !important; min-height: 28px !important; }
@@ -1150,7 +1183,15 @@ function App() {
                 </div>
               </div>
             ))}
-            <button className="print-btn" onClick={() => window.print()} style={{ background: C.blue, color: "#fff", border: "none", borderRadius: 4, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Arial", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+            <button className="print-btn" onClick={() => {
+                const tabLabels = { trainer: "Trainer Prep", client: "Client Doc", "post-client": "Summary Pack", "post-internal": "Internal Debrief" };
+                const company = currentRow ? h(currentRow, "company") : "Street Training";
+                const docType = tabLabels[view] || "Document";
+                const prev = document.title;
+                document.title = company + " - " + docType;
+                window.print();
+                document.title = prev;
+              }} style={{ background: C.blue, color: "#fff", border: "none", borderRadius: 4, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Arial", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 10H1.5A.5.5 0 011 9.5V5.5A2 2 0 013 3.5h8A2 2 0 0113 5.5v4a.5.5 0 01-.5.5H11" stroke="white" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="9.5" width="8" height="4" rx=".5" stroke="white"/><path d="M3 3.5V2a.5.5 0 01.5-.5h7a.5.5 0 01.5.5v1.5" stroke="white" strokeLinecap="round"/></svg>
               Print / Save PDF
             </button>
