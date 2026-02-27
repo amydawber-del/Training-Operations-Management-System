@@ -2524,6 +2524,7 @@ function renderUnassigned() {
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
         ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#c5d3ff;color:#2147f4;">📄 Doc</button>
       </td>
     </tr>`;
   }).join('');
@@ -2551,6 +2552,7 @@ function renderActionNeeded() {
         ${canDo('confirmBooking') ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm Booking</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="openProvisionalModal(${r._idx})" title="Set a provisional discussion date" style="border-color:#f59e0b;color:#92400e;">📅 ${provisionalDates[r._rowNum] ? '<span style="font-weight:700;">'+provisionalDates[r._rowNum].date+'</span>' : 'Provisional'}</button>
         ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#c5d3ff;color:#2147f4;">📄 Doc</button>
       </td>
     </tr>`;
   }).join('');
@@ -2631,6 +2633,8 @@ function bookingRow(r) {
   if(canDo('confirmBooking') && (r.status === 'Pending' || r.status === 'Unassigned')) actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
   // Cancel: only on upcoming non-Cancelled rows
   if(canDo('cancelBooking') && !completed && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
+  // Doc generator: always visible
+  actions.push(`<button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#c5d3ff;color:#2147f4;">📄 Doc</button>`);
   return `<tr>
     <td>${fmtDate(r.ts)}</td>
     <td>${companyCell(r)}</td>
@@ -4484,6 +4488,12 @@ async function submitRequest() {
     showToast('Training request submitted!', 'success');
     setTimeout(() => loadData(), 2000);
   } catch(e) { showToast('Error submitting request — try again', 'error'); }
+}
+
+// ===================== DOC GENERATOR =====================
+function openDocGenerator(companyName) {
+  const url = 'street-training-v5.html?company=' + encodeURIComponent(companyName);
+  window.open(url, '_blank');
 }
 
 // ===================== UTILITY =====================
