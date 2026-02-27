@@ -603,31 +603,48 @@ function ClientView({ row, notes, setNotes }) {
 
   const objectives = buildClientObjectives(h(row, "areas"), h(row, "priorities"));
 
-  // Build a flat list of all selectable sections (including Operational Settings)
+  // All selectable sections flat list
   const ALL_SECTIONS = [
     ...CLIENT_AGENDA.flatMap((day, di) =>
-      day.sections.map((sec, si) => ({ key: `d${di}s${si}`, dayIdx: di, secIdx: si, label: sec.heading, dayTitle: day.title, day: day.day }))
+      day.sections.map((sec, si) => ({ key: `d${di}s${si}`, label: sec.heading, groupLabel: day.title }))
     ),
-    { key: "ops", label: "Operational Settings Review", dayIdx: -1, secIdx: -1, dayTitle: null, day: null },
+    { key: "ops", label: "Operational Settings Review", groupLabel: "Settings" },
   ];
 
-  // Selected section keys — stored in notes; default all ticked on first open
+  // How many training days (1 or 2)
+  const trainingDays = notes.trainingDays || 1;
+  const setTrainingDays = v => sn("trainingDays")(v);
+
+  // Which sections are ticked — default all on
   const defaultSelected = ALL_SECTIONS.map(s => s.key);
   const selected = notes.agendaSections !== undefined ? notes.agendaSections : defaultSelected;
   const isSelected = key => selected.includes(key);
-  const toggle = key => {
-    const next = isSelected(key) ? selected.filter(k => k !== key) : [...selected, key];
-    sn("agendaSections")(next);
-  };
+  const toggle = key => sn("agendaSections")(isSelected(key) ? selected.filter(k => k !== key) : [...selected, key]);
   const toggleAll = () => sn("agendaSections")(selected.length === ALL_SECTIONS.length ? [] : defaultSelected);
 
-  // Build what actually renders in the doc — grouped back by day
-  const selectedSections = ALL_SECTIONS.filter(s => isSelected(s.key));
-  const showOps = isSelected("ops");
-  const renderedDays = CLIENT_AGENDA.map((day, di) => ({
-    ...day,
-    sections: day.sections.filter((_, si) => isSelected(`d${di}s${si}`)),
-  })).filter(day => day.sections.length > 0);
+  // Day assignment — each section key maps to 1 or 2, default 1
+  const dayAssign = notes.dayAssign || {};
+  const getDay = key => dayAssign[key] || 1;
+  const setDay = (key, d) => sn("dayAssign")({ ...dayAssign, [key]: d });
+
+  // Build what renders — grouped by assigned day
+  const buildDayBlocks = (dayNum) => {
+    const result = [];
+    CLIENT_AGENDA.forEach((agenda, di) => {
+      const secs = agenda.sections.filter((_, si) => {
+        const key = `d${di}s${si}`;
+        return isSelected(key) && (trainingDays === 1 || getDay(key) === dayNum);
+      });
+      if (secs.length) result.push({ ...agenda, sections: secs });
+    });
+    return result;
+  };
+
+  const showOps = isSelected("ops") && (trainingDays === 1 || getDay("ops") === 1);
+  const showOpsDay2 = isSelected("ops") && trainingDays === 2 && getDay("ops") === 2;
+  const day1Blocks = buildDayBlocks(1);
+  const day2Blocks = buildDayBlocks(2);
+  const hasAnything = day1Blocks.length > 0 || showOps || day2Blocks.length > 0 || showOpsDay2;
 
   const DataRow = ({ label, value }) => (
     <div style={{ display: "flex", gap: 16, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -637,33 +654,97 @@ function ClientView({ row, notes, setNotes }) {
   );
 
   const Tick = ({ checked }) => (
-    <div style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0, marginTop: 1,
-      background: checked ? C.blue : "#fff",
-      border: `1.5px solid ${checked ? C.blue : C.border}`,
+    <div style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+      background: checked ? C.blue : "#fff", border: `1.5px solid ${checked ? C.blue : C.border}`,
       display: "flex", alignItems: "center", justifyContent: "center" }}>
       {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+    </div>
+  );
+
+  // Mini Day 1/2 toggle shown per section when 2-day mode
+  const DayToggle = ({ sectionKey }) => {
+    const d = getDay(sectionKey);
+    return (
+      <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${C.border}`, flexShrink: 0 }}>
+        {[1, 2].map(num => (
+          <button key={num} onClick={e => { e.stopPropagation(); setDay(sectionKey, num); }}
+            style={{ padding: "2px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "Arial",
+              background: d === num ? C.blue : "#fff", color: d === num ? "#fff" : C.dark30, border: "none",
+              borderRight: num === 1 ? `1px solid ${C.border}` : "none" }}>
+            D{num}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Renders a day block in the actual document
+  const DocDayBlock = ({ dayLabel, blocks, includeOps }) => (
+    <div style={{ marginBottom: 24 }}>
+      {trainingDays === 2 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div style={{ background: C.dark, color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", padding: "4px 12px", borderRadius: 3 }}>{dayLabel}</div>
+          <div style={{ flex: 1, height: 1, background: C.border }} />
+        </div>
+      )}
+      {blocks.map((day, i) => (
+        <ClientAgendaBlock key={i} day={null} title={day.title} sections={day.sections} />
+      ))}
+      {includeOps && (
+        <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 20 }}>
+          <div style={{ background: C.grey, borderBottom: `1px solid ${C.border}`, padding: "10px 16px" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
+          </div>
+          <div style={{ padding: "12px 16px" }}>
+            {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, ii) => (
+              <div key={ii} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
   return (
     <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
 
-      {/* ── Agenda Picker (screen only) ─────────────────────────────────── */}
+      {/* ── Agenda Picker (screen only) ───────────────────────────────────── */}
       <div className="no-print" style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "14px 16px", marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+
+        {/* Top row — title + days toggle + select all */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Agenda Sections — tick to include in document
+            Agenda Builder
           </div>
-          <button onClick={toggleAll} style={{ fontSize: 11, color: C.blue, background: "none", border: `1px solid ${C.blueBorder}`, borderRadius: 3, padding: "3px 10px", cursor: "pointer", fontFamily: "Arial" }}>
-            {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Training days picker */}
+            <span style={{ fontSize: 11, color: C.dark30 }}>Training days:</span>
+            <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: `1px solid ${C.border}` }}>
+              {[1, 2].map(d => (
+                <button key={d} onClick={() => setTrainingDays(d)} style={{
+                  padding: "4px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "Arial",
+                  background: trainingDays === d ? C.blue : "#fff",
+                  color: trainingDays === d ? "#fff" : C.dark30,
+                  border: "none", borderRight: d === 1 ? `1px solid ${C.border}` : "none"
+                }}>{d} Day{d > 1 ? "s" : ""}</button>
+              ))}
+            </div>
+            <div style={{ width: 1, height: 16, background: C.border }} />
+            <button onClick={toggleAll} style={{ fontSize: 11, color: C.blue, background: "none", border: `1px solid ${C.blueBorder}`, borderRadius: 3, padding: "3px 10px", cursor: "pointer", fontFamily: "Arial" }}>
+              {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
+            </button>
+          </div>
         </div>
-        {/* Group checkboxes by day */}
-        {CLIENT_AGENDA.map((day, di) => (
+
+        {/* Section pills grouped by agenda block */}
+        {CLIENT_AGENDA.map((agenda, di) => (
           <div key={di} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{day.day} — {day.title}</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{agenda.title}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {day.sections.map((sec, si) => {
+              {agenda.sections.map((sec, si) => {
                 const key = `d${di}s${si}`;
                 const checked = isSelected(key);
                 return (
@@ -672,28 +753,62 @@ function ClientView({ row, notes, setNotes }) {
                     border: `1px solid ${checked ? C.blueBorder : C.border}` }}>
                     <Tick checked={checked} />
                     <span style={{ fontSize: 12, color: checked ? C.blue : C.dark40, fontWeight: checked ? 600 : 400 }}>{sec.heading}</span>
+                    {checked && trainingDays === 2 && <DayToggle sectionKey={key} />}
                   </div>
                 );
               })}
             </div>
           </div>
         ))}
-        {/* Operational Settings */}
+
+        {/* Operational Settings pill */}
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Always Available</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Settings</div>
           <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
             background: isSelected("ops") ? C.blueLight : "#fff",
             border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}` }}>
             <Tick checked={isSelected("ops")} />
             <span style={{ fontSize: 12, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
+            {isSelected("ops") && trainingDays === 2 && <DayToggle sectionKey="ops" />}
           </div>
         </div>
-        {selectedSections.length === 0 && (
+
+        {!hasAnything && (
           <div style={{ marginTop: 10, fontSize: 12, color: C.redDark, background: C.red, border: `1px solid #f9b4bc`, borderRadius: 3, padding: "5px 10px" }}>
             No sections selected — agenda will be empty in the document.
           </div>
         )}
+
+        {/* Preview of day assignment when 2-day mode */}
+        {trainingDays === 2 && hasAnything && (
+          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {[1, 2].map(dayNum => {
+              const dayBlocks = buildDayBlocks(dayNum);
+              const opsInDay = isSelected("ops") && getDay("ops") === dayNum;
+              const items = [
+                ...dayBlocks.flatMap(b => b.sections.map(s => s.heading)),
+                ...(opsInDay ? ["Operational Settings Review"] : []),
+              ];
+              return (
+                <div key={dayNum} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 4, padding: "8px 12px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Day {dayNum}</div>
+                  {items.length === 0
+                    ? <div style={{ fontSize: 11, color: C.dark20, fontStyle: "italic" }}>Nothing assigned</div>
+                    : items.map((item, i) => (
+                        <div key={i} style={{ fontSize: 11, color: C.dark40, marginBottom: 3, display: "flex", gap: 6, alignItems: "flex-start" }}>
+                          <div style={{ width: 3, height: 3, borderRadius: "50%", background: C.blue, marginTop: 5, flexShrink: 0 }} />
+                          {item}
+                        </div>
+                      ))
+                  }
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* ── Document ─────────────────────────────────────────────────────── */}
 
       {/* Header */}
       <div style={{ borderLeft: `3px solid ${C.blue}`, paddingLeft: 20, marginBottom: 28 }}>
@@ -723,50 +838,31 @@ function ClientView({ row, notes, setNotes }) {
         <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 16px", marginBottom: 10 }}>
           <p style={{ margin: 0, fontSize: 13, color: C.dark40, fontStyle: "italic" }}>Attendee details confirmed with your team prior to the session.</p>
         </div>
-        <NotesBlock label="Attendee Notes" placeholder="e.g. Mixed seniority across Sales and Lettings. Strong admin presence supporting daily operations. Focus on aligning workflows across departments." value={n("attendees")} onChange={sn("attendees")} minHeight={72} />
+        <NotesBlock label="Attendee Notes" placeholder="e.g. Mixed seniority across Sales and Lettings. Strong admin presence supporting daily operations." value={n("attendees")} onChange={sn("attendees")} minHeight={72} />
       </Section>
 
-      {/* Session Agenda — only ticked sections */}
+      {/* Session Agenda */}
       <Section num="2" title="Session Agenda">
-        {renderedDays.length === 0 && !showOps ? (
+        {!hasAnything ? (
           <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
             <div style={{ fontSize: 13, color: C.dark40 }}>Agenda to be confirmed based on your team's priorities and focus areas.</div>
           </div>
         ) : (
           <>
-            {renderedDays.map((day, i) => (
-              <ClientAgendaBlock key={i} day={day.day} title={day.title} sections={day.sections} />
-            ))}
-            {showOps && (
-              <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 20 }}>
-                <div style={{ background: C.grey, borderBottom: `1px solid ${C.border}`, padding: "10px 16px" }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
-                </div>
-                <div style={{ padding: "12px 16px" }}>
-                  {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, i) => (
-                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
-                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            <DocDayBlock dayLabel="Day 1" blocks={day1Blocks} includeOps={showOps} />
+            {trainingDays === 2 && (day2Blocks.length > 0 || showOpsDay2) && (
+              <DocDayBlock dayLabel="Day 2" blocks={day2Blocks} includeOps={showOpsDay2} />
             )}
           </>
         )}
-        <NotesBlock label="Session Notes" placeholder="Summarise on the day: key workflow improvements agreed, areas of high confidence, areas requiring further support, feature suggestions discussed…" value={n("session")} onChange={sn("session")} minHeight={88} />
+        <NotesBlock label="Session Notes" placeholder="Summarise on the day: key workflow improvements agreed, areas of high confidence, areas requiring further support…" value={n("session")} onChange={sn("session")} minHeight={88} />
       </Section>
 
       {/* Post-Training Support */}
       <Section num="3" title="Post-Training Support">
         <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 4, padding: "14px 18px", marginBottom: 10 }}>
           <p style={{ margin: "0 0 10px", fontSize: 13, color: C.dark40 }}>Following the session you will receive:</p>
-          {[
-            "A written recap of key workflows covered",
-            "Agreed actions and optimisation points",
-            "Relevant Help Centre and Streetwise resources",
-            "A follow-up call if required",
-          ].map((item, i) => (
+          {["A written recap of key workflows covered", "Agreed actions and optimisation points", "Relevant Help Centre and Streetwise resources", "A follow-up call if required"].map((item, i) => (
             <div key={i} style={{ display: "flex", gap: 10, marginBottom: 6, alignItems: "flex-start" }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
               <span style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{item}</span>
@@ -791,6 +887,7 @@ function ClientView({ row, notes, setNotes }) {
     </div>
   );
 }
+
 
 // ─── POST-TRAINING SUMMARY PACK (CLIENT) ──────────────────────────────────
 function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
