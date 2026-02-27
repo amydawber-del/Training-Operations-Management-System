@@ -1164,7 +1164,7 @@ function App() {
         }
       `}</style>
 
-      <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column" }}>
+      <div className="print-layout-outer" style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column" }}>
         {/* Topbar */}
         <div className="no-print" style={{ background: "#fff", borderBottom: `1px solid ${C.border}`, padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, height: 52, position: "sticky", top: 0, zIndex: 100 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -1195,13 +1195,34 @@ function App() {
               </div>
             ))}
             <button className="print-btn" onClick={() => {
+                // Set document title for PDF filename
                 const tabLabels = { trainer: "Trainer Prep", client: "Client Doc", "post-client": "Summary Pack", "post-internal": "Internal Debrief" };
                 const company = currentRow ? h(currentRow, "company") : "Street Training";
                 const docType = tabLabels[view] || "Document";
-                const prev = document.title;
+                const prevTitle = document.title;
                 document.title = company + " - " + docType;
+
+                // Temporarily strip height/overflow constraints that cause blank first pages
+                const outer = document.querySelector(".print-layout-outer");
+                const body  = document.querySelector(".print-layout-body");
+                const main  = document.querySelector(".print-layout-main");
+                const saved = [];
+                [
+                  [outer, { minHeight: "", height: "", overflow: "", display: "block" }],
+                  [body,  { minHeight: "", height: "", overflow: "", display: "block", flex: "" }],
+                  [main,  { minHeight: "", height: "", maxHeight: "", overflowY: "", flex: "", padding: "26px 38px" }],
+                ].forEach(([el, patch]) => {
+                  if (!el) return;
+                  const orig = {};
+                  Object.keys(patch).forEach(k => { orig[k] = el.style[k]; el.style[k] = patch[k]; });
+                  saved.push([el, orig]);
+                });
+
                 window.print();
-                document.title = prev;
+
+                // Restore everything
+                document.title = prevTitle;
+                saved.forEach(([el, orig]) => Object.keys(orig).forEach(k => { el.style[k] = orig[k]; }));
               }} style={{ background: C.blue, color: "#fff", border: "none", borderRadius: 4, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Arial", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 10H1.5A.5.5 0 011 9.5V5.5A2 2 0 013 3.5h8A2 2 0 0113 5.5v4a.5.5 0 01-.5.5H11" stroke="white" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="9.5" width="8" height="4" rx=".5" stroke="white"/><path d="M3 3.5V2a.5.5 0 01.5-.5h7a.5.5 0 01.5.5v1.5" stroke="white" strokeLinecap="round"/></svg>
               Print / Save PDF
@@ -1209,7 +1230,7 @@ function App() {
           </div>
         </div>
 
-        <div style={{ display: "flex", flex: 1 }}>
+        <div className="print-layout-body" style={{ display: "flex", flex: 1 }}>
           {/* Sidebar */}
           <div className="no-print" style={{ width: 236, background: "#fafafa", borderRight: `1px solid ${C.border}`, padding: "14px 10px", flexShrink: 0, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {/* Search input */}
@@ -1266,7 +1287,7 @@ function App() {
           </div>
 
           {/* Main */}
-          <div style={{ flex: 1, padding: "26px 38px", maxWidth: 880, overflowY: "auto" }}>
+          <div className="print-layout-main" style={{ flex: 1, padding: "26px 38px", maxWidth: 880, overflowY: "auto" }}>
             {!loading && currentRow && (
               <div className="no-print" style={{ background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 4, padding: "7px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.yellow, flexShrink: 0 }} />
