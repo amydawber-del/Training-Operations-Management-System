@@ -3,6 +3,11 @@ import { useState, useEffect, useMemo } from "react";
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzCvBhFSPyyoaVsui0DCxvGQQa0V7e_UCJ5LfqvcSysTHTFlNRcx4ewlET5TyouJ0ZYow/exec";
 const AGENDA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjm9SZ2nPEl_4H5Y2djxFxEzBo0nMJzKErQ4ppm_kHFOifE_tCV7z01K00K4XdReMON9VwvRaCx2fH/pub?output=csv";
 
+// ── Debrief save endpoint ─────────────────────────────────────
+// After deploying apps-script.gs as a Google Apps Script Web App,
+// replace the placeholder below with your /exec deployment URL.
+const DEBRIEF_SHEET_URL = "https://script.google.com/macros/s/AKfycbzlCjx38OiGKdwVRrhz3-etk6o-TMOxtxRQxBdCfwqqcz5tjk_SkYJatmBR5Lk4cIIrGA/exec";
+
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────
 const C = {
   blue: "#2147f4", blueLight: "#f0f4ff", blueBorder: "#c5d3ff",
@@ -730,6 +735,22 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
   const n = (k, def) => notes[k] !== undefined ? notes[k] : (def !== undefined ? def : "");
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
   const nb = (label, k, ph, mh = 68, def = "") => <NotesBlock label={label} placeholder={ph} value={n(k, def)} onChange={sn(k)} minHeight={mh} />;
+  const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
+  const [saveMsg, setSaveMsg] = useState("");
+
+  const handleSave = async () => {
+    setSaveStatus("saving");
+    setSaveMsg("");
+    try {
+      const result = await saveDebriefToSheet(row, notes);
+      setSaveStatus("saved");
+      setSaveMsg(result.action === "updated" ? "Updated existing record ✓" : "New record saved ✓");
+      setTimeout(() => setSaveStatus("idle"), 4000);
+    } catch (err) {
+      setSaveStatus("error");
+      setSaveMsg(err.message);
+    }
+  };
 
   const preConf = n("preConfidence", 0);
   const postConf = n("postConfidence", 0);
@@ -910,12 +931,102 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
         {nb("Notes", "debriefGeneral", "Anything else the team should know — people, politics, priorities…", 100)}
       </Section>
 
-      <div style={{ marginTop: 32, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
+      <div className="no-print" style={{ marginTop: 24, padding: "14px 20px", background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.blue }}>Save to Data Engine Spreadsheet</div>
+          <div style={{ fontSize: 11, color: C.dark30, marginTop: 2 }}>Saves all structured fields + notes to your Google Sheet. Re-saving updates the existing row.</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {saveStatus === "saved" && <span style={{ fontSize: 12, color: C.greenDark, fontWeight: 600 }}>{saveMsg}</span>}
+          {saveStatus === "error" && <span style={{ fontSize: 11, color: C.redDark, maxWidth: 260 }}>{saveMsg}</span>}
+          <button
+            onClick={handleSave}
+            disabled={saveStatus === "saving"}
+            style={{
+              background: saveStatus === "saved" ? C.greenDark : saveStatus === "error" ? C.redDark : C.blue,
+              color: "#fff", border: "none", borderRadius: 4, padding: "8px 18px",
+              fontSize: 12, fontWeight: 700, cursor: saveStatus === "saving" ? "not-allowed" : "pointer",
+              fontFamily: "Arial", display: "flex", alignItems: "center", gap: 6, opacity: saveStatus === "saving" ? 0.7 : 1,
+              transition: "background 0.2s"
+            }}
+          >
+            {saveStatus === "saving" ? (
+              <><span style={{ display: "inline-block", width: 10, height: 10, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> Saving…</>
+            ) : saveStatus === "saved" ? "✓ Saved" : saveStatus === "error" ? "⚠ Retry" : (
+              <><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M4 6l3 3 3-3M2 11h10" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> Save to Sheet</>
+            )}
+          </button>
+        </div>
+      </div>
+      <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
         <div style={{ fontSize: 11, color: C.dark20 }}>INTERNAL DEBRIEF — NOT FOR DISTRIBUTION</div>
         <div style={{ fontSize: 11, color: C.dark20 }}>Street Group | Training Ops</div>
       </div>
     </div>
   );
+}
+
+// ─── SAVE DEBRIEF TO SHEET ────────────────────────────────────────────────
+async function saveDebriefToSheet(row, notes) {
+  if (!DEBRIEF_SHEET_URL || DEBRIEF_SHEET_URL === "YOUR_APPS_SCRIPT_EXEC_URL_HERE") {
+    throw new Error("DEBRIEF_SHEET_URL is not configured. See apps-script.gs setup instructions.");
+  }
+
+  const prepHours     = parseFloat(notes.prepHours     || "") || 0;
+  const deliveryHours = parseFloat(notes.deliveryHours || "") || 0;
+  const followUpHours = parseFloat(notes.followUpHours || "") || 0;
+  const totalHours    = prepHours + deliveryHours + followUpHours;
+  const invoiceVal    = parseFloat((h(row, "invoice") || "").replace(/[^0-9.]/g, "")) || 0;
+  const revenuePerHour = totalHours > 0 && invoiceVal > 0
+    ? (invoiceVal / totalHours).toFixed(2) : "";
+  const preConf  = notes.preConfidence  || 0;
+  const postConf = notes.postConfidence || 0;
+  const delta    = preConf && postConf ? postConf - preConf : "";
+  const theme    = deriveTheme(h(row, "areas"));
+  const riskLevel = getRiskLevel(notes);
+
+  const payload = {
+    action:              "saveDebrief",
+    company:             h(row, "company"),
+    trainer:             h(row, "trainer"),
+    trainingDate:        h(row, "date"),
+    invoiceValue:        h(row, "invoice"),
+    theme,
+    deliveryType:        notes.session_delivery_type || "",
+    repeatClient:        notes.repeat_client_        || "",
+    prevSessionDate:     notes.prevSessionDate       || "",
+    preConfidence:       preConf  || "",
+    postConfidence:      postConf || "",
+    confidenceDelta:     delta !== "" ? (delta >= 0 ? `+${delta}` : String(delta)) : "",
+    complexity:          notes.complexity            || "",
+    adoptionRisk:        notes.adoption_risk         || "",
+    upsellOpportunity:   notes.upsell_opportunity    || "",
+    escalation:          notes.escalation_required_  || "",
+    systemMisuse:        notes.system_misuse         || "",
+    accountingReadiness: notes.accounting_readiness  || "",
+    sessionEnergy:       notes.session_energy        || "",
+    objectivesMet:       notes.objectives_met        || "",
+    prepHours:           prepHours     || "",
+    deliveryHours:       deliveryHours || "",
+    followUpHours:       followUpHours || "",
+    totalHours:          totalHours    || "",
+    revenuePerHour,
+    riskLevel:           riskLevel.toUpperCase(),
+    commercialNotes:     notes.commercialNotes  || "",
+    wentWell:            notes.wentWell         || "",
+    improved:            notes.improved         || "",
+    internalActions:     notes.internalActions  || "",
+    handoff:             notes.handoff          || "",
+    riskNotes:           notes.riskNotes        || "",
+    debriefGeneral:      notes.debriefGeneral   || "",
+    timeNotes:           notes.timeNotes        || "",
+  };
+
+  const url = DEBRIEF_SHEET_URL + "?" + new URLSearchParams(payload).toString();
+  const res = await fetch(url, { method: "GET", redirect: "follow" });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || "Unknown error from Apps Script");
+  return json;
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────
@@ -948,6 +1059,18 @@ export default function App() {
     fetch(AGENDA_CSV_URL).then(r => r.text()).then(text => { setAgendaData(parseCSV(text)); setAgendaLoading(false); }).catch(() => setAgendaLoading(false));
   }, []);
 
+  // Auto-select a company when opened from the dashboard via ?company=... URL param
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const company = params.get("company");
+    if (!company) return;
+    const idx = rows.findIndex(r =>
+      (r[HEADER_MAP.company] || "").toLowerCase() === company.toLowerCase()
+    );
+    if (idx !== -1) setSelected(idx);
+  }, [rows]);
+
   const currentRow = rows[selected];
   const areasRaw = currentRow ? h(currentRow, "areas") : "—";
   const agendaBlocks = useMemo(() => agendaData.length ? buildAgendaFromAreas(areasRaw, agendaData) : [], [areasRaw, agendaData]);
@@ -969,6 +1092,7 @@ export default function App() {
         .print-btn:hover { background: #1639d4 !important; }
         .notes-input:focus { border-color: #2147f4 !important; background: #fffef5 !important; }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
