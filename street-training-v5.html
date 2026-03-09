@@ -605,21 +605,25 @@ function ClientView({ row, notes, setNotes }) {
   // Training days (1–5)
   const trainingDays = notes.trainingDays || 1;
   const dayDates = notes.dayDates || Array(5).fill("");
-  const dayTimes = notes.dayTimes || Array(5).fill({ start: "09:00", end: "17:00" });
+  const dayTimes = notes.dayTimes || Array(5).fill({ start: "10:30", end: "16:30" });
   const setDayDate = (i, v) => { const a = [...dayDates]; a[i] = v; sn("dayDates")(a); };
   const setDayTime = (i, f, v) => {
     const a = dayTimes.map(t => ({ ...t })); a[i] = { ...(a[i] || {}), [f]: v }; sn("dayTimes")(a);
   };
 
-  // Attendees
-  const attendeesList = notes.attendeesList || [{ name: "", role: "" }, { name: "", role: "" }];
+  // Attendees — auto-populate from spreadsheet if not manually overridden
+  const rawAttendees = h(row, "attendees");
+  const defaultAttendees = (rawAttendees && rawAttendees !== "—")
+    ? rawAttendees.split(/,|;|\n/).map(s => s.trim()).filter(Boolean).map(name => ({ name, role: "" }))
+    : [{ name: "", role: "" }, { name: "", role: "" }];
+  const attendeesList = notes.attendeesList !== undefined ? notes.attendeesList : defaultAttendees;
   const setAttendees  = v => sn("attendeesList")(v);
   const addAttendee   = () => setAttendees([...attendeesList, { name: "", role: "" }]);
   const updateAttendee= (i, f, v) => { const a = [...attendeesList]; a[i] = { ...a[i], [f]: v }; setAttendees(a); };
   const removeAttendee= i => setAttendees(attendeesList.filter((_, j) => j !== i));
 
   // Modules
-  const MODULES = ["Sales module", "Lettings (Front End)", "Accounting", "Property Management", "Reporting"];
+  const MODULES = ["General", "Sales", "Lettings Front End", "Property Management", "Accounting"];
   const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
   const toggleModule    = m => sn("selectedModules")(selectedModules.includes(m) ? selectedModules.filter(x => x !== m) : [...selectedModules, m]);
 
@@ -780,7 +784,7 @@ function ClientView({ row, notes, setNotes }) {
                     style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "6px 8px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, outline: "none" }} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                  {[["Start", "start", "09:00"], ["End", "end", "17:00"]].map(([label, field, def]) => (
+                  {[["Start", "start", "10:30"], ["End", "end", "16:30"]].map(([label, field, def]) => (
                     <div key={field}>
                       <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>{label}</div>
                       <input type="time" value={(dayTimes[i] || {})[field] || def}
@@ -882,7 +886,7 @@ function ClientView({ row, notes, setNotes }) {
                         <span style={{ fontWeight: 600 }}>{fmtDisplayDate(dayDates[i])}</span>
                         {((dayTimes[i] || {}).start || (dayTimes[i] || {}).end) && (
                           <span style={{ color: C.dark40, fontSize: 12 }}>
-                            {fmtTime12((dayTimes[i] || {}).start || "09:00")} – {fmtTime12((dayTimes[i] || {}).end || "17:00")}
+                            {fmtTime12((dayTimes[i] || {}).start || "10:30")} – {fmtTime12((dayTimes[i] || {}).end || "16:30")}
                           </span>
                         )}
                       </>
@@ -1076,7 +1080,7 @@ function ClientView({ row, notes, setNotes }) {
                     </div>
                     {dayDates[dayIdx] && (
                       <span style={{ fontSize: 12, color: C.dark30, flexShrink: 0 }}>
-                        {fmtTime12((dayTimes[dayIdx] || {}).start || "09:00")} – {fmtTime12((dayTimes[dayIdx] || {}).end || "17:00")}
+                        {fmtTime12((dayTimes[dayIdx] || {}).start || "10:30")} – {fmtTime12((dayTimes[dayIdx] || {}).end || "16:30")}
                       </span>
                     )}
                     <div style={{ flex: 1, height: 1, background: C.border }} />
@@ -1102,22 +1106,6 @@ function ClientView({ row, notes, setNotes }) {
             );
           })}
 
-          {/* Feedback Table */}
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: `2px solid ${C.dark}` }}>Feedback received</h2>
-            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 110px 110px", background: C.dark }}>
-                {["Feedback Received", "Team to Action", "Priority", "Deadline"].map((col, ci) => (
-                  <div key={col} style={{ padding: "10px 12px", fontSize: 12, fontWeight: 700, color: "#fff", borderRight: ci < 3 ? `1px solid rgba(255,255,255,0.15)` : "none" }}>{col}</div>
-                ))}
-              </div>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 160px 110px 110px", borderTop: `1px solid #ddd` }}>
-                  {[0, 1, 2, 3].map(j => <div key={j} style={{ minHeight: 40, borderRight: j < 3 ? `1px solid #ddd` : "none" }} />)}
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Follow-up Actions */}
           <div style={{ marginBottom: 24 }}>
