@@ -771,25 +771,25 @@ function ClientView({ row, notes, setNotes }) {
           </div>
 
           {/* Per-day date & time pickers */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
             {Array.from({ length: trainingDays }, (_, i) => (
-              <div key={i} style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 7 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.blue, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, flexShrink: 0, boxShadow: "0 1px 4px rgba(91,75,231,0.3)" }}>{i + 1}</div>
+              <div key={i} style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "10px 12px", minWidth: 0, width: "calc(20% - 7px)", flexShrink: 0, flexGrow: 0, boxSizing: "border-box" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: "50%", background: C.blue, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, flexShrink: 0, boxShadow: "0 1px 4px rgba(91,75,231,0.3)" }}>{i + 1}</div>
                   Day {i + 1}
                 </div>
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Date</div>
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 9, color: C.dark30, fontWeight: 600, marginBottom: 3, textTransform: "uppercase" }}>Date</div>
                   <input type="date" value={dayDates[i] || ""} onChange={e => setDayDate(i, e.target.value)}
-                    style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "6px 8px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, outline: "none" }} />
+                    style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "5px 6px", fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: C.dark, outline: "none" }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5 }}>
                   {[["Start", "start", "10:30"], ["End", "end", "16:30"]].map(([label, field, def]) => (
                     <div key={field}>
-                      <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>{label}</div>
+                      <div style={{ fontSize: 9, color: C.dark30, fontWeight: 600, marginBottom: 3, textTransform: "uppercase" }}>{label}</div>
                       <input type="time" value={(dayTimes[i] || {})[field] || def}
                         onChange={e => setDayTime(i, field, e.target.value)}
-                        style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "6px 8px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, outline: "none" }} />
+                        style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "5px 4px", fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: C.dark, outline: "none" }} />
                     </div>
                   ))}
                 </div>
