@@ -4,12 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Street Training Doc Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; font-size: 14px; line-height: 20px; color: #333; background: #fff; }
+    body { font-family: "DM Sans", Arial, sans-serif; font-size: 14px; line-height: 20px; color: #12152A; background: #F4F5FA; }
   .notes-print-only { display: none; }
   </style>
 </head>
@@ -27,16 +28,31 @@ const AGENDA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjm9SZ2
 // replace the placeholder below with your /exec deployment URL.
 const DEBRIEF_SHEET_URL = "https://script.google.com/macros/s/AKfycbzlCjx38OiGKdwVRrhz3-etk6o-TMOxtxRQxBdCfwqqcz5tjk_SkYJatmBR5Lk4cIIrGA/exec";
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────
+// ─── DESIGN TOKENS — STREET.CO.UK THEME ──────────────────────────────────
 const C = {
-  blue: "#2147f4", blueLight: "#f0f4ff", blueBorder: "#c5d3ff",
-  dark: "#19191e", dark40: "#4c4d57", dark30: "#777989", dark20: "#a8aabb", dark10: "#dfe0ec",
-  grey: "#f8f8f8", border: "#e5e5e5",
-  yellow: "#d4c84a", yellowBg: "#fffef0",
-  green: "#bde4b9", greenDark: "#1a5c18", greenBg: "#e8f5e9",
-  amber: "#fff8e1", amberDark: "#856404",
-  red: "#fde8eb", redDark: "#9b1c2e",
-  orange: "#fff3e0", orangeDark: "#e65100",
+  // Brand
+  blue: "#5B4BE7",         // Street purple — primary accent
+  blueLight: "#F0EFFE",    // Soft lavender — highlight bg
+  blueBorder: "#C9C4F8",   // Lavender border
+  nav: "#12152A",          // Dark navy — topbar / header
+  navText: "rgba(255,255,255,0.7)",
+  // Neutrals
+  dark: "#12152A",
+  dark40: "#3D4166",
+  dark30: "#6B6F99",
+  dark20: "#A0A4C8",
+  dark10: "#D8DAF0",
+  grey: "#F4F5FA",         // Page background / card fill
+  cardBg: "#FFFFFF",
+  border: "#E2E4F0",
+  // Semantic
+  yellow: "#B8A526", yellowBg: "#FFFBEA",
+  green: "#A8E6CF", greenDark: "#1B6B42", greenBg: "#EDFAF4",
+  amber: "#FFF3E0", amberDark: "#9A5000",
+  red: "#FDEAED", redDark: "#9B1C2E",
+  orange: "#FFF0E6", orangeDark: "#C04000",
+  // Typography
+  font: '"DM Sans", system-ui, Arial, sans-serif',
 };
 
 // ─── MOCK DATA ─────────────────────────────────────────────────────────────
@@ -235,11 +251,13 @@ function getRiskStyle(level) {
 
 // ─── SHARED UI COMPONENTS ─────────────────────────────────────────────────
 const StreetLogo = () => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-    <div style={{ width: 28, height: 28, borderRadius: 4, background: C.blue, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <span style={{ fontSize: 15, fontWeight: 900, color: "#fff", fontFamily: "Arial" }}>S</span>
-    </div>
-    <span style={{ fontSize: 14, fontWeight: 700, color: C.dark, letterSpacing: "-0.01em" }}>street</span>
+  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+      <rect width="26" height="26" rx="6" fill="#5B4BE7"/>
+      <path d="M7 10.5C7 9.12 8.12 8 9.5 8H16.5C17.88 8 19 9.12 19 10.5C19 11.88 17.88 13 16.5 13H9.5C8.12 13 7 14.12 7 15.5C7 16.88 8.12 18 9.5 18H16.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+    <span style={{ fontSize: 14, fontWeight: 700, color: "#fff", letterSpacing: "0.01em", fontFamily: "DM Sans, sans-serif" }}>street</span>
+    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>Training</span>
   </div>
 );
 
@@ -249,9 +267,9 @@ function NotesBlock({ label, placeholder, value, onChange, minHeight = 68 }) {
       <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
       {/* Editable textarea — shown on screen, hidden on print */}
       <textarea className="notes-input notes-screen-only" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width: "100%", minHeight, padding: "8px 12px", fontFamily: "Arial, sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 4, resize: "vertical", outline: "none" }} />
+        style={{ width: "100%", minHeight, padding: "8px 12px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: "#FFFBEA", border: "1px dashed #B8A526", borderRadius: 6, resize: "vertical", outline: "none" }} />
       {/* Print-only div — auto-expands to fit all content */}
-      <div className="notes-print-only" style={{ width: "100%", padding: "8px 12px", fontFamily: "Arial, sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: C.yellowBg, border: "1px dashed #bbb", borderRadius: 4, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+      <div className="notes-print-only" style={{ width: "100%", padding: "8px 12px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, lineHeight: "20px", color: C.dark, background: "#FFFBEA", border: "1px dashed #B8A526", borderRadius: 6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
         {value}
       </div>
     </div>
@@ -268,11 +286,11 @@ function EditableBulletList({ items, onChange, placeholder = "Add item…" }) {
         <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 8, flexShrink: 0 }} />
           <input type="text" value={item} onChange={e => update(i, e.target.value)} placeholder={placeholder}
-            style={{ flex: 1, border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "3px 0", fontFamily: "Arial, sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
+            style={{ flex: 1, border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "3px 0", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
           <button className="no-print" onClick={() => remove(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.dark20, fontSize: 14, padding: "0 2px", flexShrink: 0 }}>×</button>
         </div>
       ))}
-      <button className="no-print" onClick={add} style={{ background: "none", border: `1px dashed ${C.border}`, borderRadius: 4, padding: "4px 10px", fontSize: 11, color: C.dark30, cursor: "pointer", marginTop: 4 }}>+ Add item</button>
+      <button className="no-print" onClick={add} style={{ background: "none", border: `1px dashed ${C.border}`, borderRadius: 6, padding: "4px 10px", fontSize: 11, color: C.dark30, cursor: "pointer", marginTop: 4 }}>+ Add item</button>
     </div>
   );
 }
@@ -300,7 +318,7 @@ function TagSelect({ label, k, options, notes, setNotes, colored = false }) {
           const style = colored && isActive && colorMap[opt] ? colorMap[opt] : null;
           return (
             <button key={opt} onClick={() => setNotes(prev => ({ ...prev, [k]: isActive ? "" : opt }))} style={{
-              padding: "5px 11px", borderRadius: 3, cursor: "pointer", fontFamily: "Arial, sans-serif", fontSize: 12,
+              padding: "5px 12px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 12,
               fontWeight: isActive ? 700 : 400,
               background: style ? style.bg : isActive ? C.blue : C.grey,
               color: style ? style.color : isActive ? "#fff" : C.dark40,
@@ -321,7 +339,7 @@ function ComplexityScore({ value, onChange }) {
       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
         {[1, 2, 3, 4, 5].map(n => (
           <button key={n} onClick={() => onChange(value === n ? 0 : n)} style={{
-            width: 36, height: 36, borderRadius: 4, cursor: "pointer", fontFamily: "Arial", fontSize: 14, fontWeight: 700,
+            width: 36, height: 36, borderRadius: 8, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 700,
             background: n <= value ? C.blue : C.grey,
             color: n <= value ? "#fff" : C.dark20,
             border: `1px solid ${n <= value ? C.blue : C.border}`,
@@ -348,7 +366,7 @@ function ConfidenceBar({ label, value, onChange, color }) {
       <div style={{ display: "flex", gap: 3 }}>
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
           <button key={n} onClick={() => onChange(value === n ? 0 : n)} style={{
-            flex: 1, height: 28, borderRadius: 3, cursor: "pointer", border: "none",
+            flex: 1, height: 26, borderRadius: 4, cursor: "pointer", border: "none",
             background: n <= value ? color : C.grey, opacity: n <= value ? 1 : 0.4,
             transition: "all 0.1s", fontSize: 10, color: n <= value ? "#fff" : C.dark30, fontWeight: 600
           }}>{n}</button>
@@ -360,10 +378,10 @@ function ConfidenceBar({ label, value, onChange, color }) {
 
 function Section({ num, title, children, flagged = false }) {
   return (
-    <div style={{ marginBottom: 28, pageBreakInside: "avoid", ...(flagged ? { background: C.red, border: `1px solid #f9b4bc`, borderRadius: 4, padding: "16px", marginBottom: 28 } : {}) }}>
+    <div style={{ marginBottom: 24, pageBreakInside: "avoid", ...(flagged ? { background: C.red, border: `1px solid #f9b4bc`, borderRadius: 4, padding: "16px", marginBottom: 28 } : {}) }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        {num && <div style={{ width: 22, height: 22, borderRadius: "50%", background: flagged ? C.redDark : C.blue, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, flexShrink: 0 }}>{num}</div>}
-        <h3 style={{ margin: 0, fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: flagged ? C.redDark : C.dark30 }}>{title}</h3>
+        {num && <div style={{ width: 22, height: 22, borderRadius: "50%", background: flagged ? C.redDark : C.blue, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 11, flexShrink: 0, boxShadow: "0 2px 6px rgba(91,75,231,0.3)" }}>{num}</div>}
+        <h3 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: flagged ? C.redDark : C.dark30 }}>{title}</h3>
         <div style={{ flex: 1, height: 1, background: flagged ? "#f9b4bc" : C.border }} />
         {flagged && <span style={{ fontSize: 10, fontWeight: 700, color: C.redDark, background: C.red, border: `1px solid #f9b4bc`, borderRadius: 3, padding: "2px 7px" }}>AUTO-FLAGGED</span>}
       </div>
@@ -375,16 +393,16 @@ function Section({ num, title, children, flagged = false }) {
 function Field({ label, value }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-      <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "8px 12px", fontSize: 14, color: C.dark, lineHeight: "20px" }}>{value || "—"}</div>
+      <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</div>
+      <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 14, color: C.dark, lineHeight: "20px" }}>{value || "—"}</div>
     </div>
   );
 }
 
 function PrepBlock({ title, prompts }) {
   return (
-    <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 14px", marginTop: 8 }}>
-      <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8, fontWeight: 700 }}>{title}</div>
+    <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 8px 8px 0", padding: "12px 14px", marginTop: 8 }}>
+      <div style={{ fontSize: 10, color: C.blue, letterSpacing: "0.09em", textTransform: "uppercase", marginBottom: 8, fontWeight: 700 }}>{title}</div>
       {prompts.map((p, i) => (
         <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5, fontSize: 13, color: C.dark40, lineHeight: "18px" }}>
           <span style={{ color: C.blue, flexShrink: 0, fontWeight: 700 }}>›</span><span>{p}</span>
@@ -400,8 +418,8 @@ function DynamicAgenda({ agendaBlocks, agendaLoading, areasRaw }) {
   return (
     <div>
       {agendaBlocks.map((block, bi) => (
-        <div key={bi} style={{ border: `1px solid ${C.border}`, borderRadius: 4, marginBottom: 8, overflow: "hidden" }}>
-          <div style={{ background: C.blueLight, borderBottom: `1px solid ${C.blueBorder}`, padding: "7px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+        <div key={bi} style={{ border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 8, overflow: "hidden" }}>
+          <div style={{ background: C.blueLight, borderBottom: `1px solid ${C.blueBorder}`, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.blue, flexShrink: 0 }} />
             <span style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em" }}>{block.area}</span>
             <span style={{ fontSize: 10, color: C.dark20, marginLeft: "auto" }}>{block.items.length} item{block.items.length !== 1 ? "s" : ""}</span>
@@ -428,10 +446,10 @@ function TrainerView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
   const nb = (label, k, ph, mh = 68) => <NotesBlock label={label} placeholder={ph} value={n(k)} onChange={sn(k)} minHeight={mh} />;
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
-      <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "20px 24px", marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>TRAINER INTERNAL — NOT CLIENT FACING</div>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>{h(row, "company")}</h1>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
+      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 4px rgba(18,21,42,0.07)" }}>
+        <div style={{ fontSize: 10, color: C.blue, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6, background: C.blueLight, padding: "4px 10px", borderRadius: 5, display: "inline-block" }}>TRAINER INTERNAL — NOT CLIENT FACING</div>
+        <h1 style={{ margin: 0, fontSize: 21, fontWeight: 700 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 24, marginTop: 14, flexWrap: "wrap" }}>
           {[["Status", h(row, "status")], ["Trainer", h(row, "trainer")], ["Date", fmtTrainingDate(h(row, "date"))], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
             <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{v}</div></div>
@@ -487,7 +505,7 @@ function TrainerView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
 
 // ─── CLIENT DOC VIEW ──────────────────────────────────────────────────────
 
-// Curated agenda definition — each section only shows if its area tag is detected
+// Curated agenda definition
 const CLIENT_AGENDA = [
   {
     day: "Session 1", title: "Sales & Lettings Front End",
@@ -528,7 +546,6 @@ const CLIENT_AGENDA = [
   },
 ];
 
-// Derive outcome-led objectives from areas + priorities
 function buildClientObjectives(areasStr, prioritiesStr) {
   const s = (areasStr || "").toLowerCase();
   const objectives = [];
@@ -537,25 +554,14 @@ function buildClientObjectives(areasStr, prioritiesStr) {
   const hasAccounts = s.includes("account") || s.includes("invoice") || s.includes("ledger") || s.includes("debt") || s.includes("receipt");
   const hasPM       = s.includes("property management") || s.includes("maintenance") || s.includes("contractor") || s.includes("inspection");
   const hasReporting= s.includes("report") || s.includes("dashboard") || s.includes("analytics");
-
   objectives.push("Ensure your team is utilising Street to its full capacity" +
-    (hasSales && hasLettings ? " across Sales and Lettings" :
-     hasSales ? " across Sales" :
-     hasLettings ? " across Lettings" : "") + ".");
-
-  if (hasLettings && hasAccounts)
-    objectives.push("Strengthen confidence in the Lettings invoicing workflow.");
-  if (hasAccounts)
-    objectives.push("Improve visibility and control over money movement, arrears and landlord statements.");
-  if (hasPM)
-    objectives.push("Streamline property management workflows including maintenance, contractors and inspections.");
-  if (hasReporting)
-    objectives.push("Build confidence in reporting and dashboard use for management oversight.");
+    (hasSales && hasLettings ? " across Sales and Lettings" : hasSales ? " across Sales" : hasLettings ? " across Lettings" : "") + ".");
+  if (hasLettings && hasAccounts) objectives.push("Strengthen confidence in the Lettings invoicing workflow.");
+  if (hasAccounts) objectives.push("Improve visibility and control over money movement, arrears and landlord statements.");
+  if (hasPM) objectives.push("Streamline property management workflows including maintenance, contractors and inspections.");
+  if (hasReporting) objectives.push("Build confidence in reporting and dashboard use for management oversight.");
   objectives.push("Identify opportunities to streamline admin and reduce manual duplication.");
-  if (hasSales && hasLettings)
-    objectives.push("Align Sales and Lettings processes to support smoother handovers.");
-
-  // If the client entered specific priorities, append unique ones
+  if (hasSales && hasLettings) objectives.push("Align Sales and Lettings processes to support smoother handovers.");
   if (prioritiesStr && prioritiesStr !== "—") {
     const extras = prioritiesStr.split(/\n/).map(s => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
     extras.forEach(e => { if (!objectives.some(o => o.toLowerCase().includes(e.toLowerCase().slice(0, 20)))) objectives.push(e); });
@@ -563,16 +569,12 @@ function buildClientObjectives(areasStr, prioritiesStr) {
   return objectives;
 }
 
-function ClientAgendaBlock({ day, title, sections }) {
+function ClientAgendaBlock({ title, sections }) {
   return (
-    <div style={{ marginBottom: 20, border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
-      {/* Day header */}
-      <div style={{ background: C.dark, padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", flexShrink: 0 }}>{day}</span>
-        <div style={{ width: 1, height: 12, background: "rgba(255,255,255,0.2)" }} />
+    <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
+      <div style={{ background: C.dark, padding: "10px 16px" }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>{title}</span>
       </div>
-      {/* Sections */}
       {sections.map((sec, si) => (
         <div key={si} style={{ padding: "12px 16px", borderBottom: si < sections.length - 1 ? `1px solid ${C.border}` : "none" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{sec.heading}</div>
@@ -584,8 +586,7 @@ function ClientAgendaBlock({ day, title, sections }) {
           ))}
         </div>
       ))}
-      {/* Close row */}
-      <div style={{ background: C.blueLight, padding: "8px 16px", borderTop: `1px solid ${C.blueBorder}`, display: "flex", gap: 16 }}>
+      <div style={{ background: C.blueLight, padding: "8px 16px", borderTop: `1px solid ${C.blueBorder}`, display: "flex", gap: 16, flexWrap: "wrap" }}>
         {["Q&A", "Workflow optimisation discussion", "Agreed next steps"].map((item, i) => (
           <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.blue, flexShrink: 0 }} />
@@ -598,37 +599,47 @@ function ClientAgendaBlock({ day, title, sections }) {
 }
 
 function ClientView({ row, notes, setNotes }) {
-  const n = k => notes[k] !== undefined ? notes[k] : "";
+  const n  = k => notes[k] !== undefined ? notes[k] : "";
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
 
-  const objectives = buildClientObjectives(h(row, "areas"), h(row, "priorities"));
+  // Training days (1–5)
+  const trainingDays = notes.trainingDays || 1;
+  const dayDates = notes.dayDates || Array(5).fill("");
+  const dayTimes = notes.dayTimes || Array(5).fill({ start: "09:00", end: "17:00" });
+  const setDayDate = (i, v) => { const a = [...dayDates]; a[i] = v; sn("dayDates")(a); };
+  const setDayTime = (i, f, v) => {
+    const a = dayTimes.map(t => ({ ...t })); a[i] = { ...(a[i] || {}), [f]: v }; sn("dayTimes")(a);
+  };
 
-  // All selectable sections flat list
+  // Attendees
+  const attendeesList = notes.attendeesList || [{ name: "", role: "" }, { name: "", role: "" }];
+  const setAttendees  = v => sn("attendeesList")(v);
+  const addAttendee   = () => setAttendees([...attendeesList, { name: "", role: "" }]);
+  const updateAttendee= (i, f, v) => { const a = [...attendeesList]; a[i] = { ...a[i], [f]: v }; setAttendees(a); };
+  const removeAttendee= i => setAttendees(attendeesList.filter((_, j) => j !== i));
+
+  // Modules
+  const MODULES = ["Sales module", "Lettings (Front End)", "Accounting", "Property Management", "Reporting"];
+  const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
+  const toggleModule    = m => sn("selectedModules")(selectedModules.includes(m) ? selectedModules.filter(x => x !== m) : [...selectedModules, m]);
+
+  // Agenda sections
   const ALL_SECTIONS = [
     ...CLIENT_AGENDA.flatMap((day, di) =>
       day.sections.map((sec, si) => ({ key: `d${di}s${si}`, label: sec.heading, groupLabel: day.title }))
     ),
     { key: "ops", label: "Operational Settings Review", groupLabel: "Settings" },
   ];
-
-  // How many training days (1 or 2)
-  const trainingDays = notes.trainingDays || 1;
-  const setTrainingDays = v => sn("trainingDays")(v);
-
-  // Which sections are ticked — default all on
   const defaultSelected = ALL_SECTIONS.map(s => s.key);
-  const selected = notes.agendaSections !== undefined ? notes.agendaSections : defaultSelected;
-  const isSelected = key => selected.includes(key);
-  const toggle = key => sn("agendaSections")(isSelected(key) ? selected.filter(k => k !== key) : [...selected, key]);
-  const toggleAll = () => sn("agendaSections")(selected.length === ALL_SECTIONS.length ? [] : defaultSelected);
+  const selected    = notes.agendaSections !== undefined ? notes.agendaSections : defaultSelected;
+  const isSelected  = key => selected.includes(key);
+  const toggle      = key => sn("agendaSections")(isSelected(key) ? selected.filter(k => k !== key) : [...selected, key]);
+  const toggleAll   = () => sn("agendaSections")(selected.length === ALL_SECTIONS.length ? [] : defaultSelected);
+  const dayAssign   = notes.dayAssign || {};
+  const getDay      = key => dayAssign[key] || 1;
+  const setDay      = (key, d) => sn("dayAssign")({ ...dayAssign, [key]: d });
 
-  // Day assignment — each section key maps to 1 or 2, default 1
-  const dayAssign = notes.dayAssign || {};
-  const getDay = key => dayAssign[key] || 1;
-  const setDay = (key, d) => sn("dayAssign")({ ...dayAssign, [key]: d });
-
-  // Build what renders — grouped by assigned day
-  const buildDayBlocks = (dayNum) => {
+  const buildDayBlocks = dayNum => {
     const result = [];
     CLIENT_AGENDA.forEach((agenda, di) => {
       const secs = agenda.sections.filter((_, si) => {
@@ -640,37 +651,37 @@ function ClientView({ row, notes, setNotes }) {
     return result;
   };
 
-  const showOps = isSelected("ops") && (trainingDays === 1 || getDay("ops") === 1);
-  const showOpsDay2 = isSelected("ops") && trainingDays === 2 && getDay("ops") === 2;
-  const day1Blocks = buildDayBlocks(1);
-  const day2Blocks = buildDayBlocks(2);
-  const hasAnything = day1Blocks.length > 0 || showOps || day2Blocks.length > 0 || showOpsDay2;
-
-  const DataRow = ({ label, value }) => (
-    <div style={{ display: "flex", gap: 16, padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-      <div style={{ fontSize: 12, color: C.dark30, fontWeight: 600, minWidth: 160, flexShrink: 0 }}>{label}</div>
-      <div style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{value || "—"}</div>
-    </div>
-  );
+  // Date/time helpers
+  const fmtDisplayDate = dateStr => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr + "T00:00:00");
+    if (isNaN(d)) return dateStr;
+    return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  };
+  const fmtTime12 = t => {
+    if (!t) return "";
+    const [hh, mm] = t.split(":");
+    const h = parseInt(hh); const ampm = h >= 12 ? "pm" : "am";
+    return `${h > 12 ? h - 12 : h || 12}:${mm}${ampm}`;
+  };
 
   const Tick = ({ checked }) => (
-    <div style={{ width: 15, height: 15, borderRadius: 3, flexShrink: 0,
+    <div style={{ width: 14, height: 14, borderRadius: 2, flexShrink: 0,
       background: checked ? C.blue : "#fff", border: `1.5px solid ${checked ? C.blue : C.border}`,
       display: "flex", alignItems: "center", justifyContent: "center" }}>
       {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
     </div>
   );
 
-  // Mini Day 1/2 toggle shown per section when 2-day mode
   const DayToggle = ({ sectionKey }) => {
     const d = getDay(sectionKey);
     return (
-      <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${C.border}`, flexShrink: 0 }}>
-        {[1, 2].map(num => (
+      <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${C.border}`, flexShrink: 0, marginLeft: 6 }}>
+        {Array.from({ length: trainingDays }, (_, i) => i + 1).map(num => (
           <button key={num} onClick={e => { e.stopPropagation(); setDay(sectionKey, num); }}
-            style={{ padding: "2px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "Arial",
-              background: d === num ? C.blue : "#fff", color: d === num ? "#fff" : C.dark30, border: "none",
-              borderRight: num === 1 ? `1px solid ${C.border}` : "none" }}>
+            style={{ padding: "2px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+              background: d === num ? C.blue : "#fff", color: d === num ? "#fff" : C.dark30,
+              border: "none", borderRight: num < trainingDays ? `1px solid ${C.border}` : "none" }}>
             D{num}
           </button>
         ))}
@@ -678,212 +689,513 @@ function ClientView({ row, notes, setNotes }) {
     );
   };
 
-  // Renders a day block in the actual document
-  const DocDayBlock = ({ dayLabel, blocks, includeOps }) => (
-    <div style={{ marginBottom: 24 }}>
-      {trainingDays === 2 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div style={{ background: C.dark, color: "#fff", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", padding: "4px 12px", borderRadius: 3 }}>{dayLabel}</div>
-          <div style={{ flex: 1, height: 1, background: C.border }} />
-        </div>
-      )}
-      {blocks.map((day, i) => (
-        <ClientAgendaBlock key={i} day={null} title={day.title} sections={day.sections} />
-      ))}
-      {includeOps && (
-        <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 20 }}>
-          <div style={{ background: C.grey, borderBottom: `1px solid ${C.border}`, padding: "10px 16px" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
-          </div>
-          <div style={{ padding: "12px 16px" }}>
-            {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, ii) => (
-              <div key={ii} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
-                <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const objectives = buildClientObjectives(h(row, "areas"), h(row, "priorities"));
+
+  // Info panel data
+  const infoPanelSections = [
+    {
+      title: "Contact Details", icon: "👤", color: C.blue,
+      items: [
+        { label: "Stakeholder", value: h(row, "stakeholder") },
+        { label: "Email", value: h(row, "email") },
+        { label: "Attendees", value: h(row, "attendees") },
+      ]
+    },
+    {
+      title: "Training Details", icon: "📚", color: "#7c3aed",
+      items: [
+        { label: "Assigned Trainer", value: h(row, "trainer") },
+        { label: "Status", value: h(row, "status") },
+        { label: "Training Type", value: h(row, "trainingType") },
+        { label: "Areas", value: h(row, "areas") },
+        { label: "Familiarity", value: h(row, "familiar") },
+        { label: "Priorities", value: h(row, "priorities") },
+        { label: "Target Go-Live", value: h(row, "goLive") },
+      ]
+    },
+    {
+      title: "Financials", icon: "💰", color: C.greenDark,
+      items: [
+        { label: "Invoice Value", value: h(row, "invoice") && h(row, "invoice") !== "—" ? `£${h(row, "invoice")}` : "—" },
+        { label: "Score", value: h(row, "score") },
+        { label: "Booked On", value: fmtTrainingDate(h(row, "booked")) },
+      ]
+    },
+    {
+      title: "Referral", icon: "🔗", color: C.amberDark,
+      items: [
+        { label: "Referred By", value: h(row, "referred") },
+        { label: "Notes", value: h(row, "col1") },
+      ]
+    },
+    {
+      title: "Logistics", icon: "📍", color: C.redDark,
+      items: [
+        { label: "Location", value: h(row, "location") },
+        { label: "Parking / Venue", value: h(row, "parking") },
+        { label: "Venue Setup", value: h(row, "venueSetup") },
+        { label: "Specific Features", value: h(row, "features") },
+        { label: "Post-Training", value: h(row, "followUp") },
+        { label: "Additional Info", value: h(row, "anything") },
+      ]
+    },
+  ];
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
+    <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
 
-      {/* ── Agenda Picker (screen only) ───────────────────────────────────── */}
-      <div className="no-print" style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "14px 16px", marginBottom: 24 }}>
+      {/* Main Document Column */}
+      <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* Top row — title + days toggle + select all */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Agenda Builder
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Training days picker */}
-            <span style={{ fontSize: 11, color: C.dark30 }}>Training days:</span>
-            <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: `1px solid ${C.border}` }}>
-              {[1, 2].map(d => (
-                <button key={d} onClick={() => setTrainingDays(d)} style={{
-                  padding: "4px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "Arial",
+        {/* Agenda Builder Controls (screen only) */}
+        <div className="no-print" style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 20, boxShadow: "0 1px 4px rgba(18,21,42,0.06)" }}>
+
+          {/* Training Days */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Number of Training Days</div>
+            <div style={{ display: "flex", borderRadius: 4, overflow: "hidden", border: `1px solid ${C.border}`, width: "fit-content" }}>
+              {[1, 2, 3, 4, 5].map(d => (
+                <button key={d} onClick={() => sn("trainingDays")(d)} style={{
+                  padding: "7px 18px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
                   background: trainingDays === d ? C.blue : "#fff",
-                  color: trainingDays === d ? "#fff" : C.dark30,
-                  border: "none", borderRight: d === 1 ? `1px solid ${C.border}` : "none"
+                  color: trainingDays === d ? "#fff" : C.dark40,
+                  border: "none", borderRight: d < 5 ? `1px solid ${C.border}` : "none",
+                  transition: "all 0.1s"
                 }}>{d} Day{d > 1 ? "s" : ""}</button>
               ))}
             </div>
-            <div style={{ width: 1, height: 16, background: C.border }} />
-            <button onClick={toggleAll} style={{ fontSize: 11, color: C.blue, background: "none", border: `1px solid ${C.blueBorder}`, borderRadius: 3, padding: "3px 10px", cursor: "pointer", fontFamily: "Arial" }}>
-              {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
-            </button>
           </div>
-        </div>
 
-        {/* Section pills grouped by agenda block */}
-        {CLIENT_AGENDA.map((agenda, di) => (
-          <div key={di} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{agenda.title}</div>
+          {/* Per-day date & time pickers */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 16 }}>
+            {Array.from({ length: trainingDays }, (_, i) => (
+              <div key={i} style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 7 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.blue, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, flexShrink: 0, boxShadow: "0 1px 4px rgba(91,75,231,0.3)" }}>{i + 1}</div>
+                  Day {i + 1}
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>Date</div>
+                  <input type="date" value={dayDates[i] || ""} onChange={e => setDayDate(i, e.target.value)}
+                    style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "6px 8px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, outline: "none" }} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                  {[["Start", "start", "09:00"], ["End", "end", "17:00"]].map(([label, field, def]) => (
+                    <div key={field}>
+                      <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase" }}>{label}</div>
+                      <input type="time" value={(dayTimes[i] || {})[field] || def}
+                        onChange={e => setDayTime(i, field, e.target.value)}
+                        style={{ width: "100%", border: `1px solid ${C.border}`, borderRadius: 3, padding: "6px 8px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, outline: "none" }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modules */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Topics & Modules</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {agenda.sections.map((sec, si) => {
-                const key = `d${di}s${si}`;
-                const checked = isSelected(key);
-                return (
-                  <div key={key} onClick={() => toggle(key)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
-                    background: checked ? C.blueLight : "#fff",
-                    border: `1px solid ${checked ? C.blueBorder : C.border}` }}>
-                    <Tick checked={checked} />
-                    <span style={{ fontSize: 12, color: checked ? C.blue : C.dark40, fontWeight: checked ? 600 : 400 }}>{sec.heading}</span>
-                    {checked && trainingDays === 2 && <DayToggle sectionKey={key} />}
-                  </div>
-                );
-              })}
+              {MODULES.map(m => (
+                <div key={m} onClick={() => toggleModule(m)} style={{
+                  display: "flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 4, cursor: "pointer",
+                  background: selectedModules.includes(m) ? C.blueLight : C.grey,
+                  border: `1px solid ${selectedModules.includes(m) ? C.blueBorder : C.border}`
+                }}>
+                  <Tick checked={selectedModules.includes(m)} />
+                  <span style={{ fontSize: 12, color: selectedModules.includes(m) ? C.blue : C.dark40, fontWeight: selectedModules.includes(m) ? 600 : 400 }}>{m}</span>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
 
-        {/* Operational Settings pill */}
-        <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Settings</div>
-          <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 10px", borderRadius: 4, cursor: "pointer",
-            background: isSelected("ops") ? C.blueLight : "#fff",
-            border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}` }}>
-            <Tick checked={isSelected("ops")} />
-            <span style={{ fontSize: 12, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
-            {isSelected("ops") && trainingDays === 2 && <DayToggle sectionKey="ops" />}
+          {/* Agenda section toggles */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>Agenda Sections</div>
+              <button onClick={toggleAll} style={{ fontSize: 11, color: C.blue, background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 6, padding: "4px 12px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+                {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
+              </button>
+            </div>
+            {CLIENT_AGENDA.map((agenda, di) => (
+              <div key={di} style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{agenda.title}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {agenda.sections.map((sec, si) => {
+                    const key = `d${di}s${si}`; const chk = isSelected(key);
+                    return (
+                      <div key={key} onClick={() => toggle(key)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 4, cursor: "pointer",
+                        background: chk ? C.blueLight : C.grey, border: `1px solid ${chk ? C.blueBorder : C.border}`, borderRadius: 6 }}>
+                        <Tick checked={chk} />
+                        <span style={{ fontSize: 11, color: chk ? C.blue : C.dark40, fontWeight: chk ? 600 : 400 }}>{sec.heading}</span>
+                        {chk && trainingDays > 1 && <DayToggle sectionKey={key} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 4, cursor: "pointer", marginTop: 4,
+              background: isSelected("ops") ? C.blueLight : C.grey, border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}`, borderRadius: 6 }}>
+              <Tick checked={isSelected("ops")} />
+              <span style={{ fontSize: 11, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
+              {isSelected("ops") && trainingDays > 1 && <DayToggle sectionKey="ops" />}
+            </div>
           </div>
         </div>
 
-        {!hasAnything && (
-          <div style={{ marginTop: 10, fontSize: 12, color: C.redDark, background: C.red, border: `1px solid #f9b4bc`, borderRadius: 3, padding: "5px 10px" }}>
-            No sections selected — agenda will be empty in the document.
-          </div>
-        )}
+        {/* DOCUMENT */}
+        <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
 
-        {/* Preview of day assignment when 2-day mode */}
-        {trainingDays === 2 && hasAnything && (
-          <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {[1, 2].map(dayNum => {
-              const dayBlocks = buildDayBlocks(dayNum);
-              const opsInDay = isSelected("ops") && getDay("ops") === dayNum;
-              const items = [
-                ...dayBlocks.flatMap(b => b.sections.map(s => s.heading)),
-                ...(opsInDay ? ["Operational Settings Review"] : []),
-              ];
-              return (
-                <div key={dayNum} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 4, padding: "8px 12px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Day {dayNum}</div>
-                  {items.length === 0
-                    ? <div style={{ fontSize: 11, color: C.dark20, fontStyle: "italic" }}>Nothing assigned</div>
-                    : items.map((item, i) => (
-                        <div key={i} style={{ fontSize: 11, color: C.dark40, marginBottom: 3, display: "flex", gap: 6, alignItems: "flex-start" }}>
-                          <div style={{ width: 3, height: 3, borderRadius: "50%", background: C.blue, marginTop: 5, flexShrink: 0 }} />
-                          {item}
+          {/* Header */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+              <div style={{ textAlign: "right", lineHeight: 1.1 }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: C.dark, letterSpacing: "0.2em" }}>S<span style={{ fontSize: 12 }}>TREET</span></div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.dark, letterSpacing: "0.2em" }}>GROUP</div>
+              </div>
+            </div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, margin: "0 0 4px", color: C.dark, lineHeight: 1.2 }}>
+              {h(row, "company")} x Street Group
+            </h1>
+            <div style={{ fontSize: 14, color: C.dark30 }}>Meeting Agenda</div>
+          </div>
+
+          {/* Agenda Info Table */}
+          <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", marginBottom: 24, boxShadow: "0 1px 4px rgba(18,21,42,0.06)" }}>
+
+            {/* Date(s) of training */}
+            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", borderBottom: `1px solid #ddd` }}>
+              <div style={{ padding: "12px 14px", background: "#f8f8f8", borderRight: `1px solid #ddd`, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span>📅</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>Date(s) of training</span>
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                {Array.from({ length: trainingDays }, (_, i) => (
+                  <div key={i} style={{ marginBottom: i < trainingDays - 1 ? 7 : 0, fontSize: 13, color: C.dark, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                    {trainingDays > 1 && (
+                      <span style={{ fontWeight: 700, color: C.blue, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 40 }}>Day {i + 1}</span>
+                    )}
+                    {dayDates[i] ? (
+                      <>
+                        <span style={{ fontWeight: 600 }}>{fmtDisplayDate(dayDates[i])}</span>
+                        {((dayTimes[i] || {}).start || (dayTimes[i] || {}).end) && (
+                          <span style={{ color: C.dark40, fontSize: 12 }}>
+                            {fmtTime12((dayTimes[i] || {}).start || "09:00")} – {fmtTime12((dayTimes[i] || {}).end || "17:00")}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ color: C.dark20, fontStyle: "italic" }}>[Session Date]</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Logistics & Technical Setup */}
+            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", borderBottom: `1px solid #ddd` }}>
+              <div style={{ padding: "12px 14px", background: "#f8f8f8", borderRight: `1px solid #ddd`, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span>📍</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>Logistics & Technical Setup</span>
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                {h(row, "location") !== "—" && <div style={{ marginBottom: 4, fontSize: 13 }}><strong>Location:</strong> {h(row, "location")}</div>}
+                {h(row, "parking") !== "—" && <div style={{ marginBottom: 4, fontSize: 13 }}><strong>Parking / Info:</strong> {h(row, "parking")}</div>}
+                {h(row, "venueSetup") !== "—" && <div style={{ marginBottom: 8, fontSize: 13 }}><strong>Venue Setup:</strong> {h(row, "venueSetup")}</div>}
+                <div style={{ color: C.dark40, fontSize: 12, marginBottom: 8 }}>Equipment checklist (projector, screen, Wi-Fi, HDMI, extension leads, etc.) · Timing for breaks and wrap-up</div>
+                <textarea className="notes-screen-only" value={n("logisticsNotes")} onChange={e => sn("logisticsNotes")(e.target.value)}
+                  placeholder="Additional logistics notes…"
+                  style={{ width: "100%", minHeight: 44, padding: "6px 10px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 3, resize: "vertical", outline: "none" }} />
+                <div className="notes-print-only" style={{ fontSize: 13, color: C.dark, whiteSpace: "pre-wrap" }}>{n("logisticsNotes")}</div>
+              </div>
+            </div>
+
+            {/* Client / Stakeholder / Attendees */}
+            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", borderBottom: `1px solid #ddd` }}>
+              <div style={{ padding: "12px 14px", background: "#f8f8f8", borderRight: `1px solid #ddd` }}>
+                <span style={{ fontSize: 14 }}>📍</span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginTop: 2, marginBottom: 4 }}>Client / Company</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.dark40, marginBottom: 4 }}>Stakeholder (Authorising Training)</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.dark40 }}>Attendees / roles</div>
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Client / Company</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>{h(row, "company")}</div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>Stakeholder (Authorising Training)</div>
+                  <div style={{ fontSize: 13, color: C.dark }}>{h(row, "stakeholder")}</div>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", marginBottom: 6 }}>Attendees & Roles</div>
+                  <div className="no-print">
+                    {attendeesList.map((att, i) => (
+                      <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
+                        <span style={{ color: C.blue, fontSize: 12, flexShrink: 0 }}>•</span>
+                        <input type="text" value={att.name} onChange={e => updateAttendee(i, "name", e.target.value)} placeholder="Attendee name"
+                          style={{ flex: 1, border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "3px 4px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
+                        <span style={{ color: C.dark20 }}>—</span>
+                        <input type="text" value={att.role} onChange={e => updateAttendee(i, "role", e.target.value)} placeholder="Role / Job Title"
+                          style={{ flex: 1, border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "3px 4px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
+                        <button onClick={() => removeAttendee(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.dark20, fontSize: 15, padding: "0 2px", flexShrink: 0 }}>×</button>
+                      </div>
+                    ))}
+                    <button onClick={addAttendee} style={{ background: "none", border: `1px dashed ${C.border}`, borderRadius: 3, padding: "3px 10px", fontSize: 11, color: C.dark30, cursor: "pointer", marginTop: 2 }}>+ Add attendee</button>
+                    <div style={{ marginTop: 8 }}>
+                      <input type="text" value={n("earlyLeaveNotes")} onChange={e => sn("earlyLeaveNotes")(e.target.value)}
+                        placeholder="(Include notes on if/when anyone needs to leave early)"
+                        style={{ width: "100%", border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "3px 4px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark40, fontStyle: "italic", background: "transparent", outline: "none" }} />
+                    </div>
+                  </div>
+                  <div className="notes-print-only">
+                    {attendeesList.filter(a => a.name).map((att, i) => (
+                      <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, fontSize: 13 }}>
+                        <span style={{ color: C.blue }}>•</span>
+                        <span>{att.name}{att.role ? ` — ${att.role}` : ""}</span>
+                      </div>
+                    ))}
+                    {n("earlyLeaveNotes") && <div style={{ fontSize: 12, color: C.dark40, fontStyle: "italic", marginTop: 4 }}>{n("earlyLeaveNotes")}</div>}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Dietary Requirements</div>
+                  <input type="text" value={n("dietary")} onChange={e => sn("dietary")(e.target.value)} placeholder="Any dietary requirements…"
+                    className="notes-screen-only"
+                    style={{ width: "100%", border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "4px 0", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
+                  <div className="notes-print-only" style={{ fontSize: 13, color: C.dark }}>{n("dietary") || "None noted"}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Topics & Modules */}
+            <div style={{ display: "grid", gridTemplateColumns: "200px 1fr" }}>
+              <div style={{ padding: "12px 14px", background: "#f8f8f8", borderRight: `1px solid #ddd` }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 3 }}>Topics & Modules to Cover</div>
+                <div style={{ fontSize: 11, color: C.dark30 }}>As selected by the client</div>
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                {MODULES.map(m => {
+                  const checked = selectedModules.includes(m);
+                  return (
+                    <div key={m} onClick={() => toggleModule(m)} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, cursor: "pointer" }}>
+                      <div style={{ width: 14, height: 14, border: `1.5px solid ${checked ? C.blue : "#bbb"}`, borderRadius: 2, flexShrink: 0,
+                        background: checked ? C.blue : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <span style={{ fontSize: 13, color: checked ? C.dark : C.dark30 }}>{m}</span>
+                    </div>
+                  );
+                })}
+                <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: C.dark30, flexShrink: 0 }}>Other areas:</span>
+                  <input type="text" value={n("otherAreas")} onChange={e => sn("otherAreas")(e.target.value)}
+                    placeholder="Specifically requested features/workflows or challenges"
+                    className="notes-screen-only"
+                    style={{ flex: 1, border: "none", borderBottom: `1px dashed ${C.yellow}`, padding: "2px 4px", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, background: "transparent", outline: "none" }} />
+                  <span className="notes-print-only" style={{ fontSize: 12, color: C.dark }}>{n("otherAreas") || "—"}</span>
+                </div>
+              </div>
+            </div>
+
+
+          </div>
+
+          {/* Topics Covered */}
+          <div style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, paddingBottom: 8, borderBottom: `2px solid ${C.dark}` }}>Topics covered</h2>
+
+            <div style={{ marginBottom: 14 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, fontStyle: "italic", color: C.dark40, marginBottom: 8 }}>Welcome & Introduction</h3>
+              {["Brief round of introductions", "Overview of session purpose and structure"].map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5, fontSize: 13, color: C.dark, paddingLeft: 12 }}>
+                  <span style={{ color: C.blue }}>•</span><span>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, fontStyle: "italic", color: C.dark40, marginBottom: 8 }}>Training Context & Goals</h3>
+              <div style={{ display: "flex", gap: 8, marginBottom: 6, fontSize: 13, color: C.dark, paddingLeft: 12 }}>
+                <span style={{ color: C.blue, flexShrink: 0 }}>•</span>
+                <span>Familiarity with Street.co.uk: <strong>{h(row, "familiar")}</strong></span>
+              </div>
+              <div style={{ display: "flex", gap: 8, fontSize: 13, color: C.dark, paddingLeft: 12 }}>
+                <span style={{ color: C.blue, flexShrink: 0, marginTop: 1 }}>•</span>
+                <div>
+                  <div style={{ marginBottom: 6 }}>Review of top objectives for the training:</div>
+                  {objectives.slice(0, 3).map((obj, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, paddingLeft: 10, fontSize: 13, color: C.dark40 }}>
+                      <span style={{ flexShrink: 0 }}>{i + 1}.</span><span>{obj}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, fontStyle: "italic", color: C.dark40, marginBottom: 8 }}>Addressing Specific Needs</h3>
+              {["Walk through client-identified challenges or frustrations", "Review any pre-submitted questions or reference documents"].map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 5, fontSize: 13, color: C.dark, paddingLeft: 12 }}>
+                  <span style={{ color: C.blue }}>•</span><span>{item}</span>
+                </div>
+              ))}
+              {h(row, "features") !== "—" && (
+                <div style={{ marginTop: 8, marginLeft: 12, background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 3px 3px 0", padding: "8px 12px", fontSize: 12, color: C.dark }}>
+                  <strong>Specific workflows/features requested:</strong> {h(row, "features")}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 700, fontStyle: "italic", color: C.dark40, marginBottom: 8 }}>Interactive / Hands-On Segment</h3>
+              <div style={{ display: "flex", gap: 8, fontSize: 13, color: C.dark, paddingLeft: 12 }}>
+                <span style={{ color: C.blue }}>•</span>
+                <span>Live walkthroughs, use cases, or practice sessions tailored to client's top priorities</span>
+              </div>
+            </div>
+
+            <NotesBlock label="Session Notes" placeholder="Summarise on the day: key workflow improvements agreed, areas of high confidence, areas requiring further support…"
+              value={n("session")} onChange={sn("session")} minHeight={88} />
+          </div>
+
+          {/* Day-by-day Agenda */}
+          {Array.from({ length: trainingDays }, (_, dayIdx) => {
+            const dayNum    = dayIdx + 1;
+            const dayBlocks = buildDayBlocks(dayNum);
+            const opsInDay  = isSelected("ops") && (trainingDays === 1 || getDay("ops") === dayNum);
+            if (dayBlocks.length === 0 && !opsInDay) return null;
+            return (
+              <div key={dayNum} style={{ marginBottom: 24 }}>
+                {trainingDays > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                    <div style={{ background: C.dark, color: "#fff", padding: "6px 16px", borderRadius: 3, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", flexShrink: 0 }}>
+                      Day {dayNum}{dayDates[dayIdx] ? ` — ${fmtDisplayDate(dayDates[dayIdx])}` : ""}
+                    </div>
+                    {dayDates[dayIdx] && (
+                      <span style={{ fontSize: 12, color: C.dark30, flexShrink: 0 }}>
+                        {fmtTime12((dayTimes[dayIdx] || {}).start || "09:00")} – {fmtTime12((dayTimes[dayIdx] || {}).end || "17:00")}
+                      </span>
+                    )}
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                  </div>
+                )}
+                {dayBlocks.map((day, i) => <ClientAgendaBlock key={i} title={day.title} sections={day.sections} />)}
+                {opsInDay && (
+                  <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden", marginBottom: 16 }}>
+                    <div style={{ background: C.blueLight, borderBottom: `1px solid ${C.blueBorder}`, padding: "10px 16px" }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em" }}>Operational Settings Review</span>
+                    </div>
+                    <div style={{ padding: "12px 16px" }}>
+                      {["Roles & permissions", "Notification preferences", "Custom workflows and checklists"].map((item, ii) => (
+                        <div key={ii} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+                          <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, color: C.dark40 }}>{item}</span>
                         </div>
-                      ))
-                  }
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Feedback Table */}
+          <div style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 14, paddingBottom: 8, borderBottom: `2px solid ${C.dark}` }}>Feedback received</h2>
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 160px 110px 110px", background: C.dark }}>
+                {["Feedback Received", "Team to Action", "Priority", "Deadline"].map((col, ci) => (
+                  <div key={col} style={{ padding: "10px 12px", fontSize: 12, fontWeight: 700, color: "#fff", borderRight: ci < 3 ? `1px solid rgba(255,255,255,0.15)` : "none" }}>{col}</div>
+                ))}
+              </div>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 160px 110px 110px", borderTop: `1px solid #ddd` }}>
+                  {[0, 1, 2, 3].map(j => <div key={j} style={{ minHeight: 40, borderRight: j < 3 ? `1px solid #ddd` : "none" }} />)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Follow-up Actions */}
+          <div style={{ marginBottom: 24 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: `2px solid ${C.dark}` }}>Follow-up actions</h2>
+            <NotesBlock label="" placeholder="List agreed follow-up actions and owners…" value={n("followupActions")} onChange={sn("followupActions")} minHeight={80} />
+          </div>
+
+          {/* Next Steps */}
+          <div style={{ marginBottom: 32 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12, paddingBottom: 8, borderBottom: `2px solid ${C.dark}` }}>Next Steps & Post-Training Support</h2>
+            <div style={{ fontSize: 13, color: C.dark40, marginBottom: 10 }}>How they'd like to receive follow-up support:</div>
+            {["Email recap & resources", "Follow-up call", "Additional session"].map(opt => {
+              const checked = (notes.followupOptions || []).includes(opt);
+              return (
+                <div key={opt} onClick={() => {
+                  const cur = notes.followupOptions || [];
+                  sn("followupOptions")(checked ? cur.filter(x => x !== opt) : [...cur, opt]);
+                }} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, cursor: "pointer" }}>
+                  <div style={{ width: 14, height: 14, border: `1.5px solid ${checked ? C.blue : "#bbb"}`, borderRadius: 2, flexShrink: 0,
+                    background: checked ? C.blue : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <span style={{ fontSize: 13, color: C.dark }}>{opt}</span>
                 </div>
               );
             })}
-          </div>
-        )}
-      </div>
-
-      {/* ── Document ─────────────────────────────────────────────────────── */}
-
-      {/* Header */}
-      <div style={{ borderLeft: `3px solid ${C.blue}`, paddingLeft: 20, marginBottom: 28 }}>
-        <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>Street Product Training</div>
-        <h1 style={{ margin: "0 0 4px", fontSize: 26, fontWeight: 700, lineHeight: 1.15 }}>{h(row, "company")}</h1>
-        <div style={{ display: "flex", gap: 24, marginTop: 14, flexWrap: "wrap" }}>
-          {[["Assigned Trainer", h(row, "trainer")], ["Training Date", fmtTrainingDate(h(row, "date"))], ["Target Go-Live", h(row, "goLive")]].map(([l, v]) => (
-            <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{v}</div></div>
-          ))}
-        </div>
-      </div>
-
-      {/* Training Objectives */}
-      <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "16px 20px", marginBottom: 28 }}>
-        <div style={{ fontSize: 11, color: C.blue, textTransform: "uppercase", marginBottom: 10, fontWeight: 700, letterSpacing: "0.06em" }}>Training Objectives</div>
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: C.dark40 }}>This session is designed to:</p>
-        {objectives.map((obj, i) => (
-          <div key={i} style={{ display: "flex", gap: 10, marginBottom: 7, alignItems: "flex-start" }}>
-            <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
-            <span style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{obj}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Attendees */}
-      <Section num="1" title="Attendees">
-        <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 16px", marginBottom: 10 }}>
-          <p style={{ margin: 0, fontSize: 13, color: C.dark40, fontStyle: "italic" }}>Attendee details confirmed with your team prior to the session.</p>
-        </div>
-        <NotesBlock label="Attendee Notes" placeholder="e.g. Mixed seniority across Sales and Lettings. Strong admin presence supporting daily operations." value={n("attendees")} onChange={sn("attendees")} minHeight={72} />
-      </Section>
-
-      {/* Session Agenda */}
-      <Section num="2" title="Session Agenda">
-        {!hasAnything ? (
-          <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
-            <div style={{ fontSize: 13, color: C.dark40 }}>Agenda to be confirmed based on your team's priorities and focus areas.</div>
-          </div>
-        ) : (
-          <>
-            <DocDayBlock dayLabel="Day 1" blocks={day1Blocks} includeOps={showOps} />
-            {trainingDays === 2 && (day2Blocks.length > 0 || showOpsDay2) && (
-              <DocDayBlock dayLabel="Day 2" blocks={day2Blocks} includeOps={showOpsDay2} />
-            )}
-          </>
-        )}
-        <NotesBlock label="Session Notes" placeholder="Summarise on the day: key workflow improvements agreed, areas of high confidence, areas requiring further support…" value={n("session")} onChange={sn("session")} minHeight={88} />
-      </Section>
-
-      {/* Post-Training Support */}
-      <Section num="3" title="Post-Training Support">
-        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 4, padding: "14px 18px", marginBottom: 10 }}>
-          <p style={{ margin: "0 0 10px", fontSize: 13, color: C.dark40 }}>Following the session you will receive:</p>
-          {["A written recap of key workflows covered", "Agreed actions and optimisation points", "Relevant Help Centre and Streetwise resources", "A follow-up call if required"].map((item, i) => (
-            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 6, alignItems: "flex-start" }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
-              <span style={{ fontSize: 14, color: C.dark, lineHeight: "20px" }}>{item}</span>
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, textTransform: "uppercase", marginBottom: 4 }}>Any final questions or outstanding items to note</div>
+              <NotesBlock label="" placeholder="Final questions or outstanding items…" value={n("outstandingItems")} onChange={sn("outstandingItems")} minHeight={60} />
             </div>
-          ))}
+          </div>
+
+          {/* Footer */}
+          <div style={{ paddingTop: 16, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, color: C.dark20 }}>STREET.CO.UK — CONFIDENTIAL</div>
+            <div style={{ fontSize: 11, color: C.dark20 }}>TRAINING DOCUMENT</div>
+          </div>
         </div>
-        <NotesBlock label="Support Notes" placeholder="Any specific commitments or follow-up arrangements agreed with the client…" value={n("support")} onChange={sn("support")} />
-      </Section>
-
-      {/* Location & Logistics */}
-      <Section num="4" title="Location & Logistics">
-        <DataRow label="Venue" value={h(row, "location")} />
-        <DataRow label="Parking / Info" value={h(row, "parking")} />
-        <DataRow label="Setup Confirmed" value={h(row, "venueSetup")} />
-        <NotesBlock label="Logistics Notes" placeholder="Additional venue or setup details…" value={n("logistics")} onChange={sn("logistics")} />
-      </Section>
-
-      <div style={{ marginTop: 32, paddingTop: 16, borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 11, color: C.dark20 }}>STREET.CO.UK — CONFIDENTIAL</div>
-        <div style={{ fontSize: 11, color: C.dark20 }}>TRAINING DOCUMENT</div>
       </div>
+
+      {/* Right Info Panel (screen only) */}
+      <div className="no-print" style={{ width: 258, flexShrink: 0, position: "sticky", top: 60, alignSelf: "flex-start", maxHeight: "calc(100vh - 80px)", overflowY: "auto" }}>
+        <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 16px rgba(18,21,42,0.10)" }}>
+          <div style={{ background: C.nav, padding: "12px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Reference Panel</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{h(row, "company")}</div>
+            {h(row, "status") && h(row, "status") !== "—" && (
+              <span style={{ display: "inline-block", marginTop: 6, fontSize: 9, fontWeight: 700,
+                background: h(row, "status") === "Confirmed" ? "#bde4b9" : "#fff8e1",
+                color: h(row, "status") === "Confirmed" ? "#1a5c18" : "#856404",
+                borderRadius: 3, padding: "2px 7px", letterSpacing: "0.05em" }}>
+                {h(row, "status").toUpperCase()}
+              </span>
+            )}
+          </div>
+          {infoPanelSections.map((section, si) => {
+            const vis = section.items.filter(item => item.value && item.value !== "—");
+            if (vis.length === 0) return null;
+            return (
+              <div key={si} style={{ borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ padding: "7px 14px", background: "#fafafa", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11 }}>{section.icon}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: section.color, textTransform: "uppercase", letterSpacing: "0.07em" }}>{section.title}</span>
+                </div>
+                <div style={{ padding: "10px 14px" }}>
+                  {vis.map((item, ii) => (
+                    <div key={ii} style={{ marginBottom: ii < vis.length - 1 ? 9 : 0 }}>
+                      <div style={{ fontSize: 9, color: C.dark30, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{item.label}</div>
+                      <div style={{ fontSize: 12, color: C.dark, lineHeight: "16px" }}>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 }
@@ -923,9 +1235,9 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
   };
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
       {/* Doc header */}
-      <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: `3px solid ${C.blue}` }}>
+      <div style={{ marginBottom: 28, paddingBottom: 20, borderBottom: `3px solid ${C.blue}`, paddingTop: 0 }}>
         <div style={{ fontSize: 10, color: C.blue, letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 700, marginBottom: 8 }}>STREET PRODUCT TRAINING</div>
         <div style={{ fontSize: 11, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Post-Training Summary Pack</div>
         <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 700, lineHeight: 1.1 }}>{h(row, "company")}</h1>
@@ -939,10 +1251,10 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
       {/* Confidence Delta */}
       <Section num={null} title="Confidence Score">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 14px" }}>
+          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
             <ConfidenceBar label="Pre-Session Confidence" value={preConf} onChange={v => sn("preConfidence")(v)} color="#ff9800" />
           </div>
-          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 14px" }}>
+          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
             <ConfidenceBar label="Post-Session Confidence" value={postConf} onChange={v => sn("postConfidence")(v)} color="#4caf50" />
           </div>
         </div>
@@ -966,7 +1278,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
 
       <Section num="1" title="Session Overview">
         <p style={{ fontSize: 14, color: C.dark, marginBottom: 12 }}>Thank you for your time during your Street training session. The session focused on:</p>
-        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
+        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 8px 8px 0", padding: "12px 16px", marginBottom: 12 }}>
           <div style={{ fontSize: 13, color: C.dark40 }}>{h(row, "areas")}</div>
         </div>
         <p style={{ fontSize: 14, color: C.dark40, marginBottom: 8 }}>With particular attention to:</p>
@@ -991,7 +1303,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
 
       <Section num="4" title="Questions Raised & Clarifications Provided">
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 90px", background: C.grey, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 90px", background: C.blueLight, borderBottom: `1px solid ${C.blueBorder}` }}>
             {["Area", "Question", "Outcome / Explanation", "Follow-Up"].map(col => (
               <div key={col} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", borderRight: `1px solid ${C.border}` }}>{col}</div>
             ))}
@@ -1000,18 +1312,18 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
             <div key={i} style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr 90px", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ borderRight: `1px solid ${C.border}`, padding: "6px 8px" }}>
                 <select value={row_.area || ""} onChange={e => updateQA(i, "area", e.target.value)}
-                  style={{ width: "100%", border: "none", fontFamily: "Arial", fontSize: 12, color: C.dark, background: "transparent", outline: "none" }}>
+                  style={{ width: "100%", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, background: "transparent", outline: "none" }}>
                   <option value="">Area…</option>
                   {["Sales", "Lettings", "PM", "Accounting", "Reporting", "General"].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
               <div style={{ borderRight: `1px solid ${C.border}`, padding: "6px 8px" }}>
                 <input type="text" value={row_.q} onChange={e => updateQA(i, "q", e.target.value)} placeholder="Question raised…"
-                  style={{ width: "100%", border: "none", fontFamily: "Arial", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
+                  style={{ width: "100%", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
               </div>
               <div style={{ borderRight: `1px solid ${C.border}`, padding: "6px 8px" }}>
                 <input type="text" value={row_.a} onChange={e => updateQA(i, "a", e.target.value)} placeholder="Outcome…"
-                  style={{ width: "100%", border: "none", fontFamily: "Arial", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
+                  style={{ width: "100%", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: "transparent", outline: "none" }} />
               </div>
               <div style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
                 <input type="checkbox" checked={row_.followUp || false} onChange={e => updateQA(i, "followUp", e.target.checked)}
@@ -1022,7 +1334,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
             </div>
           ))}
         </div>
-        <button className="no-print" onClick={addQA} style={{ background: "none", border: `1px dashed ${C.border}`, borderRadius: 4, padding: "5px 12px", fontSize: 11, color: C.dark30, cursor: "pointer", marginTop: 6 }}>+ Add Q&A row</button>
+        <button className="no-print" onClick={addQA} style={{ background: "none", border: `1px dashed ${C.border}`, borderRadius: 6, padding: "5px 12px", fontSize: 11, color: C.dark30, cursor: "pointer", marginTop: 6 }}>+ Add Q&A row</button>
       </Section>
 
       <Section num="5" title="Agreed Actions">
@@ -1041,7 +1353,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
           <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 4, padding: "10px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, color: C.blue, fontWeight: 700, textTransform: "uppercase" }}>Filter:</span>
             {Object.keys(HELP_CENTRE_BANK).map(cat => (
-              <button key={cat} onClick={() => toggleCat(cat)} style={{ padding: "4px 10px", borderRadius: 3, cursor: "pointer", fontFamily: "Arial", fontSize: 11, fontWeight: helpActive.includes(cat) ? 700 : 400, background: helpActive.includes(cat) ? C.blue : "#fff", color: helpActive.includes(cat) ? "#fff" : C.dark30, border: `1px solid ${helpActive.includes(cat) ? C.blue : C.border}` }}>{cat}</button>
+              <button key={cat} onClick={() => toggleCat(cat)} style={{ padding: "4px 10px", borderRadius: 6, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: helpActive.includes(cat) ? 700 : 400, background: helpActive.includes(cat) ? C.blue : "#fff", color: helpActive.includes(cat) ? "#fff" : C.dark30, border: `1px solid ${helpActive.includes(cat) ? C.blue : C.border}` }}>{cat}</button>
             ))}
           </div>
           {Object.keys(HELP_CENTRE_BANK).filter(cat => helpActive.includes(cat)).map(cat => (
@@ -1050,7 +1362,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
               {HELP_CENTRE_BANK[cat].map((link, i) => {
                 const key = `${cat}-${i}`; const isSel = helpSelected.includes(key);
                 return (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", borderRadius: 4, background: isSel ? C.blueLight : C.grey, border: `1px solid ${isSel ? C.blueBorder : C.border}`, cursor: "pointer" }} onClick={() => toggleItem(key)}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", borderRadius: 4, background: isSel ? C.blueLight : C.grey, border: `1px solid ${isSel ? C.blueBorder : C.border}`, cursor: "pointer", borderRadius: 6 }} onClick={() => toggleItem(key)}>
                     <div style={{ width: 14, height: 14, borderRadius: 2, background: isSel ? C.blue : "#fff", border: `1.5px solid ${isSel ? C.blue : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {isSel && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}
                     </div>
@@ -1146,11 +1458,11 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
   const ts = (k, opts) => <TagSelect label={k} k={k.toLowerCase().replace(/[^a-z]/g, "_")} options={opts} notes={notes} setNotes={setNotes} colored />;
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, fontSize: 14, lineHeight: "20px" }}>
 
       {/* Header */}
-      <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "20px 24px", marginBottom: 24 }}>
-        <div style={{ fontSize: 11, color: C.blue, letterSpacing: "0.1em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6 }}>POST-TRAINING INTERNAL DEBRIEF — NOT CLIENT FACING</div>
+      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "20px 24px", marginBottom: 24, boxShadow: "0 1px 4px rgba(18,21,42,0.07)" }}>
+        <div style={{ fontSize: 10, color: C.blue, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6, background: C.blueLight, padding: "4px 10px", borderRadius: 5, display: "inline-block" }}>POST-TRAINING INTERNAL DEBRIEF — NOT CLIENT FACING</div>
         <h1 style={{ margin: "0 0 12px", fontSize: 20, fontWeight: 700 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
           {[["Date", fmtTrainingDate(h(row, "date"))], ["Trainer", h(row, "trainer")], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
@@ -1161,7 +1473,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
 
       {/* Auto-flag banner */}
       {riskLevel !== "low" && (
-        <div style={{ background: riskStyle.bg, border: `1px solid ${riskStyle.border}`, borderRadius: 4, padding: "10px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ background: riskStyle.bg, border: `1px solid ${riskStyle.border}`, borderRadius: 8, padding: "10px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: riskStyle.color, flexShrink: 0 }} />
           <span style={{ fontSize: 13, fontWeight: 700, color: riskStyle.color }}>{riskStyle.label}</span>
           <span style={{ fontSize: 12, color: riskStyle.color, marginLeft: 4 }}>— Adoption Risk: {notes.adoption_risk || "—"} | Escalation: {notes.escalation_required_ || "—"}</span>
@@ -1170,7 +1482,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
 
       {/* Data Engine snapshot — structured fields for sheet export */}
       <Section num={null} title="Data Engine — Structured Fields">
-        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "12px 16px", marginBottom: 12 }}>
+        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 8px 8px 0", padding: "12px 16px", marginBottom: 12 }}>
           <div style={{ fontSize: 11, color: C.blue, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>All structured fields below feed directly into your spreadsheet Data_Engine tab</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
             {[
@@ -1184,7 +1496,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
               ["Repeat Client", notes.repeat_client_ || "Not set"],
               ["Delivery Type", notes.session_delivery_type || "Not set"],
             ].map(([label, value]) => (
-              <div key={label} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 4, padding: "8px 10px" }}>
+              <div key={label} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 10px" }}>
                 <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{label}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{String(value)}</div>
               </div>
@@ -1203,7 +1515,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>Previous Session Date</div>
                 <input type="text" value={n("prevSessionDate")} onChange={e => sn("prevSessionDate")(e.target.value)} placeholder="e.g. 10th October 2024"
-                  style={{ width: "100%", border: `1px dashed ${C.yellow}`, borderRadius: 4, padding: "7px 10px", fontFamily: "Arial", fontSize: 13, color: C.dark, background: C.yellowBg, outline: "none" }} />
+                  style={{ width: "100%", border: `1px dashed ${C.yellow}`, borderRadius: 4, padding: "7px 10px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark, background: C.yellowBg, outline: "none" }} />
               </div>
             )}
           </div>
@@ -1218,10 +1530,10 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
       {/* Confidence */}
       <Section num="2" title="Confidence Score (Pre & Post)">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 14px" }}>
+          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
             <ConfidenceBar label="Pre-Session Confidence" value={preConf} onChange={v => sn("preConfidence")(v)} color="#ff9800" />
           </div>
-          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, padding: "12px 14px" }}>
+          <div style={{ background: C.grey, border: `1px solid ${C.border}`, borderRadius: 8, padding: "12px 14px" }}>
             <ConfidenceBar label="Post-Session Confidence" value={postConf} onChange={v => sn("postConfidence")(v)} color="#4caf50" />
           </div>
         </div>
@@ -1276,7 +1588,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
             <div key={k}>
               <div style={{ fontSize: 11, color: C.dark30, fontWeight: 600, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
               <input type="number" min="0" step="0.5" value={n(k)} onChange={e => sn(k)(e.target.value)} placeholder="0.0"
-                style={{ width: "100%", border: `1px dashed ${C.yellow}`, borderRadius: 4, padding: "8px 10px", fontFamily: "Arial", fontSize: 14, color: C.dark, background: C.yellowBg, outline: "none" }} />
+                style={{ width: "100%", border: `1px dashed ${C.yellow}`, borderRadius: 4, padding: "8px 10px", fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: C.dark, background: "#FFFBEA", outline: "none" }} />
             </div>
           ))}
         </div>
@@ -1286,7 +1598,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
             ["Invoice Value", invoiceVal ? `£${invoiceVal.toLocaleString()}` : "—", C.grey, C.border, C.dark30],
             ["Revenue / Hour", revenuePerHour ? `£${revenuePerHour}` : "—", revenuePerHour ? (parseFloat(revenuePerHour) >= 150 ? C.greenBg : C.amber) : C.grey, revenuePerHour ? (parseFloat(revenuePerHour) >= 150 ? "#7bc97a" : "#f1c238") : C.border, revenuePerHour ? (parseFloat(revenuePerHour) >= 150 ? C.greenDark : C.amberDark) : C.dark20],
           ].map(([label, val, bg, bdr, col]) => (
-            <div key={label} style={{ background: bg, border: `1px solid ${bdr}`, borderRadius: 4, padding: "12px 14px" }}>
+            <div key={label} style={{ background: bg, border: `1px solid ${bdr}`, borderRadius: 8, padding: "12px 14px" }}>
               <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: col }}>{val}</div>
             </div>
@@ -1307,7 +1619,7 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
         {nb("Notes", "debriefGeneral", "Anything else the team should know — people, politics, priorities…", 100)}
       </Section>
 
-      <div className="no-print" style={{ marginTop: 24, padding: "14px 20px", background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div className="no-print" style={{ marginTop: 24, padding: "14px 20px", background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.blue }}>Save to Data Engine Spreadsheet</div>
           <div style={{ fontSize: 11, color: C.dark30, marginTop: 2 }}>Saves all structured fields + notes to your Google Sheet. Re-saving updates the existing row.</div>
@@ -1320,9 +1632,9 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
             disabled={saveStatus === "saving"}
             style={{
               background: saveStatus === "saved" ? C.greenDark : saveStatus === "error" ? C.redDark : C.blue,
-              color: "#fff", border: "none", borderRadius: 4, padding: "8px 18px",
+              color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px",
               fontSize: 12, fontWeight: 700, cursor: saveStatus === "saving" ? "not-allowed" : "pointer",
-              fontFamily: "Arial", display: "flex", alignItems: "center", gap: 6, opacity: saveStatus === "saving" ? 0.7 : 1,
+              fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 6, opacity: saveStatus === "saving" ? 0.7 : 1,
               transition: "background 0.2s"
             }}
           >
@@ -1479,47 +1791,50 @@ function App() {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; font-size: 14px; line-height: 20px; color: #333; background: #fff; }
-        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #f8f8f8; } ::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 2px; }
-        .sb-btn:hover { background: #f0f4ff !important; border-color: #c5d3ff !important; }
-        .tab-btn:hover { color: #2147f4 !important; background: #f0f4ff !important; }
-        .print-btn:hover { background: #1639d4 !important; }
-        .notes-input:focus { border-color: #2147f4 !important; background: #fffef5 !important; }
+        body { font-family: 'DM Sans', system-ui, Arial, sans-serif; font-size: 14px; line-height: 20px; color: #12152A; background: #F4F5FA; }
+        ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #F4F5FA; } ::-webkit-scrollbar-thumb { background: #C9C4F8; border-radius: 10px; }
+        .sb-btn:hover { background: #F0EFFE !important; border-color: #C9C4F8 !important; }
+        .tab-btn:hover { color: #5B4BE7 !important; background: #F0EFFE !important; }
+        .print-btn:hover { background: #4538D4 !important; }
+        .notes-input:focus { border-color: #5B4BE7 !important; background: #FFFBF0 !important; }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+        input, textarea, select { font-family: 'DM Sans', system-ui, Arial, sans-serif !important; }
+        button { font-family: 'DM Sans', system-ui, Arial, sans-serif !important; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @media print {
           .no-print { display: none !important; }
           .notes-print-hide { display: none !important; }
           .notes-screen-only { display: none !important; }
           .notes-print-only { display: block !important; }
-          body { background: white !important; }
+          body { background: white !important; font-family: Arial, sans-serif !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
-      <div className="print-layout-outer" style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column" }}>
+      <div className="print-layout-outer" style={{ minHeight: "100vh", background: "#F4F5FA", display: "flex", flexDirection: "column" }}>
         {/* Topbar */}
-        <div className="no-print" style={{ background: "#fff", borderBottom: `1px solid ${C.border}`, padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, height: 52, position: "sticky", top: 0, zIndex: 100 }}>
+        <div className="no-print" style={{ background: C.nav, borderBottom: "none", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, height: 56, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(18,21,42,0.18)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <StreetLogo />
-            <div style={{ width: 1, height: 20, background: C.border }} />
-            <span style={{ fontSize: 12, color: C.dark30 }}>Training Doc Generator</span>
-            {usingMock && <span style={{ fontSize: 10, color: C.dark20, background: C.grey, border: `1px solid ${C.border}`, borderRadius: 3, padding: "2px 6px" }}>PREVIEW</span>}
+            <div style={{ width: 1, height: 18, background: "rgba(255,255,255,0.15)" }} />
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>Training Doc Generator</span>
+            {usingMock && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 5, padding: "2px 8px", fontWeight: 600, letterSpacing: "0.05em" }}>PREVIEW</span>}
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {TAB_GROUPS.map(group => (
               <div key={group.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ fontSize: 9, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 2, whiteSpace: "nowrap" }}>{group.label}</span>
-                <div style={{ display: "flex", background: C.grey, border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", textTransform: "uppercase", letterSpacing: "0.07em", marginRight: 2, whiteSpace: "nowrap", fontWeight: 600 }}>{group.label}</span>
+                <div style={{ display: "flex", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 8, overflow: "hidden" }}>
                   {group.tabs.map((tab, i) => (
                     <button key={tab.id} className="tab-btn" onClick={() => setView(tab.id)} style={{
-                      background: view === tab.id ? "#fff" : "transparent",
-                      color: view === tab.id ? C.blue : C.dark30,
-                      border: "none", borderRight: i < group.tabs.length - 1 ? `1px solid ${C.border}` : "none",
-                      padding: "6px 11px", cursor: "pointer", fontSize: 11,
-                      fontWeight: view === tab.id ? 700 : 400, fontFamily: "Arial",
-                      boxShadow: view === tab.id ? "0 1px 3px rgba(0,0,0,0.06)" : "none", whiteSpace: "nowrap"
+                      background: view === tab.id ? "rgba(255,255,255,0.15)" : "transparent",
+                      color: view === tab.id ? "#fff" : "rgba(255,255,255,0.55)",
+                      border: "none", borderRight: i < group.tabs.length - 1 ? "1px solid rgba(255,255,255,0.10)" : "none",
+                      padding: "6px 13px", cursor: "pointer", fontSize: 11,
+                      fontWeight: view === tab.id ? 700 : 400, fontFamily: "'DM Sans', sans-serif",
+                      boxShadow: "none", whiteSpace: "nowrap"
                     }}>
                       {tab.id === "post-internal" && riskLevel === "high" && <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: C.redDark, marginRight: 5, marginBottom: 1 }} />}
                       {tab.label}
@@ -1557,16 +1872,16 @@ function App() {
                 // Restore everything
                 document.title = prevTitle;
                 saved.forEach(([el, orig]) => Object.keys(orig).forEach(k => { el.style[k] = orig[k]; }));
-              }} style={{ background: C.blue, color: "#fff", border: "none", borderRadius: 4, padding: "7px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "Arial", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+              }} style={{ background: "#5B4BE7", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(91,75,231,0.35)" }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M3 10H1.5A.5.5 0 011 9.5V5.5A2 2 0 013 3.5h8A2 2 0 0113 5.5v4a.5.5 0 01-.5.5H11" stroke="white" strokeLinecap="round" strokeLinejoin="round"/><rect x="3" y="9.5" width="8" height="4" rx=".5" stroke="white"/><path d="M3 3.5V2a.5.5 0 01.5-.5h7a.5.5 0 01.5.5v1.5" stroke="white" strokeLinecap="round"/></svg>
               Print / Save PDF
             </button>
           </div>
         </div>
 
-        <div className="print-layout-body" style={{ display: "flex", flex: 1 }}>
+        <div className="print-layout-body" style={{ display: "flex", flex: 1, background: "#F4F5FA" }}>
           {/* Sidebar */}
-          <div className="no-print" style={{ width: 236, background: "#fafafa", borderRight: `1px solid ${C.border}`, padding: "14px 10px", flexShrink: 0, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+          <div className="no-print" style={{ width: 240, background: "#fff", borderRight: `1px solid ${C.border}`, padding: "14px 10px", flexShrink: 0, overflowY: "auto", display: "flex", flexDirection: "column" }}>
             {/* Search input */}
             <div style={{ position: "relative", marginBottom: 10 }}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
@@ -1578,8 +1893,8 @@ function App() {
                 placeholder="Search clients..."
                 value={sidebarSearch}
                 onChange={e => setSidebarSearch(e.target.value)}
-                style={{ width: "100%", padding: "7px 28px 7px 28px", fontSize: 12, fontFamily: "Arial, sans-serif", border: `1px solid ${C.border}`, borderRadius: 4, background: "#fff", color: C.dark, outline: "none" }}
-                onFocus={e => e.target.style.borderColor = C.blue}
+                style={{ width: "100%", padding: "7px 28px 7px 28px", fontSize: 12, fontFamily: "'DM Sans', sans-serif", border: `1px solid ${C.border}`, borderRadius: 8, background: "#fff", color: C.dark, outline: "none" }}
+                onFocus={e => e.target.style.borderColor = "#5B4BE7"}
                 onBlur={e => e.target.style.borderColor = C.border}
               />
               {sidebarSearch && (
@@ -1587,7 +1902,7 @@ function App() {
               )}
             </div>
             {/* Record count */}
-            <div style={{ fontSize: 10, color: C.dark20, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8, padding: "0 4px" }}>
+            <div style={{ fontSize: 9, color: C.dark30, letterSpacing: "0.09em", textTransform: "uppercase", marginBottom: 10, padding: "2px 6px", fontWeight: 700 }}>
               {sidebarSearch
                 ? rows.filter((r, i) => { const name = h(r, "company") !== "—" ? h(r, "company") : `Row ${i+1}`; return name.toLowerCase().includes(sidebarSearch.toLowerCase()); }).length + " of " + rows.length + " records"
                 : "Records (" + rows.length + ")"}
@@ -1601,7 +1916,7 @@ function App() {
               const isSel = selected === i;
               if (sidebarSearch && !name.toLowerCase().includes(sidebarSearch.toLowerCase())) return null;
               return (
-                <button key={i} className="sb-btn" onClick={() => setSelected(i)} style={{ width: "100%", textAlign: "left", background: isSel ? "#fff" : "transparent", border: isSel ? `1px solid ${C.blueBorder}` : "1px solid transparent", borderRadius: 4, padding: "9px 10px", cursor: "pointer", marginBottom: 2, boxShadow: isSel ? "0 1px 3px rgba(33,71,244,0.08)" : "none", flexShrink: 0 }}>
+                <button key={i} className="sb-btn" onClick={() => setSelected(i)} style={{ width: "100%", textAlign: "left", background: isSel ? C.blueLight : "transparent", border: isSel ? `1px solid ${C.blueBorder}` : "1px solid transparent", borderRadius: 10, padding: "10px 10px", cursor: "pointer", marginBottom: 3, boxShadow: isSel ? "0 2px 8px rgba(91,75,231,0.10)" : "none", flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     {rowRisk === "high" && <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.redDark, flexShrink: 0 }} />}
                     <div style={{ fontSize: 12, fontWeight: 600, color: isSel ? C.dark : C.dark40, lineHeight: 1.3 }}>{name}</div>
@@ -1609,7 +1924,7 @@ function App() {
                   <div style={{ display: "flex", gap: 5, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
                     {trainer && <span style={{ fontSize: 10, color: isSel ? C.blue : C.dark30 }}>{trainer}</span>}
                     {status && status !== "—" && (
-                      <span style={{ fontSize: 9, fontWeight: 600, background: status === "Confirmed" ? C.green : C.amber, color: status === "Confirmed" ? C.greenDark : C.amberDark, borderRadius: 3, padding: "1px 5px" }}>{status.toUpperCase()}</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, background: status === "Confirmed" ? C.greenBg : C.amber, color: status === "Confirmed" ? C.greenDark : C.amberDark, borderRadius: 5, padding: "1px 5px" }}>{status.toUpperCase()}</span>
                     )}
                   </div>
                 </button>
@@ -1621,9 +1936,9 @@ function App() {
           </div>
 
           {/* Main */}
-          <div className="print-layout-main" style={{ flex: 1, padding: "26px 38px", maxWidth: 880, overflowY: "auto" }}>
+          <div className="print-layout-main" style={{ flex: 1, padding: "28px 40px", maxWidth: view === "client" ? "none" : 900, overflowY: "auto", background: "#F4F5FA" }}>
             {!loading && currentRow && (
-              <div className="no-print" style={{ background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 4, padding: "7px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
+              <div className="no-print" style={{ background: "#FFFBEA", border: "1px dashed #B8A526", borderRadius: 8, padding: "8px 14px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.yellow, flexShrink: 0 }} />
                 <span style={{ fontSize: 12, color: "#6b5e00" }}>Yellow dashed fields are editable and print with the document. All structured selections feed into your Data_Engine spreadsheet tab.</span>
               </div>
