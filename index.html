@@ -1945,8 +1945,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
           <option value="">All Types</option>
           <option value="Personalised Onsite Training - 1 Day">1-Day Onsite</option>
           <option value="Personalised Onsite Training - 2 Days">2-Day Onsite</option>
-          <option value="Lettings Accounting Training + Go-Live Support">Accounting</option>
-          <option value="Live Training at Street HQ (Manchester)">HQ Manchester</option>
+          <option value="Street Hosted Training Event">Street Hosted Training Event</option>
           <option value="Online Refresher">Online Refresher</option>
           <option value="Not sure yet - please help me choose">Help me choose</option>
         </select>
@@ -2016,8 +2015,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
           <option value="">— Select training type —</option>
           <option value="Personalised Onsite Training - 1 Day">1-Day Onsite</option>
           <option value="Personalised Onsite Training - 2 Days">2-Day Onsite</option>
-          <option value="Lettings Accounting Training + Go-Live Support">Accounting + Go-Live Support</option>
-          <option value="Live Training at Street HQ (Manchester)">HQ Manchester</option>
+          <option value="Street Hosted Training Event">Street Hosted Training Event</option>
           <option value="Online Refresher">Online Refresher</option>
         </select>
         <div class="form-hint" id="bookTypeHint"></div>
@@ -2297,7 +2295,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
       </div>
       <div class="req-step-pane" id="reqStep3">
         <div class="req-step-title">Training Package &amp; Goals</div><div class="req-step-sub">Help us understand what you need so we can tailor the session.</div>
-        <div class="req-field"><label class="req-label required">What type of training are you interested in?</label><div class="req-check-group"><label class="req-check-item"><input type="radio" name="trainingType" value="Personalised Onsite Training - 1 Day"><div><label>Personalised Onsite Training &#8211; 1 Day</label><div class="req-check-sub">One full day at your offices covering core workflows</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Personalised Onsite Training - 2 Days"><div><label>Personalised Onsite Training &#8211; 2 Days</label><div class="req-check-sub">Two days for a deeper training programme</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Lettings Accounting Training + Go-Live Support"><div><label>Lettings Accounting + Go-Live Support</label><div class="req-check-sub">Specialist accounting training with hands-on go-live assistance</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Live Training at Street HQ (Manchester)"><div><label>Live Training at Street HQ &#8211; Manchester</label><div class="req-check-sub">Come to our Manchester office for an immersive session</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Online Refresher"><div><label>Online Refresher</label><div class="req-check-sub">A focused virtual session to refresh specific areas</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Not sure yet - please help me choose"><div><label>Not sure yet &#8212; please help me choose</label><div class="req-check-sub">Tell us your goals and we'll recommend the right package</div></div></label></div></div>
+        <div class="req-field"><label class="req-label required">What type of training are you interested in?</label><div class="req-check-group"><label class="req-check-item"><input type="radio" name="trainingType" value="Personalised Onsite Training - 1 Day"><div><label>Personalised Onsite Training &#8211; 1 Day</label><div class="req-check-sub">One full day at your offices covering core workflows</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Personalised Onsite Training - 2 Days"><div><label>Personalised Onsite Training &#8211; 2 Days</label><div class="req-check-sub">Two days for a deeper training programme</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Street Hosted Training Event"><div><label>Street Hosted Training Event</label><div class="req-check-sub">Join us at Street HQ for a dedicated in-person training session with a Street trainer.</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Online Refresher"><div><label>Online Refresher</label><div class="req-check-sub">A focused virtual session to refresh specific areas</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Not sure yet - please help me choose"><div><label>Not sure yet &#8212; please help me choose</label><div class="req-check-sub">Tell us your goals and we'll recommend the right package</div></div></label></div></div>
         <div class="req-field" style="margin-top:20px;"><label class="req-label required">How familiar is your team with Street?</label><div class="req-radio-inline"><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Complete Beginners"> Complete Beginners</label><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Mixed Experience"> Mixed Experience</label><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Experienced - need refresher"> Experienced &#8212; Need Refresher</label></div></div>
         <div class="req-field" style="margin-top:20px;"><label class="req-label required">Which areas of Street do you want to cover?</label><div class="req-check-group"><label class="req-check-item"><input type="checkbox" name="areas" value="Sales"> <label>Sales</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Lettings Front End"> <label>Lettings Front End</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Accounting"> <label>Accounting</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Property Management"> <label>Property Management</label></label></div></div>
       </div>
@@ -3600,8 +3598,7 @@ function fmtMoney(v) {
 const TRAINING_OPTIONS = {
   'Personalised Onsite Training - 1 Day':             { short: '1-Day Onsite',   cls: 'opt-1' },
   'Personalised Onsite Training - 2 Days':            { short: '2-Day Onsite',   cls: 'opt-2' },
-  'Lettings Accounting Training + Go-Live Support':   { short: 'Accounting',     cls: 'opt-3' },
-  'Live Training at Street HQ (Manchester)':          { short: 'HQ Manchester',  cls: 'opt-4' },
+  'Street Hosted Training Event':                      { short: 'HQ Event',       cls: 'opt-4' },
   'Online Refresher':                                 { short: 'Online',         cls: 'opt-5' },
   'Not sure yet - please help me choose':             { short: 'Help me choose', cls: '' },
 };
