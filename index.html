@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Street Training Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -38,7 +40,9 @@ body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; font-size: 1
 .user-info-wrap { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 3px 10px 3px 6px; }
 .user-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--action-primary-blue); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .admin-badge { font-size: 9px; font-weight: 700; background: var(--brand--yellow); color: #333; padding: 1px 5px; border-radius: 3px; }
-.req-training-btn { background: var(--brand--yellow); color: #1a1a1a; border: none; border-radius: 6px; padding: 6px 13px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: Arial, sans-serif; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.req-training-btn { background: #5B4BE7; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', Arial, sans-serif; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; box-shadow: 0 2px 6px rgba(91,75,231,0.30); transition: background 0.15s, transform 0.1s, box-shadow 0.15s; }
+.req-training-btn:hover { background: #4a3bd4; box-shadow: 0 4px 12px rgba(91,75,231,0.35); }
+.req-training-btn:active { transform: scale(0.97); }
 
 .nav-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
 .nav-overlay.open { opacity: 1; pointer-events: all; }
@@ -477,7 +481,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
   <div class="nav-divider"></div>
   <div class="nav-section-label">Resources</div>
   <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank"><span class="nav-item-icon">&#128196;</span> Bookings Spreadsheet</a>
-  <a href="https://docs.google.com/forms/d/e/1FAIpQLSe-s3SWoPSaIanCZLMLYNnVmu3NU-LY4Lm7Db12gHLv6LzVuQ/viewform" class="nav-item" target="_blank"><span class="nav-item-icon">&#128221;</span> Training Request Form</a>
+  <a href="https://amydawber-del.github.io/Street-training-request/" class="nav-item" target="_blank"><span class="nav-item-icon">&#128221;</span> Training Request Form</a>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Account</div>
   <a class="nav-item" onclick="closeNav();openNotifPanel()" id="navActivityBtn"><span class="nav-item-icon">&#128276;</span> Notifications <span id="navActivityDot" style="width:7px;height:7px;border-radius:50%;background:#e53935;display:none;margin-left:auto;flex-shrink:0;"></span></a>
