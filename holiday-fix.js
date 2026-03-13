@@ -1,24 +1,42 @@
 /**
  * =====================================================================
- * STREET TRAINING DASHBOARD — HOLIDAY ICS FIX PATCH  v2.0
+ * STREET TRAINING DASHBOARD — HOLIDAY ICS FIX PATCH  v2.1
  * =====================================================================
  * The Humaans public-holidays ICS URL returns 404.
  * This patch:
  *   1. Intercepts window.fetchIcs to silently block the dead URL
  *      (no network request, no 404, no console error).
- *   2. After loadIcsData runs, synthesises calIcsEvents from the
- *      GOV.UK bank-holidays API (browser-cached, same source the
- *      dashboard already uses for isBankHoliday checks).
+ *   2. After loadIcsData runs with empty calIcsEvents, synthesises
+ *      them directly from window.bankHolidayMap — the map already
+ *      populated by the main dashboard's own loadBankHolidays() call
+ *      (GOV.UK live data merged with the hardcoded fallback list).
+ *      No second GOV.UK network request is needed.
  *   3. Clears the dead URL from localStorage on load.
  *   4. Fixes the retry button promise so it never throws unhandled
  *      rejections.
+ *
+ * v2.1 fixes vs v2.0
+ * ------------------
+ *  • _backfill() no longer re-fetches GOV.UK.
+ *    The previous fetch was racing against proxy/CORS and returning an
+ *    empty events array, logging "GOV.UK returned no events."
+ *    bankHolidayMap is already populated — we just read it.
+ *
+ *  • Date objects are now built with new Date(y, m-1, d) instead of
+ *    new Date(dateStr + 'T00:00:00').
+ *    In BST (UTC+1) the old form parsed as local midnight, but
+ *    end.setDate(end.getDate() + 1) then operated on the UTC internal
+ *    value, advancing the end boundary by one extra day.  The ICS
+ *    render loop (d < evEnd) therefore fired for Monday *and* Tuesday,
+ *    placing Easter Monday on Tuesday.
+ *    The multi-argument Date constructor always creates a pure local
+ *    midnight and is immune to BST/UTC-offset shifts.
  * =====================================================================
  */
 (function () {
   'use strict';
 
   var DEAD_FRAGMENT = 'app.humaans.io/api/public-holidays/ical/';
-  var GOV_UK_API    = 'https://www.gov.uk/bank-holidays.json';
 
   // Immediately wipe dead URL from localStorage synchronously
   (function () {
@@ -50,7 +68,7 @@
     bootstrap();
   }
 
-  // 1. Intercept fetchIcs — return empty string immediately for the dead URL
+  // ── 1. Intercept fetchIcs — return empty string for the dead URL ──
   function patch_fetchIcs() {
     var _orig = window.fetchIcs;
     window.fetchIcs = async function (url) {
@@ -62,7 +80,7 @@
     };
   }
 
-  // 2. After loadIcsData runs with empty calIcsEvents, backfill from GOV.UK
+  // ── 2. After loadIcsData, backfill from bankHolidayMap if empty ───
   function patch_loadIcsData() {
     var _orig = window.loadIcsData;
     window.loadIcsData = async function () {
@@ -72,34 +90,59 @@
         _dismissFeedBanner();
         return;
       }
-      await _backfill();
+      _backfill();
     };
   }
 
-  async function _backfill() {
-    try {
-      var res    = await fetch(GOV_UK_API);
-      var data   = await res.json();
-      var events = (data['england-wales'] && data['england-wales'].events) || [];
-      if (!events.length) { _log('GOV.UK returned no events.'); return; }
+  // ── _backfill: read bankHolidayMap (no extra network request) ─────
+  //
+  // bankHolidayMap is keyed 'YYYY-MM-DD' → 'Holiday Name' and is
+  // populated by the main dashboard's loadBankHolidays() which merges
+  // the hardcoded fallback list with a live GOV.UK fetch.
+  //
+  // If for some reason it isn't ready yet (very early call), we retry
+  // once after a short delay.
+  //
+  // Date construction: new Date(year, monthIndex, day)
+  //   • Creates LOCAL midnight — identical to how the calendar creates
+  //     its own day cells: new Date(year, month, d)
+  //   • Immune to BST/UTC-offset issues that affected the old
+  //     new Date(dateStr + 'T00:00:00') + setDate(+1) pattern.
+  function _backfill(attempt) {
+    attempt = attempt || 0;
 
-      window.calIcsEvents = events.map(function (ev) {
-        var start = new Date(ev.date + 'T00:00:00');
-        var end   = new Date(ev.date + 'T00:00:00');
-        end.setDate(end.getDate() + 1);
-        return { summary: ev.title, start: start, end: end, type: 'holiday' };
-      });
+    var map = window.bankHolidayMap;
+    var keys = map ? Object.keys(map) : [];
 
-      _log('Backfilled ' + window.calIcsEvents.length + ' bank holidays from GOV.UK.');
-      _updateStatusBar();
-      _dismissFeedBanner();
-      if (typeof window.renderCalendar === 'function') window.renderCalendar();
-    } catch (e) {
-      _log('GOV.UK backfill failed: ' + e.message);
+    if (!keys.length) {
+      if (attempt < 20) {
+        _log('bankHolidayMap not ready — retrying in 500 ms (attempt ' + (attempt + 1) + ').');
+        setTimeout(function () { _backfill(attempt + 1); }, 500);
+      } else {
+        _log('bankHolidayMap still empty after retries — giving up.');
+      }
+      return;
     }
+
+    window.calIcsEvents = keys.map(function (dateStr) {
+      var parts = dateStr.split('-');
+      var y = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10) - 1;   // 0-based month
+      var d = parseInt(parts[2], 10);
+      var start = new Date(y, m, d);         // local midnight
+      var end   = new Date(y, m, d + 1);     // next local midnight (exclusive)
+      return { summary: map[dateStr], start: start, end: end, type: 'holiday' };
+    });
+
+    _log('Synthesised ' + window.calIcsEvents.length
+      + ' bank holidays from bankHolidayMap (no extra network request).');
+
+    _updateStatusBar();
+    _dismissFeedBanner();
+    if (typeof window.renderCalendar === 'function') window.renderCalendar();
   }
 
-  // 3. Update Cal Settings modal — clear dead URL, update hint
+  // ── 3. Update Cal Settings modal ─────────────────────────────────
   function patch_calSettings() {
     var _origOpen = window.openCalSettings;
     if (typeof _origOpen !== 'function') return;
@@ -117,7 +160,7 @@
     };
   }
 
-  // 4. Fix retry button unhandled-promise warnings via MutationObserver
+  // ── 4. Fix retry button unhandled-promise warnings ────────────────
   function inject_retryFix() {
     var obs = new MutationObserver(function (mutations) {
       mutations.forEach(function (m) {
@@ -139,6 +182,7 @@
     obs.observe(document.body, { childList: true });
   }
 
+  // ── Helpers ───────────────────────────────────────────────────────
   function _updateStatusBar() {
     var bar = document.getElementById('icsStatusBar');
     if (!bar) return;
