@@ -3519,35 +3519,37 @@ const FALLBACK_BANK_HOLIDAY_NAMES = {
   '2027-08-30':'Summer Bank Holiday','2027-12-27':'Christmas Day (substitute)','2027-12-28':'Boxing Day (substitute)',
 };
 
-// bankHolidayMap: { 'YYYY-MM-DD': 'Holiday Name' } — populated by loadBankHolidays()
-let bankHolidayMap = { ...FALLBACK_BANK_HOLIDAY_NAMES };
-let bankHolidays = Object.keys(bankHolidayMap); // kept for backwards-compat
+// window.bankHolidayMap: { 'YYYY-MM-DD': 'Holiday Name' } — populated by loadBankHolidays()
+// Use window-level assignments to avoid re-declaration conflicts with holiday-fix.js
+window.bankHolidayMap = { ...FALLBACK_BANK_HOLIDAY_NAMES };
+// bankHolidays is declared by the main script already — just assign, don't re-declare
+bankHolidays = Object.keys(window.bankHolidayMap);
 
 async function loadBankHolidays() {
   // Start with the hardcoded list so the calendar is never empty
-  bankHolidayMap = { ...FALLBACK_BANK_HOLIDAY_NAMES };
+  window.bankHolidayMap = { ...FALLBACK_BANK_HOLIDAY_NAMES };
   try {
     const r = await fetch(UK_BANK_HOLIDAYS_API);
     const d = await r.json();
     const liveEvents = d['england-wales']?.events || [];
     if (liveEvents.length) {
       // Merge API names into map (API is authoritative for future years)
-      liveEvents.forEach(e => { bankHolidayMap[e.date] = e.title; });
+      liveEvents.forEach(e => { window.bankHolidayMap[e.date] = e.title; });
     }
   } catch(e) {
     // Network unavailable — fallback map already set above
   }
-  bankHolidays = Object.keys(bankHolidayMap);
+  bankHolidays = Object.keys(window.bankHolidayMap);
 }
 
 function isBankHoliday(date) {
   const s = date.toISOString().split('T')[0];
-  return s in bankHolidayMap;
+  return s in window.bankHolidayMap;
 }
 
 function getBankHolidayName(date) {
   const s = date.toISOString().split('T')[0];
-  return bankHolidayMap[s] || null;
+  return window.bankHolidayMap[s] || null;
 }
 
 function isWorkingDay(date) {
@@ -3583,22 +3585,33 @@ function addWorkingDays(fromDate, n) {
 
 // CORS proxies tried in order until one works
 const CORS_PROXIES = [
+  url => null, // sentinel: try direct fetch first (works for some public feeds)
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+  url => `https://cors-anywhere.herokuapp.com/${url}`,
 ];
 
 async function fetchIcs(url) {
   let lastErr = '';
-  for(const proxy of CORS_PROXIES) {
+  for(const proxyFn of CORS_PROXIES) {
+    const fetchUrl = proxyFn(url);
     try {
-      const res = await fetch(proxy(url), { cache: 'no-cache' });
+      // null sentinel = try direct fetch (no proxy)
+      const targetUrl = fetchUrl === null ? url : fetchUrl;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000); // 8s timeout per proxy
+      const res = await fetch(targetUrl, { cache: 'no-cache', signal: controller.signal });
+      clearTimeout(timer);
       if(!res.ok) { lastErr = 'HTTP ' + res.status; continue; }
       const txt = await res.text();
-      // Validate it looks like iCal data
       if(txt.includes('BEGIN:VCALENDAR') || txt.includes('BEGIN:VEVENT')) return txt;
       lastErr = 'Not valid iCal data';
-    } catch(e) { lastErr = e.message; }
+    } catch(e) {
+      if(e.name === 'AbortError') lastErr = 'Timeout';
+      else lastErr = e.message;
+    }
   }
   throw new Error('All proxies failed. Last error: ' + lastErr);
 }
