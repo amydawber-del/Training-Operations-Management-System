@@ -1608,6 +1608,45 @@ input:checked + .perm-toggle-slider { background: var(--s-purple) !important; }
 .pin-dot.filled { background: var(--s-navy) !important; border-color: var(--s-navy) !important; }
 .pin-dot.error  { background: var(--s-red) !important; border-color: var(--s-red) !important; }
 #pinError { font-family: 'DM Sans', sans-serif !important; color: var(--s-red) !important; }
+
+/* ── PIN Box (keyboard-style) ── */
+.pin-box {
+  width: 60px; height: 68px;
+  border-radius: 12px;
+  border: 2px solid var(--s-border-mid);
+  background: var(--s-surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700;
+  color: var(--s-text-primary);
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  cursor: default; user-select: none;
+  position: relative;
+}
+.pin-box.active {
+  border-color: var(--s-purple);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(91,75,231,0.15);
+}
+.pin-box.filled {
+  border-color: var(--s-navy-border);
+  background: #fff;
+}
+.pin-box.error {
+  border-color: var(--s-red) !important;
+  background: var(--s-red-bg) !important;
+  animation: pin-shake 0.35s ease;
+}
+/* blinking caret in active empty box */
+.pin-box.active:empty::after {
+  content: '';
+  display: block;
+  width: 2px; height: 28px;
+  background: var(--s-purple);
+  border-radius: 1px;
+  animation: pin-caret 1s step-end infinite;
+}
+@keyframes pin-caret { 0%,100%{opacity:1} 50%{opacity:0} }
 #loginNextBtn {
   background: var(--s-purple) !important;
   border-radius: var(--s-r-md) !important;
@@ -1783,16 +1822,20 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
         <div id="pinSubtitle" style="font-size:12px;color:var(--text--dark--30);margin-top:1px;"></div>
       </div>
     </div>
-    <!-- Dots -->
-    <div style="display:flex;justify-content:center;gap:10px;margin-bottom:24px;">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
+    <!-- PIN digit boxes -->
+    <div style="display:flex;justify-content:center;gap:12px;margin-bottom:12px;">
+      <div class="pin-box" id="pb0"></div>
+      <div class="pin-box" id="pb1"></div>
+      <div class="pin-box" id="pb2"></div>
+      <div class="pin-box" id="pb3"></div>
     </div>
+    <input id="pinHiddenInput" type="tel" inputmode="numeric" maxlength="1"
+      style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none;"
+      autocomplete="off" aria-hidden="true">
+    <p style="text-align:center;font-size:11px;color:var(--s-text-muted);margin-bottom:14px;margin-top:4px;">Type your PIN using the keyboard</p>
     <div id="pinError" style="text-align:center;font-size:12px;color:#c0303d;margin-bottom:10px;min-height:18px;"></div>
-    <!-- Numpad -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto;">
+    <!-- Legacy numpad (hidden — keyboard only now) -->
+    <div style="display:none;">
       <button class="pin-key" onclick="pinPadPress('1')"><span class="pin-key-num">1</span></button>
       <button class="pin-key" onclick="pinPadPress('2')"><span class="pin-key-num">2</span><span class="pin-key-sub">ABC</span></button>
       <button class="pin-key" onclick="pinPadPress('3')"><span class="pin-key-num">3</span><span class="pin-key-sub">DEF</span></button>
@@ -2956,20 +2999,72 @@ function pinPadBackspace() {
 }
 
 function renderPinDots() {
-  for(let i = 0; i < 4; i++) {
-    const d = document.getElementById('pd' + i);
-    if(!d) continue;
-    d.classList.toggle('filled', i < pinBuffer.length);
-    d.classList.remove('error');
+  for (let i = 0; i < 4; i++) {
+    const box = document.getElementById('pb' + i);
+    // legacy dot support (may not exist)
+    const dot = document.getElementById('pd' + i);
+    if (box) {
+      box.classList.remove('filled', 'active', 'error');
+      if (i < pinBuffer.length) {
+        box.textContent = '•';
+        box.classList.add('filled');
+      } else {
+        box.textContent = '';
+        if (i === pinBuffer.length) box.classList.add('active');
+      }
+    }
+    if (dot) {
+      dot.classList.toggle('filled', i < pinBuffer.length);
+      dot.classList.remove('error');
+    }
   }
 }
 
-function _pinError(msg) {
-  for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.classList.add('error');}
+function _pinBoxError(msg) {
+  for (let i = 0; i < 4; i++) {
+    const box = document.getElementById('pb' + i);
+    if (box) { box.classList.add('error'); box.textContent = '•'; }
+    const dot = document.getElementById('pd' + i);
+    if (dot) dot.classList.add('error');
+  }
   document.getElementById('pinError').textContent = msg;
   pinBuffer = '';
   setTimeout(renderPinDots, 600);
 }
+
+function _pinError(msg) {
+  _pinBoxError(msg);
+}
+
+// ── Keyboard capture for PIN entry ──
+(function() {
+  function _pinKeyHandler(e) {
+    const step2 = document.getElementById('loginStep2');
+    if (!step2 || step2.style.display === 'none') return;
+    const digit = e.key;
+    if (/^[0-9]$/.test(digit)) {
+      e.preventDefault();
+      pinPadPress(digit);
+    } else if (e.key === 'Backspace') {
+      e.preventDefault();
+      pinPadBackspace();
+    }
+  }
+  document.addEventListener('keydown', _pinKeyHandler);
+  // also focus hidden input when step2 is shown for mobile support
+  const _origLoginNext = window.loginNext;
+  document.addEventListener('DOMContentLoaded', function() {
+    const obs = new MutationObserver(function() {
+      const step2 = document.getElementById('loginStep2');
+      const hi = document.getElementById('pinHiddenInput');
+      if (step2 && step2.style.display !== 'none' && hi) {
+        setTimeout(function() { hi.focus(); }, 50);
+      }
+    });
+    const step2 = document.getElementById('loginStep2');
+    if (step2) obs.observe(step2, { attributes: true, attributeFilter: ['style'] });
+  });
+})();
 
 function _pinSubmit() {
   const u = trainers.find(t => t.id === loginSelectedUserId);
