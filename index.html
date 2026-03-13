@@ -3147,6 +3147,9 @@ function _pinError(msg) {
 // ── Keyboard capture for PIN entry ──
 (function() {
   function _pinKeyHandler(e) {
+    // Never intercept keys when focus is inside a text input, textarea or contenteditable
+    const tag = document.activeElement && document.activeElement.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
     const step2 = document.getElementById('loginStep2');
     if (!step2 || step2.style.display === 'none') return;
     const digit = e.key;
@@ -3668,8 +3671,8 @@ function parseIcs(text, type) {
       // Strip any non-numeric except T and Z
       const clean = s.replace(/[^0-9TZ]/g, '');
       if(clean.length === 8) {
-        // All-day: YYYYMMDD
-        return new Date(clean.slice(0,4) + '-' + clean.slice(4,6) + '-' + clean.slice(6,8) + 'T00:00:00');
+        // All-day: YYYYMMDD — use noon local time to avoid BST/timezone midnight rollback
+        return new Date(clean.slice(0,4) + '-' + clean.slice(4,6) + '-' + clean.slice(6,8) + 'T12:00:00');
       }
       // DateTime: 20260224T090000Z or 20260224T090000
       return new Date(
@@ -3696,7 +3699,7 @@ function parseIcs(text, type) {
  */
 function isTrainerOnLeave(trainerName, dateISO) {
   if(!trainerName || !calLeaveEvents.length) return false;
-  const check = new Date(dateISO + 'T00:00:00');
+  const check = new Date(dateISO + 'T12:00:00');
   const nameLower = trainerName.trim().toLowerCase();
   return calLeaveEvents.some(ev => {
     if(!ev.summary) return false;
@@ -4681,7 +4684,7 @@ function renderCalendar() {
   // Provisional dates — dashed amber pill, non-blocking
   Object.values(provisionalDates).forEach(prov => {
     if(!prov.date) return;
-    const d = new Date(prov.date + 'T00:00:00');
+    const d = new Date(prov.date + 'T12:00:00');
     addCalEvent(d, {
       label:     '📅 ' + prov.company + ' (' + prov.trainer + ')',
       color:     '#fffbeb',
