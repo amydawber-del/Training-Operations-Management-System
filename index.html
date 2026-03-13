@@ -1186,6 +1186,56 @@ input.filter-input:focus {
   color: var(--s-text-muted) !important;
 }
 
+/* ── Blocked Day ── */
+.cal-day-blocked {
+  background: #fff1f2 !important;
+  position: relative;
+}
+.cal-day-blocked::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent, transparent 5px,
+    rgba(220,47,75,0.07) 5px, rgba(220,47,75,0.07) 6px
+  );
+  border-radius: inherit;
+  pointer-events: none;
+}
+.cal-event-blocked {
+  background: #fee2e6 !important;
+  color: #be123c !important;
+  border: 1px solid #fda4af !important;
+  font-weight: 700 !important;
+  cursor: default !important;
+}
+.cal-day.admin-hover:hover { outline: 2px dashed var(--s-purple); outline-offset: -2px; cursor: pointer; }
+
+/* ── Block Day Modal ── */
+#blockDayModal {
+  position: fixed; inset: 0; z-index: 5000;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(18,21,42,0.55); backdrop-filter: blur(3px);
+}
+#blockDayModal.open { display: flex; }
+#blockDayModal .bdm-card {
+  background: #fff; border-radius: 14px; width: 380px; max-width: 95vw;
+  box-shadow: var(--s-shadow-lg); overflow: hidden;
+}
+#blockDayModal .bdm-head {
+  background: var(--s-navy); color: #fff;
+  padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+}
+#blockDayModal .bdm-title { font-size: 14px; font-weight: 700; }
+#blockDayModal .bdm-close { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+#blockDayModal .bdm-close:hover { color: #fff; }
+#blockDayModal .bdm-body { padding: 20px 18px; }
+#blockDayModal .bdm-date { font-size: 16px; font-weight: 700; color: var(--s-text-primary); margin-bottom: 14px; }
+#blockDayModal .bdm-info { font-size: 12px; color: var(--s-text-muted); background: var(--s-lavender); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
+#blockDayModal .bdm-foot { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--s-border); background: var(--s-surface); justify-content: flex-end; }
+.btn-danger { background: var(--s-red) !important; color: #fff !important; border: none !important; }
+.btn-danger:hover { background: #b5203b !important; }
+
 /* Calendar trainer filter */
 #calFilterTrainer {
   font-family: 'DM Sans', sans-serif !important;
@@ -1940,6 +1990,8 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e0e7ff;border:1px solid #a5b4fc;"></div><span class="cal-legend-label">Admin</span></div>
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#fef9c3;border:1px solid #fde047;"></div><span class="cal-legend-label">Bank Holiday</span></div>
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#f3e8ff;border:1px solid #d8b4fe;"></div><span class="cal-legend-label">Team Leave</span></div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e0f2fe;border:1px solid #7dd3fc;"></div><span class="cal-legend-label">Google Cal</span></div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#fee2e6;border:1px solid #fda4af;"></div><span class="cal-legend-label">Blocked</span></div>
         </div>
         <div class="cal-dow-row"><div class="cal-dow">Mon</div><div class="cal-dow">Tue</div><div class="cal-dow">Wed</div><div class="cal-dow">Thu</div><div class="cal-dow">Fri</div><div class="cal-dow">Sat</div><div class="cal-dow">Sun</div></div>
         <div class="cal-days" id="calDays"></div>
@@ -2192,11 +2244,44 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   <div class="modal">
     <div class="modal-header"><div><div class="modal-title">&#128197; Calendar Settings</div><div class="modal-subtitle">Humaans ICS feeds</div></div><button class="modal-close" onclick="closeCalSettings()">&#10005;</button></div>
     <div class="modal-body">
-      <div class="warning-box info" style="margin-bottom:16px;"><span>&#8505;&#65039;</span><div>ICS feeds load automatically on startup. Update URLs here if needed.</div></div>
-      <div class="form-row"><label class="form-label">Public Holidays ICS URL</label><input type="text" class="form-input" id="calHolidayIcsInput" placeholder="https://app.humaans.io/&#8230;"><div class="form-hint">Defaults to Humaans UK public holidays feed</div></div>
+      <div class="warning-box info" style="margin-bottom:16px;"><span>ℹ️</span><div>ICS feeds load automatically on startup. Update URLs here if needed.</div></div>
+      <div class="form-row"><label class="form-label">Public Holidays ICS URL</label><input type="text" class="form-input" id="calHolidayIcsInput" placeholder="https://app.humaans.io/…"><div class="form-hint">Defaults to Humaans UK public holidays feed</div></div>
       <div class="form-row"><label class="form-label">Team Annual Leave ICS URL</label><input type="text" class="form-input" id="calLeaveIcsInput" placeholder="https://app.humaans.io/calendar-feeds/…"><div class="form-hint">Humaans team leave feed — your onboarding team URL is pre-configured</div></div>
+      <div class="form-row"><label class="form-label">Google Calendar ICS URL</label><input type="text" class="form-input" id="calGoogleIcsInput" placeholder="https://calendar.google.com/calendar/ical/…"><div class="form-hint">Public Google Calendar feed — events appear as sky-blue pills on the calendar</div></div>
+      <div class="form-row" style="margin-top:8px;"><label class="form-label">Manage Blocked Days</label><div class="form-hint" style="margin-top:4px;">Click any day on the calendar to block or unblock it (admin only). Blocked days show a red hatched overlay and prevent bookings.</div></div>
     </div>
     <div class="modal-footer"><span id="calSettingsStatus" style="font-size:11px;color:var(--text--dark--30);margin-right:auto;"></span><button class="btn btn-ghost" onclick="closeCalSettings()">Cancel</button><button class="btn btn-primary" onclick="saveCalSettings()">Save &amp; Sync</button></div>
+  </div>
+</div>
+
+<!-- BLOCK DAY MODAL -->
+<div id="blockDayModal">
+  <div class="bdm-card">
+    <div class="bdm-head">
+      <span class="bdm-title" id="bdmTitle">🔒 Block Day</span>
+      <button class="bdm-close" onclick="closeBlockDayModal()">✕</button>
+    </div>
+    <div class="bdm-body">
+      <div class="bdm-date" id="bdmDateLabel">—</div>
+      <div id="bdmBlockedInfo" style="display:none;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;background:#fee2e6;border:1px solid #fda4af;border-radius:8px;padding:10px 12px;font-size:12px;color:#be123c;">
+          <span style="font-size:16px;">🔒</span>
+          <div><strong>This day is blocked</strong><div id="bdmBlockedReason" style="margin-top:2px;opacity:0.85;"></div></div>
+        </div>
+      </div>
+      <div id="bdmBlockForm">
+        <div class="bdm-info">⚙️ Only admins can block or unblock days. Blocked days are visible to all users and prevent bookings being placed on that date.</div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;font-weight:600;color:var(--s-text-secondary);display:block;margin-bottom:6px;">Reason for blocking <span style="font-weight:400;color:var(--s-text-muted);">(optional)</span></label>
+          <input type="text" id="bdmReasonInput" class="form-input" placeholder="e.g. Company away day, Site closure…" style="width:100%;">
+        </div>
+      </div>
+    </div>
+    <div class="bdm-foot">
+      <button class="btn btn-ghost" onclick="closeBlockDayModal()">Cancel</button>
+      <button class="btn btn-danger" id="bdmUnblockBtn" onclick="unblockDay()" style="display:none;">🔓 Unblock Day</button>
+      <button class="btn btn-primary" id="bdmBlockBtn" onclick="blockDay()">🔒 Block This Day</button>
+    </div>
   </div>
 </div>
 
@@ -2486,6 +2571,7 @@ async function flushNoteQueue() {
 }
 const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
 const HUMAANS_LEAVE_ICS = 'https://app.humaans.io/calendar-feeds/5GazIsnzjxJnLUPrls2lrPcs?filter=my-teams';
+const GOOGLE_CAL_ICS_DEFAULT = 'https://calendar.google.com/calendar/ical/c_3fd39a8ba7d9ea4668342113318a617caa454a9711a6dc697448fedc4467f3cd%40group.calendar.google.com/public/basic.ics';
 const STALE_DAYS = 5;
 const UK_BANK_HOLIDAYS_API = 'https://www.gov.uk/bank-holidays.json';
 const TRAINER_COLORS = ['#5B4BE7','#4A3BCF','#7B6FF5','#3D30B5','#8F85F8','#2D20A8','#A99EFF','#6B5EF0'];
@@ -2497,6 +2583,8 @@ let currentUser = null;
 let currentCalMonth = new Date();
 let calIcsEvents = [];
 let calLeaveEvents = [];
+let calGoogleEvents = [];
+let calBlockedDays = JSON.parse(localStorage.getItem('calBlockedDays') || '{}'); // { "YYYY-MM-DD": { reason, blockedBy } }
 let bankHolidays = [];
 
 // ===================== PERMISSIONS =====================
@@ -2583,6 +2671,7 @@ const PAGE_SIZE = 15;
 let revenueChartInst = null, optionChartInst = null;
 let calSettingsHolidayIcs = localStorage.getItem('calHolidayIcs') || HUMAANS_PUBLIC_HOLIDAYS_ICS;
 let calSettingsLeaveIcs = localStorage.getItem('calLeaveIcs') || HUMAANS_LEAVE_ICS;
+let calSettingsGoogleIcs = localStorage.getItem('calGoogleIcs') || GOOGLE_CAL_ICS_DEFAULT;
 let currentReferralPerson = null;
 
 // ===================== INIT =====================
@@ -3472,24 +3561,31 @@ async function fetchIcs(url) {
 async function loadIcsData() {
   calIcsEvents   = [];
   calLeaveEvents = [];
+  calGoogleEvents = [];
 
   const holiday = calSettingsHolidayIcs;
   const leave   = calSettingsLeaveIcs;
+  const google  = calSettingsGoogleIcs;
 
-  const [holResult, leaveResult] = await Promise.allSettled([
+  const [holResult, leaveResult, googleResult] = await Promise.allSettled([
     holiday ? fetchIcs(holiday) : Promise.reject(new Error('No URL')),
     leave   ? fetchIcs(leave)   : Promise.reject(new Error('No URL')),
+    google  ? fetchIcs(google)  : Promise.reject(new Error('No URL')),
   ]);
 
-  if(holResult.status === 'fulfilled')   calIcsEvents   = parseIcs(holResult.value,   'holiday');
+  if(holResult.status === 'fulfilled')    calIcsEvents    = parseIcs(holResult.value,    'holiday');
   else if(holiday) console.warn('Holiday feed failed:', holResult.reason?.message);
 
-  if(leaveResult.status === 'fulfilled') calLeaveEvents = parseIcs(leaveResult.value, 'leave');
+  if(leaveResult.status === 'fulfilled')  calLeaveEvents  = parseIcs(leaveResult.value,  'leave');
   else if(leave)   console.warn('Leave feed failed:',   leaveResult.reason?.message);
+
+  if(googleResult.status === 'fulfilled') calGoogleEvents = parseIcs(googleResult.value, 'google');
+  else if(google)  console.warn('Google cal feed failed:', googleResult.reason?.message);
 
   updateIcsStatusBar(
     holiday ? holResult   : null,
     leave   ? leaveResult : null,
+    google  ? googleResult : null,
   );
   if(allData.length) renderCalendar();
 }
@@ -3579,7 +3675,7 @@ function isCalendarTrainer(name) {
   return t && (t.role === 'trainer' || t.role === 'admin');
 }
 
-function updateIcsStatusBar(holResult, leaveResult) {
+function updateIcsStatusBar(holResult, leaveResult, googleResult) {
   const parts = [];
 
   if(holResult) {
@@ -3600,11 +3696,21 @@ function updateIcsStatusBar(holResult, leaveResult) {
     }
   }
 
-  if(!holResult && !leaveResult) {
+  if(googleResult) {
+    if(googleResult.status === 'fulfilled' && calGoogleEvents.length > 0) {
+      parts.push(`<span class="ics-status"><span class="ics-dot ok" style="background:#0ea5e9;"></span>Google Cal: ${calGoogleEvents.length} events</span>`);
+    } else {
+      const msg = googleResult.reason?.message || 'empty response';
+      parts.push(`<span class="ics-status" title="${escHtml(msg)}"><span class="ics-dot error"></span>Google Cal error</span>`);
+    }
+  }
+
+  if(!holResult && !leaveResult && !googleResult) {
     parts.push(`<span class="ics-status"><span class="ics-dot"></span>No ICS feeds configured</span>`);
   }
 
-  bar.innerHTML = parts.join('<span style="color:var(--text--dark--20);margin:0 4px;">|</span>');
+  const bar = document.getElementById('icsStatusBar');
+  if(bar) bar.innerHTML = parts.join('<span style="color:var(--text--dark--20);margin:0 4px;">|</span>');
 }
 
 // ===================== RENDER ALL =====================
@@ -4526,6 +4632,16 @@ function renderCalendar() {
       provisional: true,
     });
   });
+  // Google Calendar events — sky-blue pill
+  calGoogleEvents.forEach(ev => {
+    if(!ev.start) return;
+    const evStart = new Date(ev.start); evStart.setHours(0,0,0,0);
+    const evEnd = ev.end ? new Date(ev.end) : new Date(evStart.getTime() + 86400000);
+    evEnd.setHours(0,0,0,0);
+    for(let d = new Date(evStart); d < evEnd; d.setDate(d.getDate() + 1)) {
+      addCalEvent(new Date(d), { label: '🗓 ' + ev.summary, color: '#e0f2fe', textColor: '#0369a1', type: 'google' });
+    }
+  });
   let html = '';
   for(let i = 0; i < startDow; i++) html += '<div class="cal-day cal-day-empty"></div>';
   for(let d = 1; d <= daysInMonth; d++) {
@@ -4534,6 +4650,9 @@ function renderCalendar() {
     const isPast = date < today;
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const isHol = isBankHoliday(date);
+    const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const blockInfo = calBlockedDays[dateKey];
+    const isBlocked = !!blockInfo;
     const events = eventsByDay[d] || [];
     const max = 3;
     let cls = 'cal-day';
@@ -4541,14 +4660,19 @@ function renderCalendar() {
     if(isToday) cls += ' cal-day-today';
     if(isPast) cls += ' cal-day-past';
     if(isHol) cls += ' cal-day-holiday';
+    if(isBlocked) cls += ' cal-day-blocked';
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    if(isAdmin) cls += ' admin-hover';
+    const clickAttr = isAdmin ? `onclick="calDayClick('${dateKey}')"` : (isBlocked ? `onclick="calDayClick('${dateKey}')"` : '');
     let evHtml = events.slice(0,max).map(ev => {
       const bg = ev.color || ev.c; const tc = ev.textColor || '#fff';
-      const onclick = ev.rowIdx !== undefined ? `onclick="openCalEventModal(${ev.rowIdx})"` : '';
+      const onclick = ev.rowIdx !== undefined ? `onclick="event.stopPropagation();openCalEventModal(${ev.rowIdx})"` : '';
       const extraCls = ev.provisional ? ' provisional' : '';
       return `<span class="cal-event${extraCls}" style="background:${bg};color:${tc};" ${onclick} title="${escHtml(ev.label)}">${escHtml(ev.label)}</span>`;
     }).join('');
     if(events.length > max) evHtml += `<span class="cal-event-more">+${events.length-max} more</span>`;
-    html += `<div class="${cls}"><span class="cal-day-num">${isToday ? `<span style="background:var(--action-primary-blue);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">${d}</span>` : d}</span>${evHtml}</div>`;
+    if(isBlocked) evHtml += `<span class="cal-event cal-event-blocked" title="Blocked${blockInfo.reason ? ': '+blockInfo.reason : ''} (by ${blockInfo.blockedBy||'Admin'})">🔒 Blocked${blockInfo.reason ? ' — '+blockInfo.reason : ''}</span>`;
+    html += `<div class="${cls}" ${clickAttr}><span class="cal-day-num">${isToday ? `<span style="background:var(--action-primary-blue);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">${d}</span>` : d}</span>${evHtml}</div>`;
   }
   document.getElementById('calDays').innerHTML = html;
   renderCalUpcoming(bookedRows);
@@ -5387,6 +5511,7 @@ function changeMyPin() {
 function openCalSettings() {
   document.getElementById('calHolidayIcsInput').value = calSettingsHolidayIcs;
   document.getElementById('calLeaveIcsInput').value = calSettingsLeaveIcs;
+  document.getElementById('calGoogleIcsInput').value = calSettingsGoogleIcs;
   document.getElementById('calSettingsStatus').textContent = '';
   document.getElementById('calSettingsOverlay').classList.add('open');
 }
@@ -5396,8 +5521,10 @@ function closeCalSettings() { document.getElementById('calSettingsOverlay').clas
 function saveCalSettings() {
   calSettingsHolidayIcs = document.getElementById('calHolidayIcsInput').value.trim();
   calSettingsLeaveIcs = document.getElementById('calLeaveIcsInput').value.trim();
+  calSettingsGoogleIcs = document.getElementById('calGoogleIcsInput').value.trim();
   localStorage.setItem('calHolidayIcs', calSettingsHolidayIcs);
   localStorage.setItem('calLeaveIcs', calSettingsLeaveIcs);
+  localStorage.setItem('calGoogleIcs', calSettingsGoogleIcs);
   document.getElementById('calSettingsStatus').textContent = 'Saved — syncing…';
   closeCalSettings();
   loadIcsData().then(() => showToast('Calendar settings saved & synced', 'success'));
@@ -5895,6 +6022,108 @@ async function testConnection(btn) {
   }
   if(btn) { btn.innerHTML = '<span class="nav-item-icon">🔍</span> Test Connection'; btn.disabled = false; }
 }
+
+// ===================== BLOCK DAY =====================
+let _bdmCurrentKey = null;
+
+function calDayClick(dateKey) {
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const blockInfo = calBlockedDays[dateKey];
+  if(!isAdmin && !blockInfo) return; // non-admins can only VIEW existing blocks
+  _bdmCurrentKey = dateKey;
+  const [y,m,d] = dateKey.split('-');
+  const label = new Date(+y, +m-1, +d).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('bdmDateLabel').textContent = label;
+  if(blockInfo) {
+    document.getElementById('bdmTitle').textContent = '🔒 Blocked Day';
+    document.getElementById('bdmBlockedInfo').style.display = '';
+    document.getElementById('bdmBlockedReason').textContent =
+      (blockInfo.reason ? 'Reason: ' + blockInfo.reason + ' · ' : '') + 'Blocked by ' + (blockInfo.blockedBy || 'Admin');
+    document.getElementById('bdmBlockForm').style.display = isAdmin ? '' : 'none';
+    document.getElementById('bdmReasonInput').value = blockInfo.reason || '';
+    document.getElementById('bdmUnblockBtn').style.display = isAdmin ? '' : 'none';
+    document.getElementById('bdmBlockBtn').textContent = '🔒 Update Block';
+    document.getElementById('bdmBlockBtn').style.display = isAdmin ? '' : 'none';
+  } else {
+    document.getElementById('bdmTitle').textContent = '🔒 Block This Day';
+    document.getElementById('bdmBlockedInfo').style.display = 'none';
+    document.getElementById('bdmBlockForm').style.display = '';
+    document.getElementById('bdmReasonInput').value = '';
+    document.getElementById('bdmUnblockBtn').style.display = 'none';
+    document.getElementById('bdmBlockBtn').textContent = '🔒 Block This Day';
+    document.getElementById('bdmBlockBtn').style.display = '';
+  }
+  document.getElementById('blockDayModal').classList.add('open');
+}
+
+function closeBlockDayModal() {
+  document.getElementById('blockDayModal').classList.remove('open');
+  _bdmCurrentKey = null;
+}
+
+function blockDay() {
+  if(!_bdmCurrentKey) return;
+  const reason = document.getElementById('bdmReasonInput').value.trim();
+  calBlockedDays[_bdmCurrentKey] = { reason, blockedBy: currentUser?.name || 'Admin', blockedAt: new Date().toISOString() };
+  localStorage.setItem('calBlockedDays', JSON.stringify(calBlockedDays));
+  showToast('📅 Day blocked — ' + _bdmCurrentKey, 'success');
+  closeBlockDayModal();
+  renderCalendar();
+}
+
+function unblockDay() {
+  if(!_bdmCurrentKey) return;
+  delete calBlockedDays[_bdmCurrentKey];
+  localStorage.setItem('calBlockedDays', JSON.stringify(calBlockedDays));
+  showToast('🔓 Day unblocked — ' + _bdmCurrentKey, 'success');
+  closeBlockDayModal();
+  renderCalendar();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const modal = document.getElementById('blockDayModal');
+  if(modal) modal.addEventListener('click', function(e) { if(e.target === modal) closeBlockDayModal(); });
+});
+
+// ===================== AUTO REFRESH (15 min) =====================
+(function() {
+  const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+  let refreshTimer = null, countdownTimer = null, nextRefreshAt = null;
+  function formatCountdown(ms) {
+    const totalSec = Math.max(0, Math.round(ms / 1000));
+    return Math.floor(totalSec / 60) + ':' + String(totalSec % 60).padStart(2, '0');
+  }
+  function updateCountdownDisplay() {
+    const el = document.getElementById('autoRefreshCountdown');
+    if(el) el.textContent = 'Refreshing in ' + formatCountdown(nextRefreshAt - Date.now());
+  }
+  function scheduleRefresh() {
+    clearTimeout(refreshTimer); clearInterval(countdownTimer);
+    nextRefreshAt = Date.now() + REFRESH_INTERVAL_MS;
+    updateCountdownDisplay();
+    countdownTimer = setInterval(updateCountdownDisplay, 1000);
+    refreshTimer = setTimeout(function() {
+      clearInterval(countdownTimer);
+      const el = document.getElementById('autoRefreshCountdown');
+      if(el) el.textContent = 'Refreshing…';
+      if(typeof loadData === 'function') { loadData(); if(typeof showToast==='function') showToast('Dashboard refreshed', 'success', 2500); }
+      else location.reload();
+      setTimeout(scheduleRefresh, 500);
+    }, REFRESH_INTERVAL_MS);
+  }
+  function injectCountdownEl() {
+    const headerRight = document.querySelector('.header-right');
+    if(!headerRight || document.getElementById('autoRefreshCountdown')) return;
+    const pill = document.createElement('span');
+    pill.id = 'autoRefreshCountdown';
+    pill.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.55);white-space:nowrap;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:3px 9px;';
+    pill.textContent = 'Refreshing in 15:00';
+    headerRight.insertBefore(pill, headerRight.firstChild);
+  }
+  if(document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { injectCountdownEl(); scheduleRefresh(); });
+  } else { injectCountdownEl(); scheduleRefresh(); }
+})();
 </script>
   <script src="til-patch.js"></script>
   <script src="ux-improvements.js"></script>
