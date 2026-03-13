@@ -3626,27 +3626,49 @@ async function loadIcsData() {
 
   const holiday = calSettingsHolidayIcs;
   const leave   = calSettingsLeaveIcs;
-  const google  = calSettingsGoogleIcs;
 
-  const [holResult, leaveResult, googleResult] = await Promise.allSettled([
+  // Fetch Humaans ICS feeds via proxy (unchanged)
+  const [holResult, leaveResult] = await Promise.allSettled([
     holiday ? fetchIcs(holiday) : Promise.reject(new Error('No URL')),
     leave   ? fetchIcs(leave)   : Promise.reject(new Error('No URL')),
-    google  ? fetchIcs(google)  : Promise.reject(new Error('No URL')),
   ]);
 
-  if(holResult.status === 'fulfilled')    calIcsEvents    = parseIcs(holResult.value,    'holiday');
+  if(holResult.status === 'fulfilled')   calIcsEvents   = parseIcs(holResult.value, 'holiday');
   else if(holiday) console.warn('Holiday feed failed:', holResult.reason?.message);
 
-  if(leaveResult.status === 'fulfilled')  calLeaveEvents  = parseIcs(leaveResult.value,  'leave');
-  else if(leave)   console.warn('Leave feed failed:',   leaveResult.reason?.message);
+  if(leaveResult.status === 'fulfilled') calLeaveEvents = parseIcs(leaveResult.value, 'leave');
+  else if(leave)   console.warn('Leave feed failed:', leaveResult.reason?.message);
 
-  if(googleResult.status === 'fulfilled') calGoogleEvents = parseIcs(googleResult.value, 'google');
-  else if(google)  console.warn('Google cal feed failed:', googleResult.reason?.message);
+  // Fetch Google Calendar events via Apps Script (avoids CORS entirely)
+  let googleResult = null;
+  if(SCRIPT_URL) {
+    try {
+      const res = await fetch(
+        SCRIPT_URL + '?action=getCalendarEvents&months_back=6&months_ahead=18&t=' + Date.now(),
+        { method: 'GET', redirect: 'follow' }
+      );
+      const json = await res.json();
+      if(json.success && Array.isArray(json.events)) {
+        calGoogleEvents = json.events.map(ev => ({
+          summary: ev.title || ev.summary || '',
+          start:   ev.start,
+          end:     ev.end,
+          allDay:  ev.allDay,
+        }));
+        googleResult = { status: 'fulfilled', calendarName: json.calendarName, count: calGoogleEvents.length };
+      } else {
+        googleResult = { status: 'rejected', reason: { message: json.error || 'No events returned' } };
+      }
+    } catch(err) {
+      googleResult = { status: 'rejected', reason: { message: err.message } };
+      console.warn('Google cal (via Apps Script) failed:', err.message);
+    }
+  }
 
   updateIcsStatusBar(
-    holiday ? holResult   : null,
-    leave   ? leaveResult : null,
-    google  ? googleResult : null,
+    holiday ? holResult    : null,
+    leave   ? leaveResult  : null,
+    googleResult,
   );
   if(allData.length) renderCalendar();
 }
@@ -3759,15 +3781,16 @@ function updateIcsStatusBar(holResult, leaveResult, googleResult) {
 
   if(googleResult) {
     if(googleResult.status === 'fulfilled' && calGoogleEvents.length > 0) {
-      parts.push(`<span class="ics-status"><span class="ics-dot ok" style="background:#0ea5e9;"></span>Google Cal: ${calGoogleEvents.length} events</span>`);
+      const name = googleResult.calendarName ? googleResult.calendarName + ': ' : 'Google Cal: ';
+      parts.push(`<span class="ics-status"><span class="ics-dot ok" style="background:#0ea5e9;"></span>${name}${calGoogleEvents.length} events</span>`);
     } else {
-      const msg = googleResult.reason?.message || 'empty response';
+      const msg = (googleResult.reason?.message) || 'No events returned';
       parts.push(`<span class="ics-status" title="${escHtml(msg)}"><span class="ics-dot error"></span>Google Cal error</span>`);
     }
   }
 
   if(!holResult && !leaveResult && !googleResult) {
-    parts.push(`<span class="ics-status"><span class="ics-dot"></span>No ICS feeds configured</span>`);
+    parts.push(`<span class="ics-status"><span class="ics-dot"></span>No feeds configured</span>`);
   }
 
   const bar = document.getElementById('icsStatusBar');
