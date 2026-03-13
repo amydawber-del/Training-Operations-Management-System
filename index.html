@@ -2588,7 +2588,7 @@ async function flushNoteQueue() {
     console.log('Flushed', queue.length - remaining.length, 'queued note(s) to sheet');
   }
 }
-const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq?token=d8TLYjXLrRPMt8FI';
+const HUMAANS_PUBLIC_HOLIDAYS_ICS = 'https://app.humaans.io/calendar-feeds/5GazIsnzjxJnLUPrls2lrPcs?type=public-holidays';
 const HUMAANS_LEAVE_ICS = 'https://app.humaans.io/calendar-feeds/5GazIsnzjxJnLUPrls2lrPcs?filter=my-teams';
 const GOOGLE_CAL_ICS_DEFAULT = 'https://calendar.google.com/calendar/ical/c_3fd39a8ba7d9ea4668342113318a617caa454a9711a6dc697448fedc4467f3cd%40group.calendar.google.com/public/basic.ics';
 const STALE_DAYS = 5;
@@ -2688,8 +2688,18 @@ let sortCol = null, sortDir = 1;
 let upcomingPage = 1, completedPage = 1;
 const PAGE_SIZE = 15;
 let revenueChartInst = null, optionChartInst = null;
+// Force-reset stale holiday URLs — old Humaans token-based URL is expired
+(function() {
+  const staleHolidayUrls = [
+    'https://app.humaans.io/api/public-holidays/ical/QpA8bHDPGu0Ob5Vq',
+  ];
+  const stored = localStorage.getItem('calHolidayIcs') || '';
+  if(staleHolidayUrls.some(u => stored.includes(u))) {
+    localStorage.removeItem('calHolidayIcs');
+  }
+})();
 let calSettingsHolidayIcs = localStorage.getItem('calHolidayIcs') || HUMAANS_PUBLIC_HOLIDAYS_ICS;
-let calSettingsLeaveIcs = localStorage.getItem('calLeaveIcs') || HUMAANS_LEAVE_ICS;
+let calSettingsLeaveIcs   = localStorage.getItem('calLeaveIcs')   || HUMAANS_LEAVE_ICS;
 let calSettingsGoogleIcs = localStorage.getItem('calGoogleIcs') || GOOGLE_CAL_ICS_DEFAULT;
 let currentReferralPerson = null;
 
@@ -3545,14 +3555,20 @@ async function loadBankHolidays() {
   bankHolidays = Object.keys(window.bankHolidayMap);
 }
 
+function _localDateKey(date) {
+  // Use local year/month/day to avoid BST midnight → UTC previous-day shift
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function isBankHoliday(date) {
-  const s = date.toISOString().split('T')[0];
-  return s in window.bankHolidayMap;
+  return _localDateKey(date) in window.bankHolidayMap;
 }
 
 function getBankHolidayName(date) {
-  const s = date.toISOString().split('T')[0];
-  return window.bankHolidayMap[s] || null;
+  return window.bankHolidayMap[_localDateKey(date)] || null;
 }
 
 function isWorkingDay(date) {
