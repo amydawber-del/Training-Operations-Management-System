@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Street Training Dashboard — V2</title>
+<title>Street Training Dashboard — V4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -1960,6 +1960,582 @@ input.filter-input:focus {
 .rd-amber::before { content: '●'; color: var(--s-amber); }
 .rd-red::before   { content: '●'; color: var(--s-red);   }
 
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD V3 ENHANCEMENTS
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── CAPACITY vs DEMAND WIDGET ───────────────────────────────── */
+.cap-demand-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 900px) { .cap-demand-grid { grid-template-columns: 1fr; } }
+.cap-demand-card {
+  background: #fff;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+  padding: 18px 20px;
+  box-shadow: var(--s-shadow-sm);
+}
+.cap-demand-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--s-text-muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cap-demand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--s-border);
+  font-size: 12px;
+}
+.cap-demand-row:last-child { border-bottom: none; }
+.cap-demand-label { color: var(--s-text-secondary); }
+.cap-demand-val {
+  font-weight: 700;
+  color: var(--s-text-primary);
+  font-size: 14px;
+}
+.cap-demand-val.gap-red   { color: var(--s-red); }
+.cap-demand-val.gap-amber { color: var(--s-amber); }
+.cap-demand-val.gap-green { color: var(--s-green); }
+.cap-gap-banner {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--s-r-sm);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gap-banner-red    { background: var(--s-red-bg);   color: var(--s-red);   border: 1px solid #FECACA; }
+.gap-banner-amber  { background: var(--s-amber-bg); color: var(--s-amber); border: 1px solid #FDE68A; }
+.gap-banner-green  { background: var(--s-green-bg); color: #0a7a54;        border: 1px solid #A7F3D0; }
+.cap-trainer-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cap-trainer-bar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--s-text-secondary);
+  width: 80px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cap-trainer-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--s-border);
+  border-radius: var(--s-r-pill);
+  overflow: hidden;
+}
+.cap-trainer-bar-fill {
+  height: 100%;
+  border-radius: var(--s-r-pill);
+  transition: width 0.4s ease;
+}
+.cap-trainer-bar-pct {
+  font-size: 10px;
+  font-weight: 700;
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+  color: var(--s-text-muted);
+}
+
+/* ── AT-RISK PANEL ────────────────────────────────────────────── */
+.risk-panel {
+  background: #fff;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: var(--s-shadow-sm);
+}
+.risk-panel-header {
+  background: var(--s-surface);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--s-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.risk-filter-tabs {
+  display: flex;
+  gap: 4px;
+}
+.risk-tab {
+  padding: 4px 10px;
+  border-radius: var(--s-r-pill);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--s-border);
+  background: #fff;
+  color: var(--s-text-muted);
+  transition: all 0.12s;
+  font-family: 'DM Sans', sans-serif;
+}
+.risk-tab:hover { border-color: var(--s-purple); color: var(--s-purple); }
+.risk-tab.active { background: var(--s-purple); color: #fff; border-color: var(--s-purple); }
+.risk-tab.tab-red.active    { background: var(--s-red);   border-color: var(--s-red); }
+.risk-tab.tab-amber.active  { background: var(--s-amber); border-color: var(--s-amber); }
+.risk-tab.tab-green.active  { background: var(--s-green); border-color: var(--s-green); }
+.risk-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--s-r-pill);
+}
+.rs-high   { background: var(--s-red-bg);   color: var(--s-red);   }
+.rs-medium { background: var(--s-amber-bg); color: var(--s-amber); }
+.rs-low    { background: var(--s-green-bg); color: #0a7a54;        }
+
+/* ── TRAINER PERFORMANCE TABLE ───────────────────────────────── */
+.trainer-perf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.trainer-perf-table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--s-text-muted);
+  background: var(--s-surface);
+  border-bottom: 1px solid var(--s-border);
+  white-space: nowrap;
+}
+.trainer-perf-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--s-border);
+  color: var(--s-text-secondary);
+  vertical-align: middle;
+}
+.trainer-perf-table tr:last-child td { border-bottom: none; }
+.trainer-perf-table tr:hover td { background: #fafbff; }
+.perf-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+}
+.perf-bar-wrap {
+  width: 60px;
+  height: 4px;
+  background: var(--s-border);
+  border-radius: 2px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.perf-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+/* ── 1:1 PREP MODAL ──────────────────────────────────────────── */
+#oneOnOnePanelOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18,21,42,0.6);
+  z-index: 2000;
+  display: none;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+#oneOnOnePanelOverlay.open { display: flex; }
+#oneOnOnePanel {
+  width: 460px;
+  max-width: 98vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--s-shadow-lg);
+  overflow: hidden;
+}
+.oo-header {
+  background: var(--s-navy);
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.oo-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.oo-header-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+}
+.oo-close {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--s-r-sm);
+  font-size: 16px;
+  flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+.oo-close:hover { color: #fff; background: rgba(255,255,255,0.18); }
+.oo-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+.oo-trainer-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.oo-trainer-tab {
+  padding: 6px 14px;
+  border-radius: var(--s-r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--s-border-mid);
+  background: #fff;
+  color: var(--s-text-secondary);
+  transition: all 0.12s;
+  font-family: 'DM Sans', sans-serif;
+}
+.oo-trainer-tab:hover { border-color: var(--s-purple); color: var(--s-purple); }
+.oo-trainer-tab.active { background: var(--s-navy); color: #fff; border-color: var(--s-navy); }
+.oo-section {
+  margin-bottom: 20px;
+}
+.oo-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--s-text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--s-border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.oo-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--s-border);
+}
+.oo-stat-row:last-child { border-bottom: none; }
+.oo-stat-label { color: var(--s-text-secondary); }
+.oo-stat-val { font-weight: 700; color: var(--s-text-primary); }
+.oo-flag {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--s-amber-bg);
+  border: 1px solid #FDE68A;
+  border-radius: var(--s-r-sm);
+  font-size: 12px;
+  color: var(--s-amber);
+  margin-bottom: 6px;
+}
+.oo-flag.red { background: var(--s-red-bg); border-color: #FECACA; color: var(--s-red); }
+.oo-flag.green { background: var(--s-green-bg); border-color: #A7F3D0; color: #0a7a54; }
+.oo-note {
+  padding: 9px 11px;
+  background: var(--s-surface);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-sm);
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.oo-note-meta {
+  font-size: 10px;
+  color: var(--s-text-muted);
+  margin-top: 3px;
+}
+.oo-talking-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 11px;
+  background: var(--s-lavender);
+  border-radius: var(--s-r-sm);
+  font-size: 12px;
+  color: var(--s-purple);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.oo-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--s-border);
+  background: var(--s-surface);
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+}
+.oo-agenda-input {
+  flex: 1;
+  border: 1.5px solid var(--s-border-mid);
+  border-radius: var(--s-r-sm);
+  padding: 8px 11px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--s-text-primary);
+}
+.oo-agenda-input:focus { outline: none; border-color: var(--s-purple); }
+
+.oo-agenda-input:focus { outline: none; border-color: var(--s-purple); }
+
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD V4 ENHANCEMENTS
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── REVENUE BREAKDOWN SECTION ───────────────────────────────── */
+.rev-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1000px) { .rev-breakdown-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px)  { .rev-breakdown-grid { grid-template-columns: 1fr; } }
+.rev-chart-card {
+  background: #fff;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+  padding: 18px 20px;
+  box-shadow: var(--s-shadow-sm);
+}
+.rev-chart-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--s-text-muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rev-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--s-border);
+  font-size: 12px;
+}
+.rev-leaderboard-row:last-child { border-bottom: none; }
+.rev-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--s-text-muted);
+  width: 18px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.rev-rank.gold   { color: #d4a000; }
+.rev-rank.silver { color: #888; }
+.rev-rank.bronze { color: #b05c2a; }
+.rev-name {
+  flex: 1;
+  font-weight: 600;
+  color: var(--s-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rev-amount {
+  font-weight: 700;
+  color: var(--s-text-primary);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.rev-bar-bg {
+  width: 60px;
+  height: 4px;
+  background: var(--s-border);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.rev-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+.rev-big-stat {
+  text-align: center;
+  padding: 12px 0;
+}
+.rev-big-num {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--s-text-primary);
+  letter-spacing: -1px;
+}
+.rev-big-label {
+  font-size: 11px;
+  color: var(--s-text-muted);
+  margin-top: 4px;
+}
+.rev-big-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--s-r-pill);
+  margin-top: 6px;
+}
+
+/* ── SAVED VIEWS / FILTER PRESETS ────────────────────────────── */
+.saved-views-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: var(--s-surface);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+}
+.saved-views-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.view-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--s-r-pill);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--s-border-mid);
+  background: #fff;
+  color: var(--s-text-secondary);
+  transition: all 0.12s;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.view-chip:hover { border-color: var(--s-purple); color: var(--s-purple); background: var(--s-lavender); }
+.view-chip.active { background: var(--s-navy); color: #fff; border-color: var(--s-navy); }
+.view-chip-close {
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+.view-chip-close:hover { opacity: 1; }
+
+/* ── SMART ALERTS PANEL (priority-based) ─────────────────────── */
+.smart-alerts-wrap {
+  position: relative;
+}
+.notif-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--s-r-pill);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+.pri-critical { background: #fee2e2; color: #dc2626; }
+.pri-important { background: var(--s-amber-bg); color: var(--s-amber); }
+.pri-fyi { background: var(--s-lavender); color: var(--s-purple); }
+.notif-entry-v4 {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--s-border);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: background 0.1s;
+}
+.notif-entry-v4:hover { background: #fafbff; }
+.notif-entry-v4.unread { background: var(--s-lavender); }
+.notif-entry-v4.unread:hover { background: #e0e4ff; }
+.notif-entry-v4-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.notif-entry-v4-body { flex: 1; min-width: 0; }
+.notif-entry-v4-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--s-text-primary);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.notif-entry-v4-sub {
+  font-size: 11px;
+  color: var(--s-text-muted);
+}
+.notif-section-header {
+  padding: 8px 16px 4px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--s-text-muted);
+  background: var(--s-surface);
+  border-bottom: 1px solid var(--s-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 /* ── PERMISSIONS MODAL ─────────────────────────────────────── */
 .perm-modal { border-radius: var(--s-r-lg) !important; box-shadow: var(--s-shadow-lg) !important; }
 .perm-header { background: var(--s-navy) !important; }
@@ -2206,6 +2782,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   <div class="nav-divider"></div>
   <div class="nav-section-label">Account</div>
   <a class="nav-item" onclick="closeNav();openNotifPanel()" id="navActivityBtn"><span class="nav-item-icon">&#128276;</span> Notifications <span id="navActivityDot" style="width:7px;height:7px;border-radius:50%;background:#e53935;display:none;margin-left:auto;flex-shrink:0;"></span></a>
+  <a class="nav-item" onclick="closeNav();open1on1Panel()"><span class="nav-item-icon">📋</span> 1:1 Prep Mode</a>
   <a class="nav-item" onclick="closeNav();changeMyPin()"><span class="nav-item-icon">&#128272;</span> Change PIN</a>
   <div class="nav-divider admin-only"></div>
   <div class="nav-section-label admin-only">Admin</div>
@@ -2292,7 +2869,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
 <header class="header" id="mainHeader" style="display:none;">
   <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleNav()"><span></span><span></span><span></span></button>
   <div class="street-logo-mark">STREET<span class="logo-dot">.</span><span style="font-size:9px;font-weight:400;">CO.UK</span></div>
-  <div class="header-title">Training Dashboard &nbsp;<span style="font-size:9px;background:var(--s-purple);color:#fff;padding:1px 7px;border-radius:4px;font-weight:700;vertical-align:middle;letter-spacing:0.5px;">V2</span></div>
+  <div class="header-title">Training Dashboard &nbsp;<span style="font-size:9px;background:var(--s-purple);color:#fff;padding:1px 7px;border-radius:4px;font-weight:700;vertical-align:middle;letter-spacing:0.5px;">V4</span></div>
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">&#8212;</span>
     <button class="header-btn" onclick="loadData()">&#8635; Refresh</button>
@@ -2360,6 +2937,103 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
         <div class="perf-kpi-value" id="pkpiRevDay">—</div>
         <div class="perf-kpi-sub">Per training day (booked, this year)</div>
       </div>
+    </div>
+  </div>
+
+  <!-- CLIENT JOURNEY BOARD V2 -->
+  <div id="clientJourneySection" style="margin-bottom:24px;">
+
+  <!-- ╔══════════════════════════════════════════════════════╗
+       ║         CAPACITY vs DEMAND WIDGET (V3)              ║
+       ╚══════════════════════════════════════════════════════╝ -->
+  <div id="capDemandSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">📈 Capacity vs Demand</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Supply &amp; demand balance — spot shortfalls before they happen</span>
+    </div>
+    <div class="cap-demand-grid">
+      <!-- Supply vs Demand Summary -->
+      <div class="cap-demand-card">
+        <div class="cap-demand-card-title">⚖️ This Month Balance</div>
+        <div class="cap-demand-row"><span class="cap-demand-label">Active requests (pipeline)</span><span class="cap-demand-val" id="cdRequests">—</span></div>
+        <div class="cap-demand-row"><span class="cap-demand-label">Booked training days</span><span class="cap-demand-val" id="cdBookedDays">—</span></div>
+        <div class="cap-demand-row"><span class="cap-demand-label">Estimated trainer slots</span><span class="cap-demand-val" id="cdSlots">—</span></div>
+        <div class="cap-demand-row"><span class="cap-demand-label">Demand gap</span><span class="cap-demand-val" id="cdGap">—</span></div>
+        <div id="cdGapBanner" class="cap-gap-banner" style="display:none;"></div>
+      </div>
+      <!-- Trainer Capacity Bars -->
+      <div class="cap-demand-card">
+        <div class="cap-demand-card-title">👥 Trainer Load (Next 14 Days)</div>
+        <div id="cdTrainerBars"></div>
+      </div>
+      <!-- Demand trend (last 8 weeks) -->
+      <div class="cap-demand-card">
+        <div class="cap-demand-card-title">📊 Weekly Requests (Last 8 Weeks)</div>
+        <div style="position:relative;height:120px;"><canvas id="cdDemandChart"></canvas></div>
+        <div style="margin-top:10px;font-size:11px;color:var(--s-text-muted);" id="cdDemandNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════╗
+       ║           AT-RISK INTELLIGENCE (V3)                 ║
+       ╚══════════════════════════════════════════════════════╝ -->
+  <div id="atRiskSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">🚦 At-Risk Accounts</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="risk-filter-tabs">
+          <button class="risk-tab tab-red active" id="riskTabAll" onclick="filterRiskTable('all')">All</button>
+          <button class="risk-tab tab-red" id="riskTabHigh" onclick="filterRiskTable('high')">🔴 High</button>
+          <button class="risk-tab tab-amber" id="riskTabMed" onclick="filterRiskTable('medium')">🟡 Medium</button>
+          <button class="risk-tab tab-green" id="riskTabLow" onclick="filterRiskTable('low')">🟢 Healthy</button>
+        </div>
+      </div>
+    </div>
+    <div class="risk-panel">
+      <div class="risk-panel-header">
+        <span style="font-size:12px;font-weight:600;color:var(--s-text-secondary);">Risk scored by: days since submission, status progression, and trainer assignment</span>
+        <span id="riskTableCount" style="font-size:11px;color:var(--s-text-muted);"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Company</th>
+            <th>Status</th>
+            <th>Risk Score</th>
+            <th>Risk Factors</th>
+            <th>Days Open</th>
+            <th>Trainer</th>
+            <th>Action</th>
+          </tr></thead>
+          <tbody id="riskTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════╗
+       ║        TRAINER PERFORMANCE TABLE (V3)               ║
+       ╚══════════════════════════════════════════════════════╝ -->
+  <div id="trainerPerfSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">🏆 Trainer Performance</div>
+      <button class="btn btn-ghost btn-sm" onclick="open1on1Panel()" style="border-color:var(--s-purple);color:var(--s-purple);">📋 1:1 Prep Mode</button>
+    </div>
+    <div style="border:1px solid var(--s-border);border-radius:var(--s-r-md);overflow:hidden;background:#fff;box-shadow:var(--s-shadow-sm);">
+      <table class="trainer-perf-table">
+        <thead><tr>
+          <th>Trainer</th>
+          <th>Sessions (YTD)</th>
+          <th>Training Days (YTD)</th>
+          <th>Revenue (YTD)</th>
+          <th>Avg Rev / Day</th>
+          <th>Avg Time to Book</th>
+          <th>Completion Rate</th>
+          <th>Upcoming Load</th>
+        </tr></thead>
+        <tbody id="trainerPerfBody"></tbody>
+      </table>
     </div>
   </div>
 
@@ -2492,10 +3166,54 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
     <div class="referral-board" id="referralLeaderboard"><div style="text-align:center;padding:24px;color:var(--text--dark--30);font-size:12px;">Loading&#8230;</div></div>
   </div>
 
+  <!-- ╔══════════════════════════════════════════════════════╗
+       ║          REVENUE BREAKDOWN (V4)                     ║
+       ╚══════════════════════════════════════════════════════╝ -->
+  <div id="revBreakdownSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">💰 Revenue Breakdown</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">YTD revenue by trainer, by training type &amp; headline summary</span>
+    </div>
+    <div class="rev-breakdown-grid">
+      <!-- Revenue by Trainer leaderboard -->
+      <div class="rev-chart-card">
+        <div class="rev-chart-title">👤 Revenue by Trainer</div>
+        <div id="revByTrainer"></div>
+      </div>
+      <!-- Revenue by Training Type (doughnut) -->
+      <div class="rev-chart-card">
+        <div class="rev-chart-title">📋 Revenue by Training Type</div>
+        <div style="position:relative;height:160px;"><canvas id="revTypeChart"></canvas></div>
+        <div id="revTypeLegend" style="margin-top:10px;display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+      <!-- Headline revenue stats -->
+      <div class="rev-chart-card">
+        <div class="rev-chart-title">📊 Headline Stats (YTD)</div>
+        <div id="revHeadline"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ALL BOOKINGS: UPCOMING + COMPLETED -->
   <div id="allBookingsSection">
-    <div class="section-header" style="flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+    <div class="section-header" style="flex-wrap:wrap;gap:10px;margin-bottom:8px;">
       <div class="section-title">&#128203; All Bookings</div>
+    </div>
+
+    <!-- SAVED VIEWS BAR (V4) -->
+    <div class="saved-views-bar" id="savedViewsBar">
+      <span class="saved-views-label">📌 Saved Views</span>
+      <button class="view-chip active" id="viewAll" onclick="applyView('all')">All</button>
+      <button class="view-chip" id="viewMyTrainer" onclick="applyView('myTrainer')">My Trainer</button>
+      <button class="view-chip" id="viewThisMonth" onclick="applyView('thisMonth')">This Month</button>
+      <button class="view-chip" id="viewUnbooked" onclick="applyView('unbooked')">Pending Only</button>
+      <button class="view-chip" id="viewHighValue" onclick="applyView('highValue')">High Value (£1k+)</button>
+      <button class="view-chip" id="viewFaceToFace" onclick="applyView('faceToFace')">Face-to-Face</button>
+      <button class="view-chip" style="background:var(--s-surface);border-style:dashed;" onclick="saveCurrentView()" title="Save current filters as a new view">＋ Save View</button>
+    </div>
+
+    <div class="section-header" style="flex-wrap:wrap;gap:10px;margin-bottom:14px;margin-top:10px;">
+      <div style="font-size:12px;color:var(--s-text-muted);" id="activeViewLabel"></div>
       <div class="filter-bar">
         <input class="filter-input" id="bookingSearch" type="text" placeholder="Search company or contact&#8230;" oninput="resetPageAndRender()" style="width:200px;">
         <select class="filter-select" id="filterStatus" onchange="resetPageAndRender()"><option value="">All Statuses</option><option value="Pending">Pending</option><option value="Booked">Booked</option><option value="Cancelled">Cancelled</option></select>
@@ -2718,6 +3436,27 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   </div>
 </div>
 
+<!-- 1:1 PREP PANEL (V3) -->
+<div id="oneOnOnePanelOverlay" onclick="if(event.target===this)close1on1Panel()">
+  <div id="oneOnOnePanel">
+    <div class="oo-header">
+      <div>
+        <div class="oo-header-title">📋 1:1 Prep Mode</div>
+        <div class="oo-header-sub">Manager talking points, flags &amp; notes per trainer</div>
+      </div>
+      <button class="oo-close" onclick="close1on1Panel()">✕</button>
+    </div>
+    <div class="oo-body">
+      <div class="oo-trainer-tabs" id="ooTrainerTabs"></div>
+      <div id="ooContent"><div style="text-align:center;padding:40px;color:var(--s-text-muted);font-size:12px;">Select a trainer above to see their 1:1 prep sheet</div></div>
+    </div>
+    <div class="oo-footer">
+      <input class="oo-agenda-input" id="ooAgendaInput" type="text" placeholder="Add a talking point to agenda…" onkeydown="if(event.key==='Enter')addAgendaItem()">
+      <button class="btn btn-primary btn-sm" onclick="addAgendaItem()">+ Add</button>
+    </div>
+  </div>
+</div>
+
 <!-- BLOCK DAY MODAL -->
 <div id="blockDayModal">
   <div class="bdm-card">
@@ -2795,6 +3534,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
     <button class="notif-close" onclick="closeNotifPanel()">&#10005;</button>
   </div>
   <div class="notif-tabs">
+    <button class="notif-tab" id="notifTabAlerts" onclick="switchNotifTab('alerts')" style="color:var(--s-red);font-weight:700;">🚨 Alerts <span class="notif-tab-badge" id="notifTabAlertsBadge" style="display:none;background:var(--s-red);">0</span></button>
     <button class="notif-tab active" id="notifTabEvents" onclick="switchNotifTab('event')">Events <span class="notif-tab-badge" id="notifTabEventsBadge" style="display:none;">0</span></button>
     <button class="notif-tab" id="notifTabNotes" onclick="switchNotifTab('note')">Notes <span class="notif-tab-badge" id="notifTabNotesBadge" style="display:none;">0</span></button>
   </div>
@@ -3716,6 +4456,14 @@ function enterDashboard() {
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
   applyPermVisibility();
   updateCalTrainerFilter();
+  // V4: init saved view chips and set default alerts tab check
+  try { renderSavedViewChips(); } catch(e) {}
+  try {
+    const alerts = generateSmartAlerts ? generateSmartAlerts() : [];
+    const critCount = alerts.filter(a=>a.priority==='critical').length;
+    const alertBadge = document.getElementById('notifTabAlertsBadge');
+    if (alertBadge && critCount > 0) { alertBadge.style.display='inline'; alertBadge.textContent=critCount; }
+  } catch(e) {}
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
   writeActivityLog({
@@ -3784,6 +4532,16 @@ function applyPermVisibility() {
     allBookingsSection:        p('viewAllBookings'),
     referralLeaderboardSection:p('viewReferrals'),
     trainerWorkloadSection:    p('viewTrainerWorkload'),
+    // V2 sections
+    managerFocusSection:       p('viewKpis'),
+    perfKpiSection:            p('viewKpis'),
+    clientJourneySection:      p('viewAllBookings'),
+    // V3 sections
+    capDemandSection:          p('viewKpis'),
+    atRiskSection:             p('viewAllBookings'),
+    trainerPerfSection:        p('viewTrainerWorkload'),
+    // V4 sections
+    revBreakdownSection:       p('viewKpis'),
   };
   Object.entries(sectionMap).forEach(([id, show]) => {
     const el = document.getElementById(id);
@@ -3795,6 +4553,9 @@ function applyPermVisibility() {
   // Request training button
   const reqBtn = document.querySelector('.req-training-btn');
   if(reqBtn) reqBtn.style.display = p('requestTraining') ? '' : 'none';
+  // Saved views bar — show for managers and admins
+  const svBar = document.getElementById('savedViewsBar');
+  if (svBar) svBar.style.display = p('viewAllBookings') ? '' : 'none';
   // Admin-only elements
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
 }
@@ -4276,13 +5037,37 @@ function renderAll() {
   try { renderPerfKpis(); } catch(e) { console.warn('renderPerfKpis:', e); }
   try { renderClientJourney(); } catch(e) { console.warn('renderClientJourney:', e); }
   try { renderTrainerWorkloadV2(); } catch(e) { console.warn('renderTrainerWorkloadV2:', e); }
-  // V2 section visibility
+  // V3 additions — Capacity/Demand, Risk Table, Trainer Performance
+  try { renderCapDemand(); } catch(e) { console.warn('renderCapDemand:', e); }
+  try { renderRiskTable(); } catch(e) { console.warn('renderRiskTable:', e); }
+  try { renderTrainerPerf(); } catch(e) { console.warn('renderTrainerPerf:', e); }
+  // V4 additions — Revenue Breakdown, Saved Views, Smart Alerts badge
+  try { renderRevBreakdown(); } catch(e) { console.warn('renderRevBreakdown:', e); }
+  try { renderSavedViewChips(); } catch(e) { console.warn('renderSavedViewChips:', e); }
+  try {
+    const alerts = generateSmartAlerts();
+    const critCount = alerts.filter(a=>a.priority==='critical').length;
+    const alertBadge = document.getElementById('notifTabAlertsBadge');
+    if (alertBadge) { alertBadge.style.display = critCount>0?'inline':'none'; alertBadge.textContent = critCount; }
+    // Drive bell badge with critical alert count too
+    const bellDot = document.getElementById('bellDot');
+    if (bellDot && critCount > 0) bellDot.style.display = 'block';
+  } catch(e) { console.warn('smartAlerts:', e); }
+  // Section visibility (V2 + V3 + V4)
   const focus = document.getElementById('managerFocusSection');
   if (focus) focus.style.display = canDo('viewKpis') ? '' : 'none';
   const journey = document.getElementById('clientJourneySection');
   if (journey) journey.style.display = canDo('viewAllBookings') ? '' : 'none';
   const perfKpi = document.getElementById('perfKpiSection');
   if (perfKpi) perfKpi.style.display = canDo('viewKpis') ? '' : 'none';
+  const capDemand = document.getElementById('capDemandSection');
+  if (capDemand) capDemand.style.display = canDo('viewKpis') ? '' : 'none';
+  const atRisk = document.getElementById('atRiskSection');
+  if (atRisk) atRisk.style.display = canDo('viewAllBookings') ? '' : 'none';
+  const trainerPerf = document.getElementById('trainerPerfSection');
+  if (trainerPerf) trainerPerf.style.display = canDo('viewTrainerWorkload') ? '' : 'none';
+  const revBreak = document.getElementById('revBreakdownSection');
+  if (revBreak) revBreak.style.display = canDo('viewKpis') ? '' : 'none';
 }
 
 function getFilteredData() {
@@ -6647,6 +7432,764 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // =====================================================================
+// =====================================================================
+// =====================================================================
+// DASHBOARD V4 — REVENUE BREAKDOWN, SAVED VIEWS, SMART ALERTS
+// =====================================================================
+
+let _revTypeChart = null;
+let _activeView = 'all';
+let _savedCustomViews = JSON.parse(localStorage.getItem('savedCustomViews') || '[]');
+
+// ── REVENUE BREAKDOWN ─────────────────────────────────────────────────
+function renderRevBreakdown() {
+  const today = new Date();
+  const thisYear = today.getFullYear();
+  const lastYear = thisYear - 1;
+
+  const ytd = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === thisYear && r.invoiceValue);
+  const lyd = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === lastYear && r.invoiceValue);
+  const totalYTD = ytd.reduce((s,r) => s + r.invoiceValue, 0);
+  const totalLYD = lyd.reduce((s,r) => s + r.invoiceValue, 0);
+
+  // ── Trainer leaderboard ──
+  const trainerMap = {};
+  ytd.forEach(r => {
+    if (!r.trainer) return;
+    if (!trainerMap[r.trainer]) trainerMap[r.trainer] = { rev: 0, sessions: 0 };
+    trainerMap[r.trainer].rev += r.invoiceValue;
+    trainerMap[r.trainer].sessions++;
+  });
+  const trainerList = Object.entries(trainerMap).sort((a,b) => b[1].rev - a[1].rev);
+  const maxRev = trainerList[0]?.[1]?.rev || 1;
+  const rankLabels = ['🥇','🥈','🥉'];
+  const rankCls = ['gold','silver','bronze'];
+
+  const trainerEl = document.getElementById('revByTrainer');
+  if (trainerEl) {
+    if (!trainerList.length) {
+      trainerEl.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--s-text-muted);">No revenue data yet</div>';
+    } else {
+      trainerEl.innerHTML = trainerList.slice(0,6).map(([name, data], i) => {
+        const t = trainers.find(u => u.name === name);
+        const color = (t && t.color) || '#5B4BE7';
+        const pct = Math.round((data.rev / maxRev) * 100);
+        return `<div class="rev-leaderboard-row">
+          <span class="rev-rank ${rankCls[i] || ''}">${rankLabels[i] || (i+1)}</span>
+          <div style="width:26px;height:26px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;">${name.charAt(0)}</div>
+          <span class="rev-name">${escHtml(name)}</span>
+          <span class="rev-bar-bg"><span class="rev-bar-fill" style="width:${pct}%;background:${color};display:block;height:100%;border-radius:2px;"></span></span>
+          <span class="rev-amount">£${Math.round(data.rev).toLocaleString('en-GB')}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Training type doughnut ──
+  const typeMap = {};
+  ytd.forEach(r => {
+    const opt = r.trainingOption || 'Unknown';
+    const short = opt.includes('Face') ? 'Face-to-Face' : opt.includes('Online') ? 'Online' : opt.includes('Event') ? 'HQ Event' : opt.includes('Help') ? 'Help Me Choose' : opt.slice(0, 18);
+    if (!typeMap[short]) typeMap[short] = 0;
+    typeMap[short] += r.invoiceValue;
+  });
+  const typeEntries = Object.entries(typeMap).sort((a,b) => b[1]-a[1]);
+  const TYPE_COLORS = ['#5B4BE7','#0FA976','#D97706','#DC2F4B','#2563EB'];
+
+  const canvas = document.getElementById('revTypeChart');
+  if (canvas) {
+    if (_revTypeChart) { _revTypeChart.destroy(); _revTypeChart = null; }
+    _revTypeChart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: typeEntries.map(e => e[0]),
+        datasets: [{ data: typeEntries.map(e => e[1]), backgroundColor: TYPE_COLORS.slice(0, typeEntries.length), borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` £${Math.round(ctx.raw).toLocaleString('en-GB')}` } } }
+      }
+    });
+  }
+  const legendEl = document.getElementById('revTypeLegend');
+  if (legendEl) {
+    legendEl.innerHTML = typeEntries.map((e, i) => `
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:${TYPE_COLORS[i]||'#ccc'};flex-shrink:0;display:inline-block;"></span>
+        <span style="flex:1;color:var(--s-text-secondary);">${escHtml(e[0])}</span>
+        <span style="font-weight:700;color:var(--s-text-primary);">£${Math.round(e[1]).toLocaleString('en-GB')}</span>
+      </div>
+    `).join('');
+  }
+
+  // ── Headline stats ──
+  const headlineEl = document.getElementById('revHeadline');
+  if (headlineEl) {
+    const growth = totalLYD > 0 ? Math.round(((totalYTD - totalLYD) / totalLYD) * 100) : null;
+    const avgDeal = ytd.length ? Math.round(totalYTD / ytd.length) : 0;
+    const totalDays = ytd.reduce((s,r) => s + (r.trainingDays||1), 0);
+    const revPerDay = totalDays ? Math.round(totalYTD / totalDays) : 0;
+    const thisMonthRev = ytd.filter(r => r.bookedOn.getMonth() === today.getMonth()).reduce((s,r) => s + r.invoiceValue, 0);
+
+    const deltaColor = growth === null ? 'var(--s-text-muted)' : growth >= 0 ? '#0FA976' : '#DC2F4B';
+    const deltaIcon = growth === null ? '' : growth >= 0 ? '↑' : '↓';
+
+    headlineEl.innerHTML = `
+      <div class="rev-big-stat" style="border-bottom:1px solid var(--s-border);padding-bottom:14px;margin-bottom:14px;">
+        <div class="rev-big-num">£${Math.round(totalYTD).toLocaleString('en-GB')}</div>
+        <div class="rev-big-label">Total Revenue YTD</div>
+        ${growth !== null ? `<div class="rev-big-delta" style="background:${growth>=0?'var(--s-green-bg)':'var(--s-red-bg)'};color:${deltaColor};margin:6px auto 0;">${deltaIcon} ${Math.abs(growth)}% vs last year</div>` : ''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        ${[
+          ['This Month', `£${Math.round(thisMonthRev).toLocaleString('en-GB')}`],
+          ['Avg Deal Size', `£${avgDeal.toLocaleString('en-GB')}`],
+          ['Rev / Training Day', `£${revPerDay.toLocaleString('en-GB')}`],
+          ['Sessions Invoiced', ytd.length],
+        ].map(([label, val]) => `<div style="background:var(--s-surface);border-radius:var(--s-r-sm);padding:10px;text-align:center;">
+          <div style="font-size:15px;font-weight:700;color:var(--s-text-primary);">${val}</div>
+          <div style="font-size:10px;color:var(--s-text-muted);margin-top:3px;">${label}</div>
+        </div>`).join('')}
+      </div>`;
+  }
+}
+
+// ── SAVED VIEWS / FILTER PRESETS ──────────────────────────────────────
+const PRESET_VIEWS = {
+  all:        { label: 'All', filters: {} },
+  myTrainer:  { label: 'My Trainer', filters: { trainer: '__current__' } },
+  thisMonth:  { label: 'This Month', filters: { dateFrom: '__monthStart__', dateTo: '__monthEnd__' } },
+  unbooked:   { label: 'Pending Only', filters: { status: 'Pending' } },
+  highValue:  { label: 'High Value', filters: { minValue: 1000 } },
+  faceToFace: { label: 'Face-to-Face', filters: { option: 'Face-to-Face Training' } },
+};
+
+function applyView(viewId) {
+  _activeView = viewId;
+
+  // Update chip active states
+  document.querySelectorAll('.view-chip[id^="view"]').forEach(c => c.classList.remove('active'));
+  const chip = document.getElementById('view' + viewId.charAt(0).toUpperCase() + viewId.slice(1));
+  if (chip) chip.classList.add('active');
+
+  // Check custom views
+  const custom = _savedCustomViews.find(v => v.id === viewId);
+  const preset = PRESET_VIEWS[viewId];
+  const view = custom || preset;
+  if (!view) return;
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().split('T')[0];
+
+  // Clear filters first
+  const elClear = (id, val='') => { const el = document.getElementById(id); if (el) el.value = val; };
+  elClear('bookingSearch'); elClear('filterStatus'); elClear('filterOption');
+  elClear('filterDateFrom'); elClear('filterDateTo');
+  const trainerSel = document.getElementById('filterTrainer');
+  if (trainerSel) trainerSel.value = '';
+
+  const f = view.filters || {};
+  if (f.status) elClear('filterStatus', f.status);
+  if (f.option) elClear('filterOption', f.option);
+  if (f.trainer) { const t = f.trainer === '__current__' && currentUser ? currentUser.name : f.trainer; if (trainerSel) trainerSel.value = t; }
+  if (f.dateFrom) elClear('filterDateFrom', f.dateFrom === '__monthStart__' ? monthStart : f.dateFrom);
+  if (f.dateTo)   elClear('filterDateTo',   f.dateTo   === '__monthEnd__'   ? monthEnd   : f.dateTo);
+
+  const labelEl = document.getElementById('activeViewLabel');
+  if (labelEl) labelEl.textContent = view.label ? `Showing: ${view.label}` : '';
+
+  resetPageAndRender();
+}
+
+function saveCurrentView() {
+  const search = document.getElementById('bookingSearch')?.value || '';
+  const status = document.getElementById('filterStatus')?.value || '';
+  const trainer = document.getElementById('filterTrainer')?.value || '';
+  const option = document.getElementById('filterOption')?.value || '';
+  const dateFrom = document.getElementById('filterDateFrom')?.value || '';
+  const dateTo = document.getElementById('filterDateTo')?.value || '';
+
+  const hasFilters = search || status || trainer || option || dateFrom || dateTo;
+  if (!hasFilters) { showToast('Set some filters first to save a view', 'info', 3000); return; }
+
+  const name = prompt('Name this saved view:');
+  if (!name) return;
+
+  const id = 'custom_' + Date.now();
+  const view = { id, label: name, filters: { search, status, trainer, option, dateFrom, dateTo } };
+  _savedCustomViews.push(view);
+  localStorage.setItem('savedCustomViews', JSON.stringify(_savedCustomViews));
+
+  renderSavedViewChips();
+  showToast(`View "${name}" saved`, 'success', 2500);
+}
+
+function renderSavedViewChips() {
+  const bar = document.getElementById('savedViewsBar');
+  if (!bar) return;
+  // Remove any previous custom chips
+  bar.querySelectorAll('.custom-view-chip').forEach(el => el.remove());
+  // Add custom views before the Save button
+  const saveBtn = bar.querySelector('[onclick="saveCurrentView()"]');
+  _savedCustomViews.forEach(v => {
+    const chip = document.createElement('button');
+    chip.className = 'view-chip custom-view-chip';
+    chip.innerHTML = `📌 ${escHtml(v.label)} <span class="view-chip-close" onclick="event.stopPropagation();deleteCustomView('${v.id}')" title="Delete">×</span>`;
+    chip.onclick = () => applyView(v.id);
+    bar.insertBefore(chip, saveBtn);
+  });
+}
+
+function deleteCustomView(id) {
+  _savedCustomViews = _savedCustomViews.filter(v => v.id !== id);
+  localStorage.setItem('savedCustomViews', JSON.stringify(_savedCustomViews));
+  if (_activeView === id) applyView('all');
+  renderSavedViewChips();
+  showToast('View removed', 'info', 2000);
+}
+
+// ── SMART ALERTS (priority-based notification tab) ────────────────────
+function generateSmartAlerts() {
+  const alerts = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  const dayAfter = new Date(today); dayAfter.setDate(dayAfter.getDate() + 2);
+
+  // 🔴 CRITICAL
+  const stale48 = allData.filter(r => r.status === 'Unassigned' && r.ts && (Date.now() - r.ts) > 48*3600000);
+  if (stale48.length) alerts.push({ priority: 'critical', icon: '🚨', title: `${stale48.length} unassigned request${stale48.length>1?'s':''} over 48 hours old`, sub: stale48.map(r=>getCompanyName(r)).slice(0,3).join(', '), ts: Date.now() });
+
+  const tomorrowSessions = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn >= today && r.bookedOn < dayAfter);
+  tomorrowSessions.forEach(r => {
+    if (!r.notes || r.notes.length === 0) {
+      alerts.push({ priority: 'critical', icon: '📋', title: `Training tomorrow — no prep notes`, sub: `${getCompanyName(r)}${r.trainer?' · '+r.trainer:''}`, ts: Date.now() });
+    }
+  });
+
+  const noTrainer = allData.filter(r => r.status==='Booked' && !r.trainer);
+  if (noTrainer.length) alerts.push({ priority: 'critical', icon: '👤', title: `${noTrainer.length} booked session${noTrainer.length>1?'s':''} with no trainer assigned`, sub: noTrainer.map(r=>getCompanyName(r)).slice(0,2).join(', '), ts: Date.now() });
+
+  // 🟠 IMPORTANT
+  const trainerUsers = trainers.filter(u => u.role==='trainer'||u.role==='admin');
+  const next14 = new Date(today); next14.setDate(next14.getDate()+14);
+  trainerUsers.forEach(t => {
+    const days14 = allData.filter(r=>r.trainer===t.name&&r.status==='Booked'&&r.bookedOn&&r.bookedOn>=today&&r.bookedOn<=next14).reduce((s,r)=>s+(r.trainingDays||1),0);
+    if (days14 >= 12) alerts.push({ priority: 'important', icon: '🟡', title: `${t.name} at high capacity (${days14}d in next 14d)`, sub: 'Consider redistributing new requests', ts: Date.now() });
+  });
+
+  const stalePending = allData.filter(r => r.status==='Pending' && r.ts && (Date.now()-r.ts)>5*86400000);
+  if (stalePending.length) alerts.push({ priority: 'important', icon: '⏰', title: `${stalePending.length} pending booking${stalePending.length>1?'s':''} stalled for 5+ days`, sub: stalePending.map(r=>getCompanyName(r)).slice(0,3).join(', '), ts: Date.now() });
+
+  // 🔵 FYI
+  const thisWeekEnd = new Date(today); thisWeekEnd.setDate(thisWeekEnd.getDate() + 7);
+  const thisWeekSessions = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn>=today && r.bookedOn<=thisWeekEnd);
+  if (thisWeekSessions.length) alerts.push({ priority: 'fyi', icon: '📅', title: `${thisWeekSessions.length} training session${thisWeekSessions.length>1?'s':''} scheduled this week`, sub: thisWeekSessions.map(r=>getCompanyName(r)).slice(0,3).join(', '), ts: Date.now() });
+
+  const pipeline = allData.filter(r => r.status==='Unassigned'||r.status==='Pending');
+  const pipelineVal = pipeline.reduce((s,r)=>s+(r.invoiceValue||0),0);
+  if (pipelineVal > 0) alerts.push({ priority: 'fyi', icon: '💰', title: `£${Math.round(pipelineVal).toLocaleString('en-GB')} sitting in pipeline`, sub: `${pipeline.length} open requests — convert to protect revenue`, ts: Date.now() });
+
+  return alerts;
+}
+
+function renderSmartAlerts() {
+  const body = document.getElementById('notifFeedBody');
+  if (!body) return;
+
+  const alerts = generateSmartAlerts();
+  const alertBadge = document.getElementById('notifTabAlertsBadge');
+  const criticalCount = alerts.filter(a => a.priority === 'critical').length;
+  if (alertBadge) { alertBadge.style.display = criticalCount > 0 ? 'inline' : 'none'; alertBadge.textContent = criticalCount; }
+
+  if (!alerts.length) {
+    body.innerHTML = `<div class="notif-empty">✅ No active alerts — all clear!</div>`;
+    return;
+  }
+
+  const groups = [
+    { key: 'critical', label: '🔴 Critical — Needs Action Now', items: alerts.filter(a=>a.priority==='critical') },
+    { key: 'important', label: '🟠 Important — Address Soon', items: alerts.filter(a=>a.priority==='important') },
+    { key: 'fyi', label: '🔵 FYI — Good to Know', items: alerts.filter(a=>a.priority==='fyi') },
+  ];
+
+  const priCls = { critical: 'pri-critical', important: 'pri-important', fyi: 'pri-fyi' };
+  const priLabel = { critical: '🔴 Critical', important: '🟠 Important', fyi: '🔵 FYI' };
+
+  body.innerHTML = groups.filter(g => g.items.length).map(g => `
+    <div class="notif-section-header">${g.label}</div>
+    ${g.items.map(a => `
+      <div class="notif-entry-v4">
+        <div class="notif-entry-v4-icon">${a.icon}</div>
+        <div class="notif-entry-v4-body">
+          <div class="notif-entry-v4-title">
+            ${escHtml(a.title)}
+            <span class="notif-priority-badge ${priCls[a.priority]}">${priLabel[a.priority]}</span>
+          </div>
+          <div class="notif-entry-v4-sub">${escHtml(a.sub||'')}</div>
+        </div>
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+// ── UPGRADE switchNotifTab to handle 'alerts' ─────────────────────────
+const _origSwitchNotifTab = typeof switchNotifTab === 'function' ? switchNotifTab : null;
+function switchNotifTab(tab) {
+  notifCurrentTab = tab;
+  document.getElementById('notifTabEvents').classList.toggle('active', tab === 'event');
+  document.getElementById('notifTabNotes').classList.toggle('active', tab === 'note');
+  const alertsTab = document.getElementById('notifTabAlerts');
+  if (alertsTab) alertsTab.classList.toggle('active', tab === 'alerts');
+  if (tab === 'alerts') {
+    document.getElementById('notifCount').textContent = 'Live smart alerts';
+    renderSmartAlerts();
+  } else {
+    renderNotifPanel();
+  }
+}
+
+// ── OPEN NOTIF PANEL → DEFAULT TO ALERTS IF ANY CRITICAL ─────────────
+const _origOpenNotifPanel = typeof openNotifPanel === 'function' ? openNotifPanel : null;
+function openNotifPanel() {
+  document.getElementById('notifPanel').classList.add('open');
+  document.getElementById('notifPanelOverlay').classList.add('open');
+  const alerts = generateSmartAlerts();
+  const hasCritical = alerts.some(a => a.priority === 'critical');
+  if (hasCritical && notifCurrentTab !== 'event' && notifCurrentTab !== 'note') {
+    notifCurrentTab = 'alerts';
+  }
+  if (notifCurrentTab === 'alerts') {
+    switchNotifTab('alerts');
+  } else {
+    renderNotifPanel();
+  }
+}
+
+// ── HOOK V4 INTO renderAll ────────────────────────────────────────────
+// (patched at the V4 injection point in renderAll below)
+
+// =====================================================================
+
+// DASHBOARD V3 — CAPACITY/DEMAND, RISK, TRAINER PERFORMANCE, 1:1 PREP
+// =====================================================================
+
+let _cdDemandChart = null;
+let _riskFilter = 'all';
+let _ooCurrentTrainer = null;
+let _ooAgenda = JSON.parse(localStorage.getItem('ooAgenda') || '{}');
+
+// ── CAPACITY vs DEMAND ────────────────────────────────────────────────
+function renderCapDemand() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const now   = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear  = now.getFullYear();
+  const next14    = new Date(today); next14.setDate(next14.getDate() + 14);
+
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const DAYS_PER_TRAINER = 20; // rough monthly capacity per trainer
+
+  // Pipeline (unassigned + pending)
+  const pipelineRows = allData.filter(r => r.status === 'Unassigned' || r.status === 'Pending');
+  const cdReqs = pipelineRows.length;
+
+  // Booked days this month
+  const bookedThisMonth = allData.filter(r =>
+    r.status === 'Booked' && r.bookedOn &&
+    r.bookedOn.getMonth() === thisMonth && r.bookedOn.getFullYear() === thisYear
+  );
+  const cdBookedDays = bookedThisMonth.reduce((s, r) => s + (r.trainingDays || 1), 0);
+
+  // Estimated available slots (trainers × monthly cap, minus already booked days)
+  const totalCap = trainerUsers.length * DAYS_PER_TRAINER;
+  const cdSlots  = Math.max(0, totalCap - cdBookedDays);
+
+  // Gap: pipeline requests vs available days
+  // Each pipeline request ≈ 1 training day on average
+  const gap = cdSlots - cdReqs;
+
+  const el = (id) => document.getElementById(id);
+  if (el('cdRequests'))  el('cdRequests').textContent  = cdReqs;
+  if (el('cdBookedDays')) el('cdBookedDays').textContent = cdBookedDays + 'd';
+  if (el('cdSlots'))     el('cdSlots').textContent     = cdSlots + 'd';
+
+  const gapEl = el('cdGap');
+  const bannerEl = el('cdGapBanner');
+  if (gapEl) {
+    if (gap < 0) {
+      gapEl.textContent = gap + ' 🔴'; gapEl.className = 'cap-demand-val gap-red';
+      if (bannerEl) { bannerEl.style.display='flex'; bannerEl.className='cap-gap-banner gap-banner-red'; bannerEl.innerHTML=`🚨 <span>Shortfall of ${Math.abs(gap)} slots — consider adding trainer capacity or pushing timelines</span>`; }
+    } else if (gap <= 3) {
+      gapEl.textContent = '+' + gap + ' 🟡'; gapEl.className = 'cap-demand-val gap-amber';
+      if (bannerEl) { bannerEl.style.display='flex'; bannerEl.className='cap-gap-banner gap-banner-amber'; bannerEl.innerHTML=`⚠️ <span>Tight capacity — ${gap} slots remaining this month</span>`; }
+    } else {
+      gapEl.textContent = '+' + gap + ' 🟢'; gapEl.className = 'cap-demand-val gap-green';
+      if (bannerEl) { bannerEl.style.display='flex'; bannerEl.className='cap-gap-banner gap-banner-green'; bannerEl.innerHTML=`✅ <span>Good headroom — ${gap} trainer-days available</span>`; }
+    }
+  }
+
+  // Trainer bars (next 14 days)
+  const barsEl = el('cdTrainerBars');
+  if (barsEl) {
+    let html = '';
+    trainerUsers.forEach((t, idx) => {
+      const upcoming14 = allData.filter(r => r.trainer === t.name && r.status === 'Booked' && r.bookedOn && r.bookedOn >= today && r.bookedOn <= next14);
+      const days14 = upcoming14.reduce((s, r) => s + (r.trainingDays || 1), 0);
+      const pct = Math.min(100, Math.round((days14 / 10) * 100)); // 10 days = 100% for 14-day window
+      const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
+      const barColor = pct >= 80 ? '#DC2F4B' : pct >= 60 ? '#D97706' : '#0FA976';
+      const firstName = (t.name || '').split(' ')[0];
+      html += `<div class="cap-trainer-bar-row">
+        <div class="cap-trainer-bar-label" title="${escHtml(t.name)}">${escHtml(firstName)}</div>
+        <div class="cap-trainer-bar-wrap"><div class="cap-trainer-bar-fill" style="width:${pct}%;background:${barColor};"></div></div>
+        <div class="cap-trainer-bar-pct">${days14}d</div>
+      </div>`;
+    });
+    if (!html) html = '<div style="padding:12px;font-size:11px;color:var(--s-text-muted);">No trainers found</div>';
+    barsEl.innerHTML = html;
+  }
+
+  // Demand trend chart: requests per week for last 8 weeks
+  const labels = [], counts = [];
+  for (let i = 7; i >= 0; i--) {
+    const wStart = new Date(today); wStart.setDate(wStart.getDate() - i * 7);
+    const wEnd   = new Date(wStart); wEnd.setDate(wEnd.getDate() + 7);
+    const weekRequests = allData.filter(r => r.ts && r.ts >= wStart && r.ts < wEnd).length;
+    const label = wStart.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+    labels.push(label);
+    counts.push(weekRequests);
+  }
+  const avg = counts.length ? Math.round(counts.reduce((a,b)=>a+b,0)/counts.length) : 0;
+  const noteEl = el('cdDemandNote');
+  if (noteEl) noteEl.textContent = `Avg ${avg} request${avg!==1?'s':''} / week over last 8 weeks`;
+
+  const canvas = document.getElementById('cdDemandChart');
+  if (canvas) {
+    if (_cdDemandChart) { _cdDemandChart.destroy(); _cdDemandChart = null; }
+    _cdDemandChart = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: counts,
+          backgroundColor: counts.map((v, i) => i === counts.length - 1 ? '#5B4BE7' : '#C8CCFF'),
+          borderRadius: 4,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} requests` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#7B80A0' } },
+          y: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 9 }, color: '#7B80A0', stepSize: 1 }, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
+// ── RISK SCORING ENGINE ───────────────────────────────────────────────
+function calcRiskScore(r) {
+  let score = 0;
+  const factors = [];
+  const ageHrs = r.ts ? (Date.now() - r.ts) / 3600000 : 0;
+  const ageDays = Math.floor(ageHrs / 24);
+
+  if (r.status === 'Unassigned') {
+    score += 40;
+    if (ageHrs > 48) { score += 30; factors.push('Unassigned > 48h'); }
+    else { factors.push('No trainer assigned'); }
+  }
+  if (r.status === 'Pending') {
+    score += 20;
+    if (ageDays > 5) { score += 20; factors.push(`Pending ${ageDays}d — stalled`); }
+  }
+  if (ageDays > 10 && r.status !== 'Booked') { score += 15; factors.push('Long time open'); }
+  if (!r.trainer && r.status !== 'Unassigned') { score += 20; factors.push('No trainer assigned'); }
+  if (!r.preferredDate) { score += 10; factors.push('No preferred date'); }
+  if (r.notes && r.notes.length === 0 && ageDays > 3) { score += 10; factors.push('No progress notes'); }
+
+  let level = 'low';
+  if (score >= 60) level = 'high';
+  else if (score >= 30) level = 'medium';
+
+  return { score, level, factors, ageDays };
+}
+
+function renderRiskTable() {
+  const tbody = document.getElementById('riskTableBody');
+  const countEl = document.getElementById('riskTableCount');
+  if (!tbody) return;
+
+  const active = allData.filter(r => r.status === 'Unassigned' || r.status === 'Pending' || r.status === 'Booked');
+  const scored = active.map(r => ({ r, ...calcRiskScore(r) }));
+  scored.sort((a, b) => b.score - a.score);
+
+  const filtered = _riskFilter === 'all' ? scored : scored.filter(s => s.level === _riskFilter);
+  if (countEl) countEl.textContent = `${filtered.length} account${filtered.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--s-text-muted);font-size:12px;">No ${_riskFilter !== 'all' ? _riskFilter + '-risk ' : ''}accounts found</td></tr>`;
+    return;
+  }
+
+  const clsMap = { high: 'rs-high', medium: 'rs-medium', low: 'rs-low' };
+  const labelMap = { high: '🔴 High', medium: '🟡 Medium', low: '🟢 Healthy' };
+
+  tbody.innerHTML = filtered.map(({ r, level, factors, score, ageDays }) => `
+    <tr>
+      <td>${companyCell(r)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td><span class="risk-score-badge ${clsMap[level]}">${labelMap[level]}</span> <span style="font-size:10px;color:var(--s-text-muted);">${score}pts</span></td>
+      <td style="font-size:11px;color:var(--s-text-muted);max-width:200px;">${factors.slice(0,2).join(' · ') || '—'}</td>
+      <td style="font-size:12px;font-weight:${ageDays>5?'700':'400'};color:${ageDays>5?'var(--s-red)':'var(--s-text-secondary)'};">${ageDays}d</td>
+      <td>${r.trainer ? trainerPill(r.trainer) : '<span style="font-size:11px;color:var(--s-text-muted);">—</span>'}</td>
+      <td style="white-space:nowrap;display:flex;gap:5px;">
+        <button class="btn btn-ghost btn-sm" onclick="openProfileSidebar(${r._idx})" style="font-size:11px;">View</button>
+        ${r.status === 'Unassigned' && canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})" style="font-size:11px;">Assign</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterRiskTable(level) {
+  _riskFilter = level;
+  ['All','High','Med','Low'].forEach(l => {
+    const el = document.getElementById('riskTab' + l);
+    if (el) el.classList.remove('active');
+  });
+  const tabMap = { all:'All', high:'High', medium:'Med', low:'Low' };
+  const activeEl = document.getElementById('riskTab' + tabMap[level]);
+  if (activeEl) activeEl.classList.add('active');
+  renderRiskTable();
+}
+
+// ── TRAINER PERFORMANCE TABLE ─────────────────────────────────────────
+function renderTrainerPerf() {
+  const tbody = document.getElementById('trainerPerfBody');
+  if (!tbody) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const thisYear = today.getFullYear();
+  const y30 = new Date(today); y30.setDate(y30.getDate() - 30);
+  const next14 = new Date(today); next14.setDate(next14.getDate() + 14);
+
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  if (!trainerUsers.length) { tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center;color:var(--s-text-muted);">No trainers found</td></tr>'; return; }
+
+  tbody.innerHTML = trainerUsers.map((t, idx) => {
+    const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
+    const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
+    const ytd    = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === thisYear);
+    const sessions = ytd.length;
+    const days    = ytd.reduce((s,r) => s + (r.trainingDays||1), 0);
+    const revenue = ytd.reduce((s,r) => s + (r.invoiceValue||0), 0);
+    const revDay  = days > 0 ? Math.round(revenue/days) : null;
+
+    // Avg time to book (request ts → bookedOn)
+    const ttbs = ytd.map(r => r.ts && r.bookedOn ? (r.bookedOn - r.ts)/86400000 : null).filter(d => d!==null && d>=0 && d<180);
+    const avgTTB = ttbs.length ? Math.round(ttbs.reduce((a,b)=>a+b,0)/ttbs.length) : null;
+
+    // Completion rate vs cancelled
+    const allAssigned = allData.filter(r => r.trainer === t.name && (r.status==='Booked'||r.status==='Cancelled') && r.bookedOn && r.bookedOn.getFullYear()===thisYear);
+    const compRate = allAssigned.length ? Math.round((ytd.length/allAssigned.length)*100) : null;
+
+    // Upcoming next 14 days
+    const upcoming14days = booked.filter(r => r.bookedOn && r.bookedOn >= today && r.bookedOn <= next14).reduce((s,r)=>s+(r.trainingDays||1),0);
+    const loadPct = Math.min(100, Math.round((upcoming14days/10)*100));
+    const loadColor = loadPct>=80?'#DC2F4B':loadPct>=60?'#D97706':'#0FA976';
+
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">${(t.name||'?').charAt(0)}</div>
+          <span style="font-weight:600;color:var(--s-text-primary);">${escHtml(t.name)}</span>
+        </div>
+      </td>
+      <td style="font-weight:700;color:var(--s-text-primary);">${sessions}</td>
+      <td style="font-weight:700;color:var(--s-text-primary);">${days}d</td>
+      <td style="font-weight:700;color:var(--s-text-primary);">${revenue>0?'£'+Math.round(revenue).toLocaleString('en-GB'):'—'}</td>
+      <td style="font-weight:600;">${revDay?'£'+revDay.toLocaleString('en-GB'):'—'}</td>
+      <td style="font-weight:600;">${avgTTB!==null?avgTTB+'d':'—'}</td>
+      <td>
+        <span class="perf-score" style="color:${compRate>=80?'var(--s-green)':compRate>=60?'var(--s-amber)':'var(--s-text-muted)'};">
+          ${compRate!==null?compRate+'%':'—'}
+        </span>
+        ${compRate!==null?`<span class="perf-bar-wrap"><span class="perf-bar-fill" style="width:${compRate}%;background:${compRate>=80?'var(--s-green)':compRate>=60?'var(--s-amber)':'var(--s-red)'}"></span></span>`:''}
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;font-weight:600;">${upcoming14days}d</span>
+          <span class="perf-bar-wrap" style="width:50px;"><span class="perf-bar-fill" style="width:${loadPct}%;background:${loadColor};"></span></span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 1:1 PREP MODE ────────────────────────────────────────────────────
+function open1on1Panel() {
+  const overlay = document.getElementById('oneOnOnePanelOverlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  render1on1TrainerTabs();
+}
+function close1on1Panel() {
+  const overlay = document.getElementById('oneOnOnePanelOverlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function render1on1TrainerTabs() {
+  const tabsEl = document.getElementById('ooTrainerTabs');
+  if (!tabsEl) return;
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  tabsEl.innerHTML = trainerUsers.map(t =>
+    `<button class="oo-trainer-tab${_ooCurrentTrainer===t.name?' active':''}" onclick="select1on1Trainer('${escHtml(t.name)}')">${escHtml(t.name)}</button>`
+  ).join('');
+  if (!_ooCurrentTrainer && trainerUsers.length) {
+    select1on1Trainer(trainerUsers[0].name);
+  } else if (_ooCurrentTrainer) {
+    render1on1Content(_ooCurrentTrainer);
+  }
+}
+
+function select1on1Trainer(name) {
+  _ooCurrentTrainer = name;
+  document.querySelectorAll('.oo-trainer-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === name);
+  });
+  render1on1Content(name);
+}
+
+function render1on1Content(trainerName) {
+  const el = document.getElementById('ooContent');
+  if (!el) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const thisYear = today.getFullYear();
+  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
+  const next7 = new Date(today); next7.setDate(next7.getDate()+7);
+
+  const t = trainers.find(u => u.name === trainerName);
+  const color = (t && t.color) || '#5B4BE7';
+
+  const booked = allData.filter(r => r.trainer === trainerName && r.status === 'Booked');
+  const ytd    = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear()===thisYear);
+  const last30 = booked.filter(r => r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
+  const upcoming = booked.filter(r => r.bookedOn && r.bookedOn>today).sort((a,b)=>a.bookedOn-b.bookedOn);
+  const next7b = upcoming.filter(r => r.bookedOn<=next7);
+
+  const days30 = last30.reduce((s,r)=>s+(r.trainingDays||1),0);
+  const daysYTD = ytd.reduce((s,r)=>s+(r.trainingDays||1),0);
+  const revYTD = ytd.reduce((s,r)=>s+(r.invoiceValue||0),0);
+
+  // Flags
+  const flags = [];
+  const noNoteRecent = booked.filter(r => r.bookedOn && r.bookedOn<today && r.bookedOn>=y30 && (!r.notes||r.notes.length===0));
+  if (noNoteRecent.length) flags.push({ cls:'', icon:'⚠️', text:`${noNoteRecent.length} recent session${noNoteRecent.length>1?'s':''} have no progress notes` });
+  if (upcoming.length > 8) flags.push({ cls:'red', icon:'🔴', text:`High upcoming load — ${upcoming.length} sessions in pipeline` });
+  if (next7b.length > 0) flags.push({ cls:'', icon:'📅', text:`${next7b.length} session${next7b.length>1?'s':''} happening this week: ${next7b.map(r=>getCompanyName(r)).slice(0,2).join(', ')}` });
+  if (days30 === 0) flags.push({ cls:'', icon:'💤', text:`No completed sessions in last 30 days` });
+
+  // Wins
+  const wins = [];
+  if (ytd.length >= 10) wins.push({ icon:'🏆', text:`${ytd.length} sessions completed this year — strong output` });
+  if (revYTD >= 10000) wins.push({ icon:'💰', text:`£${Math.round(revYTD).toLocaleString('en-GB')} revenue generated YTD` });
+  if (noNoteRecent.length === 0 && last30.length > 0) wins.push({ icon:'✅', text:`All recent sessions have progress notes — great discipline` });
+
+  // Recent notes (from all records assigned to this trainer)
+  const recentNotes = [];
+  booked.forEach(r => {
+    if (r.notes && r.notes.length) {
+      r.notes.forEach(n => recentNotes.push({ ...n, company: getCompanyName(r) }));
+    }
+  });
+  recentNotes.sort((a,b) => (new Date(b.ts||0)) - (new Date(a.ts||0)));
+  const topNotes = recentNotes.slice(0, 5);
+
+  // Suggested talking points
+  const talking = [];
+  if (upcoming.length > 0) talking.push(`Review upcoming schedule — ${upcoming.length} sessions booked`);
+  if (flags.some(f=>f.cls==='red')) talking.push(`Capacity concerns — discuss workload balance`);
+  if (noNoteRecent.length > 0) talking.push(`Progress notes — ${noNoteRecent.length} sessions need updating`);
+  if (revYTD > 0) talking.push(`YTD performance — £${Math.round(revYTD).toLocaleString('en-GB')} revenue, ${daysYTD} training days`);
+  talking.push(`Client feedback — any issues or wins from recent sessions?`);
+
+  // Personal agenda items
+  const agendaKey = 'trainer_' + trainerName.replace(/\s+/g,'_');
+  const agendaItems = _ooAgenda[agendaKey] || [];
+
+  let html = `
+    <!-- Stats -->
+    <div class="oo-section">
+      <div class="oo-section-title">📊 Performance Snapshot</div>
+      <div class="oo-stat-row"><span class="oo-stat-label">Sessions YTD</span><span class="oo-stat-val">${ytd.length}</span></div>
+      <div class="oo-stat-row"><span class="oo-stat-label">Training Days YTD</span><span class="oo-stat-val">${daysYTD}d</span></div>
+      <div class="oo-stat-row"><span class="oo-stat-label">Revenue YTD</span><span class="oo-stat-val">${revYTD>0?'£'+Math.round(revYTD).toLocaleString('en-GB'):'—'}</span></div>
+      <div class="oo-stat-row"><span class="oo-stat-label">Sessions Last 30d</span><span class="oo-stat-val">${last30.length} (${days30}d)</span></div>
+      <div class="oo-stat-row"><span class="oo-stat-label">Upcoming Sessions</span><span class="oo-stat-val">${upcoming.length}</span></div>
+    </div>`;
+
+  if (flags.length) {
+    html += `<div class="oo-section"><div class="oo-section-title">🚩 Flags to Discuss</div>`;
+    html += flags.map(f => `<div class="oo-flag ${f.cls}">${f.icon} ${f.text}</div>`).join('');
+    html += `</div>`;
+  }
+
+  if (wins.length) {
+    html += `<div class="oo-section"><div class="oo-section-title">🏆 Wins to Acknowledge</div>`;
+    html += wins.map(w => `<div class="oo-flag green">${w.icon} ${w.text}</div>`).join('');
+    html += `</div>`;
+  }
+
+  html += `<div class="oo-section"><div class="oo-section-title">💬 Suggested Talking Points</div>`;
+  html += talking.map(tp => `<div class="oo-talking-point">→ ${tp}</div>`).join('');
+  html += `</div>`;
+
+  if (topNotes.length) {
+    html += `<div class="oo-section"><div class="oo-section-title">📝 Recent Progress Notes</div>`;
+    html += topNotes.map(n => `<div class="oo-note"><div>${escHtml(n.text)}</div><div class="oo-note-meta">${escHtml(n.company)} · ${escHtml(n.author||'')} · ${escHtml(n.ts||'')}</div></div>`).join('');
+    html += `</div>`;
+  }
+
+  if (agendaItems.length) {
+    html += `<div class="oo-section"><div class="oo-section-title">📋 Your Agenda Items</div>`;
+    html += agendaItems.map((item, i) => `<div class="oo-note" style="display:flex;align-items:flex-start;gap:8px;">
+      <span style="flex:1;">${escHtml(item)}</span>
+      <button onclick="removeAgendaItem(${i})" style="background:none;border:none;cursor:pointer;color:var(--s-text-muted);font-size:14px;line-height:1;padding:0;flex-shrink:0;" title="Remove">×</button>
+    </div>`).join('');
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function addAgendaItem() {
+  if (!_ooCurrentTrainer) return;
+  const input = document.getElementById('ooAgendaInput');
+  if (!input || !input.value.trim()) return;
+  const key = 'trainer_' + _ooCurrentTrainer.replace(/\s+/g,'_');
+  if (!_ooAgenda[key]) _ooAgenda[key] = [];
+  _ooAgenda[key].push(input.value.trim());
+  localStorage.setItem('ooAgenda', JSON.stringify(_ooAgenda));
+  input.value = '';
+  render1on1Content(_ooCurrentTrainer);
+  showToast('Added to agenda', 'success', 2000);
+}
+
+function removeAgendaItem(idx) {
+  if (!_ooCurrentTrainer) return;
+  const key = 'trainer_' + _ooCurrentTrainer.replace(/\s+/g,'_');
+  if (_ooAgenda[key]) {
+    _ooAgenda[key].splice(idx, 1);
+    localStorage.setItem('ooAgenda', JSON.stringify(_ooAgenda));
+    render1on1Content(_ooCurrentTrainer);
+  }
+}
+
+// =====================================================================
+
 // DASHBOARD V2 — ENHANCED RENDERING FUNCTIONS
 // =====================================================================
 
