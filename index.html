@@ -6,7 +6,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Street Training Dashboard</title>
+<title>Street Training Dashboard — V2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root {
@@ -1592,6 +1592,374 @@ input.filter-input:focus {
 .req-success-sub { font-family: 'DM Sans', sans-serif !important; color: var(--s-text-muted) !important; }
 .req-modal-overlay { background: rgba(18,21,42,0.65) !important; }
 
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD V2 ENHANCEMENTS
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── MANAGER FOCUS PANEL ─────────────────────────────────────── */
+.focus-panel {
+  background: var(--s-navy);
+  border-radius: var(--s-r-lg);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--s-shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+.focus-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #DC2F4B, #D97706, #5B4BE7);
+}
+.focus-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.focus-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.focus-panel-subtitle {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+}
+.focus-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+.focus-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--s-r-md);
+  padding: 12px 14px;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.focus-item:hover { background: rgba(255,255,255,0.1); }
+.focus-item-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.focus-item-text { flex: 1; min-width: 0; }
+.focus-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+.focus-item-sub {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  line-height: 1.4;
+}
+.focus-item.critical { border-color: rgba(220,47,75,0.5); }
+.focus-item.critical .focus-item-title { color: #ff8fa3; }
+.focus-item.warning { border-color: rgba(217,119,6,0.5); }
+.focus-item.warning .focus-item-title { color: #fcd34d; }
+.focus-item.info { border-color: rgba(91,75,231,0.5); }
+.focus-item.info .focus-item-title { color: #a5b4fc; }
+.focus-item.good { border-color: rgba(15,169,118,0.4); }
+.focus-item.good .focus-item-title { color: #6ee7b7; }
+.focus-all-clear {
+  text-align: center;
+  padding: 20px;
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+}
+.focus-all-clear strong { color: #6ee7b7; display: block; font-size: 15px; margin-bottom: 4px; }
+
+/* ── ENHANCED TRAINER CARDS ──────────────────────────────────── */
+.trainer-card-v2 {
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+  padding: 16px;
+  background: #fff;
+  box-shadow: var(--s-shadow-sm);
+  transition: box-shadow 0.15s;
+  cursor: pointer;
+}
+.trainer-card-v2:hover { box-shadow: var(--s-shadow-md); }
+.trainer-card-v2-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--s-border);
+}
+.trainer-avatar-v2 {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.trainer-name-v2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--s-text-primary);
+  flex: 1;
+  min-width: 0;
+}
+.trainer-role-tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--s-r-pill);
+}
+.capacity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--s-r-pill);
+  margin-top: 6px;
+}
+.cap-under { background: var(--s-green-bg); color: #0a7a54; }
+.cap-optimal { background: var(--s-lavender); color: var(--s-purple); }
+.cap-high { background: var(--s-amber-bg); color: var(--s-amber); }
+.cap-overloaded { background: var(--s-red-bg); color: var(--s-red); }
+.trainer-stats-grid-v2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.trainer-stat-v2 {
+  background: var(--s-surface);
+  border-radius: var(--s-r-sm);
+  padding: 8px 10px;
+  text-align: center;
+}
+.trainer-stat-v2-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--s-text-primary);
+  line-height: 1.1;
+}
+.trainer-stat-v2-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--s-text-muted);
+  margin-top: 2px;
+}
+.trainer-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.trend-up { color: var(--s-green); }
+.trend-down { color: var(--s-red); }
+.trend-flat { color: var(--s-text-muted); }
+.trainer-risk-flags {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.risk-flag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--s-r-sm);
+  background: var(--s-amber-bg);
+  color: var(--s-amber);
+  border: 1px solid #FDE68A;
+}
+.risk-flag.red {
+  background: var(--s-red-bg);
+  color: var(--s-red);
+  border-color: #FECACA;
+}
+
+/* ── CLIENT JOURNEY BOARD ────────────────────────────────────── */
+.journey-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1100px) { .journey-board { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .journey-board { grid-template-columns: 1fr; } }
+.journey-col {
+  background: var(--s-surface);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+  overflow: hidden;
+}
+.journey-col-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--s-border);
+}
+.journey-col-header-count {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--s-r-pill);
+  margin-left: 6px;
+}
+.journey-col-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 80px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.journey-card {
+  background: #fff;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-sm);
+  padding: 9px 11px;
+  font-size: 12px;
+  transition: box-shadow 0.12s;
+  cursor: pointer;
+}
+.journey-card:hover { box-shadow: var(--s-shadow-sm); }
+.journey-card-name {
+  font-weight: 700;
+  color: var(--s-text-primary);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.journey-card-meta {
+  font-size: 10px;
+  color: var(--s-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.journey-risk {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--s-r-sm);
+}
+.risk-green  { background: var(--s-green-bg);  color: #0a7a54; }
+.risk-amber  { background: var(--s-amber-bg);  color: var(--s-amber); }
+.risk-red    { background: var(--s-red-bg);    color: var(--s-red); }
+
+/* ── PERFORMANCE KPI CARDS ───────────────────────────────────── */
+.perf-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.perf-kpi-card {
+  background: #fff;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-r-md);
+  padding: 16px 18px;
+  box-shadow: var(--s-shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+.perf-kpi-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent-color, var(--s-purple));
+}
+.perf-kpi-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--s-text-muted);
+  margin-bottom: 8px;
+}
+.perf-kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--s-text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+}
+.perf-kpi-delta {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.perf-kpi-sub {
+  font-size: 11px;
+  color: var(--s-text-muted);
+  margin-top: 4px;
+}
+
+/* ── REQUEST TABLE ENHANCEMENTS ──────────────────────────────── */
+.sla-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--s-r-sm);
+  white-space: nowrap;
+}
+.sla-ok    { background: var(--s-green-bg); color: #0a7a54; }
+.sla-warn  { background: var(--s-amber-bg); color: var(--s-amber); }
+.sla-late  { background: var(--s-red-bg);   color: var(--s-red); }
+.readiness-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.rd-green::before { content: '●'; color: var(--s-green); }
+.rd-amber::before { content: '●'; color: var(--s-amber); }
+.rd-red::before   { content: '●'; color: var(--s-red);   }
+
 /* ── PERMISSIONS MODAL ─────────────────────────────────────── */
 .perm-modal { border-radius: var(--s-r-lg) !important; box-shadow: var(--s-shadow-lg) !important; }
 .perm-header { background: var(--s-navy) !important; }
@@ -1924,7 +2292,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
 <header class="header" id="mainHeader" style="display:none;">
   <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleNav()"><span></span><span></span><span></span></button>
   <div class="street-logo-mark">STREET<span class="logo-dot">.</span><span style="font-size:9px;font-weight:400;">CO.UK</span></div>
-  <div class="header-title">Training Dashboard</div>
+  <div class="header-title">Training Dashboard &nbsp;<span style="font-size:9px;background:var(--s-purple);color:#fff;padding:1px 7px;border-radius:4px;font-weight:700;vertical-align:middle;letter-spacing:0.5px;">V2</span></div>
   <div class="header-right">
     <span class="last-updated" id="lastUpdated">&#8212;</span>
     <button class="header-btn" onclick="loadData()">&#8635; Refresh</button>
@@ -1943,6 +2311,83 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
 <div class="loading-bar" id="loadingBar" style="display:none;"></div>
 
 <main class="main" id="mainContent" style="display:none;">
+
+  <!-- MANAGER FOCUS PANEL V2 -->
+  <div id="managerFocusSection" style="margin-bottom:24px;">
+    <div class="focus-panel">
+      <div class="focus-panel-header">
+        <div class="focus-panel-title">
+          🎯 Manager Focus
+          <span class="focus-panel-subtitle" id="focusPanelDate"></span>
+        </div>
+        <button class="header-btn" onclick="renderManagerFocus()" style="font-size:11px;padding:4px 10px;">↻ Refresh</button>
+      </div>
+      <div id="focusItemsContainer" class="focus-items">
+        <div class="focus-all-clear"><strong>⏳ Loading…</strong>Calculating priorities</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE KPIs V2 -->
+  <div id="perfKpiSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">📊 Team Performance KPIs</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Manager-level metrics — utilisation, pipeline health &amp; trends</span>
+    </div>
+    <div class="perf-kpi-grid">
+      <div class="perf-kpi-card" style="--accent-color:#5B4BE7;">
+        <div class="perf-kpi-label">Utilisation Rate</div>
+        <div class="perf-kpi-value" id="pkpiUtil">—</div>
+        <div class="perf-kpi-sub" id="pkpiUtilSub">Training days / available capacity</div>
+      </div>
+      <div class="perf-kpi-card" style="--accent-color:#0FA976;">
+        <div class="perf-kpi-label">Avg Time to Book</div>
+        <div class="perf-kpi-value" id="pkpiTTB">—</div>
+        <div class="perf-kpi-sub">Request → booking (days)</div>
+      </div>
+      <div class="perf-kpi-card" style="--accent-color:#D97706;">
+        <div class="perf-kpi-label">Pipeline Value</div>
+        <div class="perf-kpi-value" id="pkpiPipeline">—</div>
+        <div class="perf-kpi-sub" id="pkpiPipelineSub">Unassigned + Pending</div>
+      </div>
+      <div class="perf-kpi-card" style="--accent-color:#DC2F4B;">
+        <div class="perf-kpi-label">Completion Rate</div>
+        <div class="perf-kpi-value" id="pkpiCompletion">—</div>
+        <div class="perf-kpi-sub" id="pkpiCompletionSub">Booked vs Cancelled</div>
+      </div>
+      <div class="perf-kpi-card" style="--accent-color:#2563EB;">
+        <div class="perf-kpi-label">Avg Revenue / Day</div>
+        <div class="perf-kpi-value" id="pkpiRevDay">—</div>
+        <div class="perf-kpi-sub">Per training day (booked, this year)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLIENT JOURNEY BOARD V2 -->
+  <div id="clientJourneySection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">🧭 Client Journey Status</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Live pipeline view — where is each client right now?</span>
+    </div>
+    <div class="journey-board">
+      <div class="journey-col" style="border-top:3px solid var(--s-red);">
+        <div class="journey-col-header" style="color:var(--s-red);">🔴 Unassigned <span class="journey-col-header-count" id="jcUnassignedCount" style="background:var(--s-red-bg);color:var(--s-red);">0</span></div>
+        <div class="journey-col-body" id="jcUnassigned"></div>
+      </div>
+      <div class="journey-col" style="border-top:3px solid var(--s-amber);">
+        <div class="journey-col-header" style="color:var(--s-amber);">🟡 Pending <span class="journey-col-header-count" id="jcPendingCount" style="background:var(--s-amber-bg);color:var(--s-amber);">0</span></div>
+        <div class="journey-col-body" id="jcPending"></div>
+      </div>
+      <div class="journey-col" style="border-top:3px solid var(--s-purple);">
+        <div class="journey-col-header" style="color:var(--s-purple);">📅 Booked (Upcoming) <span class="journey-col-header-count" id="jcBookedCount" style="background:var(--s-lavender);color:var(--s-purple);">0</span></div>
+        <div class="journey-col-body" id="jcBooked"></div>
+      </div>
+      <div class="journey-col" style="border-top:3px solid var(--s-green);">
+        <div class="journey-col-header" style="color:#0a7a54;">✅ Completed (Recent) <span class="journey-col-header-count" id="jcCompleteCount" style="background:var(--s-green-bg);color:#0a7a54;">0</span></div>
+        <div class="journey-col-body" id="jcComplete"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- TRAINER WORKLOAD -->
   <div id="trainerWorkloadSection" style="margin-bottom:24px;">
@@ -1964,7 +2409,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
         <span style="font-size:11px;color:var(--text--dark--30);">Click company name to view full enquiry profile</span>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Suggested</th><th>Actions</th></tr></thead>
+        <table><thead><tr><th>Submitted</th><th class="sortable" onclick="sortTable('company')">Company <span class="sort-icon">⇅</span></th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>⏱ SLA</th><th>Readiness</th><th>Suggested</th><th>Actions</th></tr></thead>
         <tbody id="unassignedBody"><tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
@@ -3826,6 +4271,18 @@ function renderAll() {
   renderCompletedBookings();
   renderCalendar();
   populateFilterDropdowns();
+  // V2 additions — Manager Focus, Performance KPIs, Client Journey, Enhanced Trainers
+  try { renderManagerFocus(); } catch(e) { console.warn('renderManagerFocus:', e); }
+  try { renderPerfKpis(); } catch(e) { console.warn('renderPerfKpis:', e); }
+  try { renderClientJourney(); } catch(e) { console.warn('renderClientJourney:', e); }
+  try { renderTrainerWorkloadV2(); } catch(e) { console.warn('renderTrainerWorkloadV2:', e); }
+  // V2 section visibility
+  const focus = document.getElementById('managerFocusSection');
+  if (focus) focus.style.display = canDo('viewKpis') ? '' : 'none';
+  const journey = document.getElementById('clientJourneySection');
+  if (journey) journey.style.display = canDo('viewAllBookings') ? '' : 'none';
+  const perfKpi = document.getElementById('perfKpiSection');
+  if (perfKpi) perfKpi.style.display = canDo('viewKpis') ? '' : 'none';
 }
 
 function getFilteredData() {
@@ -4049,7 +4506,7 @@ function renderUnassigned() {
   badge.textContent = rows.length;
   dot.style.display = rows.length ? 'block' : 'none';
   const tbody = document.getElementById('unassignedBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
+  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
   const today = new Date(); today.setHours(0,0,0,0);
   tbody.innerHTML = rows.map((r, rowPos) => {
     const suggested = suggestTrainer(rowPos);
@@ -4066,6 +4523,8 @@ function renderUnassigned() {
       <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
       <td>${optionBadge(r.trainingOption)}</td>
       <td>${pref}</td>
+      <td>${slaBadge(r)}</td>
+      <td>${readinessBadge(r)}</td>
       <td>${skippedFlags ? skippedFlags : suggChip}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
@@ -6186,6 +6645,331 @@ document.addEventListener('DOMContentLoaded', function() {
   const modal = document.getElementById('blockDayModal');
   if(modal) modal.addEventListener('click', function(e) { if(e.target === modal) closeBlockDayModal(); });
 });
+
+// =====================================================================
+// DASHBOARD V2 — ENHANCED RENDERING FUNCTIONS
+// =====================================================================
+
+// ── MANAGER FOCUS PANEL ─────────────────────────────────────────────
+function renderManagerFocus() {
+  const container = document.getElementById('focusItemsContainer');
+  const dateEl    = document.getElementById('focusPanelDate');
+  if (!container) return;
+
+  const now  = new Date();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  if (dateEl) {
+    dateEl.textContent = now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+  }
+
+  const items = [];
+
+  // 1. Unassigned > 48 hrs
+  const stale48 = allData.filter(r => {
+    if (r.status !== 'Unassigned') return false;
+    if (!r.ts) return false;
+    return (Date.now() - r.ts) > 48 * 3600000;
+  });
+  if (stale48.length > 0) {
+    items.push({ cls: 'critical', icon: '🚨', title: `${stale48.length} request${stale48.length > 1 ? 's' : ''} unassigned > 48 hrs`, sub: stale48.map(r => getCompanyName(r)).slice(0,3).join(', ') + (stale48.length > 3 ? '…' : ''), action: () => document.getElementById('unassignedSection')?.scrollIntoView({behavior:'smooth'}) });
+  }
+
+  // 2. Clients with no activity in 5+ days (pending but no recent note/update)
+  const stalePending = allData.filter(r => {
+    if (r.status !== 'Pending') return false;
+    if (!r.ts) return false;
+    return (Date.now() - r.ts) > 5 * 86400000;
+  });
+  if (stalePending.length > 0) {
+    items.push({ cls: 'warning', icon: '⚠️', title: `${stalePending.length} pending booking${stalePending.length > 1 ? 's' : ''} stalled (5+ days)`, sub: stalePending.map(r => getCompanyName(r)).slice(0,3).join(', '), action: () => document.getElementById('actionSection')?.scrollIntoView({behavior:'smooth'}) });
+  }
+
+  // 3. Trainer capacity alerts
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const y30 = new Date(today); y30.setDate(y30.getDate() - 30);
+  const CAPACITY_WARN = 16; const CAPACITY_MAX = 20;
+  trainerUsers.forEach(t => {
+    const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
+    const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
+    const next14 = new Date(); next14.setDate(next14.getDate() + 14);
+    const next14booked = upcoming.filter(r => r.bookedOn <= next14);
+    const days14 = next14booked.reduce((s, r) => s + (r.trainingDays || 1), 0);
+    if (days14 >= CAPACITY_MAX) {
+      items.push({ cls: 'critical', icon: '🔴', title: `${t.name} fully booked next 2 weeks`, sub: `${days14} training days in pipeline — avoid new assignments`, action: () => document.getElementById('trainerWorkloadSection')?.scrollIntoView({behavior:'smooth'}) });
+    } else if (days14 >= CAPACITY_WARN) {
+      items.push({ cls: 'warning', icon: '🟡', title: `${t.name} at ${Math.round((days14/CAPACITY_MAX)*100)}% capacity`, sub: `${days14} of ${CAPACITY_MAX} days booked in next 2 weeks`, action: () => document.getElementById('trainerWorkloadSection')?.scrollIntoView({behavior:'smooth'}) });
+    }
+  });
+
+  // 4. Sessions missing trainer (booked but no trainer name)
+  const noTrainer = allData.filter(r => r.status === 'Booked' && !r.trainer);
+  if (noTrainer.length > 0) {
+    items.push({ cls: 'critical', icon: '👤', title: `${noTrainer.length} confirmed session${noTrainer.length > 1 ? 's' : ''} have no trainer assigned`, sub: noTrainer.map(r => getCompanyName(r)).slice(0,3).join(', '), action: () => document.getElementById('allBookingsSection')?.scrollIntoView({behavior:'smooth'}) });
+  }
+
+  // 5. Pipeline value
+  const pipelineRows = allData.filter(r => r.status === 'Unassigned' || r.status === 'Pending');
+  const pipelineCount = pipelineRows.length;
+  if (pipelineCount > 0) {
+    const pipelineVal = pipelineRows.reduce((s, r) => s + (r.invoiceValue || 0), 0);
+    const valStr = pipelineVal > 0 ? ` · £${Math.round(pipelineVal).toLocaleString('en-GB')} value` : '';
+    items.push({ cls: 'info', icon: '📥', title: `${pipelineCount} requests in pipeline`, sub: `Need attention to convert to bookings${valStr}`, action: null });
+  }
+
+  // 6. Good news: upcoming training this week
+  const endOfWeek = new Date(today); endOfWeek.setDate(endOfWeek.getDate() + (7 - today.getDay()));
+  const thisWeekSessions = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today && r.bookedOn <= endOfWeek);
+  if (thisWeekSessions.length > 0) {
+    items.push({ cls: 'good', icon: '📅', title: `${thisWeekSessions.length} session${thisWeekSessions.length > 1 ? 's' : ''} live this week`, sub: thisWeekSessions.map(r => getCompanyName(r)).slice(0,3).join(', '), action: () => document.getElementById('calendarSection')?.scrollIntoView({behavior:'smooth'}) });
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `<div class="focus-all-clear"><strong>✅ All clear!</strong>No urgent items need your attention right now.</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(item => `
+    <div class="focus-item ${item.cls}" ${item.action ? 'onclick="(' + item.action.toString() + ')()"' : ''} style="${item.action ? 'cursor:pointer;' : ''}">
+      <div class="focus-item-icon">${item.icon}</div>
+      <div class="focus-item-text">
+        <div class="focus-item-title">${item.title}</div>
+        <div class="focus-item-sub">${item.sub}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── PERFORMANCE KPIs ─────────────────────────────────────────────────
+function renderPerfKpis() {
+  const now = new Date();
+  const thisYear = now.getFullYear();
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  // Utilisation: booked training days this year / (trainers × working days elapsed × assumed capacity rate)
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const nTrainers = trainerUsers.length || 1;
+  const startOfYear = new Date(thisYear, 0, 1);
+  const workingDaysElapsed = Math.max(1, Math.round((today - startOfYear) / 7 * 5));
+  const DAYS_PER_TRAINER_PER_MONTH = 20;
+  const capacityDays = nTrainers * Math.round(workingDaysElapsed / 20) * DAYS_PER_TRAINER_PER_MONTH;
+  const bookedThisYear = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === thisYear);
+  const bookedDays = bookedThisYear.reduce((s, r) => s + (r.trainingDays || 1), 0);
+  const utilPct = capacityDays > 0 ? Math.min(999, Math.round((bookedDays / capacityDays) * 100)) : 0;
+  const pkpiUtil = document.getElementById('pkpiUtil');
+  if (pkpiUtil) { pkpiUtil.textContent = utilPct + '%'; pkpiUtil.style.color = utilPct >= 80 ? 'var(--s-green)' : utilPct >= 50 ? 'var(--s-amber)' : 'var(--s-text-primary)'; }
+  const pkpiUtilSub = document.getElementById('pkpiUtilSub');
+  if (pkpiUtilSub) pkpiUtilSub.textContent = `${bookedDays} days booked of ~${capacityDays} capacity`;
+
+  // Avg time to book: request timestamp → bookedOn date
+  const booked = allData.filter(r => r.status === 'Booked' && r.ts && r.bookedOn && r.bookedOn.getFullYear() === thisYear);
+  const ttbs = booked.map(r => (r.bookedOn - r.ts) / 86400000).filter(d => d >= 0 && d < 180);
+  const avgTTB = ttbs.length ? Math.round(ttbs.reduce((a, b) => a + b, 0) / ttbs.length) : null;
+  const pkpiTTB = document.getElementById('pkpiTTB');
+  if (pkpiTTB) pkpiTTB.textContent = avgTTB !== null ? avgTTB + 'd' : '—';
+
+  // Pipeline value
+  const pipeline = allData.filter(r => r.status === 'Unassigned' || r.status === 'Pending');
+  const pipelineVal = pipeline.reduce((s, r) => s + (r.invoiceValue || 0), 0);
+  const pkpiPipeline = document.getElementById('pkpiPipeline');
+  if (pkpiPipeline) pkpiPipeline.textContent = pipelineVal > 0 ? '£' + Math.round(pipelineVal).toLocaleString('en-GB') : pipeline.length + ' req';
+  const pkpiPipelineSub = document.getElementById('pkpiPipelineSub');
+  if (pkpiPipelineSub) pkpiPipelineSub.textContent = `${pipeline.length} open requests in pipeline`;
+
+  // Completion rate: Booked / (Booked + Cancelled) this year
+  const completed = allData.filter(r => (r.status === 'Booked' || r.status === 'Cancelled') && r.bookedOn && r.bookedOn.getFullYear() === thisYear);
+  const bookedCt = completed.filter(r => r.status === 'Booked').length;
+  const cancelCt = completed.filter(r => r.status === 'Cancelled').length;
+  const compRate = completed.length ? Math.round((bookedCt / completed.length) * 100) : null;
+  const pkpiCompletion = document.getElementById('pkpiCompletion');
+  if (pkpiCompletion) pkpiCompletion.textContent = compRate !== null ? compRate + '%' : '—';
+  const pkpiCompletionSub = document.getElementById('pkpiCompletionSub');
+  if (pkpiCompletionSub) pkpiCompletionSub.textContent = `${bookedCt} booked · ${cancelCt} cancelled this year`;
+
+  // Avg revenue per training day
+  const bookedWithVal = bookedThisYear.filter(r => r.invoiceValue && r.trainingDays);
+  const totalRev = bookedWithVal.reduce((s, r) => s + r.invoiceValue, 0);
+  const totalDays = bookedWithVal.reduce((s, r) => s + r.trainingDays, 0);
+  const revPerDay = totalDays > 0 ? Math.round(totalRev / totalDays) : null;
+  const pkpiRevDay = document.getElementById('pkpiRevDay');
+  if (pkpiRevDay) pkpiRevDay.textContent = revPerDay ? '£' + revPerDay.toLocaleString('en-GB') : '—';
+}
+
+// ── CLIENT JOURNEY BOARD ─────────────────────────────────────────────
+function renderClientJourney() {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const thirtyDaysAgo = new Date(today); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  function journeyCard(r) {
+    const name = getCompanyName(r);
+    const ageDays = r.ts ? Math.floor((Date.now() - r.ts) / 86400000) : null;
+    const ageStr = ageDays !== null ? `${ageDays}d ago` : '';
+    const trainer = r.trainer ? `· ${r.trainer}` : '';
+    let riskCls = 'risk-green', riskLabel = '🟢 On track';
+    if (ageDays !== null && ageDays > 10) { riskCls = 'risk-red'; riskLabel = '🔴 Stalled'; }
+    else if (ageDays !== null && ageDays > 5) { riskCls = 'risk-amber'; riskLabel = '🟡 At risk'; }
+    return `<div class="journey-card" onclick="openProfileSidebar(${r._idx})">
+      <div class="journey-card-name">${escHtml(name)}</div>
+      <div class="journey-card-meta">
+        <span>${ageStr}</span>
+        <span>${trainer}</span>
+        <span class="journey-risk ${riskCls}">${riskLabel}</span>
+      </div>
+    </div>`;
+  }
+
+  function renderCol(colId, countId, rows) {
+    const el = document.getElementById(colId);
+    const ct = document.getElementById(countId);
+    if (!el) return;
+    if (ct) ct.textContent = rows.length;
+    if (rows.length === 0) {
+      el.innerHTML = '<div style="padding:12px;text-align:center;font-size:11px;color:var(--s-text-muted);">None right now</div>';
+    } else {
+      el.innerHTML = rows.map(journeyCard).join('');
+    }
+  }
+
+  const unassigned = allData.filter(r => r.status === 'Unassigned');
+  const pending    = allData.filter(r => r.status === 'Pending');
+  const booked     = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today).sort((a, b) => a.bookedOn - b.bookedOn);
+  const complete   = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn < today && r.bookedOn >= thirtyDaysAgo).sort((a, b) => b.bookedOn - a.bookedOn).slice(0, 15);
+
+  renderCol('jcUnassigned', 'jcUnassignedCount', unassigned);
+  renderCol('jcPending',    'jcPendingCount',    pending);
+  renderCol('jcBooked',     'jcBookedCount',     booked);
+  renderCol('jcComplete',   'jcCompleteCount',   complete);
+}
+
+// ── ENHANCED TRAINER WORKLOAD (V2) ───────────────────────────────────
+function renderTrainerWorkloadV2() {
+  const grid = document.getElementById('trainerGrid');
+  if (!grid) return;
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  if (!trainerUsers.length) { grid.innerHTML = '<div style="padding:16px;color:var(--text--dark--30);">No trainers found.</div>'; return; }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const y30   = new Date(today); y30.setDate(y30.getDate() - 30);
+  const y60   = new Date(today); y60.setDate(y60.getDate() - 60);
+  const next14 = new Date(today); next14.setDate(next14.getDate() + 14);
+  const CAPACITY_MAX = 20;
+
+  let html = '';
+  trainerUsers.forEach((t, idx) => {
+    const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
+
+    // Last 30 & 31-60 for trend
+    const last30  = booked.filter(r => r.bookedOn && r.bookedOn >= y30 && r.bookedOn <= today);
+    const prev30  = booked.filter(r => r.bookedOn && r.bookedOn >= y60 && r.bookedOn < y30);
+    const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
+    const next14b  = upcoming.filter(r => r.bookedOn <= next14);
+
+    const daysLast30 = last30.reduce((s, r) => s + (r.trainingDays || 1), 0);
+    const daysPrev30 = prev30.reduce((s, r) => s + (r.trainingDays || 1), 0);
+    const days14     = next14b.reduce((s, r) => s + (r.trainingDays || 1), 0);
+
+    const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
+    const initial = (t.name || '?').charAt(0).toUpperCase();
+
+    // Capacity status
+    let capCls = 'cap-under', capLabel = '● Under capacity';
+    const pct14 = Math.round((days14 / CAPACITY_MAX) * 100);
+    if (pct14 >= 100)      { capCls = 'cap-overloaded'; capLabel = '⚠ Overloaded'; }
+    else if (pct14 >= 75)  { capCls = 'cap-high';       capLabel = '▲ High load';  }
+    else if (pct14 >= 40)  { capCls = 'cap-optimal';    capLabel = '✓ Optimal';    }
+
+    // Trend
+    let trendHtml = '';
+    if (daysPrev30 > 0) {
+      const diff = daysLast30 - daysPrev30;
+      if (diff > 0)      trendHtml = `<span class="trainer-trend trend-up">↑ ${diff}d vs prev 30d</span>`;
+      else if (diff < 0) trendHtml = `<span class="trainer-trend trend-down">↓ ${Math.abs(diff)}d vs prev 30d</span>`;
+      else               trendHtml = `<span class="trainer-trend trend-flat">→ Steady</span>`;
+    }
+
+    // Risk flags
+    const flags = [];
+    const noNoteRecent = booked.filter(r => r.bookedOn && r.bookedOn < today && r.bookedOn >= y30 && (!r.notes || r.notes.length === 0));
+    if (noNoteRecent.length > 0) flags.push({ label: `${noNoteRecent.length} sessions missing notes`, red: false });
+    if (days14 >= CAPACITY_MAX)  flags.push({ label: 'Overloaded — avoid new bookings', red: true });
+
+    const flagsHtml = flags.length ? `<div class="trainer-risk-flags">${flags.map(f => `<span class="risk-flag${f.red ? ' red' : ''}">${f.label}</span>`).join('')}</div>` : '';
+
+    const nextFree = getNextFreeDate(t.name);
+    const nextFreeHtml = nextFree
+      ? `<div class="next-free-tag" style="margin-top:10px;">${nextFree}</div>`
+      : `<div class="next-free-tag busy" style="margin-top:10px;">No free slots in 90 days</div>`;
+
+    const revenue = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === today.getFullYear() && r.invoiceValue).reduce((s, r) => s + r.invoiceValue, 0);
+
+    html += `<div class="trainer-card-v2" onclick="openProfileSidebar && trainers && (function(){})()">
+      <div class="trainer-card-v2-header">
+        <div class="trainer-avatar-v2" style="background:${color};">${initial}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="trainer-name-v2">${escHtml(t.name)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="trainer-role-tag" style="background:${color}22;color:${color};">${t.role}</span>
+            <span class="capacity-badge ${capCls}">${capLabel}</span>
+          </div>
+        </div>
+      </div>
+      <div class="trainer-stats-grid-v2">
+        <div class="trainer-stat-v2">
+          <div class="trainer-stat-v2-val">${last30.length}</div>
+          <div class="trainer-stat-v2-label">Sessions<br>Last 30d</div>
+        </div>
+        <div class="trainer-stat-v2">
+          <div class="trainer-stat-v2-val">${upcoming.length}</div>
+          <div class="trainer-stat-v2-label">Upcoming<br>Sessions</div>
+        </div>
+        <div class="trainer-stat-v2">
+          <div class="trainer-stat-v2-val">${daysLast30}</div>
+          <div class="trainer-stat-v2-label">Training<br>Days (30d)</div>
+        </div>
+        <div class="trainer-stat-v2">
+          <div class="trainer-stat-v2-val">${revenue > 0 ? '£' + Math.round(revenue / 1000) + 'k' : '—'}</div>
+          <div class="trainer-stat-v2-label">Revenue<br>This Year</div>
+        </div>
+      </div>
+      ${trendHtml ? `<div style="margin-bottom:8px;">${trendHtml}</div>` : ''}
+      ${flagsHtml}
+      ${nextFreeHtml}
+    </div>`;
+  });
+  grid.innerHTML = html;
+  // Update grid style for v2 cards
+  grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
+}
+
+// ── SLA TIMER HELPER ─────────────────────────────────────────────────
+function slaBadge(r) {
+  if (!r.ts || r.status !== 'Unassigned') return '';
+  const hrs = Math.floor((Date.now() - r.ts) / 3600000);
+  if (hrs < 24)       return `<span class="sla-timer sla-ok">✓ ${hrs}h</span>`;
+  if (hrs < 48)       return `<span class="sla-timer sla-warn">⚠ ${Math.floor(hrs/24)}d</span>`;
+  return               `<span class="sla-timer sla-late">🔴 ${Math.floor(hrs/24)}d overdue</span>`;
+}
+
+function readinessBadge(r) {
+  // Estimate readiness from available data
+  const hasDate     = !!r.preferredDate;
+  const hasOption   = !!(r.trainingOption && !r.trainingOption.includes('Help Me'));
+  const hasAreas    = !!r.areas;
+  const score = [hasDate, hasOption, hasAreas].filter(Boolean).length;
+  if (score >= 3) return `<span class="readiness-dot rd-green">Ready</span>`;
+  if (score >= 2) return `<span class="readiness-dot rd-amber">Nearly</span>`;
+  return              `<span class="readiness-dot rd-red">Incomplete</span>`;
+}
+
+// ── INIT: set date on focus panel ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  const dateEl = document.getElementById('focusPanelDate');
+  if (dateEl) {
+    dateEl.textContent = new Date().toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+  }
+});
+
+// =====================================================================
 
 // ===================== AUTO REFRESH (15 min) =====================
 (function() {
