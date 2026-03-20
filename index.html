@@ -3891,7 +3891,7 @@ function renderManagerActions() {
   const overCapacityNext = [];
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
-    const cap = meta.capacity || 4;
+    const cap = meta.capacity || 1;
     const nextWeekSessions = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn >= nextWeekStart && r.bookedOn <= nextWeekEnd);
     if(nextWeekSessions.length >= cap) overCapacityNext.push(t.name);
   });
@@ -3920,7 +3920,7 @@ function renderManagerActions() {
   const y30 = new Date(today); y30.setDate(y30.getDate()-30);
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
-    const CAPACITY_30D = (meta.capacity || 4) * 6;
+    const CAPACITY_30D = (meta.capacity || 1) * 4.3;
     const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
     const pct = Math.round((last30.length / Math.max(CAPACITY_30D,1)) * 100);
     if(pct >= 90) {
@@ -3931,7 +3931,7 @@ function renderManagerActions() {
   // 5. Low utilisation warning
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
-    const CAPACITY_30D = (meta.capacity || 4) * 6;
+    const CAPACITY_30D = (meta.capacity || 1) * 4.3;
     const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
     const pct = Math.round((last30.length / Math.max(CAPACITY_30D,1)) * 100);
     if(pct < 30 && last30.length < 3) {
@@ -4070,7 +4070,7 @@ function staleBadge(r) {
 // Trainer extended metadata (skill tags, capacity, shadowing)
 const TRAINER_META = {};
 function getTrainerMeta(name) {
-  if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 4, skills: [], shadowing: false, notes: '', goals: { revenueTarget: 0, sessionTarget: 10 } };
+  if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 1, skills: [], shadowing: false, notes: '', goals: { revenueTarget: 0, sessionTarget: 10 } };
   return TRAINER_META[name];
 }
 function saveTrainerMeta(name, updates) {
@@ -4103,7 +4103,7 @@ function renderTrainerWorkload() {
     const sessionsLast30 = last30.length;
     const sessionsUpcoming = upcoming.length;
     // Utilisation based on capacity (sessions per 30 days)
-    const CAPACITY_30D = (meta.capacity || 4) * 6; // ~6 working weeks per 30 days
+    const CAPACITY_30D = (meta.capacity || 1) * 4.3; // ~4.3 weeks per 30 days
     const utilisationPct = Math.min(100, Math.round((sessionsLast30 / Math.max(CAPACITY_30D, 1)) * 100));
     let utilColour, utilLabel, statusDot;
     if(utilisationPct >= 90)      { utilColour = '#DC2F4B'; utilLabel = 'Over capacity'; statusDot = '🔴'; }
@@ -4117,7 +4117,7 @@ function renderTrainerWorkload() {
     const skillTags = (meta.skills || []).map(s => `<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;margin:1px;">${s}</span>`).join('');
     const shadowingBadge = meta.shadowing ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;background:#f0f0ff;color:#5B4BE7;border-radius:4px;border:1px solid #C8CCFF;margin-left:4px;">👀 Shadowing</span>` : '';
     const revLast30 = last30.reduce((s,r) => s+(r.invoiceValue||0), 0);
-    html += `<div class="trainer-card" style="cursor:pointer;" onclick="openTrainerProfile('${escHtml(t.name)}')">
+    html += `<div class="trainer-card" style="cursor:pointer;" data-trainer="${escHtml(t.name)}" onclick="openTrainerProfile('${escHtml(t.name)}')">
       <div class="trainer-name">
         <div class="trainer-color-dot" style="background:${color};"></div>
         ${escHtml(t.name)}
@@ -4817,7 +4817,7 @@ function renderSmartRecs() {
   // 1. Trainer under capacity
   const today = new Date(); today.setHours(0,0,0,0);
   const y30 = new Date(today); y30.setDate(y30.getDate()-30);
-  const CAPACITY_30D = 10;
+  const CAPACITY_30D = 4.3; // ~1 session/week default
   const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
   trainerUsers.forEach(t => {
     const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
@@ -6693,7 +6693,7 @@ function openTrainerProfile(name) {
   const paidSess = last30.filter(r=>r.invoiceValue>0);
   const avgVal = paidSess.length ? rev30/paidSess.length : 0;
 
-  const CAPACITY_30D = (meta.capacity||4)*6;
+  const CAPACITY_30D = (meta.capacity||1)*4.3;
   const utilPct = Math.min(100, Math.round((last30.length/Math.max(CAPACITY_30D,1))*100));
   let statusDot = utilPct>=90?'🔴 Over capacity':utilPct>=60?'🟢 Available':utilPct>=30?'🟠 Under-utilised':'🔴 Low activity';
   let statusColour = utilPct>=90?'#DC2F4B':utilPct>=60?'#0FA976':'#D97706';
@@ -6763,7 +6763,7 @@ function openTrainerProfile(name) {
   const capPct = Math.min(100, Math.round((upcoming.length/Math.max(meta.capacity||4,1))*100));
   panel.querySelector('#tpCapBar').style.width = capPct + '%';
   panel.querySelector('#tpCapBar').style.background = capPct>=100?'#DC2F4B':capPct>=70?'#D97706':'#0FA976';
-  panel.querySelector('#tpCapLabel').textContent = upcoming.length + ' upcoming of ' + (meta.capacity||4) + '/day capacity';
+  panel.querySelector('#tpCapLabel').textContent = upcoming.length + ' upcoming · target ' + (meta.capacity||1) + ' session' + ((meta.capacity||1)!==1?'s':'') + '/week';
   panel.querySelector('#tpNextFree').textContent = nextFree || 'No free slots in 90 days';
 
   // Goals
@@ -6790,7 +6790,7 @@ function openTrainerProfile(name) {
   panel.querySelector('#tpShadowToggle').checked = !!meta.shadowing;
 
   // Capacity input
-  panel.querySelector('#tpCapacityInput').value = meta.capacity || 4;
+  panel.querySelector('#tpCapacityInput').value = meta.capacity || 1;
 
   // Skill checkboxes
   const ALL_SKILLS_CB = ['Sales','Lettings','Accounting','Property Management'];
@@ -6833,7 +6833,7 @@ function saveTrainerSettings() {
   if(!_trainerProfileName) return;
   const panel = document.getElementById('trainerProfilePanel');
   const meta = getTrainerMeta(_trainerProfileName);
-  meta.capacity = parseInt(panel.querySelector('#tpCapacityInput').value)||4;
+  meta.capacity = parseInt(panel.querySelector('#tpCapacityInput').value)||1;
   meta.shadowing = panel.querySelector('#tpShadowToggle').checked;
   meta.managerNotes = panel.querySelector('#tpManagerNotes').value;
   const ALL_SKILLS = ['Sales','Lettings','Accounting','Property Management'];
@@ -7053,10 +7053,11 @@ function closeTrainerProfile() {
     <!-- SETTINGS TAB -->
     <div id="tpTab-settings" style="display:none;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">⚙️ Capacity</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-        <label style="font-size:12px;color:var(--s-text-secondary);font-weight:600;">Max sessions/day:</label>
-        <input type="number" id="tpCapacityInput" min="1" max="10" value="4" style="width:70px;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+        <label style="font-size:12px;color:var(--s-text-secondary);font-weight:600;">Target sessions/week:</label>
+        <input type="number" id="tpCapacityInput" min="1" max="20" value="1" style="width:70px;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;">
       </div>
+      <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:18px;">e.g. set to 1 if they should do 1 session/week, 2 for two per week. Used to calculate utilisation %.</div>
 
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">🎯 Monthly Targets</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
