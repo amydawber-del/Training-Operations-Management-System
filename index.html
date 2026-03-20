@@ -7505,7 +7505,8 @@ function tpSwitchTab(tab) {
         </div>`).join('')
         : '<div style="color:var(--s-text-muted);font-size:12px;padding:8px 0;">No upcoming sessions booked.</div>';
     }
-    if(tab==='settings' && _trainerProfileName) {
+  }
+  if(tab==='settings' && _trainerProfileName) {
     const meta = getTrainerMeta(_trainerProfileName);
     const panel = document.getElementById('trainerProfilePanel');
     const revT = panel.querySelector('#tpRevTarget');
