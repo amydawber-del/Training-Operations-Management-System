@@ -3891,7 +3891,7 @@ function renderManagerActions() {
   const overCapacityNext = [];
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
-    const cap = meta.capacity || 1;
+    const cap = meta.capacity || 1; // sessions per week
     const nextWeekSessions = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn >= nextWeekStart && r.bookedOn <= nextWeekEnd);
     if(nextWeekSessions.length >= cap) overCapacityNext.push(t.name);
   });
@@ -4817,11 +4817,12 @@ function renderSmartRecs() {
   // 1. Trainer under capacity
   const today = new Date(); today.setHours(0,0,0,0);
   const y30 = new Date(today); y30.setDate(y30.getDate()-30);
-  const CAPACITY_30D = 4.3; // ~1 session/week default
   const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
   trainerUsers.forEach(t => {
+    const meta = getTrainerMeta(t.name);
+    const CAPACITY_30D = (meta.capacity || 1) * 4.3; // sessions/week × 4.3 weeks
     const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
-    const pct = Math.round((last30.length/CAPACITY_30D)*100);
+    const pct = Math.round((last30.length/Math.max(CAPACITY_30D,0.1))*100);
     if(pct < 40) {
       recs.push({ type:'capacity', colour:'#2563EB', icon:'📉', title: escHtml(t.name) + ' is under capacity', body: `Only ${last30.length} sessions in the last 30 days (${pct}% utilisation). Consider assigning pending requests.`, action: null });
     }
@@ -6760,7 +6761,7 @@ function openTrainerProfile(name) {
   }).join('');
 
   // Capacity bar
-  const capPct = Math.min(100, Math.round((upcoming.length/Math.max(meta.capacity||4,1))*100));
+  const capPct = Math.min(100, Math.round((upcoming.length/Math.max((meta.capacity||1)*4.3,1))*100));
   panel.querySelector('#tpCapBar').style.width = capPct + '%';
   panel.querySelector('#tpCapBar').style.background = capPct>=100?'#DC2F4B':capPct>=70?'#D97706':'#0FA976';
   panel.querySelector('#tpCapLabel').textContent = upcoming.length + ' upcoming · target ' + (meta.capacity||1) + ' session' + ((meta.capacity||1)!==1?'s':'') + '/week';
