@@ -2022,15 +2022,26 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
     </div>
   </div>
 
+  <!-- SMART RECOMMENDATIONS -->
+  <div id="smartRecsSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">🧠 Smart Recommendations</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Based on current data — updated on refresh</span>
+    </div>
+    <div id="smartRecsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;"></div>
+  </div>
+
   <!-- KPI CARDS -->
   <div id="kpiSection">
     <div style="margin-bottom:16px;"><div class="section-title" style="margin-bottom:14px;">&#128200; Performance Overview</div></div>
     <div class="kpi-grid">
       <div class="kpi-card kpi-accent-left clickable" onclick="openKpiModal('revYear')"><div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevYear">&#163;&#8212;</div><div class="kpi-card-sub">Exc. VAT &middot; click for detail</div></div>
       <div class="kpi-card kpi-accent-left kpi-accent-yellow clickable" onclick="openKpiModal('revMonth')"><div class="kpi-card-label">Revenue This Month <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevMonth">&#163;&#8212;</div><div id="kpiRevMonthDelta"></div></div>
-      <div class="kpi-card kpi-accent-left kpi-accent-green clickable" onclick="openKpiModal('avgFee')"><div class="kpi-card-label">Avg Training Fee (Year)</div><div class="kpi-card-value" id="kpiAvgFee">&#163;&#8212;</div><div class="kpi-card-sub">Per booking &middot; click for detail</div></div>
-      <div class="kpi-card kpi-accent-left kpi-accent-orange clickable" onclick="openKpiModal('days')"><div class="kpi-card-label">Training Days This Year</div><div class="kpi-card-value" id="kpiDaysYear">&#8212;</div><div class="kpi-card-sub" id="kpiDaysMonth">&#8212; this month</div></div>
-      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#9c27b0;" onclick="openKpiModal('daysMonth')"><div class="kpi-card-label">Training Days This Month vs Last</div><div class="kpi-card-value" id="kpiDaysThisMonth">&#8212;</div><div class="kpi-card-sub" id="kpiDaysLastMonthSub">&#8212; last month</div></div>
+      <div class="kpi-card kpi-accent-left kpi-accent-green clickable" onclick="openKpiModal('avgFee')"><div class="kpi-card-label">Avg Fee (Paid Sessions Only)</div><div class="kpi-card-value" id="kpiAvgFee">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiFreeSessionsSub">&#8212; &middot; click for detail</div></div>
+      <div class="kpi-card kpi-accent-left kpi-accent-orange clickable" onclick="openKpiModal('sessions')"><div class="kpi-card-label">Total Sessions Delivered</div><div class="kpi-card-value" id="kpiSessionsYear">&#8212;</div><div class="kpi-card-sub" id="kpiSessionsMonthSub">&#8212; this month</div></div>
+      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#9c27b0;" onclick="openKpiModal('sessionsByTrainer')"><div class="kpi-card-label">Sessions per Trainer (Year)</div><div class="kpi-card-value" id="kpiAvgSessionsPerTrainer">&#8212;</div><div class="kpi-card-sub" id="kpiSessionsPerDaySub">&#8212; sessions/day</div></div>
+      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#DC2F4B;" onclick="openKpiModal('leakage')"><div class="kpi-card-label">Revenue Leakage This Month</div><div class="kpi-card-value" id="kpiLeakage" style="color:var(--s-red);">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiLeakageSub">&#8212; free sessions</div></div>
+      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#0ea5e9;" onclick="openKpiModal('revPerSession')"><div class="kpi-card-label">Revenue per Session (Month)</div><div class="kpi-card-value" id="kpiRevPerSession">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiRevPerSessionSub">Paid sessions only</div></div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Monthly Revenue</div><div class="chart-subtitle">This year vs last year (exc. VAT)</div><div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div></div>
@@ -3819,6 +3830,7 @@ function renderAll() {
   renderUnassigned();
   renderActionNeeded();
   renderKpis();
+  renderSmartRecs();
   updateBellBadge();
   applyPermVisibility();
   renderReferralLeaderboard();
@@ -3952,18 +3964,25 @@ function renderTrainerWorkload() {
     const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
     const last30 = booked.filter(r => r.bookedOn && r.bookedOn >= y30 && r.bookedOn <= today);
     const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
-    const daysLast30 = last30.reduce((s,r) => s + (r.trainingDays||1), 0);
-    const maxLoad = 20;
-    const pct = Math.min(100, Math.round((daysLast30/maxLoad)*100));
+    // Sessions (not days) as the primary metric
+    const sessionsLast30 = last30.length;
+    const sessionsUpcoming = upcoming.length;
+    // Utilisation: sessions / capacity (assume 10 sessions per 30 days = 100%)
+    const CAPACITY_30D = 10;
+    const utilisationPct = Math.min(100, Math.round((sessionsLast30 / CAPACITY_30D) * 100));
+    let utilColour, utilLabel;
+    if(utilisationPct >= 80)      { utilColour = '#DC2F4B'; utilLabel = 'Busy'; }
+    else if(utilisationPct >= 40) { utilColour = '#0FA976'; utilLabel = 'Optimal'; }
+    else                           { utilColour = '#A8ADCA'; utilLabel = 'Under'; }
     const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
     const nextFree = getNextFreeDate(t.name);
     const nextFreeHtml = nextFree ? `<div class="next-free-tag">${nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`;
     html += `<div class="trainer-card">
       <div class="trainer-name"><div class="trainer-color-dot" style="background:${color};"></div>${escHtml(t.name)} <span class="status-badge" style="font-size:9px;padding:1px 5px;margin-left:auto;background:${color}22;color:${color};">${t.role}</span></div>
-      <div class="trainer-stat"><span>Client Visits (Last 30 Days)</span><span class="trainer-stat-val">${last30.length}</span></div>
-      <div class="trainer-stat"><span>Training Days in Total</span><span class="trainer-stat-val">${daysLast30}</span></div>
-      <div class="trainer-stat"><span>Upcoming Client Visits</span><span class="trainer-stat-val">${upcoming.length}</span></div>
-      <div class="workload-bar-wrap"><div class="workload-bar" style="width:${pct}%;background:${color};"></div></div>
+      <div class="trainer-stat"><span>Sessions Last 30 Days</span><span class="trainer-stat-val">${sessionsLast30}</span></div>
+      <div class="trainer-stat"><span>Upcoming Sessions</span><span class="trainer-stat-val">${sessionsUpcoming}</span></div>
+      <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
+      <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
       ${nextFreeHtml}
     </div>`;
   });
@@ -4227,25 +4246,62 @@ function renderKpis() {
   const thisMonth = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon);
   const lastMonth = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === lastMonYr && r.bookedOn.getMonth() === lastMon);
   const prevYear = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr - 1);
+
   const revYear = thisYear.reduce((s,r) => s + (r.invoiceValue||0), 0);
   const revMonth = thisMonth.reduce((s,r) => s + (r.invoiceValue||0), 0);
   const revLastMonth = lastMonth.reduce((s,r) => s + (r.invoiceValue||0), 0);
-  const daysYear = thisYear.reduce((s,r) => s + (r.trainingDays||1), 0);
-  const daysMonth = thisMonth.reduce((s,r) => s + (r.trainingDays||1), 0);
-  const avgFee = thisYear.length ? revYear / thisYear.length : 0;
+
+  // ── Fix #2: Avg Fee uses PAID sessions only (invoiceValue > 0) ──
+  const paidYearSessions = thisYear.filter(s => s.invoiceValue > 0);
+  const avgFee = paidYearSessions.length ? paidYearSessions.reduce((s,r) => s+(r.invoiceValue||0),0) / paidYearSessions.length : 0;
+  const freeYearCount = thisYear.length - paidYearSessions.length;
+  const freePct = thisYear.length ? Math.round((freeYearCount/thisYear.length)*100) : 0;
+
+  // ── Fix #1: Session counts (not days) ──
+  const sessionsYear = thisYear.length;
+  const sessionsMonth = thisMonth.length;
+  const sessionsLastMonth = lastMonth.length;
+
+  // Avg sessions per trainer (year)
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const avgSessionsPerTrainer = trainerUsers.length ? (sessionsYear / trainerUsers.length).toFixed(1) : '—';
+
+  // Sessions per working day (this year, approximate)
+  const daysIntoYear = Math.ceil((now - new Date(yr,0,1)) / 86400000);
+  const workingDaysApprox = Math.round(daysIntoYear * 5/7);
+  const sessionsPerDay = workingDaysApprox > 0 ? (sessionsYear / workingDaysApprox).toFixed(2) : '—';
+
+  // Revenue per session (paid, this month)
+  const paidMonthSessions = thisMonth.filter(s => s.invoiceValue > 0);
+  const revPerSession = paidMonthSessions.length ? paidMonthSessions.reduce((s,r) => s+(r.invoiceValue||0),0) / paidMonthSessions.length : 0;
+
+  // Revenue leakage (£0 sessions this month)
+  const freeSessions = allData.filter(r =>
+    r.status === 'Booked' && r.bookedOn &&
+    r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon &&
+    (!r.invoiceValue || r.invoiceValue === 0)
+  );
+
+  // ── Update DOM ──
   document.getElementById('kpiRevYear').textContent = fmtMoney(revYear);
   document.getElementById('kpiRevMonth').textContent = fmtMoney(revMonth);
   document.getElementById('kpiAvgFee').textContent = fmtMoney(avgFee);
-  const daysLastMonth = lastMonth.reduce((s,r) => s + (r.trainingDays||1), 0);
-  document.getElementById('kpiDaysYear').textContent = daysYear;
-  document.getElementById('kpiDaysMonth').textContent = daysMonth + ' this month';
-  document.getElementById('kpiDaysThisMonth').textContent = daysMonth;
-  document.getElementById('kpiDaysLastMonthSub').textContent = daysLastMonth + ' last month';
+  document.getElementById('kpiFreeSessionsSub').textContent = freePct + '% free sessions this year · click for detail';
+  document.getElementById('kpiSessionsYear').textContent = sessionsYear;
+  document.getElementById('kpiSessionsMonthSub').textContent = sessionsMonth + ' this month · ' + sessionsLastMonth + ' last month';
+  document.getElementById('kpiAvgSessionsPerTrainer').textContent = avgSessionsPerTrainer;
+  document.getElementById('kpiSessionsPerDaySub').textContent = sessionsPerDay + ' sessions/day this year';
+  document.getElementById('kpiLeakage').textContent = freeSessions.length + ' sessions';
+  document.getElementById('kpiLeakageSub').textContent = freeSessions.length + ' £0 booked sessions this month';
+  document.getElementById('kpiRevPerSession').textContent = fmtMoney(revPerSession);
+  document.getElementById('kpiRevPerSessionSub').textContent = paidMonthSessions.length + ' paid sessions this month';
+
   if(revLastMonth > 0) {
     const delta = Math.round(((revMonth - revLastMonth) / revLastMonth) * 100);
     const cls = delta >= 0 ? 'delta-up' : 'delta-down';
     document.getElementById('kpiRevMonthDelta').innerHTML = `<span class="kpi-card-delta ${cls}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month</span>`;
   }
+
   const months = Array.from({length:12},(_,i) => i);
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const thisYrData = months.map(m => thisYear.filter(r => r.bookedOn.getMonth()===m).reduce((s,r) => s+(r.invoiceValue||0),0));
@@ -4368,17 +4424,23 @@ function openKpiModal(type) {
       byMonth[m].total += r.invoiceValue||0;
       byMonth[m].count++;
     });
-    title.textContent = 'Average Training Fee — ' + yr;
-    sub.textContent = `Based on ${bookedWithVal.length} booked session${bookedWithVal.length!==1?'s':''} with invoice values recorded`;
-    const highestFee = bookedWithVal.length ? Math.max(...bookedWithVal.map(r=>r.invoiceValue)) : 0;
-    const lowestFee  = bookedWithVal.length ? Math.min(...bookedWithVal.map(r=>r.invoiceValue)) : 0;
+    // Fix: use PAID sessions only for avg fee
+    const paidSessions = bookedWithVal.filter(r => r.invoiceValue > 0);
+    const paidAvgFee = paidSessions.length ? paidSessions.reduce((s,r) => s+(r.invoiceValue||0),0) / paidSessions.length : 0;
+    const freeSessionsYear = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && (!r.invoiceValue||r.invoiceValue===0));
+    const allBookedYear = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr);
+    const freePct = allBookedYear.length ? Math.round((freeSessionsYear.length/allBookedYear.length)*100) : 0;
+    title.textContent = 'Avg Fee (Paid Sessions Only) — ' + yr;
+    sub.textContent = `Based on ${paidSessions.length} paid session${paidSessions.length!==1?'s':''}. Excludes £0 sessions to avoid skew.`;
+    const highestFee = paidSessions.length ? Math.max(...paidSessions.map(r=>r.invoiceValue)) : 0;
+    const lowestFee  = paidSessions.length ? Math.min(...paidSessions.map(r=>r.invoiceValue)) : 0;
     stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">Avg Fee (Year)</div><div class="kpi-stat-value">${fmtMoney(avgFee)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Avg Fee (Paid Only)</div><div class="kpi-stat-value">${fmtMoney(paidAvgFee)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">% Free Sessions</div><div class="kpi-stat-value" style="color:var(--s-amber);">${freePct}%</div></div>
       <div class="kpi-stat"><div class="kpi-stat-label">Highest Fee</div><div class="kpi-stat-value">${fmtMoney(highestFee)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Lowest Fee</div><div class="kpi-stat-value">${fmtMoney(lowestFee)}</div></div>
       <div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(totalVal)}</div></div>`;
     // Show per-trainer averages
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Total</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Avg Fee</th></tr>';
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Total</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Avg Fee (Paid)</th></tr>';
     tbody.innerHTML = trainerRows.map(r =>
       `<tr style="border-bottom:1px solid #f3f4f6;">
         <td style="padding:8px 12px;font-weight:600;">${escHtml(r.trainer)}</td>
@@ -4390,9 +4452,182 @@ function openKpiModal(type) {
       tbody.innerHTML = '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No booked sessions with invoice values recorded yet.</td></tr>';
     }
 
+  } else if(type === 'sessions') {
+    // Sessions delivered this year — monthly breakdown
+    const monthNames5 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    title.textContent = 'Sessions Delivered — ' + yr;
+    sub.textContent = 'All booked sessions by month';
+    const thisMon5 = now.getMonth();
+    const sessYr = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr);
+    const paidSessYr = sessYr.filter(r => r.invoiceValue > 0);
+    const freeSessYr = sessYr.filter(r => !r.invoiceValue || r.invoiceValue===0);
+    stats.innerHTML = `
+      <div class="kpi-stat"><div class="kpi-stat-label">Total Sessions</div><div class="kpi-stat-value">${sessYr.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Paid Sessions</div><div class="kpi-stat-value" style="color:var(--s-green);">${paidSessYr.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Free Sessions</div><div class="kpi-stat-value" style="color:var(--s-amber);">${freeSessYr.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">This Month</div><div class="kpi-stat-value">${sessYr.filter(r=>r.bookedOn.getMonth()===thisMon5).length}</div></div>`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Paid</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Revenue</th></tr>';
+    const monthData = Array.from({length:12},(_,m) => {
+      const mRows = sessYr.filter(r => r.bookedOn.getMonth()===m);
+      const paid = mRows.filter(r => r.invoiceValue>0);
+      return { m, label: monthNames5[m], total: mRows.length, paid: paid.length, rev: paid.reduce((s,r)=>s+(r.invoiceValue||0),0) };
+    }).filter(d => d.total > 0);
+    tbody.innerHTML = monthData.map(d =>
+      `<tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:8px 12px;font-weight:600;">${d.label} ${yr}</td>
+        <td style="padding:8px 12px;">${d.total}</td>
+        <td style="padding:8px 12px;color:var(--s-green);">${d.paid}</td>
+        <td style="padding:8px 12px;font-weight:600;">${fmtMoney(d.rev)}</td>
+      </tr>`).join('') || '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No sessions this year.</td></tr>';
+
+  } else if(type === 'sessionsByTrainer') {
+    title.textContent = 'Sessions per Trainer — ' + yr;
+    sub.textContent = 'Breakdown of delivered sessions and revenue by trainer';
+    const sessYr2 = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr);
+    const byT = {};
+    sessYr2.forEach(r => {
+      const t = r.trainer || 'Unassigned';
+      if(!byT[t]) byT[t] = { count:0, paid:0, rev:0 };
+      byT[t].count++;
+      if(r.invoiceValue>0) { byT[t].paid++; byT[t].rev += r.invoiceValue; }
+    });
+    const tRows = Object.entries(byT).sort((a,b) => b[1].count - a[1].count);
+    stats.innerHTML = `
+      <div class="kpi-stat"><div class="kpi-stat-label">Active Trainers</div><div class="kpi-stat-value">${tRows.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Total Sessions</div><div class="kpi-stat-value">${sessYr2.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Avg per Trainer</div><div class="kpi-stat-value">${tRows.length?(sessYr2.length/tRows.length).toFixed(1):'—'}</div></div>`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Paid</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Revenue</th></tr>';
+    tbody.innerHTML = tRows.map(([t, d]) =>
+      `<tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:8px 12px;font-weight:600;">${escHtml(t)}</td>
+        <td style="padding:8px 12px;">${d.count}</td>
+        <td style="padding:8px 12px;color:var(--s-green);">${d.paid}</td>
+        <td style="padding:8px 12px;font-weight:600;">${fmtMoney(d.rev)}</td>
+      </tr>`).join('') || '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No data.</td></tr>';
+
+  } else if(type === 'leakage') {
+    const monthNames6 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    title.textContent = '⚠️ Revenue Leakage — ' + monthNames6[now.getMonth()];
+    sub.textContent = '£0 and unvalued booked sessions this month — work not yet invoiced';
+    const mon6 = now.getMonth();
+    const freeSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon6 && (!r.invoiceValue||r.invoiceValue===0));
+    const allMon = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon6);
+    const leakPct = allMon.length ? Math.round((freeSess.length/allMon.length)*100) : 0;
+    stats.innerHTML = `
+      <div class="kpi-stat"><div class="kpi-stat-label">Free Sessions</div><div class="kpi-stat-value" style="color:var(--s-red);">${freeSess.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Total Sessions</div><div class="kpi-stat-value">${allMon.length}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">% Unvalued</div><div class="kpi-stat-value" style="color:var(--s-amber);">${leakPct}%</div></div>`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Invoice</th></tr>';
+    tbody.innerHTML = freeSess.length ? freeSess.map(r =>
+      `<tr style="border-bottom:1px solid #f3f4f6;background:#fffbf0;">
+        <td style="padding:8px 12px;font-weight:600;">${escHtml(getCompanyName(r))}</td>
+        <td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td>
+        <td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td>
+        <td style="padding:8px 12px;color:var(--s-red);font-weight:700;">£0</td>
+      </tr>`).join('')
+      : '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--s-green);font-weight:600;">✅ No revenue leakage this month</td></tr>';
+
+  } else if(type === 'revPerSession') {
+    const monthNames7 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    title.textContent = 'Revenue per Session — ' + monthNames7[now.getMonth()];
+    sub.textContent = 'Paid sessions only this month — commercial view';
+    const mon7 = now.getMonth();
+    const paidMon = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon7 && r.invoiceValue>0);
+    const revMon7 = paidMon.reduce((s,r)=>s+(r.invoiceValue||0),0);
+    const rps = paidMon.length ? revMon7/paidMon.length : 0;
+    stats.innerHTML = `
+      <div class="kpi-stat"><div class="kpi-stat-label">Revenue/Session</div><div class="kpi-stat-value">${fmtMoney(rps)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(revMon7)}</div></div>
+      <div class="kpi-stat"><div class="kpi-stat-label">Paid Sessions</div><div class="kpi-stat-value">${paidMon.length}</div></div>`;
+    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Value</th></tr>';
+    tbody.innerHTML = paidMon.sort((a,b)=>(b.invoiceValue||0)-(a.invoiceValue||0)).map(r =>
+      `<tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:8px 12px;font-weight:600;">${escHtml(getCompanyName(r))}</td>
+        <td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td>
+        <td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td>
+        <td style="padding:8px 12px;font-weight:700;color:var(--s-purple);">${fmtMoney(r.invoiceValue)}</td>
+      </tr>`).join('') || '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No paid sessions this month.</td></tr>';
+
   } else {
     stats.innerHTML = ''; thead.innerHTML = ''; tbody.innerHTML = '';
   }
+}
+
+// ===================== SMART RECOMMENDATIONS =====================
+function renderSmartRecs() {
+  const grid = document.getElementById('smartRecsGrid');
+  if(!grid) return;
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mon = now.getMonth();
+  const recs = [];
+
+  // 1. Trainer under capacity
+  const today = new Date(); today.setHours(0,0,0,0);
+  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
+  const CAPACITY_30D = 10;
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  trainerUsers.forEach(t => {
+    const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
+    const pct = Math.round((last30.length/CAPACITY_30D)*100);
+    if(pct < 40) {
+      recs.push({ type:'capacity', colour:'#2563EB', icon:'📉', title: escHtml(t.name) + ' is under capacity', body: `Only ${last30.length} sessions in the last 30 days (${pct}% utilisation). Consider assigning pending requests.`, action: null });
+    }
+  });
+
+  // 2. Clients with no session in 10+ days (stale booked)
+  const staleCutoff = new Date(today); staleCutoff.setDate(staleCutoff.getDate()-10);
+  const staleClients = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn < staleCutoff && r.bookedOn > new Date(yr,0,1));
+  if(staleClients.length) {
+    const ex = staleClients.slice(0,3).map(r => getCompanyName(r)).join(', ');
+    recs.push({ type:'stale', colour:'#D97706', icon:'⏰', title: staleClients.length + ' client' + (staleClients.length>1?'s':'')+' haven\'t had a session recently', body: `e.g. ${ex}. Review if follow-ups are needed.`, action: null });
+  }
+
+  // 3. High % free sessions this month
+  const monSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon);
+  const freeMon = monSess.filter(r => !r.invoiceValue || r.invoiceValue===0);
+  if(monSess.length > 0) {
+    const freePct = Math.round((freeMon.length/monSess.length)*100);
+    if(freePct >= 30) {
+      recs.push({ type:'leakage', colour:'#DC2F4B', icon:'💸', title: freePct + '% of sessions this month are £0', body: `${freeMon.length} of ${monSess.length} booked sessions have no invoice value. Review for revenue leakage.`, action: 'openKpiModal(\'leakage\')' });
+    }
+  }
+
+  // 4. Unassigned requests sitting for > 3 days
+  const oldUnassigned = allData.filter(r => r.status==='Unassigned' && r.ts && (Date.now()-r.ts)>3*86400000);
+  if(oldUnassigned.length) {
+    recs.push({ type:'unassigned', colour:'#DC2F4B', icon:'🚨', title: oldUnassigned.length + ' request' + (oldUnassigned.length>1?'s':'')+' unassigned for 3+ days', body: `These clients are waiting. Assign a trainer now to avoid losing the booking.`, action: null });
+  }
+
+  // 5. Revenue up/down significantly
+  const lastMonIdx = mon===0?11:mon-1;
+  const lastMonYr2 = mon===0?yr-1:yr;
+  const thisMonRev = monSess.reduce((s,r)=>s+(r.invoiceValue||0),0);
+  const lastMonSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===lastMonYr2 && r.bookedOn.getMonth()===lastMonIdx);
+  const lastMonRev = lastMonSess.reduce((s,r)=>s+(r.invoiceValue||0),0);
+  if(lastMonRev > 0) {
+    const delta = Math.round(((thisMonRev-lastMonRev)/lastMonRev)*100);
+    if(delta <= -20) {
+      recs.push({ type:'revenue', colour:'#DC2F4B', icon:'📉', title: 'Revenue down ' + Math.abs(delta) + '% vs last month', body: `This month: ${fmtMoney(thisMonRev)} vs ${fmtMoney(lastMonRev)} last month. Investigate pipeline.`, action: 'openKpiModal(\'revMonth\')' });
+    } else if(delta >= 20) {
+      recs.push({ type:'revenue', colour:'#0FA976', icon:'📈', title: 'Revenue up ' + delta + '% vs last month 🎉', body: `This month: ${fmtMoney(thisMonRev)} vs ${fmtMoney(lastMonRev)} last month. Great work!`, action: 'openKpiModal(\'revMonth\')' });
+    }
+  }
+
+  if(!recs.length) {
+    grid.innerHTML = `<div style="padding:20px 24px;background:#fff;border:1px solid var(--s-border);border-radius:10px;font-size:13px;color:var(--s-text-muted);">✅ No alerts right now — everything looks healthy.</div>`;
+    return;
+  }
+
+  grid.innerHTML = recs.map(r => `
+    <div style="background:#fff;border:1px solid var(--s-border);border-left:4px solid ${r.colour};border-radius:10px;padding:16px 18px;cursor:${r.action?'pointer':'default'};"
+      ${r.action?`onclick="${r.action}"`:''}
+    >
+      <div style="font-size:13px;font-weight:700;color:var(--s-text-primary);margin-bottom:6px;">${r.icon} ${r.title}</div>
+      <div style="font-size:12px;color:var(--s-text-muted);line-height:1.5;">${r.body}</div>
+      ${r.action?`<div style="font-size:11px;color:${r.colour};font-weight:600;margin-top:8px;">View detail →</div>`:''}
+    </div>
+  `).join('');
 }
 
 // ===================== REFERRAL LEADERBOARD =====================
