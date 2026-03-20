@@ -4381,7 +4381,7 @@ function sortData(rows) {
 
 function changeUpcomingPage(d) { upcomingPage += d; renderUpcomingBookings(); }
 function changeCompletedPage(d) { completedPage += d; renderCompletedBookings(); }
-</script><script>
+
 // ===================== KPIs =====================
 function renderKpis() {
   const now = new Date();
@@ -4494,108 +4494,93 @@ function renderKpis() {
 
 // ===================== MONTH DRILL-DOWN =====================
 function openMonthDrillDown(monthIdx, yr) {
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const monthShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const label = monthNames[monthIdx] + ' ' + yr;
-  const rows = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===monthIdx);
-  const revenue = rows.reduce((s,r)=>s+(r.invoiceValue||0),0);
-  const paidRows = rows.filter(r=>r.invoiceValue>0);
-  const avgVal = paidRows.length ? revenue/paidRows.length : 0;
-  // By trainer
-  const byTrainer = {};
-  rows.forEach(r=>{
-    const t = r.trainer||'Unassigned';
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var label = monthNames[monthIdx] + ' ' + yr;
+  var rows = allData.filter(function(r){ return r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===monthIdx; });
+  var revenue = rows.reduce(function(s,r){ return s+(r.invoiceValue||0); }, 0);
+  var paidRows = rows.filter(function(r){ return r.invoiceValue>0; });
+  var avgVal = paidRows.length ? revenue/paidRows.length : 0;
+  var byTrainer = {};
+  rows.forEach(function(r){
+    var t = r.trainer||'Unassigned';
     if(!byTrainer[t]) byTrainer[t]={sessions:0,rev:0};
     byTrainer[t].sessions++;
     byTrainer[t].rev += r.invoiceValue||0;
   });
-  // Conversion: requests submitted that month vs booked
-  const now = new Date();
-  const submitted = allData.filter(r => r.ts && r.ts.getFullYear()===yr && r.ts.getMonth()===monthIdx);
-  const bookedFromSubmitted = submitted.filter(r=>r.status==='Booked').length;
-  const convPct = submitted.length ? Math.round((bookedFromSubmitted/submitted.length)*100) : 0;
+  var submitted = allData.filter(function(r){ return r.ts && r.ts.getFullYear()===yr && r.ts.getMonth()===monthIdx; });
+  var bookedFromSubmitted = submitted.filter(function(r){ return r.status==='Booked'; }).length;
+  var convPct = submitted.length ? Math.round((bookedFromSubmitted/submitted.length)*100) : 0;
+  var trainerRows = Object.entries(byTrainer).sort(function(a,b){ return b[1].rev-a[1].rev; });
 
-  const trainerRows = Object.entries(byTrainer).sort((a,b)=>b[1].rev-a[1].rev);
+  // Pre-build trainer breakdown HTML (avoids nested template literals)
+  var trainerHtml = '';
+  if(trainerRows.length) {
+    trainerRows.forEach(function(entry){
+      var t = entry[0], d = entry[1];
+      var tObj = trainers.find(function(u){ return u.name===t; });
+      var color = (tObj && tObj.color) ? tObj.color : '#5B4BE7';
+      var pct = revenue > 0 ? Math.round((d.rev/revenue)*100) : 0;
+      var sessLabel = d.sessions !== 1 ? 'sessions' : 'session';
+      trainerHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+        + '<div style="width:28px;height:28px;border-radius:50%;background:' + color + '22;color:' + color + ';font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + escHtml(t.charAt(0)) + '</div>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+        + '<span style="font-size:12px;font-weight:600;color:var(--s-text-primary);">' + escHtml(t) + '</span>'
+        + '<span style="font-size:12px;font-weight:700;color:' + color + ';">' + fmtMoney(d.rev) + ' &middot; ' + d.sessions + ' ' + sessLabel + '</span>'
+        + '</div>'
+        + '<div style="height:5px;background:var(--s-border);border-radius:3px;overflow:hidden;">'
+        + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:3px;"></div>'
+        + '</div></div></div>';
+    });
+  } else {
+    trainerHtml = '<div style="color:var(--s-text-muted);font-size:12px;">No trainer data</div>';
+  }
 
-  const overlay = document.getElementById('monthDrillOverlay');
-  const content = document.getElementById('monthDrillContent');
-  content.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div>
-        <div style="font-size:17px;font-weight:700;color:var(--s-text-primary);">📊 ${label}</div>
-        <div style="font-size:12px;color:var(--s-text-muted);margin-top:2px;">Monthly performance breakdown</div>
-      </div>
-      <button onclick="document.getElementById('monthDrillOverlay').classList.remove('open')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--s-text-muted);padding:4px 8px;">✕</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
-      <div style="background:var(--s-lavender);border-radius:10px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-purple);margin-bottom:6px;">Revenue</div>
-        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${fmtMoney(revenue)}</div>
-      </div>
-      <div style="background:#E8F9F3;border-radius:10px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-green);margin-bottom:6px;">Sessions</div>
-        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${rows.length}</div>
-      </div>
-      <div style="background:#FEF3CD;border-radius:10px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-amber);margin-bottom:6px;">Avg Value</div>
-        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${fmtMoney(avgVal)}</div>
-      </div>
-      <div style="background:#F5F0FF;border-radius:10px;padding:14px 16px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:#6D28D9;margin-bottom:6px;">Conversion</div>
-        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${convPct}%</div>
-        <div style="font-size:10px;color:var(--s-text-muted);">${bookedFromSubmitted}/${submitted.length} requests</div>
-      </div>
-    </div>
+  // Pre-build client rows HTML
+  var clientHtml = '';
+  var sortedRows = rows.slice().sort(function(a,b){ return (b.invoiceValue||0)-(a.invoiceValue||0); });
+  sortedRows.forEach(function(r){
+    var valHtml = r.invoiceValue ? fmtMoney(r.invoiceValue) : '<span style="color:var(--s-red);">\u00a30</span>';
+    clientHtml += '<tr style="border-bottom:1px solid var(--s-border);">'
+      + '<td style="padding:8px 12px;font-weight:600;color:var(--s-text-primary);">' + escHtml(getCompanyName(r)) + '</td>'
+      + '<td style="padding:8px 12px;">' + trainerPill(r.trainer) + '</td>'
+      + '<td style="padding:8px 12px;">' + optionBadge(r.trainingOption) + '</td>'
+      + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--s-purple);">' + valHtml + '</td>'
+      + '</tr>';
+  });
 
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Revenue by Trainer</div>
-    <div style="margin-bottom:20px;">
-      ${trainerRows.length ? trainerRows.map(([t,d])=>{
-        const t_obj = trainers.find(u=>u.name===t);
-        const color = t_obj?.color || '#5B4BE7';
-        const pct = revenue > 0 ? Math.round((d.rev/revenue)*100) : 0;
-        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="width:28px;height:28px;border-radius:50%;background:${color}22;color:${color};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${t.charAt(0)}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-              <span style="font-size:12px;font-weight:600;color:var(--s-text-primary);">${escHtml(t)}</span>
-              <span style="font-size:12px;font-weight:700;color:${color};">${fmtMoney(d.rev)} · ${d.sessions} session${d.sessions!==1?'s':''}</span>
-            </div>
-            <div style="height:5px;background:var(--s-border);border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
-            </div>
-          </div>
-        </div>`;
-      }).join('') : '<div style="color:var(--s-text-muted);font-size:12px;">No trainer data</div>'}
-    </div>
-
-    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Clients Trained (${rows.length})</div>
-    <div style="max-height:220px;overflow-y:auto;border:1px solid var(--s-border);border-radius:8px;">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;">
-        <thead>
-          <tr style="background:var(--s-surface);position:sticky;top:0;">
-            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);letter-spacing:0.5px;">Company</th>
-            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Trainer</th>
-            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Type</th>
-            <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.sort((a,b)=>(b.invoiceValue||0)-(a.invoiceValue||0)).map(r=>`
-            <tr style="border-bottom:1px solid var(--s-border);">
-              <td style="padding:8px 12px;font-weight:600;color:var(--s-text-primary);">${escHtml(getCompanyName(r))}</td>
-              <td style="padding:8px 12px;">${trainerPill(r.trainer)}</td>
-              <td style="padding:8px 12px;">${optionBadge(r.trainingOption)}</td>
-              <td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--s-purple);">${r.invoiceValue?fmtMoney(r.invoiceValue):'<span style="color:var(--s-red);">£0</span>'}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
+  var overlay = document.getElementById('monthDrillOverlay');
+  var content = document.getElementById('monthDrillContent');
+  content.innerHTML = ''
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">'
+    + '<div><div style="font-size:17px;font-weight:700;color:var(--s-text-primary);">\uD83D\uDCCA ' + escHtml(label) + '</div>'
+    + '<div style="font-size:12px;color:var(--s-text-muted);margin-top:2px;">Monthly performance breakdown</div></div>'
+    + '<button onclick="document.getElementById(\'monthDrillOverlay\').classList.remove(\'open\')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--s-text-muted);padding:4px 8px;">\u2715</button>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">'
+    + '<div style="background:var(--s-lavender);border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-purple);margin-bottom:6px;">Revenue</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + fmtMoney(revenue) + '</div></div>'
+    + '<div style="background:#E8F9F3;border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-green);margin-bottom:6px;">Sessions</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + rows.length + '</div></div>'
+    + '<div style="background:#FEF3CD;border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-amber);margin-bottom:6px;">Avg Value</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + fmtMoney(avgVal) + '</div></div>'
+    + '<div style="background:#F5F0FF;border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:#6D28D9;margin-bottom:6px;">Conversion</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + convPct + '%</div><div style="font-size:10px;color:var(--s-text-muted);">' + bookedFromSubmitted + '/' + submitted.length + ' requests</div></div>'
+    + '</div>'
+    + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Revenue by Trainer</div>'
+    + '<div style="margin-bottom:20px;">' + trainerHtml + '</div>'
+    + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Clients Trained (' + rows.length + ')</div>'
+    + '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--s-border);border-radius:8px;">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + '<thead><tr style="background:var(--s-surface);">'
+    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Company</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Trainer</th>'
+    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Type</th>'
+    + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Value</th>'
+    + '</tr></thead>'
+    + '<tbody>' + clientHtml + '</tbody>'
+    + '</table></div>';
   overlay.classList.add('open');
 }
 
-
-  const overlay = document.getElementById('kpiModalOverlay');
+function openKpiModal(type) {
+  var overlay = document.getElementById('kpiModalOverlay');
   const title = document.getElementById('kpiModalTitle');
   const sub = document.getElementById('kpiModalSubtitle');
   const stats = document.getElementById('kpiStatGrid');
@@ -6808,8 +6793,10 @@ function openTrainerProfile(name) {
   panel.querySelector('#tpCapacityInput').value = meta.capacity || 4;
 
   // Skill checkboxes
-  ALL_SKILLS.forEach(s => {
-    const cb = panel.querySelector('#tpSkillCb_' + s.replace(/\s/g,'_'));
+  const ALL_SKILLS_CB = ['Sales','Lettings','Accounting','Property Management'];
+  ALL_SKILLS_CB.forEach(s => {
+    const id = 'tpSkillCb_' + s.replace(/\s/g,'_');
+    const cb = panel.querySelector('#' + id);
     if(cb) cb.checked = (meta.skills||[]).includes(s);
   });
 
@@ -6851,7 +6838,8 @@ function saveTrainerSettings() {
   meta.managerNotes = panel.querySelector('#tpManagerNotes').value;
   const ALL_SKILLS = ['Sales','Lettings','Accounting','Property Management'];
   meta.skills = ALL_SKILLS.filter(s => {
-    const cb = panel.querySelector('#tpSkillCb_' + s.replace(/\s/g,'_'));
+    const id = 'tpSkillCb_' + s.replace(/\s/g,'_');
+    const cb = panel.querySelector('#' + id);
     return cb && cb.checked;
   });
   // Revenue & session targets
@@ -7011,11 +6999,22 @@ function closeTrainerProfile() {
     <div id="tpTab-skills" style="display:none;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Skill Coverage</div>
       <div style="margin-bottom:16px;">
-        ${['Sales','Lettings','Accounting','Property Management'].map(s=>`
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
-          <input type="checkbox" id="tpSkillCb_${s.replace(/\s/g,'_')}" style="width:15px;height:15px;accent-color:var(--s-purple);">
-          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">${s}</span>
-        </label>`).join('')}
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
+          <input type="checkbox" id="tpSkillCb_Sales" style="width:15px;height:15px;accent-color:var(--s-purple);">
+          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Sales</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
+          <input type="checkbox" id="tpSkillCb_Lettings" style="width:15px;height:15px;accent-color:var(--s-purple);">
+          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Lettings</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
+          <input type="checkbox" id="tpSkillCb_Accounting" style="width:15px;height:15px;accent-color:var(--s-purple);">
+          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Accounting</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
+          <input type="checkbox" id="tpSkillCb_Property_Management" style="width:15px;height:15px;accent-color:var(--s-purple);">
+          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Property Management</span>
+        </label>
       </div>
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">👀 Shadowing Status</div>
       <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;border:1px solid var(--s-border);cursor:pointer;margin-bottom:16px;">
@@ -7116,25 +7115,26 @@ function tpSwitchTab(tab) {
   }
 }
 
-// open/close CSS fix
-document.getElementById('trainerProfileOverlay').addEventListener('transitionend',()=>{});
-const _tpPanel = document.getElementById('trainerProfilePanel');
-const _tpOverlay = document.getElementById('trainerProfileOverlay');
-// Override open/close to handle CSS
-const _origOpenTP = openTrainerProfile;
-openTrainerProfile = function(name) {
-  _origOpenTP(name);
-  _tpOverlay.style.opacity = '1';
-  _tpOverlay.style.pointerEvents = 'all';
-  _tpPanel.style.right = '0';
-};
-const _origCloseTP = closeTrainerProfile;
-closeTrainerProfile = function() {
-  _origCloseTP();
-  _tpOverlay.style.opacity = '0';
-  _tpOverlay.style.pointerEvents = 'none';
-  _tpPanel.style.right = '-520px';
-};
+// open/close CSS for trainer profile panel — deferred to ensure functions are defined
+document.addEventListener('DOMContentLoaded', function() {
+  const _tpPanel = document.getElementById('trainerProfilePanel');
+  const _tpOverlay = document.getElementById('trainerProfileOverlay');
+  if(!_tpPanel || !_tpOverlay) return;
+  const _origOpenTP = openTrainerProfile;
+  openTrainerProfile = function(name) {
+    _origOpenTP(name);
+    _tpOverlay.style.opacity = '1';
+    _tpOverlay.style.pointerEvents = 'all';
+    _tpPanel.style.right = '0';
+  };
+  const _origCloseTP = closeTrainerProfile;
+  closeTrainerProfile = function() {
+    _origCloseTP();
+    _tpOverlay.style.opacity = '0';
+    _tpOverlay.style.pointerEvents = 'none';
+    _tpPanel.style.right = '-520px';
+  };
+});
 </script>
 
   <script src="til-patch.js"></script>
