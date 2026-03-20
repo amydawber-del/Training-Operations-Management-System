@@ -3438,8 +3438,8 @@ async function loadData() {
     allData = rawRows.slice(1).map((row, i) => parseAppsScriptData(row, i, i + 2)).filter(Boolean);
     const now = new Date();
     document.getElementById('lastUpdated').textContent = 'Updated ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    // Load persisted notes and attach to records before rendering
-    await loadNotes();
+    // Load persisted notes and trainer metadata before rendering
+    await Promise.all([loadNotes(), loadTrainerMetaFromSheet()]);
     renderAll();
     console.log('Loaded', allData.length, 'data rows.');
   } catch(e) {
@@ -4067,26 +4067,98 @@ function staleBadge(r) {
 }
 
 // ===================== TRAINER WORKLOAD =====================
-// Trainer extended metadata (skill tags, capacity, shadowing)
+// ===================== TRAINER METADATA (sheet-backed) =====================
+// Stored in "Progress Notes" sheet using rowRef="__TRAINER_META__", record=trainerName
+// section="TrainerMeta", text=JSON blob
+// localStorage is used as a fast cache only — sheet is the source of truth.
+
 const TRAINER_META = {};
+const TRAINER_META_ROW_REF = '__TRAINER_META__';
+const TRAINER_META_SECTION = 'TrainerMeta';
+
 function getTrainerMeta(name) {
-  if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 1, skills: [], shadowing: false, notes: '', goals: { revenueTarget: 0, sessionTarget: 10 } };
+  if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 1, skills: [], shadowing: false, managerNotes: '', notes: [], goals: { revenueTarget: 0, sessionTarget: 10 } };
   return TRAINER_META[name];
 }
+
 function saveTrainerMeta(name, updates) {
   const m = getTrainerMeta(name);
   Object.assign(m, updates);
-  try { localStorage.setItem('trainerMeta_' + name, JSON.stringify(TRAINER_META[name])); } catch(e) {}
+  // Write to localStorage as fast cache
+  try { localStorage.setItem('trainerMeta_' + name, JSON.stringify(m)); } catch(e) {}
+  // Persist to sheet via saveNote (async, fire-and-forget)
+  _saveTrainerMetaToSheet(name, m);
 }
-(function loadTrainerMeta() {
+
+async function _saveTrainerMetaToSheet(name, meta) {
+  if(!SCRIPT_URL) return;
   try {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('trainerMeta_'));
-    keys.forEach(k => {
+    const params = new URLSearchParams({
+      action:  'saveNote',
+      rowRef:  TRAINER_META_ROW_REF,
+      record:  name,
+      section: TRAINER_META_SECTION,
+      text:    JSON.stringify(meta),
+      author:  currentUser?.name || 'System',
+      userRole: currentUser?.role || '',
+      ts:      new Date().toISOString(),
+    });
+    const res = await fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if(!json.success) console.warn('[TrainerMeta] Sheet save failed for', name, json.error);
+  } catch(e) {
+    console.warn('[TrainerMeta] Sheet save error for', name, e.message);
+  }
+}
+
+// Called during loadData — loads trainer metadata from the sheet into TRAINER_META.
+// Uses localStorage as a fast fallback while sheet loads.
+async function loadTrainerMetaFromSheet() {
+  // First: hydrate from localStorage cache so UI is instant
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('trainerMeta_')).forEach(k => {
       const name = k.replace('trainerMeta_', '');
-      TRAINER_META[name] = JSON.parse(localStorage.getItem(k));
+      if(!TRAINER_META[name]) TRAINER_META[name] = JSON.parse(localStorage.getItem(k));
     });
   } catch(e) {}
-})();
+
+  // Then: fetch authoritative data from sheet and overwrite
+  if(!SCRIPT_URL) return;
+  try {
+    const res = await fetch(SCRIPT_URL + '?action=getNotes&t=' + Date.now(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if(!json.success || !json.notes) return;
+
+    // Notes keyed by rowRef — we want rowRef = '__TRAINER_META__'
+    const metaNotes = json.notes[TRAINER_META_ROW_REF] || [];
+    if(!metaNotes.length) return;
+
+    // Group by record (trainer name) — take the most recent entry per trainer
+    const byTrainer = {};
+    metaNotes.forEach(n => {
+      if(n.section !== TRAINER_META_SECTION) return;
+      const trainerName = n.record;
+      if(!trainerName) return;
+      // Keep most recent (notes are appended, so last wins)
+      byTrainer[trainerName] = n;
+    });
+
+    Object.entries(byTrainer).forEach(([name, note]) => {
+      try {
+        const parsed = JSON.parse(note.text);
+        TRAINER_META[name] = parsed;
+        // Update local cache too
+        localStorage.setItem('trainerMeta_' + name, JSON.stringify(parsed));
+      } catch(e) {
+        console.warn('[TrainerMeta] Could not parse meta for', name, e.message);
+      }
+    });
+
+    console.log('[TrainerMeta] Loaded from sheet for:', Object.keys(byTrainer).join(', ') || 'none yet');
+  } catch(e) {
+    console.warn('[TrainerMeta] Sheet load error:', e.message);
+  }
+}
 
 function renderTrainerWorkload() {
   const grid = document.getElementById('trainerGrid');
