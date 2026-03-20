@@ -1815,6 +1815,38 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* ── BLOCK DAY MODAL — chips & scope ────────────────────────── */
+.bdm-chip {
+  padding: 5px 10px;
+  border-radius: var(--s-r-pill);
+  border: 1.5px solid var(--s-border-mid);
+  background: var(--s-white);
+  font-size: 11px; font-weight: 600;
+  color: var(--s-text-secondary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.12s;
+}
+.bdm-chip:hover { border-color: var(--s-purple); color: var(--s-purple); background: var(--s-lavender); }
+.bdm-chip.bdm-chip-active { border-color: var(--s-purple); color: var(--s-purple); background: var(--s-lavender); }
+.bdm-trainer-cb {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 9px;
+  border-radius: var(--s-r-pill);
+  border: 1.5px solid var(--s-border-mid);
+  background: var(--s-white);
+  cursor: pointer;
+  font-size: 11px; font-weight: 600;
+  color: var(--s-text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.12s;
+}
+.bdm-trainer-cb:has(input:checked) {
+  border-color: var(--s-purple);
+  background: var(--s-lavender);
+  color: var(--s-purple);
+}
+
 /* ── TRAINER PROFILE PANEL ───────────────────────────────── */
 #trainerProfilePanel {
   font-family: 'DM Sans', sans-serif;
@@ -2327,17 +2359,61 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
     </div>
     <div class="bdm-body">
       <div class="bdm-date" id="bdmDateLabel">—</div>
+
+      <!-- Existing block info (shown when already blocked) -->
       <div id="bdmBlockedInfo" style="display:none;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:8px;background:#fee2e6;border:1px solid #fda4af;border-radius:8px;padding:10px 12px;font-size:12px;color:#be123c;">
-          <span style="font-size:16px;">🔒</span>
-          <div><strong>This day is blocked</strong><div id="bdmBlockedReason" style="margin-top:2px;opacity:0.85;"></div></div>
+        <div style="display:flex;align-items:flex-start;gap:8px;background:#fee2e6;border:1px solid #fda4af;border-radius:8px;padding:10px 12px;font-size:12px;color:#be123c;">
+          <span style="font-size:16px;flex-shrink:0;">🔒</span>
+          <div style="min-width:0;">
+            <strong>This day is blocked</strong>
+            <div id="bdmBlockedReason" style="margin-top:3px;opacity:0.85;line-height:1.5;"></div>
+            <div id="bdmBlockedScope" style="margin-top:4px;font-size:11px;opacity:0.8;"></div>
+          </div>
         </div>
       </div>
+
+      <!-- Block form -->
       <div id="bdmBlockForm">
-        <div class="bdm-info">⚙️ Only admins can block or unblock days. Blocked days are visible to all users and prevent bookings being placed on that date.</div>
+        <div class="bdm-info">⚙️ Only admins can block or unblock days. Blocked days prevent bookings being assigned on that date.</div>
+
+        <!-- Reason type chips -->
         <div style="margin-bottom:12px;">
-          <label style="font-size:12px;font-weight:600;color:var(--s-text-secondary);display:block;margin-bottom:6px;">Reason for blocking <span style="font-weight:400;color:var(--s-text-muted);">(optional)</span></label>
-          <input type="text" id="bdmReasonInput" class="form-input" placeholder="e.g. Company away day, Site closure…" style="width:100%;">
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--s-text-muted);display:block;margin-bottom:7px;">Reason</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="bdmReasonChips">
+            <button class="bdm-chip bdm-chip-active" data-reason="Company away day" onclick="bdmSelectChip(this)">🏢 Company away day</button>
+            <button class="bdm-chip" data-reason="Public holiday" onclick="bdmSelectChip(this)">🏛 Public holiday</button>
+            <button class="bdm-chip" data-reason="Site closure" onclick="bdmSelectChip(this)">🚧 Site closure</button>
+            <button class="bdm-chip" data-reason="Team event" onclick="bdmSelectChip(this)">🎉 Team event</button>
+            <button class="bdm-chip" data-reason="Trainer unavailable" onclick="bdmSelectChip(this)">🙅 Trainer unavailable</button>
+            <button class="bdm-chip" data-reason="Other" onclick="bdmSelectChip(this)">✏️ Other</button>
+          </div>
+          <input type="text" id="bdmReasonInput" class="form-input" placeholder="Add detail (optional)…" style="width:100%;font-size:12px;">
+        </div>
+
+        <!-- Scope selector -->
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--s-text-muted);display:block;margin-bottom:7px;">Applies to</label>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;border:1.5px solid var(--s-border-mid);cursor:pointer;transition:all 0.12s;" id="bdmScopeAllLabel">
+              <input type="radio" name="bdmScope" value="all" checked onchange="bdmScopeChange()" style="accent-color:var(--s-purple);">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--s-text-primary);">👥 Everyone</div>
+                <div style="font-size:10px;color:var(--s-text-muted);">No sessions can be booked on this date for any trainer</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;border:1.5px solid var(--s-border-mid);cursor:pointer;transition:all 0.12s;" id="bdmScopeSelectLabel">
+              <input type="radio" name="bdmScope" value="select" onchange="bdmScopeChange()" style="accent-color:var(--s-purple);">
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--s-text-primary);">🎯 Specific trainers</div>
+                <div style="font-size:10px;color:var(--s-text-muted);">Only block for selected trainers</div>
+              </div>
+            </label>
+          </div>
+          <!-- Trainer picker (shown when "specific" is selected) -->
+          <div id="bdmTrainerPicker" style="display:none;margin-top:8px;padding:10px;background:var(--s-surface);border-radius:7px;border:1px solid var(--s-border);">
+            <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:6px;">Select trainers to block:</div>
+            <div id="bdmTrainerCheckboxes" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -5305,7 +5381,15 @@ function renderCalendar() {
     const holName = isHol ? getBankHolidayName(date) : null;
     const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const blockInfo = calBlockedDays[dateKey];
-    const isBlocked = !!blockInfo;
+    // A block applies if it's for everyone OR if the currently filtered trainer is in the scope
+    const activeTrainerFilter = document.getElementById('calFilterTrainer')?.value || '';
+    const isBlocked = blockInfo && (
+      !blockInfo.scope || blockInfo.scope === 'all' ||
+      (blockInfo.scope === 'select' && (
+        !activeTrainerFilter ||
+        (blockInfo.trainers||[]).includes(activeTrainerFilter)
+      ))
+    );
     const events = eventsByDay[d] || [];
     const max = 3;
     let cls = 'cal-day';
@@ -5324,7 +5408,13 @@ function renderCalendar() {
       return `<span class="cal-event${extraCls}" style="background:${bg};color:${tc};" ${onclick} title="${escHtml(ev.label)}">${escHtml(ev.label)}</span>`;
     }).join('');
     if(events.length > max) evHtml += `<span class="cal-event-more">+${events.length-max} more</span>`;
-    if(isBlocked) evHtml += `<span class="cal-event cal-event-blocked" title="Blocked${blockInfo.reason ? ': '+blockInfo.reason : ''} (by ${blockInfo.blockedBy||'Admin'})">🔒 Blocked${blockInfo.reason ? ' — '+blockInfo.reason : ''}</span>`;
+    if(isBlocked) {
+      const scopeLabel = blockInfo.scope === 'select' && blockInfo.trainers?.length
+        ? ' (' + blockInfo.trainers.join(', ') + ')'
+        : '';
+      const displayReason = blockInfo.fullReason || blockInfo.reason || 'Blocked';
+      evHtml += '<span class="cal-event cal-event-blocked" title="' + escHtml(displayReason + scopeLabel + ' · Blocked by ' + (blockInfo.blockedBy||'Admin')) + '">🔒 ' + escHtml(displayReason) + escHtml(scopeLabel) + '</span>';
+    }
     const holBadge = holName ? `<span class="cal-bh-badge" title="${escHtml(holName)}">🏛 ${escHtml(holName)}</span>` : '';
     html += `<div class="${cls}" ${clickAttr}><span class="cal-day-num">${isToday ? `<span style="background:var(--action-primary-blue);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">${d}</span>` : d}</span>${holBadge}${evHtml}</div>`;
   }
@@ -5548,6 +5638,21 @@ function checkBookingWarnings() {
   // 4. Bank holiday info
   if(isBankHoliday(bookD)) {
     warnings.push(`<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`);
+  }
+
+  // 5. Blocked day check (respects trainer scope)
+  for(let i = 0; i < days; i++) {
+    const d = new Date(bookD); d.setDate(d.getDate() + i);
+    const iso = d.toISOString().split('T')[0];
+    const bi = calBlockedDays[iso];
+    if(bi) {
+      const appliesToTrainer = !bi.scope || bi.scope === 'all' || (bi.scope === 'select' && (bi.trainers||[]).includes(trainer));
+      if(appliesToTrainer) {
+        const reason = bi.fullReason || bi.reason || 'Blocked';
+        warnings.push('<div class="warning-box warn" style="border-color:#DC2F4B;background:#FDEAED;"><span>🔒</span><span><strong>' + fmtDate(d) + ' is blocked</strong> — ' + escHtml(reason) + '. Remove the block or choose a different date.</span></div>');
+        blocking = true;
+      }
+    }
   }
 
   warnEl.innerHTML = warnings.join('');
@@ -6679,22 +6784,87 @@ async function testConnection(btn) {
 
 // ===================== BLOCK DAY =====================
 let _bdmCurrentKey = null;
+let _bdmSelectedChipReason = 'Company away day';
+
+function bdmSelectChip(el) {
+  document.querySelectorAll('#bdmReasonChips .bdm-chip').forEach(c => c.classList.remove('bdm-chip-active'));
+  el.classList.add('bdm-chip-active');
+  _bdmSelectedChipReason = el.dataset.reason || '';
+}
+
+function bdmScopeChange() {
+  const isSelect = document.querySelector('input[name="bdmScope"]:checked')?.value === 'select';
+  document.getElementById('bdmTrainerPicker').style.display = isSelect ? '' : 'none';
+}
+
+function _bdmPopulateTrainerPicker(existingTrainers) {
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const container = document.getElementById('bdmTrainerCheckboxes');
+  container.innerHTML = trainerUsers.map(t => {
+    const checked = existingTrainers && existingTrainers.includes(t.name) ? 'checked' : '';
+    const color = t.color || '#5B4BE7';
+    return '<label class="bdm-trainer-cb">'
+      + '<input type="checkbox" name="bdmTrainer" value="' + escHtml(t.name) + '" ' + checked + ' style="accent-color:' + color + ';width:13px;height:13px;">'
+      + '<span style="width:8px;height:8px;border-radius:50%;background:' + color + ';display:inline-block;flex-shrink:0;"></span>'
+      + escHtml(t.name)
+      + '</label>';
+  }).join('');
+}
 
 function calDayClick(dateKey) {
   const isAdmin = currentUser && currentUser.role === 'admin';
   const blockInfo = calBlockedDays[dateKey];
-  if(!isAdmin && !blockInfo) return; // non-admins can only VIEW existing blocks
+  if(!isAdmin && !blockInfo) return;
   _bdmCurrentKey = dateKey;
   const [y,m,d] = dateKey.split('-');
   const label = new Date(+y, +m-1, +d).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   document.getElementById('bdmDateLabel').textContent = label;
+
+  // Reset chips to first
+  _bdmSelectedChipReason = 'Company away day';
+  document.querySelectorAll('#bdmReasonChips .bdm-chip').forEach((c,i) => c.classList.toggle('bdm-chip-active', i===0));
+
+  // Reset scope to "all"
+  const radioAll = document.querySelector('input[name="bdmScope"][value="all"]');
+  if(radioAll) radioAll.checked = true;
+  document.getElementById('bdmTrainerPicker').style.display = 'none';
+  _bdmPopulateTrainerPicker([]);
+
   if(blockInfo) {
     document.getElementById('bdmTitle').textContent = '🔒 Blocked Day';
     document.getElementById('bdmBlockedInfo').style.display = '';
-    document.getElementById('bdmBlockedReason').textContent =
-      (blockInfo.reason ? 'Reason: ' + blockInfo.reason + ' · ' : '') + 'Blocked by ' + (blockInfo.blockedBy || 'Admin');
+    // Build detailed info display
+    let infoHtml = '';
+    if(blockInfo.reason) infoHtml += '<strong>' + escHtml(blockInfo.reason) + '</strong>';
+    infoHtml += '<div style="margin-top:3px;">Blocked by ' + escHtml(blockInfo.blockedBy || 'Admin') + '</div>';
+    document.getElementById('bdmBlockedReason').innerHTML = infoHtml;
+    // Show scope
+    const scopeEl = document.getElementById('bdmBlockedScope');
+    if(blockInfo.scope === 'select' && blockInfo.trainers?.length) {
+      scopeEl.textContent = '👤 Affects: ' + blockInfo.trainers.join(', ');
+    } else {
+      scopeEl.textContent = '👥 Affects: Everyone';
+    }
     document.getElementById('bdmBlockForm').style.display = isAdmin ? '' : 'none';
-    document.getElementById('bdmReasonInput').value = blockInfo.reason || '';
+    // Pre-fill form if admin editing
+    if(isAdmin) {
+      document.getElementById('bdmReasonInput').value = blockInfo.detail || '';
+      if(blockInfo.scope === 'select' && blockInfo.trainers?.length) {
+        const radioSelect = document.querySelector('input[name="bdmScope"][value="select"]');
+        if(radioSelect) { radioSelect.checked = true; }
+        document.getElementById('bdmTrainerPicker').style.display = '';
+        _bdmPopulateTrainerPicker(blockInfo.trainers);
+      }
+      // Select the matching chip
+      if(blockInfo.reason) {
+        const matchChip = document.querySelector('#bdmReasonChips .bdm-chip[data-reason="' + blockInfo.reason + '"]');
+        if(matchChip) {
+          document.querySelectorAll('#bdmReasonChips .bdm-chip').forEach(c => c.classList.remove('bdm-chip-active'));
+          matchChip.classList.add('bdm-chip-active');
+          _bdmSelectedChipReason = blockInfo.reason;
+        }
+      }
+    }
     document.getElementById('bdmUnblockBtn').style.display = isAdmin ? '' : 'none';
     document.getElementById('bdmBlockBtn').textContent = '🔒 Update Block';
     document.getElementById('bdmBlockBtn').style.display = isAdmin ? '' : 'none';
@@ -6717,10 +6887,34 @@ function closeBlockDayModal() {
 
 function blockDay() {
   if(!_bdmCurrentKey) return;
-  const reason = document.getElementById('bdmReasonInput').value.trim();
-  calBlockedDays[_bdmCurrentKey] = { reason, blockedBy: currentUser?.name || 'Admin', blockedAt: new Date().toISOString() };
+  const detail = document.getElementById('bdmReasonInput').value.trim();
+  const reason = _bdmSelectedChipReason || 'Blocked';
+  const fullReason = reason + (detail ? ' — ' + detail : '');
+
+  // Scope
+  const scopeVal = document.querySelector('input[name="bdmScope"]:checked')?.value || 'all';
+  let selectedTrainers = [];
+  if(scopeVal === 'select') {
+    selectedTrainers = Array.from(document.querySelectorAll('input[name="bdmTrainer"]:checked')).map(cb => cb.value);
+    if(!selectedTrainers.length) {
+      showToast('Please select at least one trainer, or choose "Everyone"', 'error', 3000);
+      return;
+    }
+  }
+
+  calBlockedDays[_bdmCurrentKey] = {
+    reason:    reason,
+    detail:    detail,
+    fullReason: fullReason,
+    scope:     scopeVal,
+    trainers:  scopeVal === 'select' ? selectedTrainers : [],
+    blockedBy: currentUser?.name || 'Admin',
+    blockedAt: new Date().toISOString(),
+  };
   localStorage.setItem('calBlockedDays', JSON.stringify(calBlockedDays));
-  showToast('📅 Day blocked — ' + _bdmCurrentKey, 'success');
+
+  const scopeLabel = scopeVal === 'select' ? ' for ' + selectedTrainers.join(', ') : ' for everyone';
+  showToast('📅 Day blocked' + scopeLabel + ' — ' + fullReason, 'success');
   closeBlockDayModal();
   renderCalendar();
 }
@@ -6915,7 +7109,6 @@ function saveTrainerSettings() {
     const cb = panel.querySelector('#' + id);
     return cb && cb.checked;
   });
-  // Revenue & session targets
   const revT = panel.querySelector('#tpRevTarget');
   const sessT = panel.querySelector('#tpSessTarget');
   if(!meta.goals) meta.goals = {};
@@ -6923,9 +7116,105 @@ function saveTrainerSettings() {
   if(sessT) meta.goals.sessionTarget = parseInt(sessT.value)||10;
   saveTrainerMeta(_trainerProfileName, meta);
   showToast('Settings saved for ' + _trainerProfileName, 'success');
-  // re-render cards
   renderTrainerWorkload();
   renderManagerActions();
+}
+
+function bookVolunteerDay() {
+  if(!_trainerProfileName) return;
+  const panel = document.getElementById('trainerProfilePanel');
+  const dateInput = panel.querySelector('#tpVolunteerDate');
+  const orgInput = panel.querySelector('#tpVolunteerOrg');
+  const date = dateInput.value;
+  if(!date) { showToast('Please pick a date', 'error', 2000); return; }
+
+  const meta = getTrainerMeta(_trainerProfileName);
+  if(!meta.volunteerDays) meta.volunteerDays = [];
+
+  // Check 2-day annual limit (current year)
+  const yr = new Date().getFullYear();
+  const thisYearDays = meta.volunteerDays.filter(d => d.date && d.date.startsWith(yr+''));
+  if(thisYearDays.length >= 2) {
+    showToast('Maximum 2 volunteering days per year already booked', 'error');
+    return;
+  }
+
+  // Check not already booked
+  if(meta.volunteerDays.find(d => d.date === date)) {
+    showToast('This date is already booked as a volunteering day', 'error', 2000);
+    return;
+  }
+
+  const org = orgInput.value.trim();
+  const entry = { date, org, bookedBy: currentUser?.name||'Manager', bookedAt: new Date().toISOString() };
+  meta.volunteerDays.push(entry);
+  saveTrainerMeta(_trainerProfileName, meta);
+
+  // Block the day on the calendar
+  calBlockedDays[date] = {
+    reason: '🌱 Volunteering' + (org ? ' — ' + org : '') + ' (' + _trainerProfileName + ')',
+    blockedBy: currentUser?.name || 'Manager',
+    blockedAt: new Date().toISOString(),
+    type: 'volunteering',
+    trainer: _trainerProfileName
+  };
+  localStorage.setItem('calBlockedDays', JSON.stringify(calBlockedDays));
+
+  dateInput.value = '';
+  orgInput.value = '';
+  renderVolunteerDays(meta.volunteerDays, panel.querySelector('#tpVolunteerList'));
+  renderCalendar();
+  showToast('🌱 Volunteering day blocked — ' + date, 'success');
+}
+
+function unBookVolunteerDay(date) {
+  if(!_trainerProfileName) return;
+  const meta = getTrainerMeta(_trainerProfileName);
+  meta.volunteerDays = (meta.volunteerDays||[]).filter(d => d.date !== date);
+  saveTrainerMeta(_trainerProfileName, meta);
+
+  // Remove from calendar blockers if it was a volunteering block
+  if(calBlockedDays[date] && calBlockedDays[date].type === 'volunteering') {
+    delete calBlockedDays[date];
+    localStorage.setItem('calBlockedDays', JSON.stringify(calBlockedDays));
+    renderCalendar();
+  }
+
+  const panel = document.getElementById('trainerProfilePanel');
+  renderVolunteerDays(meta.volunteerDays, panel.querySelector('#tpVolunteerList'));
+  showToast('Volunteering day removed', 'success', 2000);
+}
+
+function renderVolunteerDays(days, container) {
+  if(!container) return;
+  const yr = new Date().getFullYear();
+  const thisYear = (days||[]).filter(d => d.date && d.date.startsWith(yr+''));
+  const used = thisYear.length;
+  const remaining = Math.max(0, 2 - used);
+
+  let html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+    + '<span style="font-size:11px;color:var(--s-text-muted);">' + yr + ' usage</span>'
+    + '<span style="font-size:12px;font-weight:700;color:' + (remaining===0?'var(--s-red)':'var(--s-green)') + ';">'
+    + used + '/2 used · ' + remaining + ' remaining</span>'
+    + '</div>';
+
+  if(!thisYear.length) {
+    html += '<div style="font-size:12px;color:var(--s-text-faint);padding:8px 0;">No volunteering days booked this year.</div>';
+  } else {
+    thisYear.sort((a,b)=>a.date.localeCompare(b.date)).forEach(d => {
+      const [y,m,day] = d.date.split('-');
+      const label = day+'/'+m+'/'+y;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#F0FDF4;border:1px solid #A7F3D0;border-radius:6px;margin-bottom:5px;">'
+        + '<span style="font-size:16px;">🌱</span>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--s-text-primary);">' + label + '</div>'
+        + (d.org ? '<div style="font-size:10px;color:var(--s-text-muted);">' + escHtml(d.org) + '</div>' : '')
+        + '</div>'
+        + '<button onclick="unBookVolunteerDay(\'' + d.date + '\')" style="background:none;border:none;cursor:pointer;font-size:14px;color:var(--s-text-faint);" title="Remove">✕</button>'
+        + '</div>';
+    });
+  }
+  container.innerHTML = html;
 }
 
 function closeTrainerProfile() {
@@ -7125,12 +7414,48 @@ function closeTrainerProfile() {
 
     <!-- SETTINGS TAB -->
     <div id="tpTab-settings" style="display:none;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">⚙️ Capacity</div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">📅 Weekly Structure</div>
+      <div style="background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:12px 14px;margin-bottom:6px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="text-align:center;padding:8px;background:#EEF0FF;border-radius:6px;">
+            <div style="font-size:18px;">🏢</div>
+            <div style="font-size:10px;font-weight:700;color:var(--s-purple);margin-top:2px;">Office</div>
+            <div style="font-size:11px;color:var(--s-text-muted);">1 day/week</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#E8F9F3;border-radius:6px;">
+            <div style="font-size:18px;">🏠</div>
+            <div style="font-size:10px;font-weight:700;color:var(--s-green);margin-top:2px;">WFH</div>
+            <div style="font-size:11px;color:var(--s-text-muted);">1 day/week</div>
+          </div>
+          <div style="text-align:center;padding:8px;background:#FEF3CD;border-radius:6px;">
+            <div style="font-size:18px;">🚗</div>
+            <div style="font-size:10px;font-weight:700;color:var(--s-amber);margin-top:2px;">Client Site</div>
+            <div style="font-size:11px;color:var(--s-text-muted);">3 days = 1 session</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--s-text-muted);line-height:1.5;">A standard week = 1 training session (3 client-site days + 1 office + 1 WFH). Adjust below if a trainer has a different target.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;margin-top:10px;">
         <label style="font-size:12px;color:var(--s-text-secondary);font-weight:600;">Target sessions/week:</label>
         <input type="number" id="tpCapacityInput" min="1" max="20" value="1" style="width:70px;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;">
       </div>
-      <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:18px;">e.g. set to 1 if they should do 1 session/week, 2 for two per week. Used to calculate utilisation %.</div>
+      <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:20px;">1 = one session per week (default). Increase if they regularly do more.</div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">🌱 Volunteering Days</div>
+      <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;padding:12px 14px;margin-bottom:10px;">
+        <div style="font-size:12px;color:#065F46;font-weight:600;margin-bottom:4px;">2 paid volunteering days per year</div>
+        <div style="font-size:11px;color:#047857;">Block a volunteering day on the calendar so sessions can't be assigned on that date.</div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:11px;color:var(--s-text-muted);font-weight:600;display:block;margin-bottom:5px;">Book a volunteering day</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="tpVolunteerDate" style="border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'DM Sans',sans-serif;flex:1;min-width:140px;">
+          <input type="text" id="tpVolunteerOrg" placeholder="Organisation (optional)" style="border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'DM Sans',sans-serif;flex:2;min-width:140px;">
+          <button onclick="bookVolunteerDay()" class="btn btn-success btn-sm">🌱 Block Day</button>
+        </div>
+      </div>
+      <div id="tpVolunteerList" style="margin-bottom:20px;"></div>
 
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">🎯 Monthly Targets</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
@@ -7180,12 +7505,14 @@ function tpSwitchTab(tab) {
         </div>`).join('')
         : '<div style="color:var(--s-text-muted);font-size:12px;padding:8px 0;">No upcoming sessions booked.</div>';
     }
-    // populate settings target fields from meta
+    if(tab==='settings' && _trainerProfileName) {
     const meta = getTrainerMeta(_trainerProfileName);
-    const revT = document.getElementById('tpRevTarget');
-    const sessT = document.getElementById('tpSessTarget');
+    const panel = document.getElementById('trainerProfilePanel');
+    const revT = panel.querySelector('#tpRevTarget');
+    const sessT = panel.querySelector('#tpSessTarget');
     if(revT) revT.value = meta.goals?.revenueTarget || 0;
     if(sessT) sessT.value = meta.goals?.sessionTarget || 10;
+    renderVolunteerDays(meta.volunteerDays||[], panel.querySelector('#tpVolunteerList'));
   }
 }
 
