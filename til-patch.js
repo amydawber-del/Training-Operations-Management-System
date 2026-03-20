@@ -138,7 +138,7 @@
           '| entries:', entries.length);
       });
 
-      if (typeof renderTrainerWorkload === 'function') renderTrainerWorkload();
+      if (typeof window.renderTrainerWorkload === 'function') window.renderTrainerWorkload();
 
     } catch (err) {
       console.warn('[TilPatch] loadTilData error:', err.message);
@@ -154,6 +154,19 @@
       _orig.apply(this, arguments);
 
       var cards = document.querySelectorAll('#trainerGrid .trainer-card');
+      var cardNames = Array.from(cards).map(function(c){ return c.getAttribute('data-trainer') || '?'; });
+      var sheetNames = Object.keys(tilData);
+      console.log('[TilPatch] Card names:', cardNames);
+      console.log('[TilPatch] Sheet names:', sheetNames);
+      // Warn on any mismatch
+      cardNames.forEach(function(cn){
+        if(cn !== '?' && !tilData[cn]) {
+          // Try case-insensitive match
+          var match = sheetNames.find(function(sn){ return sn.toLowerCase() === cn.toLowerCase(); });
+          if(match) console.warn('[TilPatch] Name case mismatch — card:"' + cn + '" sheet:"' + match + '"');
+          else console.warn('[TilPatch] No TiL data found for trainer "' + cn + '" — check trainer name in Time in Lieu Log sheet matches exactly');
+        }
+      });
       cards.forEach(function (card) {
         // Use data-trainer attribute (set by dashboard) for reliable name lookup
         // Falls back to scraping textContent if attribute not present
@@ -173,7 +186,13 @@
         var existing = card.querySelector('.til-panel');
         if (existing) existing.remove();
 
-        var info    = tilData[trainerName] || null;
+        // Case-insensitive lookup in tilData
+        var info = tilData[trainerName] || null;
+        if (!info) {
+          var lower = trainerName.toLowerCase();
+          var key = Object.keys(tilData).find(function(k){ return k.toLowerCase() === lower; });
+          if (key) info = tilData[key];
+        }
         var bal     = info ? info.balance : null;
         var pending = info ? info.pending : 0;
 
