@@ -1815,6 +1815,31 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   font-family: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* ── TRAINER PROFILE PANEL ───────────────────────────────── */
+#trainerProfilePanel {
+  font-family: 'DM Sans', sans-serif;
+}
+#trainerProfilePanel .tp-tab {
+  transition: color 0.12s, border-bottom-color 0.12s;
+}
+#trainerProfilePanel textarea:focus,
+#trainerProfilePanel input:focus {
+  outline: none;
+  border-color: var(--s-purple) !important;
+  box-shadow: 0 0 0 3px rgba(91,75,231,0.10);
+}
+
+/* ── MONTH DRILL-DOWN MODAL ──────────────────────────────── */
+#monthDrillOverlay.open { display:flex; }
+#monthDrillOverlay {
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── MANAGER ACTIONS PANEL ───────────────────────────────── */
+#managerActionsPanel { }
+
 </style>
 
 </head>
@@ -1944,6 +1969,15 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
 
 <main class="main" id="mainContent" style="display:none;">
 
+  <!-- MANAGER ACTIONS PANEL -->
+  <div id="managerActionsPanel" style="margin-bottom:24px;" class="admin-only">
+    <div class="section-header" style="margin-bottom:12px;">
+      <div class="section-title">⚡ Manager Actions</div>
+      <span style="font-size:11px;color:var(--s-text-muted);">Live alerts — updated on refresh</span>
+    </div>
+    <div id="managerActionsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;"></div>
+  </div>
+
   <!-- TRAINER WORKLOAD -->
   <div id="trainerWorkloadSection" style="margin-bottom:24px;">
     <div class="section-header">
@@ -2044,7 +2078,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
       <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#0ea5e9;" onclick="openKpiModal('revPerSession')"><div class="kpi-card-label">Revenue per Session (Month)</div><div class="kpi-card-value" id="kpiRevPerSession">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiRevPerSessionSub">Paid sessions only</div></div>
     </div>
     <div class="charts-grid">
-      <div class="chart-card"><div class="chart-title">Monthly Revenue</div><div class="chart-subtitle">This year vs last year (exc. VAT)</div><div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Monthly Revenue</div><div class="chart-subtitle">This year vs last year (exc. VAT) · <span style="color:var(--s-purple);font-weight:600;">click any bar to drill in →</span></div><div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Month Comparison</div><div class="chart-subtitle">This month vs last month</div><div class="compare-cards"><div class="compare-card"><div class="compare-card-label" id="thisMonthLabel">This Month</div><div class="compare-card-value" id="thisMonthRev">&#163;&#8212;</div></div><div class="compare-card"><div class="compare-card-label" id="lastMonthLabel">Last Month</div><div class="compare-card-value" id="lastMonthRev">&#163;&#8212;</div></div></div><div style="height:150px;position:relative;"><canvas id="optionChart"></canvas></div><div class="chart-subtitle" style="margin-top:10px;margin-bottom:0;">Bookings by training option (this year)</div></div>
     </div>
   </div>
@@ -3350,6 +3384,8 @@ function applyPermVisibility() {
     allBookingsSection:        p('viewAllBookings'),
     referralLeaderboardSection:p('viewReferrals'),
     trainerWorkloadSection:    p('viewTrainerWorkload'),
+    managerActionsPanel:       currentUser && currentUser.role === 'admin',
+    smartRecsSection:          true,
   };
   Object.entries(sectionMap).forEach(([id, show]) => {
     const el = document.getElementById(id);
@@ -3831,6 +3867,7 @@ function renderAll() {
   renderActionNeeded();
   renderKpis();
   renderSmartRecs();
+  renderManagerActions();
   updateBellBadge();
   applyPermVisibility();
   renderReferralLeaderboard();
@@ -3838,6 +3875,83 @@ function renderAll() {
   renderCompletedBookings();
   renderCalendar();
   populateFilterDropdowns();
+}
+
+// ===================== MANAGER ACTIONS PANEL =====================
+function renderManagerActions() {
+  const panel = document.getElementById('managerActionsGrid');
+  if(!panel) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nextWeekStart = new Date(today); nextWeekStart.setDate(nextWeekStart.getDate() + (1 - nextWeekStart.getDay() + 7) % 7 + 1);
+  const nextWeekEnd = new Date(nextWeekStart); nextWeekEnd.setDate(nextWeekEnd.getDate() + 6);
+  const actions = [];
+
+  // 1. Trainers over capacity next week
+  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  const overCapacityNext = [];
+  trainerUsers.forEach(t => {
+    const meta = getTrainerMeta(t.name);
+    const cap = meta.capacity || 4;
+    const nextWeekSessions = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn >= nextWeekStart && r.bookedOn <= nextWeekEnd);
+    if(nextWeekSessions.length >= cap) overCapacityNext.push(t.name);
+  });
+  if(overCapacityNext.length) {
+    actions.push({ icon:'📅', colour:'#DC2F4B', bg:'#FDEAED', title: overCapacityNext.length + ' trainer' + (overCapacityNext.length>1?'s':'') + ' over capacity next week', body: overCapacityNext.join(', ') + ' — consider redistributing sessions', action: null });
+  }
+
+  // 2. Revenue unassigned (requests not yet booked)
+  const unassignedRequests = allData.filter(r => r.status === 'Unassigned');
+  const pendingRequests = allData.filter(r => r.status === 'Pending');
+  const unassignedRev = [...unassignedRequests, ...pendingRequests].reduce((s,r) => s+(r.quotedValue||r.invoiceValue||0), 0);
+  if(unassignedRev > 0 || unassignedRequests.length > 0) {
+    const total = unassignedRequests.length + pendingRequests.length;
+    actions.push({ icon:'💸', colour:'#D97706', bg:'#FEF3CD', title: (unassignedRev > 0 ? fmtMoney(unassignedRev) : total + ' requests') + ' revenue unassigned', body: unassignedRequests.length + ' unassigned · ' + pendingRequests.length + ' pending confirmation — assign to convert', action: null });
+  }
+
+  // 3. Stale requests needing follow-up (>3 days unassigned OR >7 days pending)
+  const staleUnassigned = unassignedRequests.filter(r => r.ts && (Date.now()-r.ts) > 3*86400000);
+  const stalePending = pendingRequests.filter(r => r.ts && (Date.now()-r.ts) > 7*86400000);
+  const staleTotal = staleUnassigned.length + stalePending.length;
+  if(staleTotal > 0) {
+    actions.push({ icon:'⏳', colour:'#D97706', bg:'#FEF3CD', title: staleTotal + ' stale request' + (staleTotal>1?'s':'') + ' needing follow-up', body: staleUnassigned.length + ' unassigned 3+ days · ' + stalePending.length + ' pending 7+ days', action: null });
+  }
+
+  // 4. Trainer over capacity now
+  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
+  trainerUsers.forEach(t => {
+    const meta = getTrainerMeta(t.name);
+    const CAPACITY_30D = (meta.capacity || 4) * 6;
+    const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
+    const pct = Math.round((last30.length / Math.max(CAPACITY_30D,1)) * 100);
+    if(pct >= 90) {
+      actions.push({ icon:'🔴', colour:'#DC2F4B', bg:'#FDEAED', title: t.name + ' is over capacity (' + pct + '%)', body: last30.length + ' sessions in last 30 days — consider reassigning new requests', action: `openTrainerProfile('${escHtml(t.name)}')` });
+    }
+  });
+
+  // 5. Low utilisation warning
+  trainerUsers.forEach(t => {
+    const meta = getTrainerMeta(t.name);
+    const CAPACITY_30D = (meta.capacity || 4) * 6;
+    const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
+    const pct = Math.round((last30.length / Math.max(CAPACITY_30D,1)) * 100);
+    if(pct < 30 && last30.length < 3) {
+      actions.push({ icon:'🟡', colour:'#D97706', bg:'#FEF3CD', title: t.name + ' is under-utilised (' + pct + '%)', body: 'Only ' + last30.length + ' sessions last 30 days — do they need support or reassignment?', action: `openTrainerProfile('${escHtml(t.name)}')` });
+    }
+  });
+
+  if(!actions.length) {
+    panel.innerHTML = `<div style="padding:14px 18px;background:#fff;border:1px solid var(--s-border);border-radius:10px;font-size:13px;color:var(--s-text-muted);display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">✅</span> All clear — no urgent manager actions right now.</div>`;
+    return;
+  }
+  panel.innerHTML = actions.map(a => `
+    <div style="background:${a.bg};border:1px solid ${a.colour}40;border-left:4px solid ${a.colour};border-radius:10px;padding:14px 16px;${a.action?'cursor:pointer;':''}"
+      ${a.action?`onclick="${a.action}"`:''}
+    >
+      <div style="font-size:13px;font-weight:700;color:var(--s-text-primary);margin-bottom:5px;">${a.icon} ${a.title}</div>
+      <div style="font-size:12px;color:${a.colour};font-weight:500;">${a.body}</div>
+      ${a.action?`<div style="font-size:11px;color:${a.colour};font-weight:600;margin-top:6px;">View trainer →</div>`:''}
+    </div>
+  `).join('');
 }
 
 function getFilteredData() {
@@ -3953,6 +4067,27 @@ function staleBadge(r) {
 }
 
 // ===================== TRAINER WORKLOAD =====================
+// Trainer extended metadata (skill tags, capacity, shadowing)
+const TRAINER_META = {};
+function getTrainerMeta(name) {
+  if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 4, skills: [], shadowing: false, notes: '', goals: { revenueTarget: 0, sessionTarget: 10 } };
+  return TRAINER_META[name];
+}
+function saveTrainerMeta(name, updates) {
+  const m = getTrainerMeta(name);
+  Object.assign(m, updates);
+  try { localStorage.setItem('trainerMeta_' + name, JSON.stringify(TRAINER_META[name])); } catch(e) {}
+}
+(function loadTrainerMeta() {
+  try {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('trainerMeta_'));
+    keys.forEach(k => {
+      const name = k.replace('trainerMeta_', '');
+      TRAINER_META[name] = JSON.parse(localStorage.getItem(k));
+    });
+  } catch(e) {}
+})();
+
 function renderTrainerWorkload() {
   const grid = document.getElementById('trainerGrid');
   const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
@@ -3961,29 +4096,42 @@ function renderTrainerWorkload() {
   const y30 = new Date(today); y30.setDate(y30.getDate()-30);
   let html = '';
   trainerUsers.forEach((t, idx) => {
+    const meta = getTrainerMeta(t.name);
     const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
     const last30 = booked.filter(r => r.bookedOn && r.bookedOn >= y30 && r.bookedOn <= today);
     const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
-    // Sessions (not days) as the primary metric
     const sessionsLast30 = last30.length;
     const sessionsUpcoming = upcoming.length;
-    // Utilisation: sessions / capacity (assume 10 sessions per 30 days = 100%)
-    const CAPACITY_30D = 10;
-    const utilisationPct = Math.min(100, Math.round((sessionsLast30 / CAPACITY_30D) * 100));
-    let utilColour, utilLabel;
-    if(utilisationPct >= 80)      { utilColour = '#DC2F4B'; utilLabel = 'Busy'; }
-    else if(utilisationPct >= 40) { utilColour = '#0FA976'; utilLabel = 'Optimal'; }
-    else                           { utilColour = '#A8ADCA'; utilLabel = 'Under'; }
+    // Utilisation based on capacity (sessions per 30 days)
+    const CAPACITY_30D = (meta.capacity || 4) * 6; // ~6 working weeks per 30 days
+    const utilisationPct = Math.min(100, Math.round((sessionsLast30 / Math.max(CAPACITY_30D, 1)) * 100));
+    let utilColour, utilLabel, statusDot;
+    if(utilisationPct >= 90)      { utilColour = '#DC2F4B'; utilLabel = 'Over capacity'; statusDot = '🔴'; }
+    else if(utilisationPct >= 60) { utilColour = '#0FA976'; utilLabel = 'Optimal'; statusDot = '🟢'; }
+    else if(utilisationPct >= 30) { utilColour = '#D97706'; utilLabel = 'Under-utilised'; statusDot = '🟠'; }
+    else                           { utilColour = '#A8ADCA'; utilLabel = 'Low'; statusDot = '🔴'; }
     const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
     const nextFree = getNextFreeDate(t.name);
     const nextFreeHtml = nextFree ? `<div class="next-free-tag">${nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`;
-    html += `<div class="trainer-card">
-      <div class="trainer-name"><div class="trainer-color-dot" style="background:${color};"></div>${escHtml(t.name)} <span class="status-badge" style="font-size:9px;padding:1px 5px;margin-left:auto;background:${color}22;color:${color};">${t.role}</span></div>
+    // Skill tags
+    const skillTags = (meta.skills || []).map(s => `<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;margin:1px;">${s}</span>`).join('');
+    const shadowingBadge = meta.shadowing ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;background:#f0f0ff;color:#5B4BE7;border-radius:4px;border:1px solid #C8CCFF;margin-left:4px;">👀 Shadowing</span>` : '';
+    const revLast30 = last30.reduce((s,r) => s+(r.invoiceValue||0), 0);
+    html += `<div class="trainer-card" style="cursor:pointer;" onclick="openTrainerProfile('${escHtml(t.name)}')">
+      <div class="trainer-name">
+        <div class="trainer-color-dot" style="background:${color};"></div>
+        ${escHtml(t.name)}
+        <span style="margin-left:auto;font-size:13px;">${statusDot}</span>
+        ${shadowingBadge}
+      </div>
+      ${skillTags ? `<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:2px;">${skillTags}</div>` : ''}
       <div class="trainer-stat"><span>Sessions Last 30 Days</span><span class="trainer-stat-val">${sessionsLast30}</span></div>
       <div class="trainer-stat"><span>Upcoming Sessions</span><span class="trainer-stat-val">${sessionsUpcoming}</span></div>
+      <div class="trainer-stat"><span>Revenue Last 30d</span><span class="trainer-stat-val">${fmtMoney(revLast30)}</span></div>
       <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
       <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
       ${nextFreeHtml}
+      <div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>
     </div>`;
   });
   grid.innerHTML = html;
@@ -4319,7 +4467,24 @@ function renderKpis() {
   if(optionChartInst) { optionChartInst.destroy(); optionChartInst = null; }
   const rc = document.getElementById('revenueChart');
   if(rc) {
-    revenueChartInst = new Chart(rc, {type:'bar',data:{labels:monthNames,datasets:[{label:String(yr),data:thisYrData,backgroundColor:'rgba(91,75,231,0.75)',borderRadius:4},{label:String(yr-1),data:prevYrData,backgroundColor:'rgba(91,75,231,0.2)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}}},scales:{y:{ticks:{callback:v=>'£'+v.toLocaleString('en-GB')},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}}});
+    revenueChartInst = new Chart(rc, {
+      type:'bar',
+      data:{labels:monthNames,datasets:[{label:String(yr),data:thisYrData,backgroundColor:'rgba(91,75,231,0.75)',borderRadius:4},{label:String(yr-1),data:prevYrData,backgroundColor:'rgba(91,75,231,0.2)',borderRadius:4}]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:ctx=>'£'+Math.round(ctx.raw).toLocaleString('en-GB')}}},
+        scales:{y:{ticks:{callback:v=>'£'+v.toLocaleString('en-GB')},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}},
+        onClick:(evt,elems)=>{
+          if(!elems.length) return;
+          const monthIdx = elems[0].index;
+          const datasetIdx = elems[0].datasetIndex;
+          const clickedYr = datasetIdx === 0 ? yr : yr-1;
+          openMonthDrillDown(monthIdx, clickedYr);
+        }
+      }
+    });
+    rc.style.cursor = 'pointer';
+    rc.title = 'Click a bar to drill into that month';
   }
   const oc = document.getElementById('optionChart');
   if(oc) {
@@ -4327,7 +4492,109 @@ function renderKpis() {
   }
 }
 
-function openKpiModal(type) {
+// ===================== MONTH DRILL-DOWN =====================
+function openMonthDrillDown(monthIdx, yr) {
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const label = monthNames[monthIdx] + ' ' + yr;
+  const rows = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===monthIdx);
+  const revenue = rows.reduce((s,r)=>s+(r.invoiceValue||0),0);
+  const paidRows = rows.filter(r=>r.invoiceValue>0);
+  const avgVal = paidRows.length ? revenue/paidRows.length : 0;
+  // By trainer
+  const byTrainer = {};
+  rows.forEach(r=>{
+    const t = r.trainer||'Unassigned';
+    if(!byTrainer[t]) byTrainer[t]={sessions:0,rev:0};
+    byTrainer[t].sessions++;
+    byTrainer[t].rev += r.invoiceValue||0;
+  });
+  // Conversion: requests submitted that month vs booked
+  const now = new Date();
+  const submitted = allData.filter(r => r.ts && r.ts.getFullYear()===yr && r.ts.getMonth()===monthIdx);
+  const bookedFromSubmitted = submitted.filter(r=>r.status==='Booked').length;
+  const convPct = submitted.length ? Math.round((bookedFromSubmitted/submitted.length)*100) : 0;
+
+  const trainerRows = Object.entries(byTrainer).sort((a,b)=>b[1].rev-a[1].rev);
+
+  const overlay = document.getElementById('monthDrillOverlay');
+  const content = document.getElementById('monthDrillContent');
+  content.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:17px;font-weight:700;color:var(--s-text-primary);">📊 ${label}</div>
+        <div style="font-size:12px;color:var(--s-text-muted);margin-top:2px;">Monthly performance breakdown</div>
+      </div>
+      <button onclick="document.getElementById('monthDrillOverlay').classList.remove('open')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--s-text-muted);padding:4px 8px;">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
+      <div style="background:var(--s-lavender);border-radius:10px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-purple);margin-bottom:6px;">Revenue</div>
+        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${fmtMoney(revenue)}</div>
+      </div>
+      <div style="background:#E8F9F3;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-green);margin-bottom:6px;">Sessions</div>
+        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${rows.length}</div>
+      </div>
+      <div style="background:#FEF3CD;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-amber);margin-bottom:6px;">Avg Value</div>
+        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${fmtMoney(avgVal)}</div>
+      </div>
+      <div style="background:#F5F0FF;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:#6D28D9;margin-bottom:6px;">Conversion</div>
+        <div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">${convPct}%</div>
+        <div style="font-size:10px;color:var(--s-text-muted);">${bookedFromSubmitted}/${submitted.length} requests</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Revenue by Trainer</div>
+    <div style="margin-bottom:20px;">
+      ${trainerRows.length ? trainerRows.map(([t,d])=>{
+        const t_obj = trainers.find(u=>u.name===t);
+        const color = t_obj?.color || '#5B4BE7';
+        const pct = revenue > 0 ? Math.round((d.rev/revenue)*100) : 0;
+        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:${color}22;color:${color};font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${t.charAt(0)}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <span style="font-size:12px;font-weight:600;color:var(--s-text-primary);">${escHtml(t)}</span>
+              <span style="font-size:12px;font-weight:700;color:${color};">${fmtMoney(d.rev)} · ${d.sessions} session${d.sessions!==1?'s':''}</span>
+            </div>
+            <div style="height:5px;background:var(--s-border);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
+            </div>
+          </div>
+        </div>`;
+      }).join('') : '<div style="color:var(--s-text-muted);font-size:12px;">No trainer data</div>'}
+    </div>
+
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Clients Trained (${rows.length})</div>
+    <div style="max-height:220px;overflow-y:auto;border:1px solid var(--s-border);border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--s-surface);position:sticky;top:0;">
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);letter-spacing:0.5px;">Company</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Trainer</th>
+            <th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Type</th>
+            <th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.sort((a,b)=>(b.invoiceValue||0)-(a.invoiceValue||0)).map(r=>`
+            <tr style="border-bottom:1px solid var(--s-border);">
+              <td style="padding:8px 12px;font-weight:600;color:var(--s-text-primary);">${escHtml(getCompanyName(r))}</td>
+              <td style="padding:8px 12px;">${trainerPill(r.trainer)}</td>
+              <td style="padding:8px 12px;">${optionBadge(r.trainingOption)}</td>
+              <td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--s-purple);">${r.invoiceValue?fmtMoney(r.invoiceValue):'<span style="color:var(--s-red);">£0</span>'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  overlay.classList.add('open');
+}
+
+
   const overlay = document.getElementById('kpiModalOverlay');
   const title = document.getElementById('kpiModalTitle');
   const sub = document.getElementById('kpiModalSubtitle');
@@ -4574,14 +4841,6 @@ function renderSmartRecs() {
       recs.push({ type:'capacity', colour:'#2563EB', icon:'📉', title: escHtml(t.name) + ' is under capacity', body: `Only ${last30.length} sessions in the last 30 days (${pct}% utilisation). Consider assigning pending requests.`, action: null });
     }
   });
-
-  // 2. Clients with no session in 10+ days (stale booked)
-  const staleCutoff = new Date(today); staleCutoff.setDate(staleCutoff.getDate()-10);
-  const staleClients = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn < staleCutoff && r.bookedOn > new Date(yr,0,1));
-  if(staleClients.length) {
-    const ex = staleClients.slice(0,3).map(r => getCompanyName(r)).join(', ');
-    recs.push({ type:'stale', colour:'#D97706', icon:'⏰', title: staleClients.length + ' client' + (staleClients.length>1?'s':'')+' haven\'t had a session recently', body: `e.g. ${ex}. Review if follow-ups are needed.`, action: null });
-  }
 
   // 3. High % free sessions this month
   const monSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon);
@@ -6422,6 +6681,198 @@ document.addEventListener('DOMContentLoaded', function() {
   if(modal) modal.addEventListener('click', function(e) { if(e.target === modal) closeBlockDayModal(); });
 });
 
+// ===================== TRAINER PROFILE PANEL =====================
+let _trainerProfileName = null;
+
+function openTrainerProfile(name) {
+  _trainerProfileName = name;
+  const t = trainers.find(u => u.name === name);
+  if(!t) return;
+  const meta = getTrainerMeta(name);
+  const panel = document.getElementById('trainerProfilePanel');
+  if(!panel) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
+  const lastMonth30 = new Date(today); lastMonth30.setDate(lastMonth30.getDate()-60);
+
+  const booked = allData.filter(r => r.trainer===name && r.status==='Booked');
+  const last30 = booked.filter(r => r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
+  const prev30 = booked.filter(r => r.bookedOn && r.bookedOn>=lastMonth30 && r.bookedOn<y30);
+  const upcoming = booked.filter(r => r.bookedOn && r.bookedOn>today);
+  const colour = t.color || '#5B4BE7';
+
+  const rev30 = last30.reduce((s,r)=>s+(r.invoiceValue||0),0);
+  const revPrev30 = prev30.reduce((s,r)=>s+(r.invoiceValue||0),0);
+  const revDelta = revPrev30>0 ? Math.round(((rev30-revPrev30)/revPrev30)*100) : null;
+  const paidSess = last30.filter(r=>r.invoiceValue>0);
+  const avgVal = paidSess.length ? rev30/paidSess.length : 0;
+
+  const CAPACITY_30D = (meta.capacity||4)*6;
+  const utilPct = Math.min(100, Math.round((last30.length/Math.max(CAPACITY_30D,1))*100));
+  let statusDot = utilPct>=90?'🔴 Over capacity':utilPct>=60?'🟢 Available':utilPct>=30?'🟠 Under-utilised':'🔴 Low activity';
+  let statusColour = utilPct>=90?'#DC2F4B':utilPct>=60?'#0FA976':'#D97706';
+
+  // Cancellation rate
+  const allAssigned = allData.filter(r => r.trainer===name);
+  const cancelled = allAssigned.filter(r => r.status==='Cancelled');
+  const cancelRate = allAssigned.length ? Math.round((cancelled.length/allAssigned.length)*100) : 0;
+
+  // Goals progress
+  const monthGoalSess = meta.goals?.sessionTarget || 10;
+  const monthGoalRev = meta.goals?.revenueTarget || 0;
+  const sessProgress = Math.min(100, Math.round((last30.length/monthGoalSess)*100));
+  const revProgress = monthGoalRev > 0 ? Math.min(100, Math.round((rev30/monthGoalRev)*100)) : 0;
+
+  // Skill stars
+  const ALL_SKILLS = ['Sales','Lettings','Accounting','Property Management'];
+  const skillLevels = meta.skillLevels || {};
+
+  // Notes / 1:1 log
+  const notes = meta.notes || [];
+  const managerNotes = meta.managerNotes || '';
+
+  // Auto flags
+  const flags = [];
+  if(utilPct>=90) flags.push({col:'#DC2F4B', icon:'🔴', text:'Over capacity this period'});
+  if(utilPct<30 && last30.length<3) flags.push({col:'#D97706', icon:'🟡', text:'Low utilisation — may need more sessions assigned'});
+  if(cancelRate>=20) flags.push({col:'#DC2F4B', icon:'🔴', text:`High cancellation rate (${cancelRate}%)`});
+  if(last30.length===0) flags.push({col:'#D97706', icon:'🟡', text:'No sessions in last 30 days'});
+
+  // Auto 1:1 talking points
+  const talkingPoints = [];
+  if(utilPct>=90) talkingPoints.push('Workload imbalance — consider redistributing');
+  if(utilPct<30)  talkingPoints.push('Under-utilised — discuss pipeline & support');
+  if(revDelta!==null && revDelta>15) talkingPoints.push(`Revenue up ${revDelta}% — great month, celebrate!`);
+  if(revDelta!==null && revDelta<-15) talkingPoints.push(`Revenue down ${Math.abs(revDelta)}% — discuss causes`);
+  if(upcoming.length===0) talkingPoints.push('No upcoming sessions booked — review pipeline');
+  if(last30.length > 0 && !paidSess.length) talkingPoints.push('All sessions this period have £0 value — check invoicing');
+
+  // Next available
+  const nextFree = getNextFreeDate(name);
+
+  panel.querySelector('#tpName').textContent = name;
+  panel.querySelector('#tpRole').textContent = (t.role||'trainer').charAt(0).toUpperCase()+(t.role||'trainer').slice(1);
+  panel.querySelector('#tpAvatar').textContent = name.charAt(0).toUpperCase();
+  panel.querySelector('#tpAvatar').style.background = colour;
+  panel.querySelector('#tpStatusDot').textContent = statusDot;
+  panel.querySelector('#tpStatusDot').style.color = statusColour;
+
+  panel.querySelector('#tpSessions30').textContent = last30.length;
+  panel.querySelector('#tpRevenue30').textContent = fmtMoney(rev30);
+  panel.querySelector('#tpUtilPct').textContent = utilPct + '%';
+  panel.querySelector('#tpAvgVal').textContent = fmtMoney(avgVal);
+
+  // Skills
+  panel.querySelector('#tpSkillTags').innerHTML = ALL_SKILLS.map(s => {
+    const active = (meta.skills||[]).includes(s);
+    const level = skillLevels[s]||0;
+    const stars = active ? '⭐'.repeat(Math.min(5,Math.max(1,level||3))) + '☆'.repeat(Math.max(0,5-(level||3))) : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:6px;background:${active?colour+'12':'var(--s-surface)'};border:1px solid ${active?colour+'30':'var(--s-border)'};margin-bottom:4px;">
+      <span style="font-size:12px;font-weight:600;color:${active?colour:'var(--s-text-muted)'};">${s}</span>
+      ${active ? `<span style="font-size:11px;">${stars}</span>` : '<span style="font-size:10px;color:var(--s-text-faint);">Not active</span>'}
+    </div>`;
+  }).join('');
+
+  // Capacity bar
+  const capPct = Math.min(100, Math.round((upcoming.length/Math.max(meta.capacity||4,1))*100));
+  panel.querySelector('#tpCapBar').style.width = capPct + '%';
+  panel.querySelector('#tpCapBar').style.background = capPct>=100?'#DC2F4B':capPct>=70?'#D97706':'#0FA976';
+  panel.querySelector('#tpCapLabel').textContent = upcoming.length + ' upcoming of ' + (meta.capacity||4) + '/day capacity';
+  panel.querySelector('#tpNextFree').textContent = nextFree || 'No free slots in 90 days';
+
+  // Goals
+  panel.querySelector('#tpGoalSessBar').style.width = sessProgress + '%';
+  panel.querySelector('#tpGoalSessLabel').textContent = last30.length + ' / ' + monthGoalSess + ' sessions';
+  panel.querySelector('#tpGoalRevBar').style.width = revProgress + '%';
+  panel.querySelector('#tpGoalRevLabel').textContent = fmtMoney(rev30) + ' / ' + fmtMoney(monthGoalRev);
+
+  // Flags
+  panel.querySelector('#tpFlags').innerHTML = flags.length
+    ? flags.map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:${f.col}12;border:1px solid ${f.col}30;margin-bottom:4px;font-size:12px;color:${f.col};font-weight:600;">${f.icon} ${f.text}</div>`).join('')
+    : '<div style="font-size:12px;color:var(--s-text-muted);">✅ No flags — all looking healthy</div>';
+
+  // Talking points
+  panel.querySelector('#tpTalkingPoints').innerHTML = talkingPoints.length
+    ? talkingPoints.map(p=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--s-border);font-size:12px;color:var(--s-text-secondary);"><span style="color:var(--s-purple);flex-shrink:0;">→</span>${p}</div>`).join('')
+    : '<div style="font-size:12px;color:var(--s-text-muted);">No auto-generated talking points</div>';
+
+  // Notes
+  panel.querySelector('#tpManagerNotes').value = managerNotes;
+  renderTrainerNotes(notes, panel.querySelector('#tpNotesList'));
+
+  // Shadowing toggle
+  panel.querySelector('#tpShadowToggle').checked = !!meta.shadowing;
+
+  // Capacity input
+  panel.querySelector('#tpCapacityInput').value = meta.capacity || 4;
+
+  // Skill checkboxes
+  ALL_SKILLS.forEach(s => {
+    const cb = panel.querySelector('#tpSkillCb_' + s.replace(/\s/g,'_'));
+    if(cb) cb.checked = (meta.skills||[]).includes(s);
+  });
+
+  document.getElementById('trainerProfileOverlay').classList.add('open');
+  panel.classList.add('open');
+}
+
+function renderTrainerNotes(notes, container) {
+  if(!container) return;
+  if(!notes.length) { container.innerHTML = '<div style="font-size:12px;color:var(--s-text-muted);padding:8px 0;">No notes yet.</div>'; return; }
+  container.innerHTML = notes.slice().reverse().map(n=>`
+    <div style="padding:8px 10px;border-radius:6px;background:var(--s-surface);border-left:3px solid var(--s-purple);margin-bottom:6px;">
+      <div style="font-size:10px;color:var(--s-text-muted);margin-bottom:3px;">${n.date} · ${n.author||'Manager'} ${n.type==='1:1'?'<span style="background:#EEF0FF;color:#5B4BE7;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;">1:1</span>':''}</div>
+      <div style="font-size:12px;color:var(--s-text-primary);">${escHtml(n.text)}</div>
+    </div>`).join('');
+}
+
+function saveTrainerProfileNote(type) {
+  if(!_trainerProfileName) return;
+  const panel = document.getElementById('trainerProfilePanel');
+  const input = panel.querySelector('#tpNewNote');
+  const text = input.value.trim();
+  if(!text) return;
+  const meta = getTrainerMeta(_trainerProfileName);
+  if(!meta.notes) meta.notes = [];
+  meta.notes.push({ date: new Date().toLocaleDateString('en-GB'), author: currentUser?.name||'Manager', text, type: type||'note' });
+  saveTrainerMeta(_trainerProfileName, meta);
+  input.value = '';
+  renderTrainerNotes(meta.notes, panel.querySelector('#tpNotesList'));
+  showToast('Note saved', 'success', 2000);
+}
+
+function saveTrainerSettings() {
+  if(!_trainerProfileName) return;
+  const panel = document.getElementById('trainerProfilePanel');
+  const meta = getTrainerMeta(_trainerProfileName);
+  meta.capacity = parseInt(panel.querySelector('#tpCapacityInput').value)||4;
+  meta.shadowing = panel.querySelector('#tpShadowToggle').checked;
+  meta.managerNotes = panel.querySelector('#tpManagerNotes').value;
+  const ALL_SKILLS = ['Sales','Lettings','Accounting','Property Management'];
+  meta.skills = ALL_SKILLS.filter(s => {
+    const cb = panel.querySelector('#tpSkillCb_' + s.replace(/\s/g,'_'));
+    return cb && cb.checked;
+  });
+  // Revenue & session targets
+  const revT = panel.querySelector('#tpRevTarget');
+  const sessT = panel.querySelector('#tpSessTarget');
+  if(!meta.goals) meta.goals = {};
+  if(revT) meta.goals.revenueTarget = parseInt(revT.value)||0;
+  if(sessT) meta.goals.sessionTarget = parseInt(sessT.value)||10;
+  saveTrainerMeta(_trainerProfileName, meta);
+  showToast('Settings saved for ' + _trainerProfileName, 'success');
+  // re-render cards
+  renderTrainerWorkload();
+  renderManagerActions();
+}
+
+function closeTrainerProfile() {
+  document.getElementById('trainerProfileOverlay').classList.remove('open');
+  document.getElementById('trainerProfilePanel').classList.remove('open');
+  _trainerProfileName = null;
+}
+
 // ===================== AUTO REFRESH (15 min) =====================
 (function() {
   const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -6462,6 +6913,230 @@ document.addEventListener('DOMContentLoaded', function() {
   } else { injectCountdownEl(); scheduleRefresh(); }
 })();
 </script>
+<!-- MONTH DRILL-DOWN MODAL -->
+<div class="kpi-modal-overlay" id="monthDrillOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="kpi-modal" style="max-width:680px;">
+    <div id="monthDrillContent" style="padding:24px 26px;"></div>
+  </div>
+</div>
+
+<!-- TRAINER PROFILE OVERLAY -->
+<div id="trainerProfileOverlay" onclick="closeTrainerProfile()" style="position:fixed;inset:0;background:rgba(18,21,42,0.4);z-index:500;opacity:0;pointer-events:none;transition:opacity 0.2s;"></div>
+
+<!-- TRAINER PROFILE SLIDE-OUT PANEL -->
+<div id="trainerProfilePanel" style="position:fixed;top:0;right:-520px;width:500px;max-width:97vw;height:100vh;background:#fff;z-index:501;box-shadow:-8px 0 40px rgba(18,21,42,0.16);transition:right 0.25s ease;overflow-y:auto;display:flex;flex-direction:column;">
+
+  <!-- Header -->
+  <div style="background:var(--s-navy);padding:20px 22px 16px;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+      <div id="tpAvatar" style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div id="tpName" style="font-size:17px;font-weight:700;color:#fff;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px;">
+          <span id="tpRole" style="font-size:11px;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8);padding:2px 8px;border-radius:20px;font-weight:600;"></span>
+          <span id="tpStatusDot" style="font-size:11px;font-weight:600;"></span>
+        </div>
+      </div>
+      <button onclick="closeTrainerProfile()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;cursor:pointer;font-size:16px;border-radius:6px;padding:5px 9px;">✕</button>
+    </div>
+    <!-- Quick stats row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+      <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">Sessions 30d</div>
+        <div id="tpSessions30" style="font-size:20px;font-weight:700;color:#fff;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">Revenue 30d</div>
+        <div id="tpRevenue30" style="font-size:16px;font-weight:700;color:#fff;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">Utilisation</div>
+        <div id="tpUtilPct" style="font-size:20px;font-weight:700;color:#fff;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">Avg Value</div>
+        <div id="tpAvgVal" style="font-size:16px;font-weight:700;color:#fff;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab nav -->
+  <div style="display:flex;border-bottom:2px solid var(--s-border);background:var(--s-surface);flex-shrink:0;" id="tpTabNav">
+    <button onclick="tpSwitchTab('overview')" class="tp-tab tp-tab-active" data-tab="overview" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-purple);border-bottom:2px solid var(--s-purple);margin-bottom:-2px;font-family:'DM Sans',sans-serif;">Overview</button>
+    <button onclick="tpSwitchTab('workload')" class="tp-tab" data-tab="workload" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">Workload</button>
+    <button onclick="tpSwitchTab('skills')" class="tp-tab" data-tab="skills" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">Skills</button>
+    <button onclick="tpSwitchTab('onetoone')" class="tp-tab" data-tab="onetoone" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">1:1 Prep</button>
+    <button onclick="tpSwitchTab('settings')" class="tp-tab" data-tab="settings" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">Settings</button>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;padding:20px 22px;">
+
+    <!-- OVERVIEW TAB -->
+    <div id="tpTab-overview">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">⚠️ Flags</div>
+      <div id="tpFlags" style="margin-bottom:18px;"></div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">🎯 Goals Progress (Last 30 days)</div>
+      <div style="margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--s-text-secondary);font-weight:600;">Sessions</span><span id="tpGoalSessLabel" style="color:var(--s-text-muted);"></span></div>
+        <div style="height:7px;background:var(--s-border);border-radius:4px;overflow:hidden;margin-bottom:10px;"><div id="tpGoalSessBar" style="height:100%;background:var(--s-purple);border-radius:4px;transition:width 0.4s;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--s-text-secondary);font-weight:600;">Revenue</span><span id="tpGoalRevLabel" style="color:var(--s-text-muted);"></span></div>
+        <div style="height:7px;background:var(--s-border);border-radius:4px;overflow:hidden;"><div id="tpGoalRevBar" style="height:100%;background:var(--s-green);border-radius:4px;transition:width 0.4s;"></div></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">🛠 Skills</div>
+      <div id="tpSkillTags" style="margin-bottom:18px;"></div>
+    </div>
+
+    <!-- WORKLOAD TAB -->
+    <div id="tpTab-workload" style="display:none;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📅 Capacity</div>
+      <div style="margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
+          <span id="tpCapLabel" style="color:var(--s-text-secondary);font-weight:600;"></span>
+        </div>
+        <div style="height:8px;background:var(--s-border);border-radius:4px;overflow:hidden;">
+          <div id="tpCapBar" style="height:100%;border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+        <div style="margin-top:8px;font-size:12px;color:var(--s-text-muted);" id="tpNextFree"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📊 Upcoming Sessions</div>
+      <div id="tpUpcomingList" style="margin-bottom:18px;font-size:12px;color:var(--s-text-muted);">
+        <!-- populated dynamically below -->
+      </div>
+    </div>
+
+    <!-- SKILLS TAB -->
+    <div id="tpTab-skills" style="display:none;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Skill Coverage</div>
+      <div style="margin-bottom:16px;">
+        ${['Sales','Lettings','Accounting','Property Management'].map(s=>`
+        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;transition:background 0.1s;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
+          <input type="checkbox" id="tpSkillCb_${s.replace(/\s/g,'_')}" style="width:15px;height:15px;accent-color:var(--s-purple);">
+          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">${s}</span>
+        </label>`).join('')}
+      </div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">👀 Shadowing Status</div>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;border:1px solid var(--s-border);cursor:pointer;margin-bottom:16px;">
+        <input type="checkbox" id="tpShadowToggle" style="width:15px;height:15px;accent-color:var(--s-purple);">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Currently Shadowing</div>
+          <div style="font-size:11px;color:var(--s-text-muted);">Show 👀 badge on workload card</div>
+        </div>
+      </label>
+      <button onclick="saveTrainerSettings()" class="btn btn-primary" style="width:100%;">Save Skills & Settings</button>
+    </div>
+
+    <!-- 1:1 PREP TAB -->
+    <div id="tpTab-onetoone" style="display:none;">
+      <div style="background:var(--s-lavender);border-radius:10px;padding:14px 16px;margin-bottom:18px;">
+        <div style="font-size:12px;font-weight:700;color:var(--s-purple);margin-bottom:8px;">🤖 Auto-Generated Talking Points</div>
+        <div id="tpTalkingPoints"></div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📝 Manager Notes (Private)</div>
+      <textarea id="tpManagerNotes" rows="3" placeholder="Private notes — only visible to you…" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:7px;padding:10px 12px;font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;color:var(--s-text-primary);margin-bottom:12px;box-sizing:border-box;"></textarea>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📓 1:1 Log</div>
+      <div id="tpNotesList" style="max-height:220px;overflow-y:auto;margin-bottom:12px;"></div>
+
+      <div style="display:flex;gap:8px;margin-bottom:4px;">
+        <textarea id="tpNewNote" rows="2" placeholder="Add a note or 1:1 log entry…" style="flex:1;border:1.5px solid var(--s-border-mid);border-radius:7px;padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;resize:none;color:var(--s-text-primary);"></textarea>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <button onclick="saveTrainerProfileNote('note')" class="btn btn-primary btn-sm">Add Note</button>
+          <button onclick="saveTrainerProfileNote('1:1')" class="btn btn-ghost btn-sm" style="border-color:var(--s-purple);color:var(--s-purple);">+ 1:1</button>
+        </div>
+      </div>
+      <button onclick="saveTrainerSettings()" class="btn btn-primary btn-sm" style="width:100%;margin-top:8px;">Save Notes</button>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tpTab-settings" style="display:none;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">⚙️ Capacity</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <label style="font-size:12px;color:var(--s-text-secondary);font-weight:600;">Max sessions/day:</label>
+        <input type="number" id="tpCapacityInput" min="1" max="10" value="4" style="width:70px;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;">
+      </div>
+
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">🎯 Monthly Targets</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+        <div>
+          <label style="font-size:11px;color:var(--s-text-muted);font-weight:600;display:block;margin-bottom:5px;">Session Target</label>
+          <input type="number" id="tpSessTarget" min="0" value="10" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--s-text-muted);font-weight:600;display:block;margin-bottom:5px;">Revenue Target (£)</label>
+          <input type="number" id="tpRevTarget" min="0" value="0" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <button onclick="saveTrainerSettings()" class="btn btn-primary" style="width:100%;">💾 Save Settings</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function tpSwitchTab(tab) {
+  ['overview','workload','skills','onetoone','settings'].forEach(t => {
+    const el = document.getElementById('tpTab-'+t);
+    if(el) el.style.display = t===tab?'':'none';
+  });
+  document.querySelectorAll('.tp-tab').forEach(btn => {
+    const active = btn.dataset.tab === tab;
+    btn.style.color = active ? 'var(--s-purple)' : 'var(--s-text-muted)';
+    btn.style.borderBottom = active ? '2px solid var(--s-purple)' : '2px solid transparent';
+    btn.style.marginBottom = '-2px';
+  });
+  // Populate workload tab dynamically
+  if(tab==='workload' && _trainerProfileName) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const upcoming = allData.filter(r => r.trainer===_trainerProfileName && r.status==='Booked' && r.bookedOn && r.bookedOn>today)
+      .sort((a,b)=>a.bookedOn-b.bookedOn).slice(0,8);
+    const list = document.getElementById('tpUpcomingList');
+    if(list) {
+      list.innerHTML = upcoming.length ? upcoming.map(r=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--s-border);">
+          <div style="background:var(--s-lavender);color:var(--s-purple);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${fmtDate(r.bookedOn)}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:var(--s-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(getCompanyName(r))}</div>
+            <div style="font-size:10px;color:var(--s-text-muted);">${optionBadge(r.trainingOption)}</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--s-purple);white-space:nowrap;">${r.invoiceValue?fmtMoney(r.invoiceValue):'£0'}</div>
+        </div>`).join('')
+        : '<div style="color:var(--s-text-muted);font-size:12px;padding:8px 0;">No upcoming sessions booked.</div>';
+    }
+    // populate settings target fields from meta
+    const meta = getTrainerMeta(_trainerProfileName);
+    const revT = document.getElementById('tpRevTarget');
+    const sessT = document.getElementById('tpSessTarget');
+    if(revT) revT.value = meta.goals?.revenueTarget || 0;
+    if(sessT) sessT.value = meta.goals?.sessionTarget || 10;
+  }
+}
+
+// open/close CSS fix
+document.getElementById('trainerProfileOverlay').addEventListener('transitionend',()=>{});
+const _tpPanel = document.getElementById('trainerProfilePanel');
+const _tpOverlay = document.getElementById('trainerProfileOverlay');
+// Override open/close to handle CSS
+const _origOpenTP = openTrainerProfile;
+openTrainerProfile = function(name) {
+  _origOpenTP(name);
+  _tpOverlay.style.opacity = '1';
+  _tpOverlay.style.pointerEvents = 'all';
+  _tpPanel.style.right = '0';
+};
+const _origCloseTP = closeTrainerProfile;
+closeTrainerProfile = function() {
+  _origCloseTP();
+  _tpOverlay.style.opacity = '0';
+  _tpOverlay.style.pointerEvents = 'none';
+  _tpPanel.style.right = '-520px';
+};
+</script>
+
   <script src="til-patch.js"></script>
   <script src="ux-improvements.js"></script>
   <script src="holiday-fix.js"></script>
