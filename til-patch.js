@@ -155,12 +155,19 @@
 
       var cards = document.querySelectorAll('#trainerGrid .trainer-card');
       cards.forEach(function (card) {
-        var nameEl = card.querySelector('.trainer-name');
-        if (!nameEl) return;
-
-        // Strip role label that may be appended to the name in the DOM
-        var trainerName = nameEl.textContent
-          .replace(/\s*(admin|trainer|viewer|manager)\s*/gi, '').trim();
+        // Use data-trainer attribute (set by dashboard) for reliable name lookup
+        // Falls back to scraping textContent if attribute not present
+        var trainerName = card.getAttribute('data-trainer') || '';
+        if (!trainerName) {
+          var nameEl = card.querySelector('.trainer-name');
+          if (!nameEl) return;
+          // Strip child element text (dots, emojis, badges) — keep only direct text nodes
+          trainerName = Array.from(nameEl.childNodes)
+            .filter(function(n){ return n.nodeType === 3; }) // text nodes only
+            .map(function(n){ return n.textContent.trim(); })
+            .join('').trim();
+        }
+        if (!trainerName) return;
 
         // Remove any existing TiL panel
         var existing = card.querySelector('.til-panel');
