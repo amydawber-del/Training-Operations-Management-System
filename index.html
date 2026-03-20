@@ -2730,53 +2730,85 @@ let calBlockedDays = JSON.parse(localStorage.getItem('calBlockedDays') || '{}');
 // ===================== PERMISSIONS =====================
 const ROLE_DEFAULTS = {
   admin: {
+    // Visibility
     viewKpis:true, viewCalendar:true, viewUnassigned:true, viewPending:true,
     viewAllBookings:true, viewReferrals:true, viewTrainerWorkload:true,
+    viewManagerActions:true, viewSmartRecs:true, viewTrainerProfile:true,
+    // Booking actions
     assignTrainer:true, confirmBooking:true, editBooking:true, cancelBooking:true,
-    manageUsers:true, viewActivityFeed:true, requestTraining:true, addNotes:true
+    blockCalendar:true,
+    // User & system
+    manageUsers:true, viewActivityFeed:true, requestTraining:true, addNotes:true,
+    viewTilTracker:true
   },
   manager: {
+    // Visibility
     viewKpis:true, viewCalendar:true, viewUnassigned:true, viewPending:true,
     viewAllBookings:true, viewReferrals:true, viewTrainerWorkload:true,
-    assignTrainer:false, confirmBooking:false, editBooking:true, cancelBooking:false,
-    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true
+    viewManagerActions:true, viewSmartRecs:true, viewTrainerProfile:true,
+    // Booking actions
+    assignTrainer:true, confirmBooking:true, editBooking:true, cancelBooking:true,
+    blockCalendar:true,
+    // User & system
+    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true,
+    viewTilTracker:true
   },
   trainer: {
+    // Visibility
     viewKpis:false, viewCalendar:true, viewUnassigned:false, viewPending:false,
     viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:false,
-    assignTrainer:false, confirmBooking:false, editBooking:true, cancelBooking:false,
-    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true
+    viewManagerActions:false, viewSmartRecs:false, viewTrainerProfile:false,
+    // Booking actions
+    assignTrainer:false, confirmBooking:false, editBooking:false, cancelBooking:false,
+    blockCalendar:false,
+    // User & system
+    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true,
+    viewTilTracker:true
   },
   viewer: {
-    viewKpis:false, viewCalendar:true, viewUnassigned:true, viewPending:true,
+    // Visibility — calendar, unassigned requests, trainer workload only
+    viewKpis:false, viewCalendar:true, viewUnassigned:true, viewPending:false,
     viewAllBookings:false, viewReferrals:false, viewTrainerWorkload:true,
+    viewManagerActions:false, viewSmartRecs:false, viewTrainerProfile:false,
+    // Booking actions — none
     assignTrainer:false, confirmBooking:false, editBooking:false, cancelBooking:false,
-    manageUsers:false, viewActivityFeed:true, requestTraining:true, addNotes:true
+    blockCalendar:false,
+    // User & system
+    manageUsers:false, viewActivityFeed:false, requestTraining:true, addNotes:true,
+    viewTilTracker:false
   }
 };
 
 const PERM_LABELS = {
-  viewKpis:          { label:'View KPI Cards',          sub:'Revenue, training days overview' },
-  viewCalendar:      { label:'View Calendar',            sub:'Training & booking calendar' },
-  viewUnassigned:    { label:'View Unassigned Requests', sub:'New requests awaiting trainer' },
-  viewPending:       { label:'View Needs Action',        sub:'Pending bookings panel' },
-  viewAllBookings:   { label:'View All Bookings',        sub:'Upcoming + completed table' },
-  viewReferrals:     { label:'View Referral Leaderboard',sub:'Referral stats' },
-  viewTrainerWorkload:{ label:'View Trainer Workload',   sub:'Trainer cards' },
-  assignTrainer:     { label:'Assign Trainer',           sub:'Assign button on requests' },
-  confirmBooking:    { label:'Confirm Bookings',         sub:'Confirm button on pending' },
-  editBooking:       { label:'Edit Bookings',            sub:'Edit date / trainer / value' },
-  cancelBooking:     { label:'Cancel Bookings',          sub:'Cancel button on requests' },
-  manageUsers:       { label:'Manage Users',             sub:'Access user permissions' },
-  viewActivityFeed:  { label:'View Notifications',       sub:'Bell & activity panel' },
-  requestTraining:   { label:'Request Training',         sub:'Submit training request form' },
-  addNotes:          { label:'Add Notes',                sub:'Profile progress notes' }
+  // ── Dashboard panels ─────────────────────────────────────────
+  viewKpis:            { label:'View KPI Cards',             sub:'Revenue, sessions & performance overview' },
+  viewManagerActions:  { label:'View Manager Actions Panel', sub:'Capacity alerts, stale requests, revenue gaps' },
+  viewSmartRecs:       { label:'View Smart Recommendations', sub:'Auto-generated insight cards' },
+  viewCalendar:        { label:'View Calendar',              sub:'Training & booking calendar' },
+  viewUnassigned:      { label:'View Unassigned Requests',   sub:'New requests awaiting trainer assignment' },
+  viewPending:         { label:'View Needs Action',          sub:'Pending bookings awaiting confirmation' },
+  viewAllBookings:     { label:'View All Bookings',          sub:'Upcoming + completed bookings table' },
+  viewReferrals:       { label:'View Referral Leaderboard',  sub:'Referral stats by team member' },
+  viewTrainerWorkload: { label:'View Trainer Workload',      sub:'Trainer capacity cards' },
+  viewTrainerProfile:  { label:'View Trainer Profile',       sub:'Full trainer profile panel with 1:1 prep & settings' },
+  // ── Booking actions ──────────────────────────────────────────
+  assignTrainer:       { label:'Assign Trainer',             sub:'Assign button on unassigned requests' },
+  confirmBooking:      { label:'Confirm Bookings',           sub:'Confirm button on pending requests' },
+  editBooking:         { label:'Edit Bookings',              sub:'Edit date, trainer & invoice value' },
+  cancelBooking:       { label:'Cancel Bookings',            sub:'Cancel button on requests' },
+  blockCalendar:       { label:'Block Calendar Days',        sub:'Block dates with reason & trainer scope' },
+  // ── Features ─────────────────────────────────────────────────
+  requestTraining:     { label:'Request Training',           sub:'Submit a training request form' },
+  addNotes:            { label:'Add Notes',                  sub:'Add progress notes on client profiles' },
+  viewActivityFeed:    { label:'View Notifications',         sub:'Bell icon & activity feed' },
+  viewTilTracker:      { label:'View TiL Tracker',           sub:'Time in Lieu balance on trainer cards' },
+  manageUsers:         { label:'Manage Users & Permissions', sub:'Add, edit & configure user access' },
 };
 
 const PERM_SECTIONS = {
-  'Visible Widgets': ['viewKpis','viewCalendar','viewUnassigned','viewPending','viewAllBookings','viewReferrals','viewTrainerWorkload'],
-  'Action Buttons':  ['assignTrainer','confirmBooking','editBooking','cancelBooking'],
-  'Features':        ['manageUsers','viewActivityFeed','requestTraining','addNotes']
+  'Dashboard Panels':  ['viewKpis','viewManagerActions','viewSmartRecs','viewCalendar','viewUnassigned','viewPending','viewAllBookings','viewReferrals','viewTrainerWorkload','viewTrainerProfile'],
+  'Booking Actions':   ['assignTrainer','confirmBooking','editBooking','cancelBooking','blockCalendar'],
+  'Features & Access': ['requestTraining','addNotes','viewActivityFeed','viewTilTracker','manageUsers'],
 };
 
 let selectedPermUserId = null;
@@ -3460,8 +3492,8 @@ function applyPermVisibility() {
     allBookingsSection:        p('viewAllBookings'),
     referralLeaderboardSection:p('viewReferrals'),
     trainerWorkloadSection:    p('viewTrainerWorkload'),
-    managerActionsPanel:       currentUser && currentUser.role === 'admin',
-    smartRecsSection:          true,
+    managerActionsPanel:       p('viewManagerActions'),
+    smartRecsSection:          p('viewSmartRecs'),
   };
   Object.entries(sectionMap).forEach(([id, show]) => {
     const el = document.getElementById(id);
@@ -3473,6 +3505,8 @@ function applyPermVisibility() {
   // Request training button
   const reqBtn = document.querySelector('.req-training-btn');
   if(reqBtn) reqBtn.style.display = p('requestTraining') ? '' : 'none';
+  // Trainer cards — remove click-to-profile if no viewTrainerProfile permission
+  // (done via data attribute read in renderTrainerWorkload, so re-render if needed)
   // Admin-only elements
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
 }
@@ -4265,7 +4299,11 @@ function renderTrainerWorkload() {
     const skillTags = (meta.skills || []).map(s => `<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;margin:1px;">${s}</span>`).join('');
     const shadowingBadge = meta.shadowing ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;background:#f0f0ff;color:#5B4BE7;border-radius:4px;border:1px solid #C8CCFF;margin-left:4px;">👀 Shadowing</span>` : '';
     const revLast30 = last30.reduce((s,r) => s+(r.invoiceValue||0), 0);
-    html += `<div class="trainer-card" style="cursor:pointer;" data-trainer="${escHtml(t.name)}" onclick="openTrainerProfile('${escHtml(t.name)}')">
+    const canViewProfile = canDo('viewTrainerProfile');
+    const cardClick = canViewProfile ? ' onclick="openTrainerProfile(\'' + escHtml(t.name) + '\')"' : '';
+    const cardCursor = canViewProfile ? 'pointer' : 'default';
+    const profileHint = canViewProfile ? '<div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>' : '';
+    html += `<div class="trainer-card" style="cursor:${cardCursor};" data-trainer="${escHtml(t.name)}"${cardClick}>
       <div class="trainer-name">
         <div class="trainer-color-dot" style="background:${color};"></div>
         ${escHtml(t.name)}
@@ -4279,7 +4317,7 @@ function renderTrainerWorkload() {
       <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
       <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
       ${nextFreeHtml}
-      <div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>
+      ${profileHint}
     </div>`;
   });
   grid.innerHTML = html;
@@ -6812,9 +6850,9 @@ function _bdmPopulateTrainerPicker(existingTrainers) {
 }
 
 function calDayClick(dateKey) {
-  const isAdmin = currentUser && currentUser.role === 'admin';
+  const canBlock = canDo('blockCalendar');
   const blockInfo = calBlockedDays[dateKey];
-  if(!isAdmin && !blockInfo) return;
+  if(!canBlock && !blockInfo) return;
   _bdmCurrentKey = dateKey;
   const [y,m,d] = dateKey.split('-');
   const label = new Date(+y, +m-1, +d).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
@@ -6845,9 +6883,9 @@ function calDayClick(dateKey) {
     } else {
       scopeEl.textContent = '👥 Affects: Everyone';
     }
-    document.getElementById('bdmBlockForm').style.display = isAdmin ? '' : 'none';
-    // Pre-fill form if admin editing
-    if(isAdmin) {
+    document.getElementById('bdmBlockForm').style.display = canBlock ? '' : 'none';
+    // Pre-fill form if user can block
+    if(canBlock) {
       document.getElementById('bdmReasonInput').value = blockInfo.detail || '';
       if(blockInfo.scope === 'select' && blockInfo.trainers?.length) {
         const radioSelect = document.querySelector('input[name="bdmScope"][value="select"]');
@@ -6865,9 +6903,9 @@ function calDayClick(dateKey) {
         }
       }
     }
-    document.getElementById('bdmUnblockBtn').style.display = isAdmin ? '' : 'none';
+    document.getElementById('bdmUnblockBtn').style.display = canBlock ? '' : 'none';
     document.getElementById('bdmBlockBtn').textContent = '🔒 Update Block';
-    document.getElementById('bdmBlockBtn').style.display = isAdmin ? '' : 'none';
+    document.getElementById('bdmBlockBtn').style.display = canBlock ? '' : 'none';
   } else {
     document.getElementById('bdmTitle').textContent = '🔒 Block This Day';
     document.getElementById('bdmBlockedInfo').style.display = 'none';
@@ -6934,7 +6972,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ===================== TRAINER PROFILE PANEL =====================
-let _trainerProfileName = null;
+var _trainerProfileName = null;
 
 function openTrainerProfile(name) {
   _trainerProfileName = name;
@@ -7053,19 +7091,9 @@ function openTrainerProfile(name) {
   panel.querySelector('#tpManagerNotes').value = managerNotes;
   renderTrainerNotes(notes, panel.querySelector('#tpNotesList'));
 
-  // Shadowing toggle
+  // Skill checkboxes are now rendered dynamically in renderSkillStars() when Skills tab opens
+  // Shadowing toggle still needs setting
   panel.querySelector('#tpShadowToggle').checked = !!meta.shadowing;
-
-  // Capacity input
-  panel.querySelector('#tpCapacityInput').value = meta.capacity || 1;
-
-  // Skill checkboxes
-  const ALL_SKILLS_CB = ['Sales','Lettings','Accounting','Property Management'];
-  ALL_SKILLS_CB.forEach(s => {
-    const id = 'tpSkillCb_' + s.replace(/\s/g,'_');
-    const cb = panel.querySelector('#' + id);
-    if(cb) cb.checked = (meta.skills||[]).includes(s);
-  });
 
   document.getElementById('trainerProfileOverlay').classList.add('open');
   panel.classList.add('open');
@@ -7109,6 +7137,8 @@ function saveTrainerSettings() {
     const cb = panel.querySelector('#' + id);
     return cb && cb.checked;
   });
+  // Preserve skillLevels — they're saved immediately on star click, just ensure they're in meta
+  if(!meta.skillLevels) meta.skillLevels = {};
   const revT = panel.querySelector('#tpRevTarget');
   const sessT = panel.querySelector('#tpSessTarget');
   if(!meta.goals) meta.goals = {};
@@ -7216,6 +7246,131 @@ function renderVolunteerDays(days, container) {
   }
   container.innerHTML = html;
 }
+
+function tpSwitchTab(tab) {
+  ['overview','workload','skills','onetoone','settings'].forEach(t => {
+    const el = document.getElementById('tpTab-'+t);
+    if(el) el.style.display = t===tab?'':'none';
+  });
+  document.querySelectorAll('.tp-tab').forEach(btn => {
+    const active = btn.dataset.tab === tab;
+    btn.style.color = active ? 'var(--s-purple)' : 'var(--s-text-muted)';
+    btn.style.borderBottom = active ? '2px solid var(--s-purple)' : '2px solid transparent';
+    btn.style.marginBottom = '-2px';
+  });
+
+  // Workload tab — populate upcoming sessions for THIS trainer only
+  if(tab==='workload' && _trainerProfileName) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const upcoming = allData
+      .filter(r => r.trainer === _trainerProfileName && r.status==='Booked' && r.bookedOn && r.bookedOn > today)
+      .sort((a,b) => a.bookedOn - b.bookedOn)
+      .slice(0, 10);
+    const list = document.getElementById('tpUpcomingList');
+    if(list) {
+      if(!upcoming.length) {
+        list.innerHTML = '<div style="color:var(--s-text-muted);font-size:12px;padding:8px 0;">No upcoming sessions booked.</div>';
+      } else {
+        list.innerHTML = upcoming.map(r => {
+          const d = r.bookedOn;
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--s-border);">'
+            + '<div style="background:var(--s-lavender);color:var(--s-purple);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;min-width:72px;text-align:center;">' + fmtDate(d) + '</div>'
+            + '<div style="flex:1;min-width:0;">'
+            + '<div style="font-size:12px;font-weight:600;color:var(--s-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(getCompanyName(r)) + '</div>'
+            + '<div style="font-size:10px;color:var(--s-text-muted);margin-top:2px;">' + optionBadge(r.trainingOption) + '</div>'
+            + '</div>'
+            + '<div style="font-size:12px;font-weight:700;color:var(--s-purple);white-space:nowrap;">' + (r.invoiceValue ? fmtMoney(r.invoiceValue) : '<span style="color:var(--s-text-faint);">£0</span>') + '</div>'
+            + '</div>';
+        }).join('');
+      }
+    }
+  }
+
+  // Settings tab — populate targets + volunteer days
+  if(tab==='settings' && _trainerProfileName) {
+    const meta = getTrainerMeta(_trainerProfileName);
+    const panel = document.getElementById('trainerProfilePanel');
+    const revT = panel.querySelector('#tpRevTarget');
+    const sessT = panel.querySelector('#tpSessTarget');
+    if(revT) revT.value = meta.goals?.revenueTarget || 0;
+    if(sessT) sessT.value = meta.goals?.sessionTarget || 10;
+    renderVolunteerDays(meta.volunteerDays||[], panel.querySelector('#tpVolunteerList'));
+  }
+
+  // Skills tab — render interactive star ratings
+  if(tab==='skills' && _trainerProfileName) {
+    renderSkillStars(_trainerProfileName);
+  }
+}
+
+function renderSkillStars(name) {
+  const meta = getTrainerMeta(name);
+  const ALL_SKILLS = ['Sales','Lettings','Accounting','Property Management'];
+  const skillLevels = meta.skillLevels || {};
+  const panel = document.getElementById('trainerProfilePanel');
+  const container = panel.querySelector('#tpSkillStarGrid');
+  if(!container) return;
+
+  container.innerHTML = ALL_SKILLS.map(skill => {
+    const active = (meta.skills||[]).includes(skill);
+    const level = skillLevels[skill] || 0;
+    const id = 'tpSkillCb_' + skill.replace(/\s/g,'_');
+    const stars = [1,2,3,4,5].map(n => {
+      const filled = n <= level;
+      return '<span class="skill-star' + (filled?' skill-star-filled':'') + '" '
+        + 'onclick="setSkillLevel(\'' + escHtml(skill) + '\',' + n + ')" '
+        + 'data-skill="' + escHtml(skill) + '" data-level="' + n + '" '
+        + 'title="' + n + ' star' + (n!==1?'s':'') + '" '
+        + 'style="cursor:pointer;font-size:18px;line-height:1;padding:0 1px;">'
+        + (filled ? '⭐' : '☆')
+        + '</span>';
+    }).join('');
+
+    return '<div style="padding:10px 12px;border-radius:8px;border:1.5px solid ' + (active?'var(--s-purple)':'var(--s-border)') + ';background:' + (active?'var(--s-lavender)':'var(--s-surface)') + ';margin-bottom:8px;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+      + '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">'
+      + '<input type="checkbox" id="' + id + '" ' + (active?'checked':'') + ' onchange="toggleSkill(\'' + escHtml(skill) + '\')" style="width:15px;height:15px;accent-color:var(--s-purple);">'
+      + '<span style="font-size:13px;font-weight:600;color:' + (active?'var(--s-purple)':'var(--s-text-secondary)') + ';">' + escHtml(skill) + '</span>'
+      + '</label>'
+      + '<span style="font-size:10px;color:var(--s-text-muted);">' + (active && level > 0 ? level + '/5' : active ? 'Rate below' : 'Not active') + '</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:2px;' + (!active?'opacity:0.35;pointer-events:none;':'') + '">' + stars + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleSkill(skill) {
+  if(!_trainerProfileName) return;
+  const meta = getTrainerMeta(_trainerProfileName);
+  if(!meta.skills) meta.skills = [];
+  const idx = meta.skills.indexOf(skill);
+  if(idx >= 0) meta.skills.splice(idx, 1);
+  else meta.skills.push(skill);
+  saveTrainerMeta(_trainerProfileName, meta);
+  renderSkillStars(_trainerProfileName);
+  // Also update overview skills display
+  openTrainerProfile(_trainerProfileName);
+}
+
+function setSkillLevel(skill, level) {
+  if(!_trainerProfileName) return;
+  const meta = getTrainerMeta(_trainerProfileName);
+  if(!meta.skillLevels) meta.skillLevels = {};
+  // If clicking same level again, toggle off (set to 0)
+  meta.skillLevels[skill] = meta.skillLevels[skill] === level ? 0 : level;
+  // Auto-enable skill if it was inactive
+  if(!meta.skills) meta.skills = [];
+  if(!meta.skills.includes(skill) && meta.skillLevels[skill] > 0) {
+    meta.skills.push(skill);
+  }
+  saveTrainerMeta(_trainerProfileName, meta);
+  renderSkillStars(_trainerProfileName);
+  // Sync checkbox state
+  const panel = document.getElementById('trainerProfilePanel');
+  const cb = panel.querySelector('#tpSkillCb_' + skill.replace(/\s/g,'_'));
+  if(cb) cb.checked = meta.skills.includes(skill);
+}
+
 
 function closeTrainerProfile() {
   document.getElementById('trainerProfileOverlay').classList.remove('open');
@@ -7359,24 +7514,10 @@ function closeTrainerProfile() {
 
     <!-- SKILLS TAB -->
     <div id="tpTab-skills" style="display:none;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Skill Coverage</div>
-      <div style="margin-bottom:16px;">
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
-          <input type="checkbox" id="tpSkillCb_Sales" style="width:15px;height:15px;accent-color:var(--s-purple);">
-          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Sales</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
-          <input type="checkbox" id="tpSkillCb_Lettings" style="width:15px;height:15px;accent-color:var(--s-purple);">
-          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Lettings</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
-          <input type="checkbox" id="tpSkillCb_Accounting" style="width:15px;height:15px;accent-color:var(--s-purple);">
-          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Accounting</span>
-        </label>
-        <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;border:1px solid var(--s-border);margin-bottom:6px;cursor:pointer;" onmouseover="this.style.background='var(--s-lavender)'" onmouseout="this.style.background=''">
-          <input type="checkbox" id="tpSkillCb_Property_Management" style="width:15px;height:15px;accent-color:var(--s-purple);">
-          <span style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Property Management</span>
-        </label>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:4px;">Skill Coverage &amp; Ratings</div>
+      <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:12px;">Tick to mark active · Click stars to set proficiency level · Click same star again to clear</div>
+      <div id="tpSkillStarGrid" style="margin-bottom:16px;">
+        <!-- populated dynamically by renderSkillStars() -->
       </div>
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">👀 Shadowing Status</div>
       <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;border:1px solid var(--s-border);cursor:pointer;margin-bottom:16px;">
@@ -7386,7 +7527,7 @@ function closeTrainerProfile() {
           <div style="font-size:11px;color:var(--s-text-muted);">Show 👀 badge on workload card</div>
         </div>
       </label>
-      <button onclick="saveTrainerSettings()" class="btn btn-primary" style="width:100%;">Save Skills & Settings</button>
+      <button onclick="saveTrainerSettings()" class="btn btn-primary" style="width:100%;">Save Skills &amp; Settings</button>
     </div>
 
     <!-- 1:1 PREP TAB -->
@@ -7476,47 +7617,6 @@ function closeTrainerProfile() {
 </div>
 
 <script>
-function tpSwitchTab(tab) {
-  ['overview','workload','skills','onetoone','settings'].forEach(t => {
-    const el = document.getElementById('tpTab-'+t);
-    if(el) el.style.display = t===tab?'':'none';
-  });
-  document.querySelectorAll('.tp-tab').forEach(btn => {
-    const active = btn.dataset.tab === tab;
-    btn.style.color = active ? 'var(--s-purple)' : 'var(--s-text-muted)';
-    btn.style.borderBottom = active ? '2px solid var(--s-purple)' : '2px solid transparent';
-    btn.style.marginBottom = '-2px';
-  });
-  // Populate workload tab dynamically
-  if(tab==='workload' && _trainerProfileName) {
-    const today = new Date(); today.setHours(0,0,0,0);
-    const upcoming = allData.filter(r => r.trainer===_trainerProfileName && r.status==='Booked' && r.bookedOn && r.bookedOn>today)
-      .sort((a,b)=>a.bookedOn-b.bookedOn).slice(0,8);
-    const list = document.getElementById('tpUpcomingList');
-    if(list) {
-      list.innerHTML = upcoming.length ? upcoming.map(r=>`
-        <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--s-border);">
-          <div style="background:var(--s-lavender);color:var(--s-purple);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;">${fmtDate(r.bookedOn)}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--s-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(getCompanyName(r))}</div>
-            <div style="font-size:10px;color:var(--s-text-muted);">${optionBadge(r.trainingOption)}</div>
-          </div>
-          <div style="font-size:12px;font-weight:700;color:var(--s-purple);white-space:nowrap;">${r.invoiceValue?fmtMoney(r.invoiceValue):'£0'}</div>
-        </div>`).join('')
-        : '<div style="color:var(--s-text-muted);font-size:12px;padding:8px 0;">No upcoming sessions booked.</div>';
-    }
-  }
-  if(tab==='settings' && _trainerProfileName) {
-    const meta = getTrainerMeta(_trainerProfileName);
-    const panel = document.getElementById('trainerProfilePanel');
-    const revT = panel.querySelector('#tpRevTarget');
-    const sessT = panel.querySelector('#tpSessTarget');
-    if(revT) revT.value = meta.goals?.revenueTarget || 0;
-    if(sessT) sessT.value = meta.goals?.sessionTarget || 10;
-    renderVolunteerDays(meta.volunteerDays||[], panel.querySelector('#tpVolunteerList'));
-  }
-}
-
 // open/close CSS for trainer profile panel — deferred to ensure functions are defined
 document.addEventListener('DOMContentLoaded', function() {
   const _tpPanel = document.getElementById('trainerProfilePanel');
