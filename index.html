@@ -160,7 +160,6 @@ th.sort-active .sort-icon { opacity: 1; }
 .btn-success { background: #22a06b; color: #fff; }
 .btn-success:hover { background: #1a8055; }
 .btn-edit { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.35); color: #7c3aed; }
-.td-field-required-error { border-color: #DC2F4B !important; background: #fff8f8 !important; }
 .btn-edit:hover { background: rgba(139,92,246,0.18); color: #6d28d9; }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 16px; margin-bottom: 24px; }
@@ -330,12 +329,11 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .profile-note-text { font-size:12px;color:var(--text--dark--50); }
 
 /* ── Profile inline edit ── */
-.profile-edit-btn { background:none;border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.65);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap;flex-shrink:0; }
-.profile-edit-btn:hover { background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.4); }
-.profile-edit-btn.editing { background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.5); }
-.profile-section-hdr { display:flex;align-items:center;justify-content:space-between;cursor:default; }
-.profile-section-hdr-left { display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;padding:12px 20px;margin:-12px -20px;transition:background 0.1s; }
-.profile-section-hdr-left:hover { background:#f6f8ff; }
+/* Edit button sits in the dark navy header so use light colours */
+.profile-section-hdr-inner { display:flex;align-items:center;gap:6px;flex:1;min-width:0; }
+.profile-edit-btn { background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);color:rgba(255,255,255,0.75);font-size:10px;font-weight:600;padding:3px 9px;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap;flex-shrink:0;line-height:1.4; }
+.profile-edit-btn:hover { background:rgba(255,255,255,0.18);color:#fff;border-color:rgba(255,255,255,0.5); }
+.profile-edit-btn.editing { background:rgba(220,47,75,0.25);color:#fca5a5;border-color:rgba(220,47,75,0.4); }
 .profile-edit-input { width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:5px 9px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--s-text-primary);background:#fff;box-sizing:border-box;transition:border-color 0.15s; }
 .profile-edit-input:focus { outline:none;border-color:var(--s-purple);box-shadow:0 0 0 3px rgba(91,75,231,0.1); }
 .profile-edit-textarea { width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:5px 9px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--s-text-primary);background:#fff;box-sizing:border-box;resize:vertical;min-height:52px;transition:border-color 0.15s; }
@@ -346,6 +344,7 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .profile-edit-cancel-btn { background:none;border:1px solid var(--s-border-mid);color:var(--s-text-muted);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s; }
 .profile-edit-cancel-btn:hover { background:var(--s-surface);color:var(--s-text-primary); }
 .profile-edit-saving { font-size:11px;color:var(--s-text-muted);margin-left:4px; }
+.td-field-required-error { border-color: #DC2F4B !important; background: #fff8f8 !important; }
 
 /* REFERRAL LEADERBOARD */
 .referral-board { border:1px solid var(--ui--underline--light-grey);border-radius:8px;overflow:hidden;background:#fff;display:flex;align-items:stretch; }
@@ -5405,9 +5404,9 @@ function renderProfilePanel(r) {
       ? `<button class="profile-edit-btn" id="profileEditBtn${si}" onclick="event.stopPropagation();toggleProfileEdit(${si})" title="Edit this section">✎ Edit</button>`
       : '';
     return `<div class="profile-section">
-      <div class="profile-section-hdr">
-        <div class="profile-section-hdr-left">
-          <div class="profile-section-title">${s.icon || ''} ${s.title.replace(/^\\S+\\s/, '')}</div>
+      <div class="profile-section-hdr" onclick="toggleProfileSection(${si})">
+        <div class="profile-section-hdr-inner">
+          <div class="profile-section-title">${s.icon || ''} ${s.title.replace(/^\S+\s/, '')}</div>
           <span class="profile-chevron ${open?'open':''}" id="profileChevron${si}">${open?'▲':'▼'}</span>
         </div>
         ${editBtn}
@@ -5432,8 +5431,8 @@ function renderProfilePanel(r) {
             return `<div class="profile-field" style="flex-direction:column;gap:4px;"><span class="profile-field-label">${label}</span><input type="${type}" class="profile-edit-input" id="pedit_${si}_${key}" value="${escapedVal}"></div>`;
           }).join('')}
           <div class="profile-edit-save-row">
-            <button class="profile-edit-save-btn" onclick="saveProfileSection(${si})">💾 Save Changes</button>
-            <button class="profile-edit-cancel-btn" onclick="toggleProfileEdit(${si})">Cancel</button>
+            <button class="profile-edit-save-btn" onclick="event.stopPropagation();saveProfileSection(${si})">💾 Save Changes</button>
+            <button class="profile-edit-cancel-btn" onclick="event.stopPropagation();toggleProfileEdit(${si})">Cancel</button>
             <span class="profile-edit-saving" id="profileSavingMsg${si}" style="display:none;">Saving…</span>
           </div>
         </div>
@@ -6429,18 +6428,24 @@ function selectPermUser(uid) {
   Object.entries(PERM_SECTIONS).forEach(([section, keys]) => {
     html += `<div class="perm-section-title">${section}</div><div class="perm-grid">`;
     keys.forEach(key => {
-      const info = PERM_LABELS[key] || { label: key, sub: '' };
-      const checked = perms[key] ? 'checked' : '';
+      const info    = PERM_LABELS[key] || { label: key, sub: '' };
+      const isOn    = !!perms[key];
       const isDefault = perms[key] === defaults[key];
-      html += `<div class="perm-toggle-row">
-        <div>
-          <div class="perm-toggle-label">${info.label}${!isDefault?'<span style="color:#f59e0b;font-size:9px;margin-left:4px;">●</span>':''}</div>
-          <div class="perm-toggle-sub">${info.sub}</div>
+      const changedDot = !isDefault ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;margin-left:5px;vertical-align:middle;" title="Overridden from role default"></span>` : '';
+      html += `<div class="perm-toggle-row" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:8px;background:var(--s-surface);border:1px solid var(--s-border);gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div class="perm-toggle-label" style="display:flex;align-items:center;">${escHtml(info.label)}${changedDot}</div>
+          <div class="perm-toggle-sub">${escHtml(info.sub)}</div>
         </div>
-        <label class="perm-toggle">
-          <input type="checkbox" ${checked} onchange="setPermOverride('${uid}','${key}',this.checked)">
-          <span class="perm-toggle-slider"></span>
-        </label>
+        <button
+          role="switch"
+          aria-checked="${isOn}"
+          onclick="togglePermission('${uid}','${key}')"
+          style="flex-shrink:0;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;position:relative;transition:background 0.2s;background:${isOn ? 'var(--s-purple)' : '#d1d5db'};"
+          title="${isOn ? 'Click to disable' : 'Click to enable'}"
+        >
+          <span style="position:absolute;top:3px;left:${isOn ? '21px' : '3px'};width:18px;height:18px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+        </button>
       </div>`;
     });
     html += '</div>';
@@ -6482,6 +6487,14 @@ function changePermUserRole(uid, role) {
   renderPermUserList();
 }
 
+function togglePermission(uid, key) {
+  const t = trainers.find(u => u.id === uid);
+  if(!t) return;
+  const currentVal = !!(userPerms(t)[key]);
+  setPermOverride(uid, key, !currentVal);
+  selectPermUser(uid); // re-render toggles to reflect new state
+}
+
 function setPermOverride(uid, key, val) {
   const t = trainers.find(u => u.id === uid);
   if(!t) return;
@@ -6498,14 +6511,10 @@ function setPermOverride(uid, key, val) {
   const ACTION_NEEDS_QUEUES = ['assignTrainer', 'confirmBooking', 'cancelBooking'];
   if(val === true && ACTION_NEEDS_QUEUES.includes(key)) {
     ['viewUnassigned', 'viewPending'].forEach(viewKey => {
-      const viewDefault = (ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer)[viewKey];
       if(!userPerms(t)[viewKey]) {
         t.customPerms[viewKey] = true;
-        // Reflect in the UI immediately
-        const chk = document.querySelector(`input[onchange*="'${viewKey}'"]`);
-        if(chk) chk.checked = true;
       }
-      // Clean up override if it now matches role default
+      const viewDefault = (ROLE_DEFAULTS[t.role] || ROLE_DEFAULTS.viewer)[viewKey];
       if(t.customPerms[viewKey] === viewDefault) delete t.customPerms[viewKey];
     });
   }
