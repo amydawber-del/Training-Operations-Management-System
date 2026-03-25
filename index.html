@@ -5413,7 +5413,7 @@ function renderProfilePanel(r) {
       </div>
       <div class="profile-section-body ${open?'open':''}" id="profileSection${si}">
         <div id="profileSectionView${si}">
-          ${s.fields.map(([label, val]) => `<div class="profile-field"><span class="profile-field-label">${label}</span><span class="profile-field-value">${val}</span></div>`).join('')}
+          ${s.fields.map(([label, , displayHtml]) => `<div class="profile-field"><span class="profile-field-label">${label}</span><span class="profile-field-value">${displayHtml}</span></div>`).join('')}
         </div>
         <div id="profileSectionEdit${si}" style="display:none;">
           ${s.fields.map(([label, key, , type]) => {
