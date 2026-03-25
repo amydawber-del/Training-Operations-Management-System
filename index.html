@@ -4197,6 +4197,14 @@ function staleBadge(r) {
   return `<span class="stale-badge">⏱ ${days}d</span>`;
 }
 
+// Stored in "Progress Notes" sheet using rowRef="__TRAINER_META__", record=trainerName
+// section="TrainerMeta", text=JSON blob
+// localStorage is used as a fast cache only — sheet is the source of truth.
+
+const TRAINER_META = {};
+const TRAINER_META_ROW_REF = '__TRAINER_META__';
+const TRAINER_META_SECTION = 'TrainerMeta';
+
 function getTrainerMeta(name) {
   if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 1, skills: [], shadowing: false, managerNotes: '', notes: [], goals: { revenueTarget: 0, sessionTarget: 10 } };
   return TRAINER_META[name];
