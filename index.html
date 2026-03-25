@@ -1872,6 +1872,16 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
 /* ── MANAGER ACTIONS PANEL ───────────────────────────────── */
 #managerActionsPanel { }
 
+/* ── INSIGHTS TOGGLE ─────────────────────────────────────── */
+#insightsSection .section-title { color: var(--s-text-primary); }
+#insightsToggleBtn:hover { background: var(--s-lavender-mid) !important; }
+#insightsContent { transition: none; }
+
+/* ── LEAKAGE KPI CARD — urgent styling ───────────────────── */
+#kpiSection .kpi-card[style*="background:#fff9fa"]:hover {
+  box-shadow: 0 4px 16px rgba(220,47,75,0.12) !important;
+}
+
 </style>
 
 </head>
@@ -2010,13 +2020,13 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
     <div id="managerActionsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;"></div>
   </div>
 
-  <!-- TRAINER WORKLOAD -->
-  <div id="trainerWorkloadSection" style="margin-bottom:24px;">
+  <!-- SMART RECOMMENDATIONS (elevated to top — action-driving) -->
+  <div id="smartRecsSection" style="margin-bottom:24px;">
     <div class="section-header">
-      <div class="section-title">&#128100; Trainer Workload</div>
-      <span style="font-size:11px;color:var(--text--dark--30);">Last 30 days + upcoming &middot; Next free = 14 working days min</span>
+      <div class="section-title">🧠 Smart Recommendations</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Based on current data — updated on refresh</span>
     </div>
-    <div class="trainer-grid" id="trainerGrid"><div class="kpi-card" style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">Loading&#8230;</div></div>
+    <div id="smartRecsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;"></div>
   </div>
 
   <!-- UNASSIGNED REQUESTS -->
@@ -2051,6 +2061,15 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
         <tbody id="actionBody"><tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
+  </div>
+
+  <!-- TRAINER WORKLOAD -->
+  <div id="trainerWorkloadSection" style="margin-bottom:24px;">
+    <div class="section-header">
+      <div class="section-title">&#128100; Trainer Workload</div>
+      <span style="font-size:11px;color:var(--text--dark--30);">Last 30 days + upcoming &middot; Next free = 14 working days min</span>
+    </div>
+    <div class="trainer-grid" id="trainerGrid"><div class="kpi-card" style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">Loading&#8230;</div></div>
   </div>
 
   <!-- CALENDAR -->
@@ -2088,41 +2107,49 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
     </div>
   </div>
 
-  <!-- SMART RECOMMENDATIONS -->
-  <div id="smartRecsSection" style="margin-bottom:24px;">
-    <div class="section-header">
-      <div class="section-title">🧠 Smart Recommendations</div>
-      <span style="font-size:11px;color:var(--text--dark--30);">Based on current data — updated on refresh</span>
+  <!-- INSIGHTS SECTION (collapsible) — KPIs, Charts, Leaderboard -->
+  <div id="insightsSection" style="margin-bottom:24px;">
+    <div class="section-header" style="margin-bottom:12px;">
+      <div class="section-title">&#128200; Performance Insights</div>
+      <button id="insightsToggleBtn" onclick="toggleInsights()" style="display:inline-flex;align-items:center;gap:6px;background:var(--s-lavender);border:1px solid var(--s-lavender-dark);color:var(--s-purple);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.15s;">
+        <span id="insightsToggleIcon">&#9660;</span> <span id="insightsToggleLabel">Hide Insights</span>
+      </button>
     </div>
-    <div id="smartRecsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;"></div>
-  </div>
+    <div id="insightsContent">
 
-  <!-- KPI CARDS -->
-  <div id="kpiSection">
-    <div style="margin-bottom:16px;"><div class="section-title" style="margin-bottom:14px;">&#128200; Performance Overview</div></div>
-    <div class="kpi-grid">
-      <div class="kpi-card kpi-accent-left clickable" onclick="openKpiModal('revYear')"><div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevYear">&#163;&#8212;</div><div class="kpi-card-sub">Exc. VAT &middot; click for detail</div></div>
-      <div class="kpi-card kpi-accent-left kpi-accent-yellow clickable" onclick="openKpiModal('revMonth')"><div class="kpi-card-label">Revenue This Month <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevMonth">&#163;&#8212;</div><div id="kpiRevMonthDelta"></div></div>
-      <div class="kpi-card kpi-accent-left kpi-accent-green clickable" onclick="openKpiModal('avgFee')"><div class="kpi-card-label">Avg Fee (Paid Sessions Only)</div><div class="kpi-card-value" id="kpiAvgFee">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiFreeSessionsSub">&#8212; &middot; click for detail</div></div>
-      <div class="kpi-card kpi-accent-left kpi-accent-orange clickable" onclick="openKpiModal('sessions')"><div class="kpi-card-label">Total Sessions Delivered</div><div class="kpi-card-value" id="kpiSessionsYear">&#8212;</div><div class="kpi-card-sub" id="kpiSessionsMonthSub">&#8212; this month</div></div>
-      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#9c27b0;" onclick="openKpiModal('sessionsByTrainer')"><div class="kpi-card-label">Sessions per Trainer (Year)</div><div class="kpi-card-value" id="kpiAvgSessionsPerTrainer">&#8212;</div><div class="kpi-card-sub" id="kpiSessionsPerDaySub">&#8212; sessions/day</div></div>
-      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#DC2F4B;" onclick="openKpiModal('leakage')"><div class="kpi-card-label">Revenue Leakage This Month</div><div class="kpi-card-value" id="kpiLeakage" style="color:var(--s-red);">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiLeakageSub">&#8212; free sessions</div></div>
-      <div class="kpi-card kpi-accent-left clickable" style="border-left-color:#0ea5e9;" onclick="openKpiModal('revPerSession')"><div class="kpi-card-label">Revenue per Session (Month)</div><div class="kpi-card-value" id="kpiRevPerSession">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiRevPerSessionSub">Paid sessions only</div></div>
-    </div>
-    <div class="charts-grid">
-      <div class="chart-card"><div class="chart-title">Monthly Revenue</div><div class="chart-subtitle">This year vs last year (exc. VAT) · <span style="color:var(--s-purple);font-weight:600;">click any bar to drill in →</span></div><div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">Month Comparison</div><div class="chart-subtitle">This month vs last month</div><div class="compare-cards"><div class="compare-card"><div class="compare-card-label" id="thisMonthLabel">This Month</div><div class="compare-card-value" id="thisMonthRev">&#163;&#8212;</div></div><div class="compare-card"><div class="compare-card-label" id="lastMonthLabel">Last Month</div><div class="compare-card-value" id="lastMonthRev">&#163;&#8212;</div></div></div><div style="height:150px;position:relative;"><canvas id="optionChart"></canvas></div><div class="chart-subtitle" style="margin-top:10px;margin-bottom:0;">Bookings by training option (this year)</div></div>
-    </div>
-  </div>
+      <!-- KPI CARDS — trimmed to 5 core action-driving metrics -->
+      <div id="kpiSection" style="margin-bottom:24px;">
+        <div class="kpi-grid">
+          <div class="kpi-card kpi-accent-left kpi-accent-yellow clickable" onclick="openKpiModal('revMonth')"><div class="kpi-card-label">Revenue This Month <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevMonth">&#163;&#8212;</div><div id="kpiRevMonthDelta"></div></div>
+          <div class="kpi-card kpi-accent-left clickable" onclick="openKpiModal('revYear')"><div class="kpi-card-label">Total Revenue This Year <span style="font-weight:400;color:var(--accent--blue--300);">(Booked)</span></div><div class="kpi-card-value" id="kpiRevYear">&#163;&#8212;</div><div class="kpi-card-sub">Exc. VAT &middot; click for detail</div></div>
+          <div class="kpi-card kpi-accent-left kpi-accent-orange clickable" onclick="openKpiModal('sessions')"><div class="kpi-card-label">Total Sessions Delivered</div><div class="kpi-card-value" id="kpiSessionsYear">&#8212;</div><div class="kpi-card-sub" id="kpiSessionsMonthSub">&#8212; this month</div></div>
+          <div class="kpi-card kpi-accent-left kpi-accent-green clickable" onclick="openKpiModal('avgFee')"><div class="kpi-card-label">Avg Fee (Paid Sessions Only)</div><div class="kpi-card-value" id="kpiAvgFee">&#163;&#8212;</div><div class="kpi-card-sub" id="kpiFreeSessionsSub">&#8212; &middot; click for detail</div></div>
+          <!-- Revenue Leakage — visually distinct, urgent -->
+          <div class="kpi-card clickable" style="border:1px solid var(--s-red);border-left:4px solid var(--s-red);background:#fff9fa;" onclick="openKpiModal('leakage')">
+            <div class="kpi-card-label" style="color:var(--s-red);">&#9888; Revenue Leakage This Month</div>
+            <div class="kpi-card-value" id="kpiLeakage" style="color:var(--s-red);">&#163;&#8212;</div>
+            <div class="kpi-card-sub" id="kpiLeakageSub" style="color:var(--s-red);">&#8212; free sessions &middot; click to review</div>
+          </div>
+          <!-- Hidden KPIs — still rendered for drill-down modals, but not displayed in grid -->
+          <div style="display:none;"><span id="kpiAvgSessionsPerTrainer"></span><span id="kpiSessionsPerDaySub"></span><span id="kpiRevPerSession"></span><span id="kpiRevPerSessionSub"></span></div>
+        </div>
+        <div class="charts-grid">
+          <div class="chart-card"><div class="chart-title">Monthly Revenue</div><div class="chart-subtitle">This year vs last year (exc. VAT) · <span style="color:var(--s-purple);font-weight:600;">click any bar to drill in →</span></div><div style="height:240px;position:relative;"><canvas id="revenueChart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Month Comparison</div><div class="chart-subtitle">This month vs last month</div><div class="compare-cards"><div class="compare-card"><div class="compare-card-label" id="thisMonthLabel">This Month</div><div class="compare-card-value" id="thisMonthRev">&#163;&#8212;</div></div><div class="compare-card"><div class="compare-card-label" id="lastMonthLabel">Last Month</div><div class="compare-card-value" id="lastMonthRev">&#163;&#8212;</div></div></div><div style="height:150px;position:relative;"><canvas id="optionChart"></canvas></div><div class="chart-subtitle" style="margin-top:10px;margin-bottom:0;">Bookings by training option (this year)</div></div>
+        </div>
+      </div>
 
-  <!-- REFERRAL LEADERBOARD -->
-  <div id="referralLeaderboardSection" style="margin-bottom:24px;">
-    <div class="section-header">
-      <div class="section-title">&#127942; Referral Leaderboard</div>
-      <span style="font-size:11px;color:var(--text--dark--30);">Click a name to see their referred enquiries &middot; Logged via Request Training form</span>
-    </div>
-    <div class="referral-board" id="referralLeaderboard"><div style="text-align:center;padding:24px;color:var(--text--dark--30);font-size:12px;">Loading&#8230;</div></div>
-  </div>
+      <!-- REFERRAL LEADERBOARD (demoted into insights) -->
+      <div id="referralLeaderboardSection" style="margin-bottom:24px;">
+        <div class="section-header">
+          <div class="section-title">&#127942; Referral Leaderboard</div>
+          <span style="font-size:11px;color:var(--text--dark--30);">Click a name to see their referred enquiries &middot; Logged via Request Training form</span>
+        </div>
+        <div class="referral-board" id="referralLeaderboard"><div style="text-align:center;padding:24px;color:var(--text--dark--30);font-size:12px;">Loading&#8230;</div></div>
+      </div>
+
+    </div><!-- /insightsContent -->
+  </div><!-- /insightsSection -->
 
   <!-- ALL BOOKINGS: UPCOMING + COMPLETED -->
   <div id="allBookingsSection">
@@ -4270,28 +4297,49 @@ async function loadTrainerMetaFromSheet() {
   }
 }
 
+// ===================== INSIGHTS TOGGLE =====================
+function toggleInsights() {
+  const content = document.getElementById('insightsContent');
+  const icon = document.getElementById('insightsToggleIcon');
+  const label = document.getElementById('insightsToggleLabel');
+  const btn = document.getElementById('insightsToggleBtn');
+  const isHidden = content.style.display === 'none';
+  content.style.display = isHidden ? '' : 'none';
+  icon.textContent = isHidden ? '▼' : '▶';
+  label.textContent = isHidden ? 'Hide Insights' : 'Show Insights';
+  btn.style.background = isHidden ? 'var(--s-lavender)' : '#fff';
+}
+
 function renderTrainerWorkload() {
   const grid = document.getElementById('trainerGrid');
   const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
   if(!trainerUsers.length) { grid.innerHTML = '<div style="padding:16px;color:var(--text--dark--30);">No trainers found.</div>'; return; }
   const today = new Date(); today.setHours(0,0,0,0);
   const y30 = new Date(today); y30.setDate(y30.getDate()-30);
-  let html = '';
-  trainerUsers.forEach((t, idx) => {
+
+  // Pre-calculate all utilisations to find the most available trainer
+  const trainerStats = trainerUsers.map((t, idx) => {
     const meta = getTrainerMeta(t.name);
     const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
     const last30 = booked.filter(r => r.bookedOn && r.bookedOn >= y30 && r.bookedOn <= today);
     const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
+    const CAPACITY_30D = (meta.capacity || 1) * 4.3;
+    const utilisationPct = Math.min(100, Math.round((last30.length / Math.max(CAPACITY_30D, 1)) * 100));
+    return { t, idx, meta, last30, upcoming, utilisationPct };
+  });
+  // The most available trainer = lowest utilisation among those not over capacity
+  const available = trainerStats.filter(s => s.utilisationPct < 85);
+  const mostAvailable = available.length ? available.reduce((a, b) => a.utilisationPct <= b.utilisationPct ? a : b) : null;
+
+  let html = '';
+  trainerStats.forEach(({ t, idx, meta, last30, upcoming, utilisationPct }) => {
     const sessionsLast30 = last30.length;
     const sessionsUpcoming = upcoming.length;
-    // Utilisation based on capacity (sessions per 30 days)
-    const CAPACITY_30D = (meta.capacity || 1) * 4.3; // ~4.3 weeks per 30 days
-    const utilisationPct = Math.min(100, Math.round((sessionsLast30 / Math.max(CAPACITY_30D, 1)) * 100));
     let utilColour, utilLabel, statusDot;
     if(utilisationPct >= 90)      { utilColour = '#DC2F4B'; utilLabel = 'Over capacity'; statusDot = '🔴'; }
     else if(utilisationPct >= 60) { utilColour = '#0FA976'; utilLabel = 'Optimal'; statusDot = '🟢'; }
     else if(utilisationPct >= 30) { utilColour = '#D97706'; utilLabel = 'Under-utilised'; statusDot = '🟠'; }
-    else                           { utilColour = '#A8ADCA'; utilLabel = 'Low'; statusDot = '🔴'; }
+    else                           { utilColour = '#A8ADCA'; utilLabel = 'Low'; statusDot = '⚪'; }
     const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
     const nextFree = getNextFreeDate(t.name);
     const nextFreeHtml = nextFree ? `<div class="next-free-tag">${nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`;
@@ -4303,7 +4351,23 @@ function renderTrainerWorkload() {
     const cardClick = canViewProfile ? ' onclick="openTrainerProfile(\'' + escHtml(t.name) + '\')"' : '';
     const cardCursor = canViewProfile ? 'pointer' : 'default';
     const profileHint = canViewProfile ? '<div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>' : '';
-    html += `<div class="trainer-card" style="cursor:${cardCursor};" data-trainer="${escHtml(t.name)}"${cardClick}>
+
+    // Risk / availability badges
+    let riskBadge = '';
+    let availBadge = '';
+    if(utilisationPct >= 85) {
+      riskBadge = `<div style="margin-top:8px;padding:5px 9px;background:#FFF0F0;border:1px solid #FECACA;border-radius:6px;font-size:11px;font-weight:600;color:#DC2F4B;display:flex;align-items:center;gap:5px;">⚠️ Near/over capacity — assign with caution</div>`;
+    }
+    if(mostAvailable && mostAvailable.t.name === t.name && trainerUsers.length > 1) {
+      availBadge = `<div style="margin-top:6px;padding:5px 9px;background:#E8F9F3;border:1px solid #6EE7B7;border-radius:6px;font-size:11px;font-weight:700;color:#065F46;display:flex;align-items:center;gap:5px;">✓ Best availability — recommend for next assignment</div>`;
+    }
+
+    // Card border highlight
+    let cardBorderStyle = '';
+    if(utilisationPct >= 85) cardBorderStyle = 'border-color:#FECACA;';
+    else if(mostAvailable && mostAvailable.t.name === t.name && trainerUsers.length > 1) cardBorderStyle = 'border-color:#6EE7B7;';
+
+    html += `<div class="trainer-card" style="cursor:${cardCursor};${cardBorderStyle}" data-trainer="${escHtml(t.name)}"${cardClick}>
       <div class="trainer-name">
         <div class="trainer-color-dot" style="background:${color};"></div>
         ${escHtml(t.name)}
@@ -4316,6 +4380,8 @@ function renderTrainerWorkload() {
       <div class="trainer-stat"><span>Revenue Last 30d</span><span class="trainer-stat-val">${fmtMoney(revLast30)}</span></div>
       <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
       <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
+      ${riskBadge}
+      ${availBadge}
       ${nextFreeHtml}
       ${profileHint}
     </div>`;
