@@ -160,6 +160,7 @@ th.sort-active .sort-icon { opacity: 1; }
 .btn-success { background: #22a06b; color: #fff; }
 .btn-success:hover { background: #1a8055; }
 .btn-edit { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.35); color: #7c3aed; }
+.td-field-required-error { border-color: #DC2F4B !important; background: #fff8f8 !important; }
 .btn-edit:hover { background: rgba(139,92,246,0.18); color: #6d28d9; }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 16px; margin-bottom: 24px; }
@@ -327,6 +328,24 @@ select.filter-select:focus, input.filter-input:focus { outline: none; border-col
 .profile-note-item { background:#fff;border-radius:6px;padding:9px 12px;border-left:3px solid var(--action-primary-blue);margin-bottom:8px; }
 .profile-note-meta { font-size:10px;color:var(--text--dark--30);margin-bottom:3px; }
 .profile-note-text { font-size:12px;color:var(--text--dark--50); }
+
+/* ── Profile inline edit ── */
+.profile-edit-btn { background:none;border:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.65);font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;white-space:nowrap;flex-shrink:0; }
+.profile-edit-btn:hover { background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.4); }
+.profile-edit-btn.editing { background:rgba(255,255,255,0.12);color:#fff;border-color:rgba(255,255,255,0.5); }
+.profile-section-hdr { display:flex;align-items:center;justify-content:space-between;cursor:default; }
+.profile-section-hdr-left { display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;padding:12px 20px;margin:-12px -20px;transition:background 0.1s; }
+.profile-section-hdr-left:hover { background:#f6f8ff; }
+.profile-edit-input { width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:5px 9px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--s-text-primary);background:#fff;box-sizing:border-box;transition:border-color 0.15s; }
+.profile-edit-input:focus { outline:none;border-color:var(--s-purple);box-shadow:0 0 0 3px rgba(91,75,231,0.1); }
+.profile-edit-textarea { width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:5px 9px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--s-text-primary);background:#fff;box-sizing:border-box;resize:vertical;min-height:52px;transition:border-color 0.15s; }
+.profile-edit-textarea:focus { outline:none;border-color:var(--s-purple);box-shadow:0 0 0 3px rgba(91,75,231,0.1); }
+.profile-edit-save-row { display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--s-border); }
+.profile-edit-save-btn { background:var(--s-purple);color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.15s; }
+.profile-edit-save-btn:hover { background:var(--s-purple-hover); }
+.profile-edit-cancel-btn { background:none;border:1px solid var(--s-border-mid);color:var(--s-text-muted);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s; }
+.profile-edit-cancel-btn:hover { background:var(--s-surface);color:var(--s-text-primary); }
+.profile-edit-saving { font-size:11px;color:var(--s-text-muted);margin-left:4px; }
 
 /* REFERRAL LEADERBOARD */
 .referral-board { border:1px solid var(--ui--underline--light-grey);border-radius:8px;overflow:hidden;background:#fff;display:flex;align-items:stretch; }
@@ -2313,6 +2332,36 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       </div>
       <div class="form-row"><label class="form-label required">Trainer</label><select class="form-select" id="bookTrainer" onchange="checkBookingWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select></div>
       <div class="form-row"><label class="form-label">Invoice Value (&#163;) <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">optional</span></label><input type="number" class="form-input" id="bookValue" min="0" step="50" placeholder="e.g. 1100"><div class="form-hint" id="bookValueHint">&#8212;</div></div>
+      <!-- TRAINING DETAILS SECTION — shown/required when sections were skipped -->
+      <div id="bookTrainingDetailsSection" style="display:none;margin-top:4px;border:1.5px solid #fde68a;border-radius:8px;overflow:hidden;">
+        <div style="background:#fffbeb;padding:10px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #fde68a;">
+          <span style="font-size:13px;">⚠️</span>
+          <span style="font-size:12px;font-weight:700;color:#92400e;">Training details were skipped — please complete before confirming</span>
+        </div>
+        <div style="padding:14px 16px;background:#fff;display:flex;flex-direction:column;gap:12px;">
+          <div class="form-row" style="margin-bottom:0;">
+            <label class="form-label required">Areas to Cover</label>
+            <textarea class="form-input" id="bookAreas" rows="2" placeholder="e.g. Rightmove portals, CRM workflows, objection handling…" style="resize:vertical;font-family:'DM Sans',sans-serif;font-size:13px;" oninput="checkBookingWarnings()"></textarea>
+            <div class="form-hint">Key topics or modules the trainer should cover</div>
+          </div>
+          <div class="form-row" style="margin-bottom:0;">
+            <label class="form-label required">Location</label>
+            <input type="text" class="form-input" id="bookLocation" placeholder="e.g. Client office, Street HQ, Online…" oninput="checkBookingWarnings()">
+            <div class="form-hint">Where the training will take place</div>
+          </div>
+          <div class="form-row" style="margin-bottom:0;">
+            <label class="form-label">Parking / Access</label>
+            <textarea class="form-input" id="bookParking" rows="2" placeholder="e.g. NCP car park on the right, ring reception on arrival…" style="resize:vertical;font-family:'DM Sans',sans-serif;font-size:13px;"></textarea>
+            <div class="form-hint">Parking details and site access instructions for the trainer</div>
+          </div>
+          <div class="form-row" style="margin-bottom:0;">
+            <label class="form-label">Priorities &amp; Logistics</label>
+            <textarea class="form-input" id="bookPriorities" rows="2" placeholder="e.g. Focus on new starters, avoid jargon, 10 attendees…" style="resize:vertical;font-family:'DM Sans',sans-serif;font-size:13px;"></textarea>
+            <div class="form-hint">Any priorities, attendee notes or logistics to be aware of</div>
+          </div>
+        </div>
+      </div>
+
       <div class="status-preview booked">&#128200; Status will be set to <strong>Booked</strong></div>
     </div>
     <div id="bookingOverrideRow" style="display:none;padding:8px 20px;background:#fff8f0;border-top:1px solid #fde8c8;"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;cursor:pointer;font-weight:600;"><input type="checkbox" id="bookingOverride" onchange="checkBookingWarnings()">&#9888;&#65039; Admin override &#8212; confirm despite double booking conflict</label></div>
@@ -3900,7 +3949,7 @@ function skippedFlagHtml(r) {
   const skipped = getSkippedSections(r);
   if(!skipped.length) return '';
   return skipped.map(s =>
-    `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;" title="Trainer must complete before booking">⚠️ ${s}</span>`
+    `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;" title="Must be completed before booking can be confirmed">(!) NEEDS INFO - skipped: ${s}</span>`
   ).join(' ');
 }
 
@@ -5282,81 +5331,222 @@ function closeReferralModal() {
 }
 
 // ===================== PROFILE SIDEBAR =====================
+// ── Profile section definitions ─────────────────────────────────────────────
+// Each field entry: [displayLabel, recordKey, displayHtml, inputType]
+// inputType: 'readonly' | 'text' | 'textarea' | 'date' | 'number' | 'email'
+function buildProfileSections(r) {
+  return [
+    { title: '📋 Enquiry Overview', key: 'overview', fields: [
+      ['Status',         'status',        statusBadge(r.status),                                              'readonly'],
+      ['Company',        'company',       escHtml(r.company) || '—',                                          'text'],
+      ['Training Type',  'trainingOption',optionBadge(r.trainingOption),                                      'readonly'],
+      ['Submitted',      'ts',            fmtDate(r.ts),                                                      'readonly'],
+      ['Preferred Date', 'preferredDate', r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—',        'date'],
+      ['Target Go-Live', 'goLiveDate',    r.goLiveDate || '—',                                                'text'],
+    ]},
+    { title: '👤 Contact Details', key: 'contact', fields: [
+      ['Email',       'email',       r.email ? `<a href="mailto:${escHtml(r.email)}" style="color:var(--action-primary-blue);">${escHtml(r.email)}</a>` : '—', 'email'],
+      ['Stakeholder', 'contact',     r.contact || '—',      'text'],
+      ['Attendees',   'attendeesRaw',r.attendeesRaw || '—', 'textarea'],
+    ]},
+    { title: '🎓 Training Details', key: 'training', fields: [
+      ['Team Familiarity',     'teamFamiliarity', r.teamFamiliarity || '—', 'text'],
+      ['Areas to Cover',       'areas',           r.areas           || '—', 'textarea'],
+      ['Priorities',           'priorities',      r.priorities      || '—', 'textarea'],
+      ['Features & Challenges','features',        r.features        || '—', 'textarea'],
+    ]},
+    { title: '📍 Logistics', key: 'logistics', fields: [
+      ['Location',            'locationRaw',  r.locationRaw  || '—', 'text'],
+      ['Parking / Access',    'parking',      r.parking      || '—', 'textarea'],
+      ['Venue Setup',         'venueSetup',   r.venueSetup   || '—', 'textarea'],
+      ['Follow-Up Preferences','followUp',    r.followUp     || '—', 'textarea'],
+      ['Anything Else',       'anythingElse', r.anythingElse || '—', 'textarea'],
+    ]},
+    { title: '💷 Financials', key: 'financials', fields: [
+      ['Invoice Value',  'invoiceValue',  r.invoiceValue !== null ? `<strong>${fmtMoney(r.invoiceValue)}</strong>` : '—', 'number'],
+      ['Booked Date',    'bookedOn',      fmtDate(r.bookedOn),  'readonly'],
+      ['Training Days',  'trainingDays',  r.trainingDays || '—','number'],
+      ['Trainer',        'trainer',       r.trainer || '—',     'readonly'],
+    ]},
+  ];
+}
+
 function openProfileSidebar(idx) {
   const r = allData.find(x => x._idx === idx);
   if(!r) return;
   currentProfileRow = r;
+  renderProfilePanel(r);
+  document.getElementById('profileOverlay').classList.add('open');
+  document.getElementById('profilePanel').classList.add('open');
+  const noteInput = document.getElementById('profileNoteInput');
+  if(noteInput) noteInput.style.display = canDo('addNotes') ? 'flex' : 'none';
+}
+
+function renderProfilePanel(r) {
   document.getElementById('profileCompany').textContent = getCompanyName(r);
   const meta = document.getElementById('profileMeta');
   meta.innerHTML = `${statusBadge(r.status)} ${optionBadge(r.trainingOption)} <span style="font-size:11px;color:rgba(255,255,255,0.5);">Submitted ${fmtDate(r.ts)}</span>`;
-  const sections = [
-    { title: '📋 Enquiry Overview', icon: '📋', fields: [
-      ['Status', statusBadge(r.status)],
-      ['Company', escHtml(r.company) || '—'],
-      ['Training Type', optionBadge(r.trainingOption)],
-      ['Submitted', fmtDate(r.ts)],
-      ['Preferred Date', r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—'],
-      ['Target Go-Live', r.goLiveDate || '—']
-    ]},
-    { title: '👤 Contact Details', icon: '👤', fields: [
-      ['Email', r.email ? `<a href="mailto:${escHtml(r.email)}" style="color:var(--action-primary-blue);">${escHtml(r.email)}</a>` : '—'],
-      ['Stakeholder', r.contact || '—'],
-      ['Attendees', r.attendeesRaw || '—']
-    ]},
-    { title: '🎓 Training Details', icon: '🎓', fields: [
-      ['Team Familiarity', r.teamFamiliarity || '—'],
-      ['Areas to Cover', r.areas || '—'],
-      ['Priorities', r.priorities || '—'],
-      ['Features & Challenges', r.features || '—']
-    ]},
-    { title: '📍 Logistics', icon: '📍', fields: [
-      ['Location', r.locationRaw || '—'],
-      ['Parking / Access', r.parking || '—'],
-      ['Venue Setup', r.venueSetup || '—'],
-      ['Follow-Up Preferences', r.followUp || '—'],
-      ['Anything Else', r.anythingElse || '—']
-    ]},
-    { title: '💷 Financials', icon: '💷', fields: [
-      ['Invoice Value', r.invoiceValue !== null ? `<strong>${fmtMoney(r.invoiceValue)}</strong>` : '—'],
-      ['Booked Date', fmtDate(r.bookedOn)],
-      ['Training Days', r.trainingDays || '—'],
-      ['Trainer', r.trainer || '—']
-    ]}
-  ];
+
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const sections = buildProfileSections(r);
+
+  // Add referral section if present
   if(r.referredBy) {
-    sections.push({ title: '🤝 Referral Info', icon: '🤝', fields: [
-      ['Referred By', r.referredBy.name || '—'],
-      ['Team / Dept', r.referredBy.team || '—'],
-      ['Referral Notes', r.referredBy.notes || r.referralNotes || '—']
+    sections.push({ title: '🤝 Referral Info', key: 'referral', fields: [
+      ['Referred By',    'referredByName',  r.referredBy.name  || '—', 'readonly'],
+      ['Team / Dept',    'referredByTeam',  r.referredBy.team  || '—', 'readonly'],
+      ['Referral Notes', 'referralNotes',   r.referredBy.notes || r.referralNotes || '—', 'textarea'],
     ]});
   }
+
   const sectionsHtml = sections.map((s, si) => {
     const open = si === 0;
+    const editBtn = isAdmin
+      ? `<button class="profile-edit-btn" id="profileEditBtn${si}" onclick="event.stopPropagation();toggleProfileEdit(${si})" title="Edit this section">✎ Edit</button>`
+      : '';
     return `<div class="profile-section">
-      <div class="profile-section-hdr" onclick="toggleProfileSection(${si})">
-        <div class="profile-section-title">${s.icon} ${s.title.replace(/^[^\s]+\s/, '')}</div>
-        <span class="profile-chevron ${open?'open':''}" id="profileChevron${si}">${open?'▲':'▼'}</span>
+      <div class="profile-section-hdr">
+        <div class="profile-section-hdr-left">
+          <div class="profile-section-title">${s.icon || ''} ${s.title.replace(/^\\S+\\s/, '')}</div>
+          <span class="profile-chevron ${open?'open':''}" id="profileChevron${si}">${open?'▲':'▼'}</span>
+        </div>
+        ${editBtn}
       </div>
       <div class="profile-section-body ${open?'open':''}" id="profileSection${si}">
-        ${s.fields.map(([label, val]) => `<div class="profile-field"><span class="profile-field-label">${label}</span><span class="profile-field-value">${val}</span></div>`).join('')}
+        <div id="profileSectionView${si}">
+          ${s.fields.map(([label, val]) => `<div class="profile-field"><span class="profile-field-label">${label}</span><span class="profile-field-value">${val}</span></div>`).join('')}
+        </div>
+        <div id="profileSectionEdit${si}" style="display:none;">
+          ${s.fields.map(([label, key, , type]) => {
+            if(type === 'readonly') {
+              const rawVal = r[key];
+              const displayVal = (rawVal !== null && rawVal !== undefined && rawVal !== '') ? String(rawVal) : '—';
+              return `<div class="profile-field"><span class="profile-field-label">${label}</span><span class="profile-field-value" style="color:var(--s-text-muted);font-style:italic;">${displayVal}</span></div>`;
+            }
+            const rawVal = r[key];
+            const safeVal = (rawVal !== null && rawVal !== undefined) ? String(rawVal) : '';
+            const escapedVal = safeVal.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            if(type === 'textarea') {
+              return `<div class="profile-field" style="flex-direction:column;gap:4px;"><span class="profile-field-label">${label}</span><textarea class="profile-edit-textarea" id="pedit_${si}_${key}" rows="3">${escapedVal}</textarea></div>`;
+            }
+            return `<div class="profile-field" style="flex-direction:column;gap:4px;"><span class="profile-field-label">${label}</span><input type="${type}" class="profile-edit-input" id="pedit_${si}_${key}" value="${escapedVal}"></div>`;
+          }).join('')}
+          <div class="profile-edit-save-row">
+            <button class="profile-edit-save-btn" onclick="saveProfileSection(${si})">💾 Save Changes</button>
+            <button class="profile-edit-cancel-btn" onclick="toggleProfileEdit(${si})">Cancel</button>
+            <span class="profile-edit-saving" id="profileSavingMsg${si}" style="display:none;">Saving…</span>
+          </div>
+        </div>
       </div>
     </div>`;
   }).join('');
+
   document.getElementById('profileSections').innerHTML = sectionsHtml;
   renderProfileNotes(r);
-  document.getElementById('profileOverlay').classList.add('open');
-  document.getElementById('profilePanel').classList.add('open');
-  // Hide note input for users without permission
-  const noteInput = document.getElementById('profileNoteInput');
-  if(noteInput) noteInput.style.display = canDo('addNotes') ? 'flex' : 'none';
 }
 
 function toggleProfileSection(idx) {
   const body = document.getElementById(`profileSection${idx}`);
   const chev = document.getElementById(`profileChevron${idx}`);
+  if(!body) return;
   const isOpen = body.classList.toggle('open');
-  chev.classList.toggle('open', isOpen);
-  chev.textContent = isOpen ? '▲' : '▼';
+  if(chev) { chev.classList.toggle('open', isOpen); chev.textContent = isOpen ? '▲' : '▼'; }
+}
+
+function toggleProfileEdit(si) {
+  const viewEl = document.getElementById(`profileSectionView${si}`);
+  const editEl = document.getElementById(`profileSectionEdit${si}`);
+  const btn    = document.getElementById(`profileEditBtn${si}`);
+  const body   = document.getElementById(`profileSection${si}`);
+  if(!viewEl || !editEl) return;
+  const isEditing = editEl.style.display !== 'none';
+  if(isEditing) {
+    // Cancel — go back to view
+    editEl.style.display = 'none';
+    viewEl.style.display = '';
+    if(btn) { btn.textContent = '✎ Edit'; btn.classList.remove('editing'); }
+  } else {
+    // Enter edit mode — ensure section is open
+    body.classList.add('open');
+    const chev = document.getElementById(`profileChevron${si}`);
+    if(chev) { chev.classList.add('open'); chev.textContent = '▲'; }
+    viewEl.style.display = 'none';
+    editEl.style.display = '';
+    if(btn) { btn.textContent = '✕ Cancel'; btn.classList.add('editing'); }
+  }
+}
+
+async function saveProfileSection(si) {
+  if(!currentProfileRow) return;
+  const r       = currentProfileRow;
+  const sections = buildProfileSections(r);
+  if(r.referredBy) {
+    sections.push({ title: '🤝 Referral Info', key: 'referral', fields: [
+      ['Referred By',    'referredByName',  r.referredBy?.name  || '—', 'readonly'],
+      ['Team / Dept',    'referredByTeam',  r.referredBy?.team  || '—', 'readonly'],
+      ['Referral Notes', 'referralNotes',   r.referredBy?.notes || r.referralNotes || '—', 'textarea'],
+    ]});
+  }
+  const section = sections[si];
+  if(!section) return;
+
+  // Collect changed values
+  const updates = {};
+  section.fields.forEach(([, key, , type]) => {
+    if(type === 'readonly') return;
+    const el = document.getElementById(`pedit_${si}_${key}`);
+    if(!el) return;
+    updates[key] = el.value.trim();
+  });
+
+  // Show saving spinner
+  const savingMsg = document.getElementById(`profileSavingMsg${si}`);
+  const saveBtn   = document.querySelector(`#profileSectionEdit${si} .profile-edit-save-btn`);
+  if(savingMsg) savingMsg.style.display = 'inline';
+  if(saveBtn)   saveBtn.disabled = true;
+
+  // Apply to in-memory record immediately
+  Object.entries(updates).forEach(([key, val]) => { r[key] = val || null; });
+
+  // Persist to backend using the 'assign' action with all updated fields
+  try {
+    const params = new URLSearchParams({ action: 'assign', row: r._rowNum });
+    Object.entries(updates).forEach(([key, val]) => params.set(key, val));
+    if(SCRIPT_URL) {
+      await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
+    }
+
+    writeActivityLog({
+      actionType:  'Field Edit',
+      description: `Admin edited "${section.title.replace(/^\S+\s/, '')}" section`,
+      module:      'Client Profile',
+      recordType:  'Enquiry',
+      recordId:    String(r._rowNum),
+      before:      '—',
+      after:       Object.entries(updates).map(([k,v]) => `${k}: ${v}`).join(' | ').slice(0, 300),
+      reason:      'Admin inline edit',
+      source:      'Profile Panel',
+      company:     getCompanyName(r),
+      trainer:     r.trainer || '',
+    });
+
+    showToast('Changes saved', 'success');
+  } catch(e) {
+    showToast('Save failed — changes kept locally', 'error');
+  }
+
+  // Re-render panel with updated values (exits edit mode)
+  renderProfilePanel(r);
+
+  // Ensure the edited section stays open
+  const body = document.getElementById(`profileSection${si}`);
+  const chev = document.getElementById(`profileChevron${si}`);
+  if(body) body.classList.add('open');
+  if(chev) { chev.classList.add('open'); chev.textContent = '▲'; }
+
+  // Re-attach notes input visibility
+  const noteInput = document.getElementById('profileNoteInput');
+  if(noteInput) noteInput.style.display = canDo('addNotes') ? 'flex' : 'none';
 }
 
 function renderProfileNotes(r) {
@@ -5713,18 +5903,44 @@ function openBookModal(idx) {
   const skipped = getSkippedSections(r);
   const blockMsg = document.getElementById('bookingBlockMsg');
   const confirmBtn = document.getElementById('confirmBookBtn');
-  if(skipped.length) {
+  // Show training details panel if any section was skipped
+  const trainingDetailsPanel = document.getElementById('bookTrainingDetailsSection');
+  const hasTrainingSkip  = skipped.includes('Training Details');
+  const hasLogisticsSkip = skipped.includes('Priorities & Logistics');
+  if(hasTrainingSkip || hasLogisticsSkip) {
+    trainingDetailsPanel.style.display = 'block';
+    // Pre-fill with any existing values from the record
+    document.getElementById('bookAreas').value     = r.areas        || '';
+    document.getElementById('bookLocation').value  = r.locationRaw  || '';
+    document.getElementById('bookParking').value   = r.parking      || '';
+    document.getElementById('bookPriorities').value= r.priorities   || '';
     blockMsg.style.display = 'block';
-    blockMsg.textContent = '⚠️ Cannot set a booking date until the following sections are completed: ' + skipped.join(', ') + '. Open the enquiry profile to fill them in.';
+    blockMsg.textContent = '⚠️ Complete the highlighted Training Details below before confirming.';
     confirmBtn.disabled = true;
-    document.getElementById('bookDate').disabled = true;
+    document.getElementById('bookDate').disabled = false; // date can still be set
   } else {
-    document.getElementById('bookDate').disabled = false;
+    trainingDetailsPanel.style.display = 'none';
+    if(skipped.length) {
+      blockMsg.style.display = 'block';
+      blockMsg.textContent = '⚠️ Cannot confirm until the following sections are completed: ' + skipped.join(', ');
+      confirmBtn.disabled = true;
+      document.getElementById('bookDate').disabled = true;
+    } else {
+      document.getElementById('bookDate').disabled = false;
+    }
   }
   document.getElementById('bookOverlay').classList.add('open');
 }
 
-function closeBookModal() { document.getElementById('bookOverlay').classList.remove('open'); document.getElementById('bookDate').disabled = false; currentBookRow = null; }
+function closeBookModal() {
+  document.getElementById('bookOverlay').classList.remove('open');
+  document.getElementById('bookDate').disabled = false;
+  document.getElementById('bookTrainingDetailsSection').style.display = 'none';
+  ['bookAreas','bookLocation','bookParking','bookPriorities'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  currentBookRow = null;
+}
 
 function checkBookingWarnings() {
   if(!currentBookRow) return;
@@ -5748,6 +5964,26 @@ function checkBookingWarnings() {
     blockMsg.style.display = 'block';
     btn.disabled = true;
     return;
+  }
+
+  // If training details panel is visible, validate required fields
+  const tdPanel = document.getElementById('bookTrainingDetailsSection');
+  if(tdPanel && tdPanel.style.display !== 'none') {
+    const areasEl    = document.getElementById('bookAreas');
+    const locationEl = document.getElementById('bookLocation');
+    const areas    = (areasEl?.value    || '').trim();
+    const location = (locationEl?.value || '').trim();
+    // Visual feedback on required fields
+    if(areasEl)    areasEl.classList.toggle('td-field-required-error',    !areas);
+    if(locationEl) locationEl.classList.toggle('td-field-required-error', !location);
+    if(!areas || !location) {
+      blockMsg.textContent = '⚠️ Please fill in Areas to Cover and Location before confirming.';
+      blockMsg.style.display = 'block';
+      btn.disabled = true;
+      return;
+    }
+    blockMsg.style.display = 'none';
+    btn.disabled = false;
   }
 
   if(!date || !trainer) return;
@@ -5828,14 +6064,51 @@ async function confirmBook() {
   const value     = document.getElementById('bookValue').value;
   const typeVal   = document.getElementById('bookTrainingType').value;
   if(!date || !trainer || !typeVal || !currentBookRow) return;
+
+  // Collect training detail fields if the panel was shown (skipped sections)
+  const tdPanel    = document.getElementById('bookTrainingDetailsSection');
+  const tdVisible  = tdPanel && tdPanel.style.display !== 'none';
+  const newAreas     = tdVisible ? (document.getElementById('bookAreas')?.value.trim()     || '') : '';
+  const newLocation  = tdVisible ? (document.getElementById('bookLocation')?.value.trim()  || '') : '';
+  const newParking   = tdVisible ? (document.getElementById('bookParking')?.value.trim()   || '') : '';
+  const newPriorities= tdVisible ? (document.getElementById('bookPriorities')?.value.trim()|| '') : '';
+
+  // Validate required training detail fields before proceeding
+  if(tdVisible && (!newAreas || !newLocation)) {
+    showToast('Please fill in Areas to Cover and Location before confirming.', 'error');
+    return;
+  }
+
   const params = new URLSearchParams({
     action: 'assign', row: currentBookRow._rowNum,
     status: 'Booked', trainer, bookedOn: date,
     trainingDays: days, value: value || '',
-    option: typeVal,   // save confirmed training type back to sheet
+    option: typeVal,
   });
+
+  // Include training detail fields in the save if they were filled in
+  if(tdVisible) {
+    if(newAreas)      params.set('areas',       newAreas);
+    if(newLocation)   params.set('location',    newLocation);
+    if(newParking)    params.set('parking',     newParking);
+    if(newPriorities) params.set('priorities',  newPriorities);
+    // Clear the skipped sections flag now that they've been filled in
+    params.set('skippedSections', '');
+  }
+
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
+
+    // Write filled values back to the in-memory record so the client profile
+    // reflects the new data immediately without waiting for a full reload
+    if(tdVisible && currentBookRow) {
+      if(newAreas)      currentBookRow.areas        = newAreas;
+      if(newLocation)   currentBookRow.locationRaw  = newLocation;
+      if(newParking)    currentBookRow.parking       = newParking;
+      if(newPriorities) currentBookRow.priorities    = newPriorities;
+      currentBookRow.skippedSections = '';
+    }
+
     logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`);
     writeActivityLog({
       actionType:  'Status Change',
