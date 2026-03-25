@@ -1882,6 +1882,46 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   box-shadow: 0 4px 16px rgba(220,47,75,0.12) !important;
 }
 
+/* ── REFERRAL FILTER PRESET BUTTONS ─────────────────────── */
+.ref-preset-btn {
+  padding: 4px 11px;
+  border-radius: var(--s-r-pill);
+  border: 1.5px solid var(--s-border-mid);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--s-text-secondary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.ref-preset-btn:hover { border-color: var(--s-purple); color: var(--s-purple); background: var(--s-lavender); }
+.ref-preset-btn.active { border-color: var(--s-purple); color: #fff; background: var(--s-purple); }
+
+/* ── REFERRAL SORT BUTTONS ───────────────────────────────── */
+.ref-sort-btn {
+  padding: 4px 12px;
+  border-radius: var(--s-r-pill);
+  border: 1.5px solid var(--s-border-mid);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--s-text-secondary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.ref-sort-btn:hover { border-color: var(--s-purple); color: var(--s-purple); background: var(--s-lavender); }
+.ref-sort-btn.active { border-color: var(--s-purple); color: var(--s-purple); background: var(--s-lavender); font-weight: 700; }
+
+/* ── MANAGER ACTIONS TOGGLE ──────────────────────────────── */
+#managerActionsToggleBtn:hover { background: var(--s-surface) !important; color: var(--s-text-primary) !important; border-color: var(--s-border-mid) !important; }
+
+/* ── REFERRAL TABLE ROW HOVER ────────────────────────────── */
+tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important; }
+
 </style>
 
 </head>
@@ -2012,12 +2052,17 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
 <main class="main" id="mainContent" style="display:none;">
 
   <!-- MANAGER ACTIONS PANEL -->
+  <!-- NEEDS ATTENTION TODAY (collapsible) -->
   <div id="managerActionsPanel" style="margin-bottom:24px;" class="admin-only">
     <div class="section-header" style="margin-bottom:12px;">
-      <div class="section-title">⚡ Manager Actions</div>
-      <span style="font-size:11px;color:var(--s-text-muted);">Live alerts — updated on refresh</span>
+      <div class="section-title">&#9888;&#65039; Needs Attention Today <span id="managerActionsBadge" style="display:none;background:var(--s-red);color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:4px;"></span></div>
+      <button id="managerActionsToggleBtn" onclick="toggleManagerActions()" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--s-border-mid);color:var(--s-text-muted);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;">
+        <span id="managerActionsIcon">&#9660;</span> <span id="managerActionsLabel">Hide</span>
+      </button>
     </div>
-    <div id="managerActionsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;"></div>
+    <div id="managerActionsContent">
+      <div id="managerActionsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;"></div>
+    </div>
   </div>
 
   <!-- SMART RECOMMENDATIONS (elevated to top — action-driving) -->
@@ -2139,13 +2184,59 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
         </div>
       </div>
 
-      <!-- REFERRAL LEADERBOARD (demoted into insights) -->
+      <!-- REFERRAL PERFORMANCE TOOL -->
       <div id="referralLeaderboardSection" style="margin-bottom:24px;">
-        <div class="section-header">
-          <div class="section-title">&#127942; Referral Leaderboard</div>
-          <span style="font-size:11px;color:var(--text--dark--30);">Click a name to see their referred enquiries &middot; Logged via Request Training form</span>
+        <div class="section-header" style="margin-bottom:14px;">
+          <div class="section-title">&#127942; Referral Performance</div>
+          <span style="font-size:11px;color:var(--text--dark--30);">Click any row to drill into that person's referrals</span>
         </div>
-        <div class="referral-board" id="referralLeaderboard"><div style="text-align:center;padding:24px;color:var(--text--dark--30);font-size:12px;">Loading&#8230;</div></div>
+
+        <!-- ROI SUMMARY STRIP -->
+        <div id="referralRoiStrip" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px;"></div>
+
+        <!-- FILTER BAR -->
+        <div style="background:#fff;border:1px solid var(--s-border);border-radius:var(--s-r-md);padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.6px;flex-shrink:0;">Filter:</span>
+          <!-- Quick date presets -->
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            <button class="ref-preset-btn active" data-preset="all" onclick="setReferralPreset('all')">All time</button>
+            <button class="ref-preset-btn" data-preset="7d" onclick="setReferralPreset('7d')">Last 7 days</button>
+            <button class="ref-preset-btn" data-preset="month" onclick="setReferralPreset('month')">This month</button>
+            <button class="ref-preset-btn" data-preset="quarter" onclick="setReferralPreset('quarter')">This quarter</button>
+            <button class="ref-preset-btn" data-preset="custom" onclick="setReferralPreset('custom')">Custom</button>
+          </div>
+          <!-- Custom date range (hidden until 'custom' selected) -->
+          <div id="referralCustomRange" style="display:none;align-items:center;gap:6px;">
+            <input type="date" id="referralGlobalDateFrom" class="filter-input" onchange="renderReferralLeaderboard()" style="width:120px;">
+            <span style="font-size:11px;color:var(--s-text-muted);">to</span>
+            <input type="date" id="referralGlobalDateTo" class="filter-input" onchange="renderReferralLeaderboard()" style="width:120px;">
+          </div>
+          <!-- Status filter -->
+          <select id="referralGlobalStatus" class="filter-select" onchange="renderReferralLeaderboard()" style="min-width:120px;">
+            <option value="">All statuses</option>
+            <option value="Booked">Converted</option>
+            <option value="Pending">Pending</option>
+            <option value="Unassigned">Unassigned</option>
+            <option value="Cancelled">Lost</option>
+          </select>
+          <!-- Name search -->
+          <input type="text" id="referralNameSearch" class="filter-input" placeholder="Search referrer&#8230;" oninput="renderReferralLeaderboard()" style="min-width:140px;">
+          <button class="btn btn-ghost btn-sm" onclick="clearReferralGlobalFilters()">&#10005; Clear</button>
+        </div>
+
+        <!-- SORT TOGGLE ROW -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.6px;">Sort by:</span>
+          <button class="ref-sort-btn active" data-sort="count" onclick="setReferralSort('count')">&#35; Referrals</button>
+          <button class="ref-sort-btn" data-sort="value" onclick="setReferralSort('value')">&#163; Value generated</button>
+          <button class="ref-sort-btn" data-sort="conversion" onclick="setReferralSort('conversion')">&#37; Conversion rate</button>
+          <button class="ref-sort-btn" data-sort="avgdeal" onclick="setReferralSort('avgdeal')">Avg deal size</button>
+        </div>
+
+        <!-- LEADERBOARD TABLE -->
+        <div id="referralLeaderboard" style="background:#fff;border:1px solid var(--s-border);border-radius:var(--s-r-md);overflow:hidden;box-shadow:var(--s-shadow-sm);">
+          <div style="text-align:center;padding:24px;color:var(--text--dark--30);font-size:12px;">Loading&#8230;</div>
+        </div>
       </div>
 
     </div><!-- /insightsContent -->
@@ -2189,19 +2280,23 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
       </div>
     </div>
 
-    <!-- COMPLETED -->
+    <!-- COMPLETED (collapsible, defaults to hidden) -->
     <div>
-      <div class="section-header" style="margin-bottom:10px;">
+      <div class="section-header" style="margin-bottom:10px;margin-top:8px;">
         <div class="section-title" style="font-size:13px;">&#9989; Completed &amp; Closed Bookings<span class="badge green" id="completedBadge">0</span></div>
-        <span style="font-size:11px;color:var(--text--dark--30);">Past booked sessions &amp; cancelled enquiries</span>
+        <button id="completedToggleBtn" onclick="toggleCompletedBookings()" style="display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--s-border-mid);color:var(--s-text-muted);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;">
+          <span id="completedToggleIcon">&#9654;</span> <span id="completedToggleLabel">Show</span>
+        </button>
       </div>
-      <div class="all-bookings">
-        <div class="table-wrap"><table><thead><tr id="completedBookingsHead"></tr></thead><tbody id="completedBookingsBody"><tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text--dark--30);">Loading&#8230;</td></tr></tbody></table></div>
-        <div class="pagination" id="completedPagination" style="display:none;">
-          <button class="page-btn" id="completedPrevBtn" onclick="changeCompletedPage(-1)">&#8592; Prev</button>
-          <span id="completedPageInfo">Page 1</span>
-          <button class="page-btn" id="completedNextBtn" onclick="changeCompletedPage(1)">Next &#8594;</button>
-          <span style="margin-left:auto;" id="completedRowCount">0 bookings</span>
+      <div id="completedBookingsContent" style="display:none;">
+        <div class="all-bookings">
+          <div class="table-wrap"><table><thead><tr id="completedBookingsHead"></tr></thead><tbody id="completedBookingsBody"><tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text--dark--30);">Loading&#8230;</td></tr></tbody></table></div>
+          <div class="pagination" id="completedPagination" style="display:none;">
+            <button class="page-btn" id="completedPrevBtn" onclick="changeCompletedPage(-1)">&#8592; Prev</button>
+            <span id="completedPageInfo">Page 1</span>
+            <button class="page-btn" id="completedNextBtn" onclick="changeCompletedPage(1)">Next &#8594;</button>
+            <span style="margin-left:auto;" id="completedRowCount">0 bookings</span>
+          </div>
         </div>
       </div>
     </div>
@@ -2460,19 +2555,36 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
   </div>
 </div>
 
-<!-- REFERRAL MODAL -->
+<!-- REFERRAL MODAL — rich drill-down -->
 <div class="modal-overlay" id="referralModalOverlay" onclick="if(event.target===this)closeReferralModal()">
-  <div class="modal" style="width:700px;max-width:97vw;">
-    <div class="modal-header"><div><div class="modal-title" id="referralModalTitle">Referral Detail</div><div class="modal-subtitle" id="referralModalSub">&#8212;</div></div><button class="modal-close" onclick="closeReferralModal()">&#10005;</button></div>
+  <div class="modal" style="width:780px;max-width:97vw;">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="referralModalTitle">Referral Detail</div>
+        <div class="modal-subtitle" id="referralModalSub">&#8212;</div>
+      </div>
+      <button class="modal-close" onclick="closeReferralModal()">&#10005;</button>
+    </div>
     <div class="modal-body" style="padding:0;">
-      <div id="referralModalStats" style="padding:14px 16px;border-bottom:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey);"></div>
-      <div style="padding:10px 16px;border-bottom:1px solid var(--ui--underline--light-grey);display:flex;gap:8px;flex-wrap:wrap;">
+      <!-- Stats strip -->
+      <div id="referralModalStats" style="padding:14px 18px;border-bottom:1px solid var(--ui--underline--light-grey);background:var(--card-light-grey);"></div>
+      <!-- Context bar (live / week deltas) -->
+      <div id="referralModalContext" style="padding:9px 18px;border-bottom:1px solid var(--ui--underline--light-grey);background:#f9fafb;display:flex;gap:18px;flex-wrap:wrap;"></div>
+      <!-- Filters -->
+      <div style="padding:10px 16px;border-bottom:1px solid var(--ui--underline--light-grey);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <input type="date" class="filter-input" id="referralFilterDateFrom" onchange="renderReferralModalTable()" style="width:130px;">
         <input type="date" class="filter-input" id="referralFilterDateTo" onchange="renderReferralModalTable()" style="width:130px;">
-        <select class="filter-select" id="referralFilterStatus" onchange="renderReferralModalTable()"><option value="">All Statuses</option><option value="Unassigned">Unassigned</option><option value="Pending">Pending</option><option value="Booked">Booked</option><option value="Cancelled">Cancelled</option></select>
+        <select class="filter-select" id="referralFilterStatus" onchange="renderReferralModalTable()">
+          <option value="">All Statuses</option>
+          <option value="Unassigned">Unassigned</option>
+          <option value="Pending">Pending</option>
+          <option value="Booked">Converted</option>
+          <option value="Cancelled">Lost</option>
+        </select>
         <button class="btn btn-ghost btn-sm" onclick="clearReferralFilters()">&#10005; Clear</button>
       </div>
-      <div style="overflow-x:auto;max-height:360px;overflow-y:auto;">
+      <!-- Table -->
+      <div style="overflow-x:auto;max-height:380px;overflow-y:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="background:var(--card-light-grey);">
             <th style="padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey);">Submitted</th>
@@ -2481,6 +2593,7 @@ h1,h2,h3,h4,h5,h6,p,span,div,label,button,input,select,textarea,a,td,th,li {
             <th style="padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey);">Booked Date</th>
             <th style="padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey);">Value</th>
             <th style="padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey);">Status</th>
+            <th style="padding:9px 12px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text--dark--30);border-bottom:1px solid var(--ui--underline--light-grey);">Actions</th>
           </tr></thead>
           <tbody id="referralModalBody"></tbody>
         </table>
@@ -4014,7 +4127,38 @@ function renderAll() {
   populateFilterDropdowns();
 }
 
-// ===================== MANAGER ACTIONS PANEL =====================
+// ===================== TOGGLE HELPERS =====================
+function toggleInsights() {
+  const content = document.getElementById('insightsContent');
+  const icon    = document.getElementById('insightsToggleIcon');
+  const label   = document.getElementById('insightsToggleLabel');
+  const btn     = document.getElementById('insightsToggleBtn');
+  const isHidden = content.style.display === 'none';
+  content.style.display = isHidden ? '' : 'none';
+  icon.textContent  = isHidden ? '▼' : '▶';
+  label.textContent = isHidden ? 'Hide Insights' : 'Show Insights';
+  btn.style.background = isHidden ? 'var(--s-lavender)' : '#fff';
+}
+
+function toggleCompletedBookings() {
+  const body  = document.getElementById('completedBookingsContent');
+  const icon  = document.getElementById('completedToggleIcon');
+  const label = document.getElementById('completedToggleLabel');
+  const isHidden = body.style.display === 'none';
+  body.style.display = isHidden ? '' : 'none';
+  icon.innerHTML    = isHidden ? '&#9660;' : '&#9654;';
+  label.textContent = isHidden ? 'Hide' : 'Show';
+}
+
+// ===================== MANAGER ACTIONS (collapsible) =====================
+let _managerActionsOpen = true;
+function toggleManagerActions() {
+  _managerActionsOpen = !_managerActionsOpen;
+  document.getElementById('managerActionsContent').style.display = _managerActionsOpen ? '' : 'none';
+  document.getElementById('managerActionsIcon').textContent  = _managerActionsOpen ? '▼' : '▶';
+  document.getElementById('managerActionsLabel').textContent = _managerActionsOpen ? 'Hide' : 'Show';
+}
+
 function renderManagerActions() {
   const panel = document.getElementById('managerActionsGrid');
   if(!panel) return;
@@ -4023,12 +4167,11 @@ function renderManagerActions() {
   const nextWeekEnd = new Date(nextWeekStart); nextWeekEnd.setDate(nextWeekEnd.getDate() + 6);
   const actions = [];
 
-  // 1. Trainers over capacity next week
   const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
   const overCapacityNext = [];
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
-    const cap = meta.capacity || 1; // sessions per week
+    const cap = meta.capacity || 1;
     const nextWeekSessions = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn >= nextWeekStart && r.bookedOn <= nextWeekEnd);
     if(nextWeekSessions.length >= cap) overCapacityNext.push(t.name);
   });
@@ -4036,7 +4179,6 @@ function renderManagerActions() {
     actions.push({ icon:'📅', colour:'#DC2F4B', bg:'#FDEAED', title: overCapacityNext.length + ' trainer' + (overCapacityNext.length>1?'s':'') + ' over capacity next week', body: overCapacityNext.join(', ') + ' — consider redistributing sessions', action: null });
   }
 
-  // 2. Revenue unassigned (requests not yet booked)
   const unassignedRequests = allData.filter(r => r.status === 'Unassigned');
   const pendingRequests = allData.filter(r => r.status === 'Pending');
   const unassignedRev = [...unassignedRequests, ...pendingRequests].reduce((s,r) => s+(r.quotedValue||r.invoiceValue||0), 0);
@@ -4045,7 +4187,6 @@ function renderManagerActions() {
     actions.push({ icon:'💸', colour:'#D97706', bg:'#FEF3CD', title: (unassignedRev > 0 ? fmtMoney(unassignedRev) : total + ' requests') + ' revenue unassigned', body: unassignedRequests.length + ' unassigned · ' + pendingRequests.length + ' pending confirmation — assign to convert', action: null });
   }
 
-  // 3. Stale requests needing follow-up (>3 days unassigned OR >7 days pending)
   const staleUnassigned = unassignedRequests.filter(r => r.ts && (Date.now()-r.ts) > 3*86400000);
   const stalePending = pendingRequests.filter(r => r.ts && (Date.now()-r.ts) > 7*86400000);
   const staleTotal = staleUnassigned.length + stalePending.length;
@@ -4053,7 +4194,6 @@ function renderManagerActions() {
     actions.push({ icon:'⏳', colour:'#D97706', bg:'#FEF3CD', title: staleTotal + ' stale request' + (staleTotal>1?'s':'') + ' needing follow-up', body: staleUnassigned.length + ' unassigned 3+ days · ' + stalePending.length + ' pending 7+ days', action: null });
   }
 
-  // 4. Trainer over capacity now
   const y30 = new Date(today); y30.setDate(y30.getDate()-30);
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
@@ -4061,1137 +4201,216 @@ function renderManagerActions() {
     const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
     const pct = Math.round((last30.length / Math.max(CAPACITY_30D,1)) * 100);
     if(pct >= 90) {
-      actions.push({ icon:'🔴', colour:'#DC2F4B', bg:'#FDEAED', title: t.name + ' is over capacity (' + pct + '%)', body: last30.length + ' sessions in last 30 days — consider reassigning new requests', action: `openTrainerProfile('${escHtml(t.name)}')` });
+      actions.push({ icon:'🔴', colour:'#DC2F4B', bg:'#FDEAED', title: t.name + ' is over capacity (' + pct + '%)', body: last30.length + ' sessions in last 30 days — consider reassigning new requests', action: "openTrainerProfile('" + escHtml(t.name) + "')" });
     }
   });
 
-  // 5. Low utilisation warning
   trainerUsers.forEach(t => {
     const meta = getTrainerMeta(t.name);
     const CAPACITY_30D = (meta.capacity || 1) * 4.3;
     const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
     const pct = Math.round((last30.length / Math.max(CAPACITY_30D,1)) * 100);
     if(pct < 30 && last30.length < 3) {
-      actions.push({ icon:'🟡', colour:'#D97706', bg:'#FEF3CD', title: t.name + ' is under-utilised (' + pct + '%)', body: 'Only ' + last30.length + ' sessions last 30 days — do they need support or reassignment?', action: `openTrainerProfile('${escHtml(t.name)}')` });
+      actions.push({ icon:'🟡', colour:'#D97706', bg:'#FEF3CD', title: t.name + ' is under-utilised (' + pct + '%)', body: 'Only ' + last30.length + ' sessions last 30 days — do they need support or reassignment?', action: "openTrainerProfile('" + escHtml(t.name) + "')" });
     }
   });
+
+  const badge = document.getElementById('managerActionsBadge');
+  if(badge) { if(actions.length) { badge.textContent = actions.length; badge.style.display = ''; } else { badge.style.display = 'none'; } }
 
   if(!actions.length) {
-    panel.innerHTML = `<div style="padding:14px 18px;background:#fff;border:1px solid var(--s-border);border-radius:10px;font-size:13px;color:var(--s-text-muted);display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">✅</span> All clear — no urgent manager actions right now.</div>`;
+    panel.innerHTML = '<div style="padding:14px 18px;background:#fff;border:1px solid var(--s-border);border-radius:10px;font-size:13px;color:var(--s-text-muted);display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">✅</span> All clear — no urgent actions right now.</div>';
     return;
   }
-  panel.innerHTML = actions.map(a => `
-    <div style="background:${a.bg};border:1px solid ${a.colour}40;border-left:4px solid ${a.colour};border-radius:10px;padding:14px 16px;${a.action?'cursor:pointer;':''}"
-      ${a.action?`onclick="${a.action}"`:''}
-    >
-      <div style="font-size:13px;font-weight:700;color:var(--s-text-primary);margin-bottom:5px;">${a.icon} ${a.title}</div>
-      <div style="font-size:12px;color:${a.colour};font-weight:500;">${a.body}</div>
-      ${a.action?`<div style="font-size:11px;color:${a.colour};font-weight:600;margin-top:6px;">View trainer →</div>`:''}
-    </div>
-  `).join('');
+  panel.innerHTML = actions.map(a =>
+    '<div style="background:' + a.bg + ';border:1px solid ' + a.colour + '40;border-left:4px solid ' + a.colour + ';border-radius:10px;padding:14px 16px;' + (a.action ? 'cursor:pointer;' : '') + '"' +
+    (a.action ? ' onclick="' + a.action + '"' : '') + '>' +
+    '<div style="font-size:13px;font-weight:700;color:var(--s-text-primary);margin-bottom:5px;">' + a.icon + ' ' + a.title + '</div>' +
+    '<div style="font-size:12px;color:' + a.colour + ';font-weight:500;">' + a.body + '</div>' +
+    (a.action ? '<div style="font-size:11px;color:' + a.colour + ';font-weight:600;margin-top:6px;">View trainer →</div>' : '') +
+    '</div>'
+  ).join('');
 }
 
-function getFilteredData() {
-  const search = (document.getElementById('bookingSearch')?.value || '').toLowerCase();
-  const fStatus = document.getElementById('filterStatus')?.value || '';
-  const fTrainer = document.getElementById('filterTrainer')?.value || '';
-  const fOption = document.getElementById('filterOption')?.value || '';
-  const fFrom = document.getElementById('filterDateFrom')?.value || '';
-  const fTo = document.getElementById('filterDateTo')?.value || '';
-  return allData.filter(r => {
-    const company = getCompanyName(r);
-    if(search && !company.toLowerCase().includes(search) && !r.contact.toLowerCase().includes(search)) return false;
-    if(fStatus && r.status !== fStatus) return false;
-    if(fTrainer && r.trainer !== fTrainer) return false;
-    if(fOption && r.trainingOption !== fOption) return false;
-    if(fFrom && r.bookedOn && r.bookedOn.toISOString().split('T')[0] < fFrom) return false;
-    if(fTo && r.bookedOn && r.bookedOn.toISOString().split('T')[0] > fTo) return false;
-    return true;
-  });
+// ===================== REFERRAL PERFORMANCE TOOL =====================
+let _referralSort = 'count';
+let _referralPreset = 'all';
+
+function setReferralSort(sort) {
+  _referralSort = sort;
+  document.querySelectorAll('.ref-sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sort));
+  renderReferralLeaderboard();
 }
 
-function getCompanyName(r) {
-  return r.company || r.contact || '(Unknown)';
+function setReferralPreset(preset) {
+  _referralPreset = preset;
+  document.querySelectorAll('.ref-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === preset));
+  const customRange = document.getElementById('referralCustomRange');
+  if(customRange) customRange.style.display = preset === 'custom' ? 'flex' : 'none';
+  renderReferralLeaderboard();
 }
 
-function resetPageAndRender() {
-  upcomingPage = 1; completedPage = 1;
-  renderUpcomingBookings();
-  renderCompletedBookings();
-}
-
-function clearBookingFilters() {
-  ['bookingSearch','filterStatus','filterTrainer','filterOption','filterDateFrom','filterDateTo'].forEach(id => {
-    const el = document.getElementById(id); if(el) el.value = '';
-  });
-  resetPageAndRender();
-}
-
-function populateFilterDropdowns() {
-  const trainerSel = document.getElementById('filterTrainer');
-  if(trainerSel) {
-    const current = trainerSel.value;
-    trainerSel.innerHTML = '<option value="">All Trainers</option>';
-    const names = [...new Set(allData.map(r => r.trainer).filter(Boolean))].sort();
-    names.forEach(n => trainerSel.innerHTML += `<option value="${n}">${n}</option>`);
-    trainerSel.value = current;
+function getReferralDateRange() {
+  const now = new Date(); now.setHours(23,59,59,999);
+  let from = null, to = now;
+  if(_referralPreset === '7d') { from = new Date(); from.setDate(from.getDate()-7); from.setHours(0,0,0,0); }
+  else if(_referralPreset === 'month') { from = new Date(now.getFullYear(), now.getMonth(), 1); }
+  else if(_referralPreset === 'quarter') { const qm = Math.floor(now.getMonth()/3)*3; from = new Date(now.getFullYear(), qm, 1); }
+  else if(_referralPreset === 'custom') {
+    const fv = document.getElementById('referralGlobalDateFrom') ? document.getElementById('referralGlobalDateFrom').value : '';
+    const tv = document.getElementById('referralGlobalDateTo') ? document.getElementById('referralGlobalDateTo').value : '';
+    if(fv) { from = new Date(fv); from.setHours(0,0,0,0); }
+    if(tv) { to = new Date(tv); to.setHours(23,59,59,999); }
   }
+  return { from: from, to: to };
 }
 
-// ===================== COMPANY NAME / CELL =====================
-function companyCell(r) {
-  const name = getCompanyName(r);
-  return `<span class="company-link" onclick='openProfileSidebar(${r._idx})'>${escHtml(name)}</span>`;
+function clearReferralGlobalFilters() {
+  _referralPreset = 'all'; _referralSort = 'count';
+  document.querySelectorAll('.ref-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === 'all'));
+  document.querySelectorAll('.ref-sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'count'));
+  const cr = document.getElementById('referralCustomRange'); if(cr) cr.style.display = 'none';
+  const df = document.getElementById('referralGlobalDateFrom'); if(df) df.value = '';
+  const dt = document.getElementById('referralGlobalDateTo'); if(dt) dt.value = '';
+  const ns = document.getElementById('referralNameSearch'); if(ns) ns.value = '';
+  const gs = document.getElementById('referralGlobalStatus'); if(gs) gs.value = '';
+  renderReferralLeaderboard();
 }
 
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function fmtDate(d) {
-  if(!d) return '—';
-  const dt = d instanceof Date ? d : new Date(d);
-  if(isNaN(dt.getTime())) return '—';
-  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-}
-
-function fmtMoney(v) {
-  if(v === null || v === undefined || isNaN(v)) return '—';
-  return '£' + Math.round(Number(v)).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0});
-}
-
-const TRAINING_OPTIONS = {
-  'Face-to-Face Training':          { short: 'Face-to-Face',   cls: 'opt-1' },
-  'Online Training / Refresher':    { short: 'Online',         cls: 'opt-5' },
-  'Street Hosted Training Event':   { short: 'HQ Event',       cls: 'opt-4' },
-  'Not Sure – Help Me Choose':      { short: 'Help me choose', cls: '' },
-};
-
-function optionBadge(opt) {
-  const raw = (opt || '').trim();
-  if(!raw) return `<span class="option-badge" style="background:#f3f4f6;color:#888;">N/A</span>`;
-  // Exact match first
-  if(TRAINING_OPTIONS[raw]) {
-    const { short, cls } = TRAINING_OPTIONS[raw];
-    return `<span class="option-badge ${cls}" title="${escHtml(raw)}">${escHtml(short)}</span>`;
-  }
-  // Legacy numeric (Option 1–5) — map to short label
-  const n = raw.replace(/[^0-9]/g, '');
-  const byIndex = Object.values(TRAINING_OPTIONS)[parseInt(n) - 1];
-  if(n && byIndex) {
-    return `<span class="option-badge opt-${n}" title="${escHtml(byIndex.short)}">${escHtml(byIndex.short)}</span>`;
-  }
-  // Fallback: show the raw value truncated
-  const display = raw.length > 22 ? raw.slice(0, 20) + '…' : raw;
-  return `<span class="option-badge" style="background:#f3f4f6;color:#555;" title="${escHtml(raw)}">${escHtml(display)}</span>`;
-}
-
-function statusBadge(s) {
-  const cls = {Unassigned:'status-unassigned',Pending:'status-pending',Booked:'status-booked',Cancelled:'status-cancelled'}[s] || '';
-  return `<span class="status-badge ${cls}">${escHtml(s)}</span>`;
-}
-
-function trainerPill(name) {
-  if(!name) return '<span style="color:var(--text--dark--20);font-size:11px;">Unassigned</span>';
-  const t = trainers.find(u => u.name === name);
-  const color = t ? t.color : '#888';
-  return `<span class="trainer-pill" style="background:${color}22;color:${color};">${escHtml(name)}</span>`;
-}
-
-function staleBadge(r) {
-  if(!r.ts) return '';
-  const days = Math.floor((Date.now() - r.ts) / 86400000);
-  if(days < STALE_DAYS) return '';
-  return `<span class="stale-badge">⏱ ${days}d</span>`;
-}
-
-// ===================== TRAINER WORKLOAD =====================
-// ===================== TRAINER METADATA (sheet-backed) =====================
-// Stored in "Progress Notes" sheet using rowRef="__TRAINER_META__", record=trainerName
-// section="TrainerMeta", text=JSON blob
-// localStorage is used as a fast cache only — sheet is the source of truth.
-
-const TRAINER_META = {};
-const TRAINER_META_ROW_REF = '__TRAINER_META__';
-const TRAINER_META_SECTION = 'TrainerMeta';
-
-function getTrainerMeta(name) {
-  if(!TRAINER_META[name]) TRAINER_META[name] = { capacity: 1, skills: [], shadowing: false, managerNotes: '', notes: [], goals: { revenueTarget: 0, sessionTarget: 10 } };
-  return TRAINER_META[name];
-}
-
-function saveTrainerMeta(name, updates) {
-  const m = getTrainerMeta(name);
-  Object.assign(m, updates);
-  // Write to localStorage as fast cache
-  try { localStorage.setItem('trainerMeta_' + name, JSON.stringify(m)); } catch(e) {}
-  // Persist to sheet via saveNote (async, fire-and-forget)
-  _saveTrainerMetaToSheet(name, m);
-}
-
-async function _saveTrainerMetaToSheet(name, meta) {
-  if(!SCRIPT_URL) return;
-  try {
-    const params = new URLSearchParams({
-      action:  'saveNote',
-      rowRef:  TRAINER_META_ROW_REF,
-      record:  name,
-      section: TRAINER_META_SECTION,
-      text:    JSON.stringify(meta),
-      author:  currentUser?.name || 'System',
-      userRole: currentUser?.role || '',
-      ts:      new Date().toISOString(),
-    });
-    const res = await fetch(SCRIPT_URL + '?' + params.toString(), { method:'GET', redirect:'follow' });
-    const json = await res.json();
-    if(!json.success) console.warn('[TrainerMeta] Sheet save failed for', name, json.error);
-  } catch(e) {
-    console.warn('[TrainerMeta] Sheet save error for', name, e.message);
-  }
-}
-
-// Called during loadData — loads trainer metadata from the sheet into TRAINER_META.
-// Uses localStorage as a fast fallback while sheet loads.
-async function loadTrainerMetaFromSheet() {
-  // First: hydrate from localStorage cache so UI is instant
-  try {
-    Object.keys(localStorage).filter(k => k.startsWith('trainerMeta_')).forEach(k => {
-      const name = k.replace('trainerMeta_', '');
-      if(!TRAINER_META[name]) TRAINER_META[name] = JSON.parse(localStorage.getItem(k));
-    });
-  } catch(e) {}
-
-  // Then: fetch authoritative data from sheet and overwrite
-  if(!SCRIPT_URL) return;
-  try {
-    const res = await fetch(SCRIPT_URL + '?action=getNotes&t=' + Date.now(), { method:'GET', redirect:'follow' });
-    const json = await res.json();
-    if(!json.success || !json.notes) return;
-
-    // Notes keyed by rowRef — we want rowRef = '__TRAINER_META__'
-    const metaNotes = json.notes[TRAINER_META_ROW_REF] || [];
-    if(!metaNotes.length) return;
-
-    // Group by record (trainer name) — take the most recent entry per trainer
-    const byTrainer = {};
-    metaNotes.forEach(n => {
-      if(n.section !== TRAINER_META_SECTION) return;
-      const trainerName = n.record;
-      if(!trainerName) return;
-      // Keep most recent (notes are appended, so last wins)
-      byTrainer[trainerName] = n;
-    });
-
-    Object.entries(byTrainer).forEach(([name, note]) => {
-      try {
-        const parsed = JSON.parse(note.text);
-        TRAINER_META[name] = parsed;
-        // Update local cache too
-        localStorage.setItem('trainerMeta_' + name, JSON.stringify(parsed));
-      } catch(e) {
-        console.warn('[TrainerMeta] Could not parse meta for', name, e.message);
-      }
-    });
-
-    console.log('[TrainerMeta] Loaded from sheet for:', Object.keys(byTrainer).join(', ') || 'none yet');
-  } catch(e) {
-    console.warn('[TrainerMeta] Sheet load error:', e.message);
-  }
-}
-
-// ===================== INSIGHTS TOGGLE =====================
-function toggleInsights() {
-  const content = document.getElementById('insightsContent');
-  const icon = document.getElementById('insightsToggleIcon');
-  const label = document.getElementById('insightsToggleLabel');
-  const btn = document.getElementById('insightsToggleBtn');
-  const isHidden = content.style.display === 'none';
-  content.style.display = isHidden ? '' : 'none';
-  icon.textContent = isHidden ? '▼' : '▶';
-  label.textContent = isHidden ? 'Hide Insights' : 'Show Insights';
-  btn.style.background = isHidden ? 'var(--s-lavender)' : '#fff';
-}
-
-function renderTrainerWorkload() {
-  const grid = document.getElementById('trainerGrid');
-  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
-  if(!trainerUsers.length) { grid.innerHTML = '<div style="padding:16px;color:var(--text--dark--30);">No trainers found.</div>'; return; }
-  const today = new Date(); today.setHours(0,0,0,0);
-  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
-
-  // Pre-calculate all utilisations to find the most available trainer
-  const trainerStats = trainerUsers.map((t, idx) => {
-    const meta = getTrainerMeta(t.name);
-    const booked = allData.filter(r => r.trainer === t.name && r.status === 'Booked');
-    const last30 = booked.filter(r => r.bookedOn && r.bookedOn >= y30 && r.bookedOn <= today);
-    const upcoming = booked.filter(r => r.bookedOn && r.bookedOn > today);
-    const CAPACITY_30D = (meta.capacity || 1) * 4.3;
-    const utilisationPct = Math.min(100, Math.round((last30.length / Math.max(CAPACITY_30D, 1)) * 100));
-    return { t, idx, meta, last30, upcoming, utilisationPct };
-  });
-  // The most available trainer = lowest utilisation among those not over capacity
-  const available = trainerStats.filter(s => s.utilisationPct < 85);
-  const mostAvailable = available.length ? available.reduce((a, b) => a.utilisationPct <= b.utilisationPct ? a : b) : null;
-
-  let html = '';
-  trainerStats.forEach(({ t, idx, meta, last30, upcoming, utilisationPct }) => {
-    const sessionsLast30 = last30.length;
-    const sessionsUpcoming = upcoming.length;
-    let utilColour, utilLabel, statusDot;
-    if(utilisationPct >= 90)      { utilColour = '#DC2F4B'; utilLabel = 'Over capacity'; statusDot = '🔴'; }
-    else if(utilisationPct >= 60) { utilColour = '#0FA976'; utilLabel = 'Optimal'; statusDot = '🟢'; }
-    else if(utilisationPct >= 30) { utilColour = '#D97706'; utilLabel = 'Under-utilised'; statusDot = '🟠'; }
-    else                           { utilColour = '#A8ADCA'; utilLabel = 'Low'; statusDot = '⚪'; }
-    const color = t.color || TRAINER_COLORS[idx % TRAINER_COLORS.length];
-    const nextFree = getNextFreeDate(t.name);
-    const nextFreeHtml = nextFree ? `<div class="next-free-tag">${nextFree}</div>` : `<div class="next-free-tag busy">No free slots in 90 days</div>`;
-    // Skill tags
-    const skillTags = (meta.skills || []).map(s => `<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;margin:1px;">${s}</span>`).join('');
-    const shadowingBadge = meta.shadowing ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;background:#f0f0ff;color:#5B4BE7;border-radius:4px;border:1px solid #C8CCFF;margin-left:4px;">👀 Shadowing</span>` : '';
-    const revLast30 = last30.reduce((s,r) => s+(r.invoiceValue||0), 0);
-    const canViewProfile = canDo('viewTrainerProfile');
-    const cardClick = canViewProfile ? ' onclick="openTrainerProfile(\'' + escHtml(t.name) + '\')"' : '';
-    const cardCursor = canViewProfile ? 'pointer' : 'default';
-    const profileHint = canViewProfile ? '<div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>' : '';
-
-    // Risk / availability badges
-    let riskBadge = '';
-    let availBadge = '';
-    if(utilisationPct >= 85) {
-      riskBadge = `<div style="margin-top:8px;padding:5px 9px;background:#FFF0F0;border:1px solid #FECACA;border-radius:6px;font-size:11px;font-weight:600;color:#DC2F4B;display:flex;align-items:center;gap:5px;">⚠️ Near/over capacity — assign with caution</div>`;
-    }
-    if(mostAvailable && mostAvailable.t.name === t.name && trainerUsers.length > 1) {
-      availBadge = `<div style="margin-top:6px;padding:5px 9px;background:#E8F9F3;border:1px solid #6EE7B7;border-radius:6px;font-size:11px;font-weight:700;color:#065F46;display:flex;align-items:center;gap:5px;">✓ Best availability — recommend for next assignment</div>`;
-    }
-
-    // Card border highlight
-    let cardBorderStyle = '';
-    if(utilisationPct >= 85) cardBorderStyle = 'border-color:#FECACA;';
-    else if(mostAvailable && mostAvailable.t.name === t.name && trainerUsers.length > 1) cardBorderStyle = 'border-color:#6EE7B7;';
-
-    html += `<div class="trainer-card" style="cursor:${cardCursor};${cardBorderStyle}" data-trainer="${escHtml(t.name)}"${cardClick}>
-      <div class="trainer-name">
-        <div class="trainer-color-dot" style="background:${color};"></div>
-        ${escHtml(t.name)}
-        <span style="margin-left:auto;font-size:13px;">${statusDot}</span>
-        ${shadowingBadge}
-      </div>
-      ${skillTags ? `<div style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:2px;">${skillTags}</div>` : ''}
-      <div class="trainer-stat"><span>Sessions Last 30 Days</span><span class="trainer-stat-val">${sessionsLast30}</span></div>
-      <div class="trainer-stat"><span>Upcoming Sessions</span><span class="trainer-stat-val">${sessionsUpcoming}</span></div>
-      <div class="trainer-stat"><span>Revenue Last 30d</span><span class="trainer-stat-val">${fmtMoney(revLast30)}</span></div>
-      <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
-      <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
-      ${riskBadge}
-      ${availBadge}
-      ${nextFreeHtml}
-      ${profileHint}
-    </div>`;
-  });
-  grid.innerHTML = html;
-}
-
-// Returns the last working day strictly before `date`
-function prevWorkingDay(date) {
-  const d = new Date(date);
-  do { d.setDate(d.getDate() - 1); } while (!isWorkingDay(d));
-  return d;
-}
-
-// Returns the first working day strictly after `date`
-function nextWorkingDay(date) {
-  const d = new Date(date);
-  do { d.setDate(d.getDate() + 1); } while (!isWorkingDay(d));
-  return d;
-}
-
-function getNextFreeDate(trainerName) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const earliest = addWorkingDays(today, 14);
-  const booked = allData.filter(r => r.trainer === trainerName && r.status === 'Booked' && r.bookedOn);
-  const busyDates = new Set();
-
-  booked.forEach(r => {
-    const start = new Date(r.bookedOn); start.setHours(0,0,0,0);
-    const days = r.trainingDays || 1;
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + i);
-      busyDates.add(d.toISOString().split('T')[0]);
-    }
-    const travel = prevWorkingDay(start);
-    busyDates.add(travel.toISOString().split('T')[0]);
-    const trainingEnd = new Date(start); trainingEnd.setDate(trainingEnd.getDate() + days - 1);
-    const admin = nextWorkingDay(trainingEnd);
-    busyDates.add(admin.toISOString().split('T')[0]);
-  });
-
-  // Also treat leave days as busy
-  const leaveDates = getTrainerLeaveDates(trainerName);
-  leaveDates.forEach(iso => busyDates.add(iso));
-
-  for (let i = 0; i < 90; i++) {
-    const d = new Date(earliest); d.setDate(d.getDate() + i);
-    if (!isWorkingDay(d)) continue;
-    if (!busyDates.has(d.toISOString().split('T')[0])) return 'Next free: ' + fmtDate(d);
-  }
-  return null;
-}
-
-// ===================== TRAINER SUGGESTION (round-robin by workload) =====================
-// Returns the trainer object with the fewest upcoming booked training days.
-// Ties are broken by the order trainers appear in the list (stable round-robin).
-// Returns trainers sorted by ascending upcoming workload (fewest days first).
-// Ties are broken by list order for stability.
-function trainersByWorkload() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const eligible = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
-  const load = {};
-  eligible.forEach(t => { load[t.name] = 0; });
-  allData.forEach(r => {
-    if (r.status !== 'Booked' || !r.bookedOn || r.bookedOn < today) return;
-    if (load[r.trainer] !== undefined) load[r.trainer] += (r.trainingDays || 1);
-  });
-  return [...eligible].sort((a, b) => load[a.name] - load[b.name]);
-}
-
-// Round-robin suggestion: position 0 → lightest load, 1 → second lightest, etc.
-// Cycles back if there are more unassigned requests than trainers.
-function suggestTrainer(position = 0) {
-  const ranked = trainersByWorkload();
-  if (!ranked.length) return null;
-  return ranked[position % ranked.length];
-}
-
-// ===================== UNASSIGNED =====================
-function renderUnassigned() {
-  const rows = allData.filter(r => r.status === 'Unassigned');
-  const badge = document.getElementById('unassignedBadge');
-  const dot = document.getElementById('unassignedDot');
-  badge.textContent = rows.length;
-  dot.style.display = rows.length ? 'block' : 'none';
-  const tbody = document.getElementById('unassignedBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
-  const today = new Date(); today.setHours(0,0,0,0);
-  tbody.innerHTML = rows.map((r, rowPos) => {
-    const suggested = suggestTrainer(rowPos);
-    const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
-    const isStale = r.ts && (Date.now() - r.ts) >= STALE_DAYS*86400000;
-    const suggColor = suggested ? (suggested.color || '#5B4BE7') : '#5B4BE7';
-    const suggChip = suggested
-      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:${suggColor}18;color:${suggColor};border:1px solid ${suggColor}33;">💡 ${escHtml(suggested.name)}</span>`
-      : '';
-    const skippedFlags = skippedFlagHtml(r);
-    return `<tr class="${isStale?'row-stale':''}">
-      <td>${fmtDate(r.ts)} ${staleBadge(r)}</td>
-      <td>${companyCell(r)}</td>
-      <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
-      <td>${optionBadge(r.trainingOption)}</td>
-      <td>${pref}</td>
-      <td>${skippedFlags ? skippedFlags : suggChip}</td>
-      <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
-        ${canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
-        ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#C8CCFF;color:#5B4BE7;">📄 Doc</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-// ===================== ACTION NEEDED =====================
-function renderActionNeeded() {
-  const rows = allData.filter(r => r.status === 'Pending');
-  const badge = document.getElementById('actionBadge');
-  const dot = document.getElementById('actionDot');
-  badge.textContent = rows.length;
-  dot.style.display = rows.length ? 'block' : 'none';
-  const tbody = document.getElementById('actionBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => {
-    const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
-    return `<tr>
-      <td>${fmtDate(r.ts)}</td>
-      <td>${companyCell(r)}</td>
-      <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
-      <td>${optionBadge(r.trainingOption)}</td>
-      <td>${pref}</td>
-      <td>${trainerPill(r.trainer)}</td>
-      <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
-        ${canDo('confirmBooking') ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm Booking</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="openProvisionalModal(${r._idx})" title="Set a provisional discussion date" style="border-color:#f59e0b;color:#92400e;">📅 ${provisionalDates[r._rowNum] ? '<span style="font-weight:700;">'+provisionalDates[r._rowNum].date+'</span>' : 'Provisional'}</button>
-        ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#C8CCFF;color:#5B4BE7;">📄 Doc</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-// ===================== BOOKINGS TABLES =====================
-function isUpcoming(r) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  if(r.status === 'Cancelled') return false;
-  if(r.status === 'Booked' && r.bookedOn && r.bookedOn < today) return false;
-  return true;
-}
-
-function isCompleted(r) { return !isUpcoming(r); }
-
-function bookingTableHead() {
-  return `<th class="sortable" onclick="sortBookings('ts')">Submitted <span class="sort-icon">↕</span></th>
-    <th class="sortable" onclick="sortBookings('company')">Company <span class="sort-icon">↕</span></th>
-    <th>Contact</th>
-    <th class="sortable" onclick="sortBookings('trainingOption')">Type <span class="sort-icon">↕</span></th>
-    <th class="sortable" onclick="sortBookings('bookedOn')">Booked Date <span class="sort-icon">↕</span></th>
-    <th class="sortable" onclick="sortBookings('trainer')">Trainer <span class="sort-icon">↕</span></th>
-    <th class="sortable" onclick="sortBookings('invoiceValue')">Value <span class="sort-icon">↕</span></th>
-    <th>Status</th>
-    <th>Actions</th>`;
-}
-
-function renderUpcomingBookings() {
-  const filtered = getFilteredData().filter(isUpcoming);
-  document.getElementById('upcomingBadge').textContent = filtered.length;
-  const sorted = sortData(filtered);
-  const total = sorted.length;
-  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
-  upcomingPage = Math.min(upcomingPage, pages);
-  const slice = sorted.slice((upcomingPage-1)*PAGE_SIZE, upcomingPage*PAGE_SIZE);
-  document.getElementById('upcomingBookingsHead').innerHTML = bookingTableHead();
-  const tbody = document.getElementById('upcomingBookingsBody');
-  if(!slice.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No upcoming bookings match your filters</div></div></td></tr>'; }
-  else tbody.innerHTML = slice.map(r => bookingRow(r)).join('');
-  const pg = document.getElementById('upcomingPagination');
-  if(total > PAGE_SIZE) {
-    pg.style.display = 'flex';
-    document.getElementById('upcomingPageInfo').textContent = `Page ${upcomingPage} of ${pages}`;
-    document.getElementById('upcomingPrevBtn').disabled = upcomingPage <= 1;
-    document.getElementById('upcomingNextBtn').disabled = upcomingPage >= pages;
-    document.getElementById('upcomingRowCount').textContent = `${total} bookings`;
-  } else { pg.style.display = 'none'; }
-}
-
-function renderCompletedBookings() {
-  const filtered = getFilteredData().filter(isCompleted);
-  document.getElementById('completedBadge').textContent = filtered.length;
-  const sorted = sortData(filtered);
-  const total = sorted.length;
-  const pages = Math.max(1, Math.ceil(total/PAGE_SIZE));
-  completedPage = Math.min(completedPage, pages);
-  const slice = sorted.slice((completedPage-1)*PAGE_SIZE, completedPage*PAGE_SIZE);
-  document.getElementById('completedBookingsHead').innerHTML = bookingTableHead();
-  const tbody = document.getElementById('completedBookingsBody');
-  if(!slice.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No completed bookings match your filters</div></div></td></tr>'; }
-  else tbody.innerHTML = slice.map(r => bookingRow(r)).join('');
-  const pg = document.getElementById('completedPagination');
-  if(total > PAGE_SIZE) {
-    pg.style.display = 'flex';
-    document.getElementById('completedPageInfo').textContent = `Page ${completedPage} of ${pages}`;
-    document.getElementById('completedPrevBtn').disabled = completedPage <= 1;
-    document.getElementById('completedNextBtn').disabled = completedPage >= pages;
-    document.getElementById('completedRowCount').textContent = `${total} bookings`;
-  } else { pg.style.display = 'none'; }
-}
-
-function bookingRow(r) {
-  const completed = isCompleted(r); // past-dated Booked, or any Cancelled
-  const actions = [];
-  // Edit: allowed on Booked rows if user has editBooking permission
-  if(canDo('editBooking') && r.status === 'Booked') actions.push(`<button class="btn btn-edit btn-sm" onclick="openEditBookingModal(${r._idx})">✎ Edit</button>`);
-  // Confirm: upcoming Pending/Unassigned
-  if(canDo('confirmBooking') && (r.status === 'Pending' || r.status === 'Unassigned')) actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
-  // Cancel: only on upcoming non-Cancelled rows
-  if(canDo('cancelBooking') && !completed && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
-  // Doc generator: always visible
-  actions.push(`<button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#C8CCFF;color:#5B4BE7;">📄 Doc</button>`);
-  return `<tr>
-    <td>${fmtDate(r.ts)}</td>
-    <td>${companyCell(r)}</td>
-    <td style="font-size:11px;">${escHtml(r.contact)}</td>
-    <td>${optionBadge(r.trainingOption)}</td>
-    <td>${fmtDate(r.bookedOn)}</td>
-    <td>${trainerPill(r.trainer)}</td>
-    <td>${r.invoiceValue !== null ? fmtMoney(r.invoiceValue) : '—'}</td>
-    <td>${statusBadge(r.status)}</td>
-    <td style="display:flex;gap:5px;flex-wrap:wrap;">${actions.join('')}</td>
-  </tr>`;
-}
-
-function sortBookings(col) {
-  if(sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
-  renderUpcomingBookings(); renderCompletedBookings();
-}
-
-function sortData(rows) {
-  if(!sortCol) return rows;
-  return [...rows].sort((a, b) => {
-    let av, bv;
-    if(sortCol === 'company') { av = getCompanyName(a).toLowerCase(); bv = getCompanyName(b).toLowerCase(); }
-    else if(sortCol === 'ts') { av = a.ts?.getTime()||0; bv = b.ts?.getTime()||0; }
-    else if(sortCol === 'bookedOn') { av = a.bookedOn?.getTime()||0; bv = b.bookedOn?.getTime()||0; }
-    else if(sortCol === 'invoiceValue') { av = a.invoiceValue||0; bv = b.invoiceValue||0; }
-    else { av = String(a[sortCol]||'').toLowerCase(); bv = String(b[sortCol]||'').toLowerCase(); }
-    return av < bv ? -sortDir : av > bv ? sortDir : 0;
-  });
-}
-
-function changeUpcomingPage(d) { upcomingPage += d; renderUpcomingBookings(); }
-function changeCompletedPage(d) { completedPage += d; renderCompletedBookings(); }
-
-// ===================== KPIs =====================
-function renderKpis() {
-  const now = new Date();
-  const yr = now.getFullYear();
-  const mon = now.getMonth();
-  const lastMon = mon === 0 ? 11 : mon - 1;
-  const lastMonYr = mon === 0 ? yr - 1 : yr;
-  const booked = allData.filter(r => r.status === 'Booked');
-  const thisYear = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr);
-  const thisMonth = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon);
-  const lastMonth = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === lastMonYr && r.bookedOn.getMonth() === lastMon);
-  const prevYear = booked.filter(r => r.bookedOn && r.bookedOn.getFullYear() === yr - 1);
-
-  const revYear = thisYear.reduce((s,r) => s + (r.invoiceValue||0), 0);
-  const revMonth = thisMonth.reduce((s,r) => s + (r.invoiceValue||0), 0);
-  const revLastMonth = lastMonth.reduce((s,r) => s + (r.invoiceValue||0), 0);
-
-  // ── Fix #2: Avg Fee uses PAID sessions only (invoiceValue > 0) ──
-  const paidYearSessions = thisYear.filter(s => s.invoiceValue > 0);
-  const avgFee = paidYearSessions.length ? paidYearSessions.reduce((s,r) => s+(r.invoiceValue||0),0) / paidYearSessions.length : 0;
-  const freeYearCount = thisYear.length - paidYearSessions.length;
-  const freePct = thisYear.length ? Math.round((freeYearCount/thisYear.length)*100) : 0;
-
-  // ── Fix #1: Session counts (not days) ──
-  const sessionsYear = thisYear.length;
-  const sessionsMonth = thisMonth.length;
-  const sessionsLastMonth = lastMonth.length;
-
-  // Avg sessions per trainer (year)
-  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
-  const avgSessionsPerTrainer = trainerUsers.length ? (sessionsYear / trainerUsers.length).toFixed(1) : '—';
-
-  // Sessions per working day (this year, approximate)
-  const daysIntoYear = Math.ceil((now - new Date(yr,0,1)) / 86400000);
-  const workingDaysApprox = Math.round(daysIntoYear * 5/7);
-  const sessionsPerDay = workingDaysApprox > 0 ? (sessionsYear / workingDaysApprox).toFixed(2) : '—';
-
-  // Revenue per session (paid, this month)
-  const paidMonthSessions = thisMonth.filter(s => s.invoiceValue > 0);
-  const revPerSession = paidMonthSessions.length ? paidMonthSessions.reduce((s,r) => s+(r.invoiceValue||0),0) / paidMonthSessions.length : 0;
-
-  // Revenue leakage (£0 sessions this month)
-  const freeSessions = allData.filter(r =>
-    r.status === 'Booked' && r.bookedOn &&
-    r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon &&
-    (!r.invoiceValue || r.invoiceValue === 0)
-  );
-
-  // ── Update DOM ──
-  document.getElementById('kpiRevYear').textContent = fmtMoney(revYear);
-  document.getElementById('kpiRevMonth').textContent = fmtMoney(revMonth);
-  document.getElementById('kpiAvgFee').textContent = fmtMoney(avgFee);
-  document.getElementById('kpiFreeSessionsSub').textContent = freePct + '% free sessions this year · click for detail';
-  document.getElementById('kpiSessionsYear').textContent = sessionsYear;
-  document.getElementById('kpiSessionsMonthSub').textContent = sessionsMonth + ' this month · ' + sessionsLastMonth + ' last month';
-  document.getElementById('kpiAvgSessionsPerTrainer').textContent = avgSessionsPerTrainer;
-  document.getElementById('kpiSessionsPerDaySub').textContent = sessionsPerDay + ' sessions/day this year';
-  document.getElementById('kpiLeakage').textContent = freeSessions.length + ' sessions';
-  document.getElementById('kpiLeakageSub').textContent = freeSessions.length + ' £0 booked sessions this month';
-  document.getElementById('kpiRevPerSession').textContent = fmtMoney(revPerSession);
-  document.getElementById('kpiRevPerSessionSub').textContent = paidMonthSessions.length + ' paid sessions this month';
-
-  if(revLastMonth > 0) {
-    const delta = Math.round(((revMonth - revLastMonth) / revLastMonth) * 100);
-    const cls = delta >= 0 ? 'delta-up' : 'delta-down';
-    document.getElementById('kpiRevMonthDelta').innerHTML = `<span class="kpi-card-delta ${cls}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs last month</span>`;
-  }
-
-  const months = Array.from({length:12},(_,i) => i);
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const thisYrData = months.map(m => thisYear.filter(r => r.bookedOn.getMonth()===m).reduce((s,r) => s+(r.invoiceValue||0),0));
-  const prevYrData = months.map(m => prevYear.filter(r => r.bookedOn && r.bookedOn.getMonth()===m).reduce((s,r) => s+(r.invoiceValue||0),0));
-  const tmLabel = monthNames[mon] + ' ' + yr;
-  const lmLabel = monthNames[lastMon] + ' ' + lastMonYr;
-  document.getElementById('thisMonthLabel').textContent = tmLabel;
-  document.getElementById('lastMonthLabel').textContent = lmLabel;
-  document.getElementById('thisMonthRev').textContent = fmtMoney(revMonth);
-  document.getElementById('lastMonthRev').textContent = fmtMoney(revLastMonth);
-  const OPT_KEYS = Object.keys(TRAINING_OPTIONS);
-  const OPT_SHORTS = Object.values(TRAINING_OPTIONS).map(o => o.short);
-  const optCounts = OPT_KEYS.map(key => thisYear.filter(r => (r.trainingOption||'').trim() === key).length);
-  if(revenueChartInst) { revenueChartInst.destroy(); revenueChartInst = null; }
-  if(optionChartInst) { optionChartInst.destroy(); optionChartInst = null; }
-  const rc = document.getElementById('revenueChart');
-  if(rc) {
-    revenueChartInst = new Chart(rc, {
-      type:'bar',
-      data:{labels:monthNames,datasets:[{label:String(yr),data:thisYrData,backgroundColor:'rgba(91,75,231,0.75)',borderRadius:4},{label:String(yr-1),data:prevYrData,backgroundColor:'rgba(91,75,231,0.2)',borderRadius:4}]},
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:10}},tooltip:{callbacks:{label:ctx=>'£'+Math.round(ctx.raw).toLocaleString('en-GB')}}},
-        scales:{y:{ticks:{callback:v=>'£'+v.toLocaleString('en-GB')},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}},
-        onClick:(evt,elems)=>{
-          if(!elems.length) return;
-          const monthIdx = elems[0].index;
-          const datasetIdx = elems[0].datasetIndex;
-          const clickedYr = datasetIdx === 0 ? yr : yr-1;
-          openMonthDrillDown(monthIdx, clickedYr);
-        }
-      }
-    });
-    rc.style.cursor = 'pointer';
-    rc.title = 'Click a bar to drill into that month';
-  }
-  const oc = document.getElementById('optionChart');
-  if(oc) {
-    optionChartInst = new Chart(oc, {type:'doughnut',data:{labels:OPT_SHORTS,datasets:[{data:optCounts,backgroundColor:['#5B4BE7','#7B6FF5','#4A3BCF','#A99EFF','#3D30B5','#C8CCFF'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
-  }
-}
-
-// ===================== MONTH DRILL-DOWN =====================
-function openMonthDrillDown(monthIdx, yr) {
-  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var label = monthNames[monthIdx] + ' ' + yr;
-  var rows = allData.filter(function(r){ return r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===monthIdx; });
-  var revenue = rows.reduce(function(s,r){ return s+(r.invoiceValue||0); }, 0);
-  var paidRows = rows.filter(function(r){ return r.invoiceValue>0; });
-  var avgVal = paidRows.length ? revenue/paidRows.length : 0;
-  var byTrainer = {};
-  rows.forEach(function(r){
-    var t = r.trainer||'Unassigned';
-    if(!byTrainer[t]) byTrainer[t]={sessions:0,rev:0};
-    byTrainer[t].sessions++;
-    byTrainer[t].rev += r.invoiceValue||0;
-  });
-  var submitted = allData.filter(function(r){ return r.ts && r.ts.getFullYear()===yr && r.ts.getMonth()===monthIdx; });
-  var bookedFromSubmitted = submitted.filter(function(r){ return r.status==='Booked'; }).length;
-  var convPct = submitted.length ? Math.round((bookedFromSubmitted/submitted.length)*100) : 0;
-  var trainerRows = Object.entries(byTrainer).sort(function(a,b){ return b[1].rev-a[1].rev; });
-
-  // Pre-build trainer breakdown HTML (avoids nested template literals)
-  var trainerHtml = '';
-  if(trainerRows.length) {
-    trainerRows.forEach(function(entry){
-      var t = entry[0], d = entry[1];
-      var tObj = trainers.find(function(u){ return u.name===t; });
-      var color = (tObj && tObj.color) ? tObj.color : '#5B4BE7';
-      var pct = revenue > 0 ? Math.round((d.rev/revenue)*100) : 0;
-      var sessLabel = d.sessions !== 1 ? 'sessions' : 'session';
-      trainerHtml += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
-        + '<div style="width:28px;height:28px;border-radius:50%;background:' + color + '22;color:' + color + ';font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + escHtml(t.charAt(0)) + '</div>'
-        + '<div style="flex:1;min-width:0;">'
-        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
-        + '<span style="font-size:12px;font-weight:600;color:var(--s-text-primary);">' + escHtml(t) + '</span>'
-        + '<span style="font-size:12px;font-weight:700;color:' + color + ';">' + fmtMoney(d.rev) + ' &middot; ' + d.sessions + ' ' + sessLabel + '</span>'
-        + '</div>'
-        + '<div style="height:5px;background:var(--s-border);border-radius:3px;overflow:hidden;">'
-        + '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:3px;"></div>'
-        + '</div></div></div>';
-    });
-  } else {
-    trainerHtml = '<div style="color:var(--s-text-muted);font-size:12px;">No trainer data</div>';
-  }
-
-  // Pre-build client rows HTML
-  var clientHtml = '';
-  var sortedRows = rows.slice().sort(function(a,b){ return (b.invoiceValue||0)-(a.invoiceValue||0); });
-  sortedRows.forEach(function(r){
-    var valHtml = r.invoiceValue ? fmtMoney(r.invoiceValue) : '<span style="color:var(--s-red);">\u00a30</span>';
-    clientHtml += '<tr style="border-bottom:1px solid var(--s-border);">'
-      + '<td style="padding:8px 12px;font-weight:600;color:var(--s-text-primary);">' + escHtml(getCompanyName(r)) + '</td>'
-      + '<td style="padding:8px 12px;">' + trainerPill(r.trainer) + '</td>'
-      + '<td style="padding:8px 12px;">' + optionBadge(r.trainingOption) + '</td>'
-      + '<td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--s-purple);">' + valHtml + '</td>'
-      + '</tr>';
-  });
-
-  var overlay = document.getElementById('monthDrillOverlay');
-  var content = document.getElementById('monthDrillContent');
-  content.innerHTML = ''
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">'
-    + '<div><div style="font-size:17px;font-weight:700;color:var(--s-text-primary);">\uD83D\uDCCA ' + escHtml(label) + '</div>'
-    + '<div style="font-size:12px;color:var(--s-text-muted);margin-top:2px;">Monthly performance breakdown</div></div>'
-    + '<button onclick="document.getElementById(\'monthDrillOverlay\').classList.remove(\'open\')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--s-text-muted);padding:4px 8px;">\u2715</button>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">'
-    + '<div style="background:var(--s-lavender);border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-purple);margin-bottom:6px;">Revenue</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + fmtMoney(revenue) + '</div></div>'
-    + '<div style="background:#E8F9F3;border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-green);margin-bottom:6px;">Sessions</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + rows.length + '</div></div>'
-    + '<div style="background:#FEF3CD;border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-amber);margin-bottom:6px;">Avg Value</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + fmtMoney(avgVal) + '</div></div>'
-    + '<div style="background:#F5F0FF;border-radius:10px;padding:14px 16px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:#6D28D9;margin-bottom:6px;">Conversion</div><div style="font-size:22px;font-weight:700;color:var(--s-text-primary);">' + convPct + '%</div><div style="font-size:10px;color:var(--s-text-muted);">' + bookedFromSubmitted + '/' + submitted.length + ' requests</div></div>'
-    + '</div>'
-    + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Revenue by Trainer</div>'
-    + '<div style="margin-bottom:20px;">' + trainerHtml + '</div>'
-    + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">Clients Trained (' + rows.length + ')</div>'
-    + '<div style="max-height:220px;overflow-y:auto;border:1px solid var(--s-border);border-radius:8px;">'
-    + '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
-    + '<thead><tr style="background:var(--s-surface);">'
-    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Company</th>'
-    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Trainer</th>'
-    + '<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Type</th>'
-    + '<th style="padding:8px 12px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--s-text-muted);">Value</th>'
-    + '</tr></thead>'
-    + '<tbody>' + clientHtml + '</tbody>'
-    + '</table></div>';
-  overlay.classList.add('open');
-}
-
-function openKpiModal(type) {
-  var overlay = document.getElementById('kpiModalOverlay');
-  const title = document.getElementById('kpiModalTitle');
-  const sub = document.getElementById('kpiModalSubtitle');
-  const stats = document.getElementById('kpiStatGrid');
-  const thead = document.getElementById('kpiModalTableHead');
-  const tbody = document.getElementById('kpiModalTableBody');
-  overlay.classList.add('open');
-  const now = new Date(); const yr = now.getFullYear(); const mon = now.getMonth();
-  if(type === 'revYear') {
-    title.textContent = 'Revenue This Year — Booked Sessions';
-    sub.textContent = `All booked sessions in ${yr} with invoice values`;
-    const rows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.invoiceValue);
-    const total = rows.reduce((s,r) => s+(r.invoiceValue||0),0);
-    stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(total)}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Sessions</div><div class="kpi-stat-value">${rows.length}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Avg Fee</div><div class="kpi-stat-value">${rows.length?fmtMoney(total/rows.length):'—'}</div></div><div class="kpi-stat"><div class="kpi-stat-label">With Value</div><div class="kpi-stat-value">${rows.length}</div></div>`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Value</th></tr>';
-    tbody.innerHTML = rows.sort((a,b) => (b.invoiceValue||0)-(a.invoiceValue||0)).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;font-weight:600;">${fmtMoney(r.invoiceValue)}</td></tr>`).join('');
-  } else if(type === 'days') {
-    title.textContent = 'Training Days This Year';
-    const rows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr);
-    const total = rows.reduce((s,r) => s+(r.trainingDays||1),0);
-    stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">Total Days</div><div class="kpi-stat-value">${total}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Sessions</div><div class="kpi-stat-value">${rows.length}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Avg Days/Session</div><div class="kpi-stat-value">${rows.length?(total/rows.length).toFixed(1):'—'}</div></div><div class="kpi-stat"><div class="kpi-stat-label">Busiest Month</div><div class="kpi-stat-value">—</div></div>`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Days</th></tr>';
-    tbody.innerHTML = rows.sort((a,b) => (b.trainingDays||1)-(a.trainingDays||1)).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;font-weight:600;">${r.trainingDays||1}</td></tr>`).join('');
-  } else if(type === 'daysMonth') {
-    const lastMon2 = mon === 0 ? 11 : mon - 1;
-    const lastMonYr2 = mon === 0 ? yr - 1 : yr;
-    const monthNames2 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const tmRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon);
-    const lmRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === lastMonYr2 && r.bookedOn.getMonth() === lastMon2);
-    const tmDays = tmRows.reduce((s,r) => s+(r.trainingDays||1),0);
-    const lmDays = lmRows.reduce((s,r) => s+(r.trainingDays||1),0);
-    const delta = lmDays > 0 ? Math.round(((tmDays - lmDays) / lmDays) * 100) : null;
-    const deltaHtml = delta !== null ? `<div class="kpi-stat"><div class="kpi-stat-label">Change</div><div class="kpi-stat-value" style="color:${delta>=0?'#22a06b':'#c0303d'}">${delta>=0?'▲':'▼'} ${Math.abs(delta)}%</div></div>` : '';
-    title.textContent = 'Training Days — Month Comparison';
-    sub.textContent = `${monthNames2[mon]} ${yr} vs ${monthNames2[lastMon2]} ${lastMonYr2}`;
-    stats.innerHTML = `<div class="kpi-stat"><div class="kpi-stat-label">${monthNames2[mon]}</div><div class="kpi-stat-value">${tmDays} days</div></div><div class="kpi-stat"><div class="kpi-stat-label">${monthNames2[lastMon2]}</div><div class="kpi-stat-value">${lmDays} days</div></div>${deltaHtml}`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Days</th></tr>';
-    const allRows = [...tmRows.map(r => ({...r, _month: monthNames2[mon]})), ...lmRows.map(r => ({...r, _month: monthNames2[lastMon2]}))];
-    tbody.innerHTML = allRows.sort((a,b) => b.bookedOn - a.bookedOn).map(r => `<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td><td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td><td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td><td style="padding:8px 12px;">${escHtml(r._month)}</td><td style="padding:8px 12px;font-weight:600;">${r.trainingDays||1}</td></tr>`).join('');
-  } else if(type === 'revMonth') {
-    const monthNames3 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const lastMon3  = mon === 0 ? 11 : mon - 1;
-    const lastMonYr3 = mon === 0 ? yr - 1 : yr;
-    const thisMonRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.bookedOn.getMonth() === mon && r.invoiceValue);
-    const lastMonRows = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === lastMonYr3 && r.bookedOn.getMonth() === lastMon3 && r.invoiceValue);
-    const thisTotal = thisMonRows.reduce((s,r) => s+(r.invoiceValue||0),0);
-    const lastTotal = lastMonRows.reduce((s,r) => s+(r.invoiceValue||0),0);
-    const pctChange = lastTotal > 0 ? Math.round(((thisTotal - lastTotal)/lastTotal)*100) : null;
-    const changeHtml = pctChange !== null
-      ? `<div class="kpi-stat"><div class="kpi-stat-label">vs Last Month</div><div class="kpi-stat-value" style="color:${pctChange>=0?'#22a06b':'#c0303d'}">${pctChange>=0?'&#9650;':'&#9660;'} ${Math.abs(pctChange)}%</div></div>`
-      : '';
-    title.textContent = 'Revenue This Month — Booked Sessions';
-    sub.textContent = `${monthNames3[mon]} ${yr} vs ${monthNames3[lastMon3]} ${lastMonYr3}`;
-    stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">${monthNames3[mon]} Revenue</div><div class="kpi-stat-value">${fmtMoney(thisTotal)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">${monthNames3[lastMon3]} Revenue</div><div class="kpi-stat-value">${fmtMoney(lastTotal)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Sessions This Month</div><div class="kpi-stat-value">${thisMonRows.length}</div></div>
-      ${changeHtml}`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Value</th></tr>';
-    const allMonRows = [
-      ...thisMonRows.map(r => ({...r, _month: monthNames3[mon]})),
-      ...lastMonRows.map(r => ({...r, _month: monthNames3[lastMon3]}))
-    ];
-    tbody.innerHTML = allMonRows.sort((a,b) => b.bookedOn - a.bookedOn).map(r =>
-      `<tr style="border-bottom:1px solid #f3f4f6;">
-        <td style="padding:8px 12px;">${escHtml(getCompanyName(r))}</td>
-        <td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td>
-        <td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td>
-        <td style="padding:8px 12px;">${escHtml(r._month)}</td>
-        <td style="padding:8px 12px;font-weight:600;">${fmtMoney(r.invoiceValue)}</td>
-      </tr>`).join('');
-
-  } else if(type === 'avgFee') {
-    const monthNames4 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const bookedWithVal = allData.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn.getFullYear() === yr && r.invoiceValue);
-    const totalVal = bookedWithVal.reduce((s,r) => s+(r.invoiceValue||0), 0);
-    const avgFee   = bookedWithVal.length ? totalVal / bookedWithVal.length : 0;
-    // Per-trainer breakdown
-    const byTrainer = {};
-    bookedWithVal.forEach(r => {
-      const t = r.trainer || 'Unassigned';
-      if(!byTrainer[t]) byTrainer[t] = { total:0, count:0 };
-      byTrainer[t].total += r.invoiceValue||0;
-      byTrainer[t].count++;
-    });
-    const trainerRows = Object.entries(byTrainer)
-      .map(([t, d]) => ({ trainer:t, avg: d.total/d.count, count: d.count, total: d.total }))
-      .sort((a,b) => b.avg - a.avg);
-    // Per-month average
-    const byMonth = {};
-    bookedWithVal.forEach(r => {
-      const m = r.bookedOn.getMonth();
-      if(!byMonth[m]) byMonth[m] = { total:0, count:0 };
-      byMonth[m].total += r.invoiceValue||0;
-      byMonth[m].count++;
-    });
-    // Fix: use PAID sessions only for avg fee
-    const paidSessions = bookedWithVal.filter(r => r.invoiceValue > 0);
-    const paidAvgFee = paidSessions.length ? paidSessions.reduce((s,r) => s+(r.invoiceValue||0),0) / paidSessions.length : 0;
-    const freeSessionsYear = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && (!r.invoiceValue||r.invoiceValue===0));
-    const allBookedYear = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr);
-    const freePct = allBookedYear.length ? Math.round((freeSessionsYear.length/allBookedYear.length)*100) : 0;
-    title.textContent = 'Avg Fee (Paid Sessions Only) — ' + yr;
-    sub.textContent = `Based on ${paidSessions.length} paid session${paidSessions.length!==1?'s':''}. Excludes £0 sessions to avoid skew.`;
-    const highestFee = paidSessions.length ? Math.max(...paidSessions.map(r=>r.invoiceValue)) : 0;
-    const lowestFee  = paidSessions.length ? Math.min(...paidSessions.map(r=>r.invoiceValue)) : 0;
-    stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">Avg Fee (Paid Only)</div><div class="kpi-stat-value">${fmtMoney(paidAvgFee)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">% Free Sessions</div><div class="kpi-stat-value" style="color:var(--s-amber);">${freePct}%</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Highest Fee</div><div class="kpi-stat-value">${fmtMoney(highestFee)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(totalVal)}</div></div>`;
-    // Show per-trainer averages
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Total</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Avg Fee (Paid)</th></tr>';
-    tbody.innerHTML = trainerRows.map(r =>
-      `<tr style="border-bottom:1px solid #f3f4f6;">
-        <td style="padding:8px 12px;font-weight:600;">${escHtml(r.trainer)}</td>
-        <td style="padding:8px 12px;">${r.count}</td>
-        <td style="padding:8px 12px;">${fmtMoney(r.total)}</td>
-        <td style="padding:8px 12px;font-weight:700;color:var(--action-primary-blue);">${fmtMoney(r.avg)}</td>
-      </tr>`).join('');
-    if(!bookedWithVal.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No booked sessions with invoice values recorded yet.</td></tr>';
-    }
-
-  } else if(type === 'sessions') {
-    // Sessions delivered this year — monthly breakdown
-    const monthNames5 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    title.textContent = 'Sessions Delivered — ' + yr;
-    sub.textContent = 'All booked sessions by month';
-    const thisMon5 = now.getMonth();
-    const sessYr = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr);
-    const paidSessYr = sessYr.filter(r => r.invoiceValue > 0);
-    const freeSessYr = sessYr.filter(r => !r.invoiceValue || r.invoiceValue===0);
-    stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">Total Sessions</div><div class="kpi-stat-value">${sessYr.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Paid Sessions</div><div class="kpi-stat-value" style="color:var(--s-green);">${paidSessYr.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Free Sessions</div><div class="kpi-stat-value" style="color:var(--s-amber);">${freeSessYr.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">This Month</div><div class="kpi-stat-value">${sessYr.filter(r=>r.bookedOn.getMonth()===thisMon5).length}</div></div>`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Month</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Paid</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Revenue</th></tr>';
-    const monthData = Array.from({length:12},(_,m) => {
-      const mRows = sessYr.filter(r => r.bookedOn.getMonth()===m);
-      const paid = mRows.filter(r => r.invoiceValue>0);
-      return { m, label: monthNames5[m], total: mRows.length, paid: paid.length, rev: paid.reduce((s,r)=>s+(r.invoiceValue||0),0) };
-    }).filter(d => d.total > 0);
-    tbody.innerHTML = monthData.map(d =>
-      `<tr style="border-bottom:1px solid #f3f4f6;">
-        <td style="padding:8px 12px;font-weight:600;">${d.label} ${yr}</td>
-        <td style="padding:8px 12px;">${d.total}</td>
-        <td style="padding:8px 12px;color:var(--s-green);">${d.paid}</td>
-        <td style="padding:8px 12px;font-weight:600;">${fmtMoney(d.rev)}</td>
-      </tr>`).join('') || '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No sessions this year.</td></tr>';
-
-  } else if(type === 'sessionsByTrainer') {
-    title.textContent = 'Sessions per Trainer — ' + yr;
-    sub.textContent = 'Breakdown of delivered sessions and revenue by trainer';
-    const sessYr2 = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr);
-    const byT = {};
-    sessYr2.forEach(r => {
-      const t = r.trainer || 'Unassigned';
-      if(!byT[t]) byT[t] = { count:0, paid:0, rev:0 };
-      byT[t].count++;
-      if(r.invoiceValue>0) { byT[t].paid++; byT[t].rev += r.invoiceValue; }
-    });
-    const tRows = Object.entries(byT).sort((a,b) => b[1].count - a[1].count);
-    stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">Active Trainers</div><div class="kpi-stat-value">${tRows.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Total Sessions</div><div class="kpi-stat-value">${sessYr2.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Avg per Trainer</div><div class="kpi-stat-value">${tRows.length?(sessYr2.length/tRows.length).toFixed(1):'—'}</div></div>`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Sessions</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Paid</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Revenue</th></tr>';
-    tbody.innerHTML = tRows.map(([t, d]) =>
-      `<tr style="border-bottom:1px solid #f3f4f6;">
-        <td style="padding:8px 12px;font-weight:600;">${escHtml(t)}</td>
-        <td style="padding:8px 12px;">${d.count}</td>
-        <td style="padding:8px 12px;color:var(--s-green);">${d.paid}</td>
-        <td style="padding:8px 12px;font-weight:600;">${fmtMoney(d.rev)}</td>
-      </tr>`).join('') || '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No data.</td></tr>';
-
-  } else if(type === 'leakage') {
-    const monthNames6 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    title.textContent = '⚠️ Revenue Leakage — ' + monthNames6[now.getMonth()];
-    sub.textContent = '£0 and unvalued booked sessions this month — work not yet invoiced';
-    const mon6 = now.getMonth();
-    const freeSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon6 && (!r.invoiceValue||r.invoiceValue===0));
-    const allMon = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon6);
-    const leakPct = allMon.length ? Math.round((freeSess.length/allMon.length)*100) : 0;
-    stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">Free Sessions</div><div class="kpi-stat-value" style="color:var(--s-red);">${freeSess.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Total Sessions</div><div class="kpi-stat-value">${allMon.length}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">% Unvalued</div><div class="kpi-stat-value" style="color:var(--s-amber);">${leakPct}%</div></div>`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Invoice</th></tr>';
-    tbody.innerHTML = freeSess.length ? freeSess.map(r =>
-      `<tr style="border-bottom:1px solid #f3f4f6;background:#fffbf0;">
-        <td style="padding:8px 12px;font-weight:600;">${escHtml(getCompanyName(r))}</td>
-        <td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td>
-        <td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td>
-        <td style="padding:8px 12px;color:var(--s-red);font-weight:700;">£0</td>
-      </tr>`).join('')
-      : '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--s-green);font-weight:600;">✅ No revenue leakage this month</td></tr>';
-
-  } else if(type === 'revPerSession') {
-    const monthNames7 = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    title.textContent = 'Revenue per Session — ' + monthNames7[now.getMonth()];
-    sub.textContent = 'Paid sessions only this month — commercial view';
-    const mon7 = now.getMonth();
-    const paidMon = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon7 && r.invoiceValue>0);
-    const revMon7 = paidMon.reduce((s,r)=>s+(r.invoiceValue||0),0);
-    const rps = paidMon.length ? revMon7/paidMon.length : 0;
-    stats.innerHTML = `
-      <div class="kpi-stat"><div class="kpi-stat-label">Revenue/Session</div><div class="kpi-stat-value">${fmtMoney(rps)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Total Revenue</div><div class="kpi-stat-value">${fmtMoney(revMon7)}</div></div>
-      <div class="kpi-stat"><div class="kpi-stat-label">Paid Sessions</div><div class="kpi-stat-value">${paidMon.length}</div></div>`;
-    thead.innerHTML = '<tr><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Company</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Trainer</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Booked</th><th style="padding:8px 12px;font-size:11px;text-transform:uppercase;color:var(--text--dark--30);">Value</th></tr>';
-    tbody.innerHTML = paidMon.sort((a,b)=>(b.invoiceValue||0)-(a.invoiceValue||0)).map(r =>
-      `<tr style="border-bottom:1px solid #f3f4f6;">
-        <td style="padding:8px 12px;font-weight:600;">${escHtml(getCompanyName(r))}</td>
-        <td style="padding:8px 12px;">${escHtml(r.trainer||'—')}</td>
-        <td style="padding:8px 12px;">${fmtDate(r.bookedOn)}</td>
-        <td style="padding:8px 12px;font-weight:700;color:var(--s-purple);">${fmtMoney(r.invoiceValue)}</td>
-      </tr>`).join('') || '<tr><td colspan="4" style="padding:24px;text-align:center;color:var(--text--dark--30);">No paid sessions this month.</td></tr>';
-
-  } else {
-    stats.innerHTML = ''; thead.innerHTML = ''; tbody.innerHTML = '';
-  }
-}
-
-// ===================== SMART RECOMMENDATIONS =====================
-function renderSmartRecs() {
-  const grid = document.getElementById('smartRecsGrid');
-  if(!grid) return;
-  const now = new Date();
-  const yr = now.getFullYear();
-  const mon = now.getMonth();
-  const recs = [];
-
-  // 1. Trainer under capacity
-  const today = new Date(); today.setHours(0,0,0,0);
-  const y30 = new Date(today); y30.setDate(y30.getDate()-30);
-  const trainerUsers = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
-  trainerUsers.forEach(t => {
-    const meta = getTrainerMeta(t.name);
-    const CAPACITY_30D = (meta.capacity || 1) * 4.3; // sessions/week × 4.3 weeks
-    const last30 = allData.filter(r => r.trainer===t.name && r.status==='Booked' && r.bookedOn && r.bookedOn>=y30 && r.bookedOn<=today);
-    const pct = Math.round((last30.length/Math.max(CAPACITY_30D,0.1))*100);
-    if(pct < 40) {
-      recs.push({ type:'capacity', colour:'#2563EB', icon:'📉', title: escHtml(t.name) + ' is under capacity', body: `Only ${last30.length} sessions in the last 30 days (${pct}% utilisation). Consider assigning pending requests.`, action: null });
-    }
-  });
-
-  // 3. High % free sessions this month
-  const monSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===yr && r.bookedOn.getMonth()===mon);
-  const freeMon = monSess.filter(r => !r.invoiceValue || r.invoiceValue===0);
-  if(monSess.length > 0) {
-    const freePct = Math.round((freeMon.length/monSess.length)*100);
-    if(freePct >= 30) {
-      recs.push({ type:'leakage', colour:'#DC2F4B', icon:'💸', title: freePct + '% of sessions this month are £0', body: `${freeMon.length} of ${monSess.length} booked sessions have no invoice value. Review for revenue leakage.`, action: 'openKpiModal(\'leakage\')' });
-    }
-  }
-
-  // 4. Unassigned requests sitting for > 3 days
-  const oldUnassigned = allData.filter(r => r.status==='Unassigned' && r.ts && (Date.now()-r.ts)>3*86400000);
-  if(oldUnassigned.length) {
-    recs.push({ type:'unassigned', colour:'#DC2F4B', icon:'🚨', title: oldUnassigned.length + ' request' + (oldUnassigned.length>1?'s':'')+' unassigned for 3+ days', body: `These clients are waiting. Assign a trainer now to avoid losing the booking.`, action: null });
-  }
-
-  // 5. Revenue up/down significantly
-  const lastMonIdx = mon===0?11:mon-1;
-  const lastMonYr2 = mon===0?yr-1:yr;
-  const thisMonRev = monSess.reduce((s,r)=>s+(r.invoiceValue||0),0);
-  const lastMonSess = allData.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn.getFullYear()===lastMonYr2 && r.bookedOn.getMonth()===lastMonIdx);
-  const lastMonRev = lastMonSess.reduce((s,r)=>s+(r.invoiceValue||0),0);
-  if(lastMonRev > 0) {
-    const delta = Math.round(((thisMonRev-lastMonRev)/lastMonRev)*100);
-    if(delta <= -20) {
-      recs.push({ type:'revenue', colour:'#DC2F4B', icon:'📉', title: 'Revenue down ' + Math.abs(delta) + '% vs last month', body: `This month: ${fmtMoney(thisMonRev)} vs ${fmtMoney(lastMonRev)} last month. Investigate pipeline.`, action: 'openKpiModal(\'revMonth\')' });
-    } else if(delta >= 20) {
-      recs.push({ type:'revenue', colour:'#0FA976', icon:'📈', title: 'Revenue up ' + delta + '% vs last month 🎉', body: `This month: ${fmtMoney(thisMonRev)} vs ${fmtMoney(lastMonRev)} last month. Great work!`, action: 'openKpiModal(\'revMonth\')' });
-    }
-  }
-
-  if(!recs.length) {
-    grid.innerHTML = `<div style="padding:20px 24px;background:#fff;border:1px solid var(--s-border);border-radius:10px;font-size:13px;color:var(--s-text-muted);">✅ No alerts right now — everything looks healthy.</div>`;
-    return;
-  }
-
-  grid.innerHTML = recs.map(r => `
-    <div style="background:#fff;border:1px solid var(--s-border);border-left:4px solid ${r.colour};border-radius:10px;padding:16px 18px;cursor:${r.action?'pointer':'default'};"
-      ${r.action?`onclick="${r.action}"`:''}
-    >
-      <div style="font-size:13px;font-weight:700;color:var(--s-text-primary);margin-bottom:6px;">${r.icon} ${r.title}</div>
-      <div style="font-size:12px;color:var(--s-text-muted);line-height:1.5;">${r.body}</div>
-      ${r.action?`<div style="font-size:11px;color:${r.colour};font-weight:600;margin-top:8px;">View detail →</div>`:''}
-    </div>
-  `).join('');
-}
-
-// ===================== REFERRAL LEADERBOARD =====================
 function renderReferralLeaderboard() {
   const board = document.getElementById('referralLeaderboard');
+  const roiStrip = document.getElementById('referralRoiStrip');
+  const range = getReferralDateRange();
+  const from = range.from, to = range.to;
+  const nameSearch = (document.getElementById('referralNameSearch') ? document.getElementById('referralNameSearch').value : '').toLowerCase();
+  const statusFilter = document.getElementById('referralGlobalStatus') ? document.getElementById('referralGlobalStatus').value : '';
+
+  function inRange(r) {
+    if(!r.ts) return _referralPreset === 'all';
+    if(from && r.ts < from) return false;
+    if(to && r.ts > to) return false;
+    return true;
+  }
+
   const counts = {};
   allData.forEach(r => {
     if(!r.referredBy || !r.referredBy.name) return;
+    if(!inRange(r)) return;
+    if(statusFilter && r.status !== statusFilter) return;
     const key = r.referredBy.name;
-    if(!counts[key]) counts[key] = { name: r.referredBy.name, team: r.referredBy.team, count: 0, bookedCount: 0, bookedValue: 0 };
+    if(!counts[key]) counts[key] = { name: r.referredBy.name, team: r.referredBy.team, count: 0, bookedCount: 0, bookedValue: 0, cancelledCount: 0, pendingCount: 0 };
     counts[key].count++;
     if(r.status === 'Booked') { counts[key].bookedCount++; counts[key].bookedValue += r.invoiceValue || 0; }
+    if(r.status === 'Cancelled') counts[key].cancelledCount++;
+    if(r.status === 'Pending' || r.status === 'Unassigned') counts[key].pendingCount++;
   });
-  const entries = Object.values(counts).sort((a,b) => b.count - a.count);
+
+  let entries = Object.values(counts).filter(e => !nameSearch || e.name.toLowerCase().includes(nameSearch));
+  entries.forEach(e => {
+    e.conversionRate = e.count > 0 ? Math.round((e.bookedCount / e.count) * 100) : 0;
+    e.avgDeal = e.bookedCount > 0 ? e.bookedValue / e.bookedCount : 0;
+  });
+
+  const sortFns = {
+    count:      function(a,b) { return b.count - a.count; },
+    value:      function(a,b) { return b.bookedValue - a.bookedValue; },
+    conversion: function(a,b) { return b.conversionRate - a.conversionRate; },
+    avgdeal:    function(a,b) { return b.avgDeal - a.avgDeal; }
+  };
+  entries.sort(sortFns[_referralSort] || sortFns.count);
+
+  // ROI strip
+  if(roiStrip) {
+    const allReferrals = allData.filter(r => r.referredBy && r.referredBy.name && inRange(r));
+    const allBooked = allReferrals.filter(r => r.status === 'Booked');
+    const totalVal = allBooked.reduce(function(s,r) { return s+(r.invoiceValue||0); }, 0);
+    const convRate = allReferrals.length > 0 ? Math.round((allBooked.length/allReferrals.length)*100) : 0;
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7); weekAgo.setHours(0,0,0,0);
+    const thisWeekCount = allData.filter(r => r.referredBy && r.referredBy.name && r.ts && r.ts >= weekAgo).length;
+    const topEntry = entries[0];
+    const strip = [
+      { label:'Total Referrals', value: String(allReferrals.length), sub: '+' + thisWeekCount + ' this week', colour:'var(--s-purple)', bg:'var(--s-lavender)' },
+      { label:'Revenue Generated', value: fmtMoney(totalVal), sub: allBooked.length + ' converted', colour:'#065F46', bg:'#E8F9F3' },
+      { label:'Conversion Rate', value: convRate + '%', sub: allBooked.length + ' of ' + allReferrals.length + ' booked', colour: convRate >= 50 ? '#065F46' : '#92400e', bg: convRate >= 50 ? '#E8F9F3' : '#FEF3CD' },
+      { label:'Top Referrer', value: topEntry ? escHtml(topEntry.name) : '—', sub: topEntry ? topEntry.count + ' referral' + (topEntry.count!==1?'s':'') : '', colour:'var(--s-navy)', bg:'var(--s-surface)' }
+    ];
+    roiStrip.innerHTML = strip.map(function(s) {
+      return '<div style="background:' + s.bg + ';border:1px solid var(--s-border);border-radius:var(--s-r-md);padding:12px 16px;box-shadow:var(--s-shadow-sm);">' +
+        '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--s-text-muted);margin-bottom:5px;">' + s.label + '</div>' +
+        '<div style="font-size:22px;font-weight:700;color:' + s.colour + ';line-height:1.1;letter-spacing:-0.5px;">' + s.value + '</div>' +
+        '<div style="font-size:11px;color:var(--s-text-muted);margin-top:3px;">' + s.sub + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
   if(!entries.length) {
-    board.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text--dark--30);font-size:12px;">No referrals recorded yet. Referrals are logged when the Request Training form is submitted with a referrer name.</div>';
+    board.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text--dark--30);font-size:12px;">No referrals match the current filters.</div>';
     return;
   }
-  const TOP = 5;
 
-  function entryHtml(e, i) {
+  const headerCells = ['Rank','Referrer','# Referrals','Converted','Conv. Rate','Value Generated','Avg Deal',''].map(function(h) {
+    return '<th style="padding:10px 16px;text-align:' + (h===''?'':'left') + ';font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--s-text-muted);border-bottom:1px solid var(--s-border);white-space:nowrap;">' + h + '</th>';
+  }).join('');
+
+  const rows = entries.map(function(e, i) {
     const rank = i + 1;
-    const rankCls = rank === 1 ? 'referral-rank-1' : rank === 2 ? 'referral-rank-2' : rank === 3 ? 'referral-rank-3' : 'referral-rank-other';
-    return `<div class="referral-entry" onclick="openReferralModal('${escHtml(e.name)}')">
-      <div class="referral-rank ${rankCls}">${rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : rank}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:var(--text--dark--50);">${escHtml(e.name)}</div>
-        <div style="font-size:11px;color:var(--text--dark--30);">${escHtml(e.team) || 'No team recorded'}</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:14px;font-weight:700;color:var(--text--dark--50);">${e.count} <span style="font-size:11px;font-weight:400;color:var(--text--dark--30);">referral${e.count!==1?'s':''}</span></div>
-        <div style="font-size:11px;color:var(--text--dark--30);">${e.bookedCount} booked &middot; ${e.bookedValue > 0 ? fmtMoney(e.bookedValue) : '£0'}</div>
-      </div>
-      <div style="color:var(--text--dark--20);font-size:14px;">›</div>
-    </div>`;
-  }
+    const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : String(rank);
+    const convColour = e.conversionRate >= 70 ? '#065F46' : e.conversionRate >= 40 ? '#92400e' : '#DC2F4B';
+    const convBg    = e.conversionRate >= 70 ? '#E8F9F3' : e.conversionRate >= 40 ? '#FEF3CD' : '#FDEAED';
+    const boldIfSort = function(col) { return _referralSort === col ? 'font-weight:700;color:var(--s-text-primary);' : 'color:var(--s-text-secondary);'; };
+    const safeName = escHtml(e.name).replace(/'/g, '&#39;');
+    return [
+      '<tr class="ref-row" onclick="openReferralModal(\'' + safeName + '\')" style="cursor:pointer;border-bottom:1px solid var(--s-border);">',
+      '<td style="padding:11px 16px;text-align:center;font-size:16px;">' + rankMedal + '</td>',
+      '<td style="padding:11px 16px;"><div style="font-size:13px;font-weight:600;color:var(--s-text-primary);">' + escHtml(e.name) + '</div><div style="font-size:11px;color:var(--s-text-muted);">' + escHtml(e.team || '') + '</div></td>',
+      '<td style="padding:11px 16px;text-align:center;' + boldIfSort('count') + 'font-size:15px;">' + e.count + '</td>',
+      '<td style="padding:11px 16px;text-align:center;' + boldIfSort('value') + '"><span style="font-size:14px;font-weight:700;color:var(--s-purple);">' + e.bookedCount + '</span>' + (e.pendingCount > 0 ? '<span style="font-size:10px;color:var(--s-amber);margin-left:4px;">' + e.pendingCount + ' pending</span>' : '') + '</td>',
+      '<td style="padding:11px 16px;text-align:center;' + boldIfSort('conversion') + '"><span style="background:' + convBg + ';color:' + convColour + ';padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;">' + e.conversionRate + '%</span></td>',
+      '<td style="padding:11px 16px;text-align:right;' + boldIfSort('value') + 'font-size:14px;font-weight:700;color:var(--s-green);">' + (e.bookedValue > 0 ? fmtMoney(e.bookedValue) : '—') + '</td>',
+      '<td style="padding:11px 16px;text-align:right;' + boldIfSort('avgdeal') + 'font-size:13px;">' + (e.avgDeal > 0 ? fmtMoney(e.avgDeal) : '—') + '</td>',
+      '<td style="padding:11px 16px;text-align:right;color:var(--s-text-faint);font-size:16px;">›</td>',
+      '</tr>'
+    ].join('');
+  }).join('');
 
-  const topHtml = entries.slice(0, TOP).map((e, i) => entryHtml(e, i)).join('');
-
-  let rightContent;
-  if (entries.length > TOP) {
-    const restItems = entries.slice(TOP).map((e, i) => entryHtml(e, TOP + i)).join('');
-    rightContent = `
-      <div class="referral-board-right-header">Others &mdash; ${entries.length - TOP} more</div>
-      <div class="referral-board-right-scroll">${restItems}</div>`;
-  } else {
-    rightContent = `<div class="referral-board-empty-right">All referrers<br>in top 5</div>`;
-  }
-
-  board.innerHTML = `
-    <div class="referral-board-left">${topHtml}</div>
-    <div class="referral-board-right">${rightContent}</div>`;
+  board.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:var(--s-surface);">' + headerCells + '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 function openReferralModal(name) {
   currentReferralPerson = name;
   const personData = allData.filter(r => r.referredBy && r.referredBy.name === name);
-  const team = personData[0]?.referredBy?.team || '';
-  document.getElementById('referralModalTitle').textContent = name + (team ? ` (${team})` : '');
-  document.getElementById('referralModalSub').textContent = `${personData.length} referral${personData.length!==1?'s':''} total`;
+  const team = personData[0] && personData[0].referredBy ? personData[0].referredBy.team : '';
+  document.getElementById('referralModalTitle').textContent = name + (team ? ' (' + team + ')' : '');
+  document.getElementById('referralModalSub').textContent = personData.length + ' referral' + (personData.length!==1?'s':'') + ' total';
   const booked = personData.filter(r => r.status === 'Booked');
-  const totalVal = booked.reduce((s,r) => s+(r.invoiceValue||0),0);
-  document.getElementById('referralModalStats').innerHTML = `<div style="display:flex;gap:16px;flex-wrap:wrap;">
-    <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Total Referrals</div><div style="font-size:20px;font-weight:700;color:var(--text--dark--50);">${personData.length}</div></div>
-    <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Booked</div><div style="font-size:20px;font-weight:700;color:#5B4BE7;">${booked.length}</div></div>
-    <div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Total Booked Value</div><div style="font-size:20px;font-weight:700;color:#22a06b;">${fmtMoney(totalVal)}</div></div>
-  </div>`;
+  const pending = personData.filter(r => r.status === 'Pending' || r.status === 'Unassigned');
+  const cancelled = personData.filter(r => r.status === 'Cancelled');
+  const totalVal = booked.reduce(function(s,r) { return s+(r.invoiceValue||0); }, 0);
+  const convRate = personData.length > 0 ? Math.round((booked.length/personData.length)*100) : 0;
+  const avgDeal = booked.length > 0 ? totalVal/booked.length : 0;
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7); weekAgo.setHours(0,0,0,0);
+  const thisWeek = personData.filter(r => r.ts && r.ts >= weekAgo).length;
+
+  document.getElementById('referralModalStats').innerHTML =
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;">' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Total</div><div style="font-size:20px;font-weight:700;color:var(--text--dark--50);">' + personData.length + '</div></div>' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Converted</div><div style="font-size:20px;font-weight:700;color:var(--s-purple);">' + booked.length + '</div></div>' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Pending</div><div style="font-size:20px;font-weight:700;color:var(--s-amber);">' + pending.length + '</div></div>' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Lost</div><div style="font-size:20px;font-weight:700;color:var(--s-red);">' + cancelled.length + '</div></div>' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Conv. Rate</div><div style="font-size:20px;font-weight:700;color:' + (convRate>=50?'#065F46':'#DC2F4B') + ';">' + convRate + '%</div></div>' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Revenue</div><div style="font-size:20px;font-weight:700;color:#22a06b;">' + fmtMoney(totalVal) + '</div></div>' +
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text--dark--30);letter-spacing:0.5px;margin-bottom:3px;">Avg Deal</div><div style="font-size:20px;font-weight:700;color:var(--text--dark--50);">' + (avgDeal > 0 ? fmtMoney(avgDeal) : '—') + '</div></div>' +
+    '</div>';
+
+  const ctxEl = document.getElementById('referralModalContext');
+  if(ctxEl) {
+    const parts = [];
+    if(thisWeek > 0) parts.push('<span style="font-size:12px;font-weight:600;color:var(--s-purple);">+' + thisWeek + ' this week</span>');
+    if(totalVal > 0) parts.push('<span style="font-size:12px;color:var(--s-text-muted);">' + fmtMoney(totalVal) + ' generated in total</span>');
+    parts.push('<span style="font-size:12px;color:var(--s-text-muted);">' + convRate + '% conversion rate</span>');
+    ctxEl.innerHTML = parts.join('<span style="color:var(--s-border-mid);margin:0 6px;">·</span>');
+  }
+
   document.getElementById('referralFilterDateFrom').value = '';
   document.getElementById('referralFilterDateTo').value = '';
   document.getElementById('referralFilterStatus').value = '';
@@ -5208,14 +4427,19 @@ function renderReferralModalTable() {
   if(fFrom) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] >= fFrom);
   if(fTo) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] <= fTo);
   if(fStatus) rows = rows.filter(r => r.status === fStatus);
-  document.getElementById('referralModalBody').innerHTML = rows.length ? rows.map(r => `<tr style="border-bottom:1px solid #f3f4f6;">
-    <td style="padding:9px 12px;">${fmtDate(r.ts)}</td>
-    <td style="padding:9px 12px;font-weight:600;">${escHtml(getCompanyName(r))}</td>
-    <td style="padding:9px 12px;">${optionBadge(r.trainingOption)}</td>
-    <td style="padding:9px 12px;">${fmtDate(r.bookedOn)}</td>
-    <td style="padding:9px 12px;">${r.invoiceValue!==null?fmtMoney(r.invoiceValue):'—'}</td>
-    <td style="padding:9px 12px;">${statusBadge(r.status)}</td>
-  </tr>`).join('') : '<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">No referrals match the filters</td></tr>';
+  document.getElementById('referralModalBody').innerHTML = rows.length ? rows.map(function(r) {
+    return [
+      '<tr class="ref-row" style="cursor:pointer;border-bottom:1px solid #f3f4f6;" onclick="closeReferralModal();openProfileSidebar(' + r._idx + ')">',
+      '<td style="padding:9px 12px;">' + fmtDate(r.ts) + '</td>',
+      '<td style="padding:9px 12px;font-weight:600;">' + escHtml(getCompanyName(r)) + '</td>',
+      '<td style="padding:9px 12px;">' + optionBadge(r.trainingOption) + '</td>',
+      '<td style="padding:9px 12px;">' + fmtDate(r.bookedOn) + '</td>',
+      '<td style="padding:9px 12px;font-weight:700;color:' + (r.invoiceValue > 0 ? '#22a06b' : 'var(--text--dark--30)') + ';">' + (r.invoiceValue !== null ? fmtMoney(r.invoiceValue) : '—') + '</td>',
+      '<td style="padding:9px 12px;">' + statusBadge(r.status) + '</td>',
+      '<td style="padding:9px 12px;color:var(--s-purple);font-size:11px;font-weight:600;">View →</td>',
+      '</tr>'
+    ].join('');
+  }).join('') : '<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">No referrals match the filters</td></tr>';
 }
 
 function clearReferralFilters() {
