@@ -2215,6 +2215,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
           <!-- Name search -->
           <input type="text" id="referralNameSearch" class="filter-input" placeholder="Search referrer&#8230;" oninput="renderReferralLeaderboard()" style="min-width:140px;">
           <button class="btn btn-ghost btn-sm" onclick="clearReferralGlobalFilters()">&#10005; Clear</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportReferralLeaderboardCSV()" style="margin-left:auto;border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV</button>
         </div>
 
         <!-- SORT TOGGLE ROW -->
@@ -2595,6 +2596,14 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       <div id="referralModalContext" style="padding:9px 18px;border-bottom:1px solid var(--ui--underline--light-grey);background:#f9fafb;display:flex;gap:18px;flex-wrap:wrap;"></div>
       <!-- Filters -->
       <div style="padding:10px 16px;border-bottom:1px solid var(--ui--underline--light-grey);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <!-- Quick-view presets -->
+        <div style="display:flex;gap:5px;flex-wrap:wrap;width:100%;margin-bottom:6px;">
+          <span style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.6px;align-self:center;flex-shrink:0;">Quick view:</span>
+          <button class="ref-preset-btn" onclick="setReferralModalPreset('completed')" id="refModalPreset-completed" title="Referred, booked and session already completed">&#10003; Booked &amp; Completed</button>
+          <button class="ref-preset-btn" onclick="setReferralModalPreset('upcoming')" id="refModalPreset-upcoming" title="Referred, booked and session is upcoming">&#128197; Booked &amp; Upcoming</button>
+          <button class="ref-preset-btn" onclick="setReferralModalPreset('notconverted')" id="refModalPreset-notconverted" title="Referred but not yet converted or cancelled">&#10007; Not Converted / Cancelled</button>
+          <button class="ref-preset-btn" onclick="setReferralModalPreset('all')" id="refModalPreset-all" style="opacity:0.6;">All</button>
+        </div>
         <input type="date" class="filter-input" id="referralFilterDateFrom" onchange="renderReferralModalTable()" style="width:130px;">
         <input type="date" class="filter-input" id="referralFilterDateTo" onchange="renderReferralModalTable()" style="width:130px;">
         <select class="filter-select" id="referralFilterStatus" onchange="renderReferralModalTable()">
@@ -2605,6 +2614,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
           <option value="Cancelled">Lost</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="clearReferralFilters()">&#10005; Clear</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportReferralModalCSV()" style="margin-left:auto;border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV</button>
       </div>
       <!-- Table -->
       <div style="overflow-x:auto;max-height:380px;overflow-y:auto;">
@@ -2622,7 +2632,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         </table>
       </div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeReferralModal()">Close</button></div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;"><button class="btn btn-ghost" onclick="closeReferralModal()">Close</button><button class="btn btn-ghost btn-sm" onclick="exportReferralModalCSV()" style="border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV</button></div>
   </div>
 </div>
 
@@ -5289,19 +5299,46 @@ function openReferralModal(name) {
   document.getElementById('referralFilterDateFrom').value = '';
   document.getElementById('referralFilterDateTo').value = '';
   document.getElementById('referralFilterStatus').value = '';
+  _referralModalPreset = 'all';
+  ['all','completed','upcoming','notconverted'].forEach(function(p) {
+    const btn = document.getElementById('refModalPreset-' + p);
+    if(btn) btn.classList.remove('active');
+  });
   renderReferralModalTable();
   document.getElementById('referralModalOverlay').classList.add('open');
+}
+
+// ---- REFERRAL MODAL QUICK PRESETS ----
+let _referralModalPreset = 'all';
+function setReferralModalPreset(preset) {
+  _referralModalPreset = preset;
+  ['all','completed','upcoming','notconverted'].forEach(function(p) {
+    const btn = document.getElementById('refModalPreset-' + p);
+    if(btn) btn.classList.toggle('active', p === preset);
+  });
+  renderReferralModalTable();
 }
 
 function renderReferralModalTable() {
   if(!currentReferralPerson) return;
   let rows = allData.filter(r => r.referredBy && r.referredBy.name === currentReferralPerson);
   const fFrom = document.getElementById('referralFilterDateFrom').value;
-  const fTo = document.getElementById('referralFilterDateTo').value;
+  const fTo   = document.getElementById('referralFilterDateTo').value;
   const fStatus = document.getElementById('referralFilterStatus').value;
   if(fFrom) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] >= fFrom);
-  if(fTo) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] <= fTo);
-  if(fStatus) rows = rows.filter(r => r.status === fStatus);
+  if(fTo)   rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] <= fTo);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(_referralModalPreset === 'completed') {
+    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn < today);
+  } else if(_referralModalPreset === 'upcoming') {
+    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today);
+  } else if(_referralModalPreset === 'notconverted') {
+    rows = rows.filter(r => r.status !== 'Booked');
+  } else {
+    if(fStatus) rows = rows.filter(r => r.status === fStatus);
+  }
+
   document.getElementById('referralModalBody').innerHTML = rows.length ? rows.map(function(r) {
     return [
       '<tr class="ref-row" style="cursor:pointer;border-bottom:1px solid #f3f4f6;" onclick="closeReferralModal();openProfileSidebar(' + r._idx + ')">',
@@ -5321,12 +5358,138 @@ function clearReferralFilters() {
   document.getElementById('referralFilterDateFrom').value = '';
   document.getElementById('referralFilterDateTo').value = '';
   document.getElementById('referralFilterStatus').value = '';
+  _referralModalPreset = 'all';
+  ['all','completed','upcoming','notconverted'].forEach(function(p) {
+    const btn = document.getElementById('refModalPreset-' + p);
+    if(btn) btn.classList.remove('active');
+  });
   renderReferralModalTable();
 }
 
 function closeReferralModal() {
   document.getElementById('referralModalOverlay').classList.remove('open');
   currentReferralPerson = null;
+}
+
+// ---- CSV HELPERS ----
+function csvEscape(val) {
+  if(val === null || val === undefined) return '';
+  const s = String(val).replace(/"/g, '""');
+  return s.search(/[",\n\r]/) >= 0 ? '"' + s + '"' : s;
+}
+function downloadCSV(filename, rows) {
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+}
+
+// Export the main leaderboard summary (one row per referrer, respecting active filters)
+function exportReferralLeaderboardCSV() {
+  const range = getReferralDateRange();
+  const from = range.from, to = range.to;
+  const nameSearch = (document.getElementById('referralNameSearch') ? document.getElementById('referralNameSearch').value : '').toLowerCase();
+  const statusFilter = document.getElementById('referralGlobalStatus') ? document.getElementById('referralGlobalStatus').value : '';
+
+  function inRange(r) {
+    if(!r.ts) return _referralPreset === 'all';
+    if(from && r.ts < from) return false;
+    if(to && r.ts > to) return false;
+    return true;
+  }
+
+  const counts = {};
+  allData.forEach(r => {
+    if(!r.referredBy || !r.referredBy.name) return;
+    if(!inRange(r)) return;
+    if(statusFilter && r.status !== statusFilter) return;
+    const key = r.referredBy.name;
+    if(!counts[key]) counts[key] = { name: r.referredBy.name, team: r.referredBy.team || '', count: 0, bookedCount: 0, bookedValue: 0, cancelledCount: 0, pendingCount: 0 };
+    counts[key].count++;
+    if(r.status === 'Booked') { counts[key].bookedCount++; counts[key].bookedValue += r.invoiceValue || 0; }
+    if(r.status === 'Cancelled') counts[key].cancelledCount++;
+    if(r.status === 'Pending' || r.status === 'Unassigned') counts[key].pendingCount++;
+  });
+
+  let entries = Object.values(counts).filter(e => !nameSearch || e.name.toLowerCase().includes(nameSearch));
+  entries.forEach(e => {
+    e.conversionRate = e.count > 0 ? Math.round((e.bookedCount / e.count) * 100) : 0;
+    e.avgDeal = e.bookedCount > 0 ? e.bookedValue / e.bookedCount : 0;
+  });
+  entries.sort(function(a,b) { return b.count - a.count; });
+
+  const presetLabel = _referralPreset === 'all' ? 'All time' : _referralPreset === '7d' ? 'Last 7 days' : _referralPreset === 'month' ? 'This month' : _referralPreset === 'quarter' ? 'This quarter' : 'Custom range';
+  const rows = [
+    ['Referral Performance Export — ' + presetLabel + (statusFilter ? ' | Status: ' + statusFilter : '') + (nameSearch ? ' | Search: ' + nameSearch : '')],
+    [],
+    ['Rank','Referrer','Team','Total Referrals','Converted (Booked)','Pending','Cancelled / Lost','Conversion Rate (%)','Revenue Generated (£)','Avg Deal Size (£)']
+  ];
+  entries.forEach(function(e, i) {
+    rows.push([
+      i + 1,
+      e.name,
+      e.team,
+      e.count,
+      e.bookedCount,
+      e.pendingCount,
+      e.cancelledCount,
+      e.conversionRate,
+      e.bookedValue.toFixed(2),
+      e.avgDeal > 0 ? e.avgDeal.toFixed(2) : ''
+    ]);
+  });
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  downloadCSV('referral-performance-' + dateStr + '.csv', rows);
+}
+
+// Export the modal drill-down table (one row per individual referral, respecting active filters/preset)
+function exportReferralModalCSV() {
+  if(!currentReferralPerson) return;
+  let rows = allData.filter(r => r.referredBy && r.referredBy.name === currentReferralPerson);
+  const fFrom = document.getElementById('referralFilterDateFrom').value;
+  const fTo   = document.getElementById('referralFilterDateTo').value;
+  const fStatus = document.getElementById('referralFilterStatus').value;
+  if(fFrom) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] >= fFrom);
+  if(fTo)   rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] <= fTo);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  let presetLabel = 'All';
+  if(_referralModalPreset === 'completed') {
+    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn < today);
+    presetLabel = 'Booked & Completed';
+  } else if(_referralModalPreset === 'upcoming') {
+    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today);
+    presetLabel = 'Booked & Upcoming';
+  } else if(_referralModalPreset === 'notconverted') {
+    rows = rows.filter(r => r.status !== 'Booked');
+    presetLabel = 'Not Converted / Cancelled';
+  } else {
+    if(fStatus) rows = rows.filter(r => r.status === fStatus);
+  }
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  const csvRows = [
+    ['Referrals by ' + currentReferralPerson + ' — ' + presetLabel],
+    [],
+    ['Submitted','Company','Training Option','Booked Date','Invoice Value (£)','Status','Referral Notes']
+  ];
+  rows.forEach(function(r) {
+    csvRows.push([
+      r.ts ? r.ts.toISOString().split('T')[0] : '',
+      getCompanyName(r),
+      r.trainingOption || '',
+      r.bookedOn ? r.bookedOn.toISOString().split('T')[0] : '',
+      r.invoiceValue !== null && r.invoiceValue !== undefined ? r.invoiceValue.toFixed(2) : '',
+      r.status || '',
+      r.referralNotes || (r.referredBy && r.referredBy.notes) || ''
+    ]);
+  });
+
+  const safeName = currentReferralPerson.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  downloadCSV('referrals-' + safeName + '-' + presetLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + dateStr + '.csv', csvRows);
 }
 
 // ===================== PROFILE SIDEBAR =====================
