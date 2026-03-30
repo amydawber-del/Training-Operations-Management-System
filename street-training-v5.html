@@ -785,7 +785,6 @@ function ClientView({ row, notes, setNotes }) {
   // Modules — aligned to the 5 departments in the new checklist
   const MODULES = ["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting"];
   const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
-  const toggleModule    = m => sn("selectedModules")(selectedModules.includes(m) ? selectedModules.filter(x => x !== m) : [...selectedModules, m]);
 
   // Agenda sections
   const ALL_SECTIONS = [
@@ -799,6 +798,47 @@ function ClientView({ row, notes, setNotes }) {
   const isSelected  = key => selected.includes(key);
   const toggle      = key => sn("agendaSections")(isSelected(key) ? selected.filter(k => k !== key) : [...selected, key]);
   const toggleAll   = () => sn("agendaSections")(selected.length === ALL_SECTIONS.length ? [] : defaultSelected);
+
+  // Map each module name to the CLIENT_AGENDA index (and "ops" for Settings)
+  const MODULE_AGENDA_INDEX = {
+    "Settings & Core Platform": 0,
+    "Sales": 1,
+    "Lettings": 2,
+    "Property Management": 3,
+    "Accounting": 4,
+  };
+
+  // Get all section keys that belong to a given module
+  const sectionKeysForModule = m => {
+    const di = MODULE_AGENDA_INDEX[m];
+    if (di === undefined) return [];
+    const agenda = CLIENT_AGENDA[di];
+    if (!agenda) return [];
+    const keys = agenda.sections.map((_, si) => `d${di}s${si}`);
+    // "Settings & Core Platform" also owns the "ops" section
+    if (m === "Settings & Core Platform") keys.push("ops");
+    return keys;
+  };
+
+  // Toggle a module — cascades to all its child agenda sections
+  const toggleModule = m => {
+    const nowSelected = selectedModules.includes(m);
+    const newModules  = nowSelected ? selectedModules.filter(x => x !== m) : [...selectedModules, m];
+    sn("selectedModules")(newModules);
+
+    const childKeys = sectionKeysForModule(m);
+    if (!childKeys.length) return;
+
+    let newSections = [...selected];
+    if (nowSelected) {
+      // Deselecting module — remove all its child sections
+      newSections = newSections.filter(k => !childKeys.includes(k));
+    } else {
+      // Selecting module — add all its child sections (avoid duplicates)
+      childKeys.forEach(k => { if (!newSections.includes(k)) newSections.push(k); });
+    }
+    sn("agendaSections")(newSections);
+  };
   const dayAssign   = notes.dayAssign || {};
   const getDay      = key => dayAssign[key] || 1;
   const setDay      = (key, d) => sn("dayAssign")({ ...dayAssign, [key]: d });
@@ -957,24 +997,45 @@ function ClientView({ row, notes, setNotes }) {
             ))}
           </div>
 
-          {/* Modules */}
+          {/* Modules — clicking toggles all child sections automatically */}
           <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Topics & Modules</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>Topics & Modules</div>
+              <span style={{ fontSize: 10, color: C.dark20, fontStyle: "italic" }}>Selecting/deselecting a module auto-selects its agenda sections</span>
+            </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {MODULES.map(m => (
-                <div key={m} onClick={() => toggleModule(m)} style={{
-                  display: "flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 4, cursor: "pointer",
-                  background: selectedModules.includes(m) ? C.blueLight : C.grey,
-                  border: `1px solid ${selectedModules.includes(m) ? C.blueBorder : C.border}`
-                }}>
-                  <Tick checked={selectedModules.includes(m)} />
-                  <span style={{ fontSize: 12, color: selectedModules.includes(m) ? C.blue : C.dark40, fontWeight: selectedModules.includes(m) ? 600 : 400 }}>{m}</span>
-                </div>
-              ))}
+              {MODULES.map(m => {
+                const chk = selectedModules.includes(m);
+                const childKeys = sectionKeysForModule(m);
+                const selectedChildCount = childKeys.filter(k => selected.includes(k)).length;
+                const totalChildCount = childKeys.length;
+                // Partially selected = module on but some child sections manually unticked
+                const partial = chk && selectedChildCount < totalChildCount && selectedChildCount > 0;
+                return (
+                  <div key={m} onClick={() => toggleModule(m)} style={{
+                    display: "flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 6, cursor: "pointer",
+                    background: chk ? C.blueLight : C.grey,
+                    border: `1.5px solid ${partial ? C.blue : chk ? C.blueBorder : C.border}`,
+                    transition: "all 0.1s",
+                    boxShadow: chk ? "0 1px 4px rgba(91,75,231,0.10)" : "none",
+                  }}>
+                    <Tick checked={chk} />
+                    <span style={{ fontSize: 12, color: chk ? C.blue : C.dark40, fontWeight: chk ? 700 : 400 }}>{m}</span>
+                    {totalChildCount > 0 && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "1px 6px",
+                        background: chk ? C.blue : C.dark10,
+                        color: chk ? "#fff" : C.dark30,
+                        marginLeft: 2,
+                      }}>{selectedChildCount}/{totalChildCount}</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Agenda section toggles */}
+          {/* Agenda section toggles — grouped under their module */}
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>Agenda Sections</div>
@@ -982,29 +1043,50 @@ function ClientView({ row, notes, setNotes }) {
                 {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
               </button>
             </div>
-            {CLIENT_AGENDA.map((agenda, di) => (
-              <div key={di} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{agenda.title}</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {agenda.sections.map((sec, si) => {
-                    const key = `d${di}s${si}`; const chk = isSelected(key);
-                    return (
-                      <div key={key} onClick={() => toggle(key)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 4, cursor: "pointer",
-                        background: chk ? C.blueLight : C.grey, border: `1px solid ${chk ? C.blueBorder : C.border}`, borderRadius: 6 }}>
-                        <Tick checked={chk} />
-                        <span style={{ fontSize: 11, color: chk ? C.blue : C.dark40, fontWeight: chk ? 600 : 400 }}>{sec.heading}</span>
-                        {chk && trainingDays > 1 && <DayToggle sectionKey={key} />}
-                      </div>
-                    );
-                  })}
+            {CLIENT_AGENDA.map((agenda, di) => {
+              const moduleSelected = selectedModules.includes(agenda.title);
+              return (
+                <div key={di} style={{ marginBottom: 10, opacity: moduleSelected ? 1 : 0.45, transition: "opacity 0.15s" }}>
+                  {/* Module group header — clickable shortcut to toggle the whole module */}
+                  <div
+                    onClick={() => toggleModule(agenda.title)}
+                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, cursor: "pointer", userSelect: "none" }}
+                  >
+                    <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0,
+                      background: moduleSelected ? C.blue : C.dark10,
+                      border: `1.5px solid ${moduleSelected ? C.blue : C.border}`,
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {moduleSelected && <svg width="5" height="4" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: moduleSelected ? C.blue : C.dark20, textTransform: "uppercase", letterSpacing: "0.08em" }}>{agenda.title}</span>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingLeft: 14 }}>
+                    {agenda.sections.map((sec, si) => {
+                      const key = `d${di}s${si}`; const chk = isSelected(key);
+                      return (
+                        <div key={key} onClick={() => toggle(key)} style={{
+                          display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 6, cursor: "pointer",
+                          background: chk ? C.blueLight : C.grey,
+                          border: `1px solid ${chk ? C.blueBorder : C.border}`,
+                        }}>
+                          <Tick checked={chk} />
+                          <span style={{ fontSize: 11, color: chk ? C.blue : C.dark40, fontWeight: chk ? 600 : 400 }}>{sec.heading}</span>
+                          {chk && trainingDays > 1 && <DayToggle sectionKey={key} />}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
+              );
+            })}
+            {/* Ops section lives under Settings & Core Platform */}
+            <div style={{ paddingLeft: 14, marginTop: -4 }}>
+              <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 6, cursor: "pointer",
+                background: isSelected("ops") ? C.blueLight : C.grey, border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}` }}>
+                <Tick checked={isSelected("ops")} />
+                <span style={{ fontSize: 11, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
+                {isSelected("ops") && trainingDays > 1 && <DayToggle sectionKey="ops" />}
               </div>
-            ))}
-            <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 4, cursor: "pointer", marginTop: 4,
-              background: isSelected("ops") ? C.blueLight : C.grey, border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}`, borderRadius: 6 }}>
-              <Tick checked={isSelected("ops")} />
-              <span style={{ fontSize: 11, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
-              {isSelected("ops") && trainingDays > 1 && <DayToggle sectionKey="ops" />}
             </div>
           </div>
         </div>
