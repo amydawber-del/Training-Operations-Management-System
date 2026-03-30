@@ -21,7 +21,7 @@ const { useState, useEffect, useMemo } = React;
 
 
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbzCvBhFSPyyoaVsui0DCxvGQQa0V7e_UCJ5LfqvcSysTHTFlNRcx4ewlET5TyouJ0ZYow/exec";
-const AGENDA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjm9SZ2nPEl_4H5Y2djxFxEzBo0nMJzKErQ4ppm_kHFOifE_tCV7z01K00K4XdReMON9VwvRaCx2fH/pub?output=csv";
+const AGENDA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjm9SZ2nPEl_4H5Y2djxFxEzBo0nMJzKErQ4ppm_kHFOifE_tCV7z01K00K4XdReMON9VwvRaCx2fH/pub?gid=1813598208&single=true&output=csv";
 
 // ── Debrief save endpoint ─────────────────────────────────────
 // After deploying apps-script.gs as a Google Apps Script Web App,
@@ -116,39 +116,48 @@ const HEADER_MAP = {
   booked: "Booked On Date", col1: "Column 1",
 };
 
-// ─── HELP CENTRE BANK ────────────────────────────────────────────────────
+// ─── HELP CENTRE BANK — Street.co.uk real articles ───────────────────────
 const HELP_CENTRE_BANK = {
+  "Settings & Onboarding": [
+    { title: "Street Onboarding FAQs", url: "https://intercom.help/streetcouk/en/articles/7969911-street-onboarding-faqs" },
+    { title: "Branch General Settings", url: "https://intercom.help/streetcouk/en/articles/9245456-branch-general-settings" },
+    { title: "Notification Preferences (Settings)", url: "https://intercom.help/streetcouk/en/articles/5772618-notification-preferences-settings" },
+    { title: "Lettings Accounting On Street", url: "https://intercom.help/streetcouk/en/articles/7990573-lettings-accounting-on-street" },
+    { title: "Accounting — Payment Advice & Statements", url: "https://intercom.help/streetcouk/en/articles/11390653-accounting-payment-advice-statements-settings" },
+  ],
   Sales: [
-    { title: "Managing your sales pipeline", url: "#" },
-    { title: "Creating and sending offer letters", url: "#" },
-    { title: "Sales progression & memo generation", url: "#" },
-    { title: "Applicant matching & auto-alerts", url: "#" },
-    { title: "Solicitor chasing workflow", url: "#" },
+    { title: "Sending and Updating a Sales Memo", url: "https://intercom.help/streetcouk/en/articles/5774998-sending-and-updating-sales-memo" },
+    { title: "Sales Progression Overview", url: "https://intercom.help/streetcouk/en/collections/3811497-sales-progression" },
+    { title: "Portal Listing Details", url: "https://intercom.help/streetcouk/en/articles/13159064-portal-listing-details" },
+    { title: "Adding a Property in Street", url: "https://intercom.help/streetcouk/en/articles/11549778-adding-a-property-in-street" },
+    { title: "Valuations Overview", url: "https://intercom.help/streetcouk/en/articles/8837202-valuations-overview" },
   ],
   Lettings: [
-    { title: "Lettings progression — offer to move-in", url: "#" },
-    { title: "Setting up and managing tenancies", url: "#" },
-    { title: "Maintenance workflow & contractor management", url: "#" },
-    { title: "Split landlord setup guide", url: "#" },
-    { title: "Renewals and end-of-tenancy process", url: "#" },
+    { title: "Progressing a Lettings Application", url: "https://intercom.help/streetcouk/en/articles/7882726-progressing-a-lettings-application" },
+    { title: "Street Consumer App Overview", url: "https://intercom.help/streetcouk/en/articles/8105761-street-consumer-app-overview" },
+    { title: "Tenant Functionality (App)", url: "https://intercom.help/streetcouk/en/articles/8267558-tenant-functionality-app" },
+    { title: "Goodlord Integration", url: "https://intercom.help/streetcouk/en/articles/10097499-goodlord-integration" },
+    { title: "Street Development Updates — Latest", url: "https://intercom.help/streetcouk/en/articles/12569885-street-development-updates-for-may-2025" },
+  ],
+  "Property Management": [
+    { title: "Maintenance Jobs & Contractors", url: "https://intercom.help/streetcouk/en/collections/3798187-lettings" },
+    { title: "Landlord Functionality (App)", url: "https://intercom.help/streetcouk/en/articles/8105761-street-consumer-app-overview" },
+    { title: "Tenant App — Maintenance Requests", url: "https://intercom.help/streetcouk/en/articles/8267558-tenant-functionality-app" },
+    { title: "Certificates & Compliance", url: "https://intercom.help/streetcouk/en/collections/3801649-properties" },
   ],
   Accounting: [
-    { title: "Invoice creation & allocation guide", url: "#" },
-    { title: "Understanding the landlord & tenant ledger", url: "#" },
-    { title: "Aged debt report — how to read & action", url: "#" },
-    { title: "Supplier payments & contractor invoicing", url: "#" },
-    { title: "Month-end & reconciliation checklist", url: "#" },
+    { title: "Lettings Accounting On Street (Go-Live Guide)", url: "https://intercom.help/streetcouk/en/articles/7990573-lettings-accounting-on-street" },
+    { title: "Payment Advice & Statements Settings", url: "https://intercom.help/streetcouk/en/articles/11390653-accounting-payment-advice-statements-settings" },
+    { title: "NRL Tax (Non-Resident Landlord)", url: "https://intercom.help/streetcouk/en/collections/3887357-accounting" },
+    { title: "Full Accounting Help Collection", url: "https://intercom.help/streetcouk/en/collections/3887357-accounting" },
+    { title: "Street AI Overview", url: "https://intercom.help/streetcouk/en/articles/8212780-street-ai" },
   ],
-  Reporting: [
-    { title: "Building custom reports in Street", url: "#" },
-    { title: "Management dashboard overview", url: "#" },
-    { title: "Exporting data & team performance reports", url: "#" },
-  ],
-  General: [
-    { title: "Street platform overview & navigation", url: "#" },
-    { title: "User settings & permissions guide", url: "#" },
-    { title: "Automations & workflow triggers", url: "#" },
-    { title: "Street mobile app — getting started", url: "#" },
+  Integrations: [
+    { title: "Integrations Overview", url: "https://intercom.help/streetcouk/en/articles/9394399-integrations" },
+    { title: "Agent Connect (WhatsApp & Telephony)", url: "https://intercom.help/streetcouk/en/articles/10063300-agent-connect-integration" },
+    { title: "Street Insights Integration", url: "https://intercom.help/streetcouk/en/articles/8353861-street-insights-integration" },
+    { title: "Smart Compliance AML", url: "https://intercom.help/streetcouk/en/collections/7071894-integrations" },
+    { title: "Partner Platform Overview", url: "https://intercom.help/streetcouk/en/articles/12606717-partner-platform-overview" },
   ],
 };
 
@@ -195,28 +204,70 @@ function parseCSV(text) {
     return obj;
   });
 }
+// New column names from the updated "Training Agenda Checklist — All Areas" sheet:
+//   ✓ Include? | Street Settings Category | Area of Street | What It Involves (Trainer Detail)
+//   | Why It Matters to the Client (Client Pitch) | Typical Training Duration
+//   | Sales / Lettings / Both / PM / Accts | Training Notes / Done?
+//
+// dept values in the sheet: Sales | Lettings | Both | Property Management | Accounting
+
+const DEPT_FILTER_MAP = {
+  "Sales":              ["sales", "pipeline", "offer", "applicant", "memo", "progression", "vendor", "buyer"],
+  "Lettings":           ["letting", "tenancy", "tenant", "landlord", "renewal", "move-in", "move-out", "application"],
+  "Both":               ["both", "settings", "properties", "valuations", "viewings", "general", "ai", "integration", "app", "portal", "notification", "brand", "user", "calendar", "enquiry", "report", "partner", "payment"],
+  "Property Management":["property management", "maintenance", "contractor", "inspection", "certificate", "key", "pm"],
+  "Accounting":         ["account", "invoice", "ledger", "rent", "reconcil", "statement", "nrl", "arrears", "suspense", "dormant", "charge", "receipt"],
+};
+
 function buildAgendaFromAreas(areasStr, agendaData) {
   if (!agendaData.length) return [];
+
   const requested = (areasStr && areasStr !== "—")
     ? areasStr.split(/,|;|\n/).map(s => s.trim().toLowerCase()).filter(Boolean)
     : [];
+
+  // Determine which sheet dept columns to include
+  const deptMatch = dept => {
+    if (!requested.length) return true; // show all if nothing specified
+    const keywords = DEPT_FILTER_MAP[dept] || [];
+    return requested.some(r =>
+      keywords.some(k => r.includes(k) || k.includes(r)) ||
+      dept.toLowerCase().includes(r) ||
+      r.includes(dept.toLowerCase())
+    );
+  };
+
   const grouped = {};
   agendaData.forEach(row => {
-    const area = (row["Area of Street"] || "").trim();
-    if (!area) return;
-    const areaLow = area.toLowerCase();
-    // Always include General; otherwise match against requested areas
-    const isGeneral = areaLow === "general";
-    const matches = isGeneral || requested.some(r => areaLow.includes(r) || r.includes(areaLow) || r.split(" ").some(w => w.length > 3 && areaLow.includes(w)));
+    const category = (row["Street Settings Category"] || "").trim();
+    const area     = (row["Area of Street"] || "").trim();
+    if (!area || !category) return;
+
+    const dept     = (row["Sales / Lettings / Both / PM / Accts"] ||
+                      row["Sales /\nLettings / Both"] ||
+                      row["Sales / Lettings / Both"] || "Both").trim();
+    const areaLow  = area.toLowerCase();
+    const catLow   = category.toLowerCase();
+
+    // Match against requested areas OR against dept keywords
+    const directMatch = requested.some(r =>
+      areaLow.includes(r) || r.includes(areaLow) ||
+      catLow.includes(r)  || r.includes(catLow)  ||
+      r.split(" ").some(w => w.length > 3 && (areaLow.includes(w) || catLow.includes(w)))
+    );
+    const matches = !requested.length || directMatch || deptMatch(dept);
+
     if (matches) {
-      if (!grouped[area]) grouped[area] = [];
-      const item = row["Street Agenda"] || "";
-      const involves = row["What it Involves:"] || "";
-      const category = row["Street Settings Category"] || "";
-      if (item) grouped[area].push({ item, involves, category });
+      const groupKey = category;
+      if (!grouped[groupKey]) grouped[groupKey] = { dept, items: [] };
+      const involves = row["What It Involves (Trainer Detail)"] || row["What it Involves:"] || "";
+      const why      = row["Why It Matters to the Client (Client Pitch)"] || row["Why It Matters to the Client\n(Client Pitch)"] || "";
+      const duration = row["Typical Training\nDuration"] || row["Typical Training Duration"] || "";
+      grouped[groupKey].items.push({ item: area, involves, why, duration, category, dept });
     }
   });
-  return Object.entries(grouped).map(([area, items]) => ({ area, items }));
+
+  return Object.entries(grouped).map(([cat, { dept, items }]) => ({ area: cat, dept, items }));
 }
 
 // Auto-derive primary training theme from areas string
@@ -224,11 +275,11 @@ function deriveTheme(areasStr) {
   if (!areasStr || areasStr === "—") return "General";
   const s = areasStr.toLowerCase();
   const scores = { "Accounting": 0, "Lettings": 0, "Sales": 0, "Reporting": 0, "Property Management": 0 };
-  if (s.includes("account") || s.includes("invoice") || s.includes("ledger") || s.includes("debt")) scores["Accounting"] += 3;
-  if (s.includes("letting") || s.includes("tenancy") || s.includes("landlord") || s.includes("maintenance")) scores["Lettings"] += 3;
-  if (s.includes("sales") || s.includes("pipeline") || s.includes("offer") || s.includes("applicant")) scores["Sales"] += 3;
+  if (s.includes("account") || s.includes("invoice") || s.includes("ledger") || s.includes("debt") || s.includes("nrl") || s.includes("receipt") || s.includes("reconcil")) scores["Accounting"] += 3;
+  if (s.includes("letting") || s.includes("tenancy") || s.includes("landlord") || s.includes("tenant") || s.includes("renewal") || s.includes("application")) scores["Lettings"] += 3;
+  if (s.includes("sales") || s.includes("pipeline") || s.includes("offer") || s.includes("applicant") || s.includes("memo") || s.includes("progression")) scores["Sales"] += 3;
   if (s.includes("report") || s.includes("dashboard") || s.includes("analytics")) scores["Reporting"] += 3;
-  if (s.includes("property") || s.includes("management") || s.includes("pm")) scores["Property Management"] += 3;
+  if (s.includes("property management") || s.includes("maintenance") || s.includes("contractor") || s.includes("inspection") || s.includes("certificate") || s.includes(" pm") || s.includes("pm ")) scores["Property Management"] += 3;
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   if (sorted[0][1] === 0) return "General Optimisation";
   if (sorted[0][1] === sorted[1][1] && sorted[1][1] > 0) return `${sorted[0][0]} & ${sorted[1][0]}`;
@@ -413,29 +464,57 @@ function PrepBlock({ title, prompts }) {
 }
 
 function DynamicAgenda({ agendaBlocks, agendaLoading, areasRaw }) {
+  const DEPT_PILL = {
+    "Sales":              { bg: "#FADBD8", color: "#7B241C" },
+    "Lettings":           { bg: "#A9DFBF", color: "#0B5345" },
+    "Both":               { bg: "#AED6F1", color: "#154360" },
+    "Property Management":{ bg: "#FDEBD0", color: "#6E2F1A" },
+    "Accounting":         { bg: "#D5D8DC", color: "#1C2833" },
+  };
   if (agendaLoading) return <div style={{ padding: "10px 0", fontSize: 13, color: C.dark20 }}>Loading agenda data…</div>;
   if (!agendaBlocks.length) return <div style={{ padding: "12px 14px", border: `1px solid ${C.border}`, borderRadius: 4, background: C.grey, fontSize: 13, color: C.dark30 }}>No matching items found for: <em>{areasRaw}</em></div>;
   return (
     <div>
-      {agendaBlocks.map((block, bi) => (
-        <div key={bi} style={{ border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 8, overflow: "hidden" }}>
-          <div style={{ background: C.blueLight, borderBottom: `1px solid ${C.blueBorder}`, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.blue, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em" }}>{block.area}</span>
-            <span style={{ fontSize: 10, color: C.dark20, marginLeft: "auto" }}>{block.items.length} item{block.items.length !== 1 ? "s" : ""}</span>
-          </div>
-          {block.items.map((item, ii) => (
-            <div key={ii} style={{ padding: "8px 12px", borderBottom: ii < block.items.length - 1 ? `1px solid ${C.border}` : "none", display: "flex", gap: 10 }}>
-              <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 7, flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{item.item}</div>
-                {item.involves && <div style={{ fontSize: 12, color: C.dark30, marginTop: 2 }}>{item.involves}</div>}
-                {item.category && <span style={{ fontSize: 10, color: C.blue, background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 3, padding: "1px 6px", display: "inline-block", marginTop: 3 }}>{item.category}</span>}
-              </div>
+      {agendaBlocks.map((block, bi) => {
+        const pill = DEPT_PILL[block.dept] || DEPT_PILL["Both"];
+        return (
+          <div key={bi} style={{ border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 10, overflow: "hidden" }}>
+            {/* Category header */}
+            <div style={{ background: C.blueLight, borderBottom: `1px solid ${C.blueBorder}`, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.blue, flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em" }}>{block.area}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, background: pill.bg, color: pill.color, borderRadius: 4, padding: "2px 7px", marginLeft: 4 }}>{block.dept}</span>
+              <span style={{ fontSize: 10, color: C.dark20, marginLeft: "auto" }}>{block.items.length} area{block.items.length !== 1 ? "s" : ""}</span>
             </div>
-          ))}
-        </div>
-      ))}
+            {/* Items */}
+            {block.items.map((item, ii) => (
+              <div key={ii} style={{ padding: "10px 12px", borderBottom: ii < block.items.length - 1 ? `1px solid ${C.border}` : "none", background: ii % 2 === 0 ? "#fff" : C.grey }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>{item.item}</span>
+                      {item.duration && (
+                        <span style={{ fontSize: 10, color: C.dark30, background: "#f0f0f5", borderRadius: 3, padding: "1px 7px", flexShrink: 0 }}>⏱ {item.duration}</span>
+                      )}
+                    </div>
+                    {item.involves && (
+                      <div style={{ fontSize: 12, color: C.dark40, marginBottom: 4, lineHeight: "17px" }}>
+                        <span style={{ fontWeight: 600, color: C.dark30 }}>Involves: </span>{item.involves}
+                      </div>
+                    )}
+                    {item.why && (
+                      <div style={{ fontSize: 12, color: "#1B6B42", background: "#EDFAF4", border: "1px solid #A9DFBF", borderRadius: 4, padding: "5px 9px", lineHeight: "17px" }}>
+                        <span style={{ fontWeight: 700 }}>Why it matters: </span>{item.why}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -506,62 +585,143 @@ function TrainerView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
 // ─── CLIENT DOC VIEW ──────────────────────────────────────────────────────
 
 // Curated agenda definition
+// ─── CLIENT AGENDA DEFINITION — reflects the 5 departments in the new checklist ──
 const CLIENT_AGENDA = [
   {
-    day: "Session 1", title: "Sales & Lettings Front End",
-    tags: ["sales", "letting", "tenancy", "landlord", "applicant", "pipeline"],
+    day: "Settings & Core Platform", title: "Settings & Core Platform",
+    tags: ["settings", "onboarding", "general", "both", "user", "brand", "notification", "portal", "calendar", "enquiry", "ai", "integration", "app"],
     sections: [
-      { heading: "Sales Workflow & Progression", items: [
-        "Structured progression stages", "Offer handling and memo of sale",
-        "Chain visibility and updates", "Task automation and follow-ups",
+      { heading: "Account & Branch Setup", items: [
+        "Company and branch general settings",
+        "User management, roles and permissions",
+        "Brands, notification preferences and templates",
+        "Lettings service levels and invoice settings",
+        "Valuation and collateral templates",
+        "Calendar, working hours and StreetWise videos",
       ]},
-      { heading: "Lettings Front End", items: [
-        "Applicant management and matching", "Offer submission and tenancy creation",
-        "Right to Rent and compliance tracking", "Rent review workflow",
-        "Sales to Lettings handover best practice",
+      { heading: "Properties & Portals", items: [
+        "Adding properties and the single source of truth",
+        "Property onboarding, descriptions and photos",
+        "Portal listing details and feeds (Rightmove, Zoopla, OTM)",
+        "Listing performance, sole agency tracking",
+        "Property keys, activity stream and developments",
+      ]},
+      { heading: "Valuations & Viewings", items: [
+        "Booking valuations, online booking widget",
+        "Valuation workflow, follow-up and reporting",
+        "Sending a branded valuation report",
+        "Applicant matching from valuations",
+        "Booking viewings, feedback and online self-booking",
+        "Viewing notifications and additional questions",
       ]},
     ],
   },
   {
-    day: "Session 2", title: "Accounting & Property Management",
-    tags: ["account", "invoice", "ledger", "debt", "receipt", "maintenance", "property management", "contractor", "inspection"],
+    day: "Sales", title: "Sales",
+    tags: ["sales", "pipeline", "offer", "applicant", "memo", "progression", "vendor", "buyer", "aml"],
     sections: [
-      { heading: "Lettings Invoicing", items: [
-        "Recurring charges vs one-off charges", "Split landlord ownership handling",
-        "Invoice configuration and numbering", "Credit notes and voiding entries",
+      { heading: "Sales Pipeline & Applicants", items: [
+        "Sales applicants — creation, criteria and auto-matching",
+        "Recording and managing offers",
+        "Sales status and pipeline overview",
+        "AML checks for vendors and buyers",
       ]},
+      { heading: "Sales Progression", items: [
+        "Memorandum of sale — generation and distribution",
+        "Sales progression milestones and checklists",
+        "Buyer Ready — completing and notifying the sales progressor",
+        "Completing a sale and updating correspondence address",
+        "Vendor and buyer consumer app functionality",
+      ]},
+    ],
+  },
+  {
+    day: "Lettings", title: "Lettings",
+    tags: ["letting", "tenancy", "tenant", "landlord", "application", "renewal", "move-out", "aml"],
+    sections: [
+      { heading: "Lettings Applications", items: [
+        "Lettings applicants (individual and company) and AML checks",
+        "Lettings offers and progressing to application",
+        "Full lettings application workflow — all checklist tiles",
+        "Creating the tenancy record and service level assignment",
+        "Tenancy table, filters and upcoming renewals",
+      ]},
+      { heading: "Tenancy Management", items: [
+        "Processing tenancy renewals and periodic tenancies",
+        "Move-out, deposit handling and end of tenancy",
+        "Landlord and tenant consumer app functionality",
+        "Automated app invitation notifications",
+      ]},
+    ],
+  },
+  {
+    day: "Property Management", title: "Property Management",
+    tags: ["property management", "maintenance", "contractor", "inspection", "certificate", "key", "pm"],
+    sections: [
+      { heading: "Maintenance & Contractors", items: [
+        "Logging maintenance requests (manual and tenant app)",
+        "Assigning jobs to contractors",
+        "Sending quotes for landlord approval and viewing available balance",
+        "Contractors — VAT, bank details and custom payment references",
+        "Maintenance invoices — raising, approving and outstanding invoices view",
+      ]},
+      { heading: "Compliance & Property Care", items: [
+        "Property inspections — scheduling, recording and uploading reports",
+        "Certificates (EPC, Gas Safety, EICR) — upload, filter by expiry, exempt properties",
+        "Property keys — check in/out, expected return dates, overdue view",
+        "Tasks, certificates table and compliance workflow",
+        "Landlord and tenant app — property management view",
+      ]},
+    ],
+  },
+  {
+    day: "Accounting", title: "Accounting",
+    tags: ["account", "invoice", "ledger", "rent", "reconcil", "statement", "nrl", "arrears", "suspense", "dormant", "charge", "receipt", "payment"],
+    sections: [
       { heading: "Receipting & Allocation", items: [
-        "Importing bank statements", "Receipt and reconcile",
-        "Allocating part-payments", "Suspense accounts",
+        "Accounting settings and go-live preparation",
+        "Invoice settings — numbering, VAT and templates",
+        "Receipting rent and handling partial/over payments",
+        "Allocating payments and the Tenancies in Credit table",
+        "Suspense account and dormant funds management",
+      ]},
+      { heading: "Landlord Payments & Statements", items: [
+        "Payments to Make — deductions, payment advice and zero-value PA",
+        "Tenancy ledger and generating PDF tenant statements",
+        "Monthly landlord statements — schedule, notes and attachments",
+        "Charges and recurring charges",
+        "Contractor payments and outstanding invoices view",
+        "Reconciliation and client account balance reporting",
+        "NRL Tax — setup, quarterly allocation and HMRC certificates",
+        "Client payments — requesting and tracking from within Street",
       ]},
       { heading: "Arrears & Reporting", items: [
-        "Aged debt generation", "Automated reminders",
-        "Interest handling", "Portfolio landlords",
-      ]},
-      { heading: "Property Management", items: [
-        "Maintenance workflow", "Contractor payments and commissions",
-        "Inspections and move-out process", "Owner preferences and floats",
+        "Arrears management — identifying, charging and chasing",
+        "Accounting and financial reports for management",
       ]},
     ],
   },
 ];
 
+
 function buildClientObjectives(areasStr, prioritiesStr) {
   const s = (areasStr || "").toLowerCase();
   const objectives = [];
-  const hasSales    = s.includes("sales") || s.includes("pipeline") || s.includes("offer") || s.includes("applicant");
-  const hasLettings = s.includes("letting") || s.includes("tenancy") || s.includes("landlord");
-  const hasAccounts = s.includes("account") || s.includes("invoice") || s.includes("ledger") || s.includes("debt") || s.includes("receipt");
-  const hasPM       = s.includes("property management") || s.includes("maintenance") || s.includes("contractor") || s.includes("inspection");
+  const hasSales    = s.includes("sales") || s.includes("pipeline") || s.includes("offer") || s.includes("applicant") || s.includes("memo") || s.includes("progression");
+  const hasLettings = s.includes("letting") || s.includes("tenancy") || s.includes("landlord") || s.includes("application") || s.includes("renewal");
+  const hasAccounts = s.includes("account") || s.includes("invoice") || s.includes("ledger") || s.includes("debt") || s.includes("receipt") || s.includes("nrl") || s.includes("reconcil");
+  const hasPM       = s.includes("property management") || s.includes("maintenance") || s.includes("contractor") || s.includes("inspection") || s.includes("certificate");
   const hasReporting= s.includes("report") || s.includes("dashboard") || s.includes("analytics");
+  const hasSettings = s.includes("settings") || s.includes("onboarding") || s.includes("portal") || s.includes("brand") || s.includes("user") || s.includes("notification");
   objectives.push("Ensure your team is utilising Street to its full capacity" +
     (hasSales && hasLettings ? " across Sales and Lettings" : hasSales ? " across Sales" : hasLettings ? " across Lettings" : "") + ".");
-  if (hasLettings && hasAccounts) objectives.push("Strengthen confidence in the Lettings invoicing workflow.");
+  if (hasSettings) objectives.push("Configure the platform correctly so every workflow, notification and portal feed behaves as expected.");
+  if (hasLettings && hasAccounts) objectives.push("Strengthen confidence in the full lettings and accounting workflow.");
   if (hasAccounts) objectives.push("Improve visibility and control over money movement, arrears and landlord statements.");
-  if (hasPM) objectives.push("Streamline property management workflows including maintenance, contractors and inspections.");
+  if (hasPM) objectives.push("Streamline property management workflows including maintenance, contractors, inspections and compliance.");
   if (hasReporting) objectives.push("Build confidence in reporting and dashboard use for management oversight.");
   objectives.push("Identify opportunities to streamline admin and reduce manual duplication.");
-  if (hasSales && hasLettings) objectives.push("Align Sales and Lettings processes to support smoother handovers.");
+  if (hasSales && hasLettings) objectives.push("Align Sales and Lettings processes to support smoother cross-team handovers.");
   if (prioritiesStr && prioritiesStr !== "—") {
     const extras = prioritiesStr.split(/\n/).map(s => s.replace(/^\d+\.\s*/, "").trim()).filter(Boolean);
     extras.forEach(e => { if (!objectives.some(o => o.toLowerCase().includes(e.toLowerCase().slice(0, 20)))) objectives.push(e); });
@@ -622,8 +782,8 @@ function ClientView({ row, notes, setNotes }) {
   const updateAttendee= (i, f, v) => { const a = [...attendeesList]; a[i] = { ...a[i], [f]: v }; setAttendees(a); };
   const removeAttendee= i => setAttendees(attendeesList.filter((_, j) => j !== i));
 
-  // Modules
-  const MODULES = ["General", "Sales", "Lettings Front End", "Property Management", "Accounting"];
+  // Modules — aligned to the 5 departments in the new checklist
+  const MODULES = ["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting"];
   const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
   const toggleModule    = m => sn("selectedModules")(selectedModules.includes(m) ? selectedModules.filter(x => x !== m) : [...selectedModules, m]);
 
@@ -1203,7 +1363,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
   const updateQA = (i, field, val) => { const r = [...qaRows]; r[i] = { ...r[i], [field]: val }; sn("qa")(r); };
   const removeQA = (i) => sn("qa")(qaRows.filter((_, j) => j !== i));
 
-  const [helpActive, setHelpActive] = useState(["Sales", "Lettings"]);
+  const [helpActive, setHelpActive] = useState(["Sales", "Lettings", "Property Management", "Accounting"]);
   const [helpSelected, setHelpSelected] = useState(n("helpSelected", []));
   const toggleCat = (cat) => setHelpActive(p => p.includes(cat) ? p.filter(c => c !== cat) : [...p, cat]);
   const toggleItem = (key) => { const next = helpSelected.includes(key) ? helpSelected.filter(k => k !== key) : [...helpSelected, key]; setHelpSelected(next); sn("helpSelected")(next); };
@@ -1276,7 +1436,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
 
       <Section num="2" title="What We Covered">
         <p style={{ fontSize: 12, color: C.dark30, marginBottom: 14, fontStyle: "italic" }}>Customise before sending — fill in what was actually covered.</p>
-        {[["Sales", "covered_sales"], ["Lettings Front End", "covered_lettings"], ["Property Management", "covered_pm"], ["Accounting & Invoicing", "covered_accounting"]].map(([label, k]) => (
+        {[["Settings & Core Platform", "covered_settings"], ["Sales", "covered_sales"], ["Lettings", "covered_lettings"], ["Property Management", "covered_pm"], ["Accounting & Invoicing", "covered_accounting"]].map(([label, k]) => (
           <div key={k} style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>{label}</div>
             <EditableBulletList items={n(k, [""])} onChange={sn(k)} placeholder="Add topic covered…" />
@@ -1302,7 +1462,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
                 <select value={row_.area || ""} onChange={e => updateQA(i, "area", e.target.value)}
                   style={{ width: "100%", border: "none", fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: C.dark, background: "transparent", outline: "none" }}>
                   <option value="">Area…</option>
-                  {["Sales", "Lettings", "PM", "Accounting", "Reporting", "General"].map(o => <option key={o} value={o}>{o}</option>)}
+                  {["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting", "Integrations", "General"].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
               <div style={{ borderRight: `1px solid ${C.border}`, padding: "6px 8px" }}>
