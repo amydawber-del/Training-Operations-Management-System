@@ -8,6 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Street Training Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   /* ── Street.co.uk theme tokens ── */
@@ -2215,7 +2216,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
           <!-- Name search -->
           <input type="text" id="referralNameSearch" class="filter-input" placeholder="Search referrer&#8230;" oninput="renderReferralLeaderboard()" style="min-width:140px;">
           <button class="btn btn-ghost btn-sm" onclick="clearReferralGlobalFilters()">&#10005; Clear</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportReferralLeaderboardCSV()" style="margin-left:auto;border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportReferralLeaderboardCSV()" style="margin-left:auto;border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV#11015; Export .xlsx</button>
         </div>
 
         <!-- SORT TOGGLE ROW -->
@@ -2614,7 +2615,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
           <option value="Cancelled">Lost</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="clearReferralFilters()">&#10005; Clear</button>
-        <button class="btn btn-ghost btn-sm" onclick="exportReferralModalCSV()" style="margin-left:auto;border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportReferralModalCSV()" style="margin-left:auto;border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV#11015; Export .xlsx</button>
       </div>
       <!-- Table -->
       <div style="overflow-x:auto;max-height:380px;overflow-y:auto;">
@@ -2632,7 +2633,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         </table>
       </div>
     </div>
-    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;"><button class="btn btn-ghost" onclick="closeReferralModal()">Close</button><button class="btn btn-ghost btn-sm" onclick="exportReferralModalCSV()" style="border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV</button></div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;"><button class="btn btn-ghost" onclick="closeReferralModal()">Close</button><button class="btn btn-ghost btn-sm" onclick="exportReferralModalCSV()" style="border-color:var(--s-purple);color:var(--s-purple);display:inline-flex;align-items:center;gap:5px;">&#11015; Export CSV#11015; Export .xlsx</button></div>
   </div>
 </div>
 
@@ -5371,23 +5372,10 @@ function closeReferralModal() {
   currentReferralPerson = null;
 }
 
-// ---- CSV HELPERS ----
-function csvEscape(val) {
-  if(val === null || val === undefined) return '';
-  const s = String(val).replace(/"/g, '""');
-  return s.search(/[",\n\r]/) >= 0 ? '"' + s + '"' : s;
-}
-function downloadCSV(filename, rows) {
-  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
-}
+// ===================== REFERRAL XLSX EXPORT =====================
 
-// Export the main leaderboard summary (one row per referrer, respecting active filters)
-function exportReferralLeaderboardCSV() {
+// Shared helper: get filtered referral rows for export
+function _getReferralExportRows() {
   const range = getReferralDateRange();
   const from = range.from, to = range.to;
   const nameSearch = (document.getElementById('referralNameSearch') ? document.getElementById('referralNameSearch').value : '').toLowerCase();
@@ -5399,99 +5387,264 @@ function exportReferralLeaderboardCSV() {
     if(to && r.ts > to) return false;
     return true;
   }
-
-  const counts = {};
-  allData.forEach(r => {
-    if(!r.referredBy || !r.referredBy.name) return;
-    if(!inRange(r)) return;
-    if(statusFilter && r.status !== statusFilter) return;
-    const key = r.referredBy.name;
-    if(!counts[key]) counts[key] = { name: r.referredBy.name, team: r.referredBy.team || '', count: 0, bookedCount: 0, bookedValue: 0, cancelledCount: 0, pendingCount: 0 };
-    counts[key].count++;
-    if(r.status === 'Booked') { counts[key].bookedCount++; counts[key].bookedValue += r.invoiceValue || 0; }
-    if(r.status === 'Cancelled') counts[key].cancelledCount++;
-    if(r.status === 'Pending' || r.status === 'Unassigned') counts[key].pendingCount++;
+  return allData.filter(r => {
+    if(!r.referredBy || !r.referredBy.name) return false;
+    if(!inRange(r)) return false;
+    if(statusFilter && r.status !== statusFilter) return false;
+    if(nameSearch && !r.referredBy.name.toLowerCase().includes(nameSearch)) return false;
+    return true;
   });
-
-  let entries = Object.values(counts).filter(e => !nameSearch || e.name.toLowerCase().includes(nameSearch));
-  entries.forEach(e => {
-    e.conversionRate = e.count > 0 ? Math.round((e.bookedCount / e.count) * 100) : 0;
-    e.avgDeal = e.bookedCount > 0 ? e.bookedValue / e.bookedCount : 0;
-  });
-  entries.sort(function(a,b) { return b.count - a.count; });
-
-  const presetLabel = _referralPreset === 'all' ? 'All time' : _referralPreset === '7d' ? 'Last 7 days' : _referralPreset === 'month' ? 'This month' : _referralPreset === 'quarter' ? 'This quarter' : 'Custom range';
-  const rows = [
-    ['Referral Performance Export — ' + presetLabel + (statusFilter ? ' | Status: ' + statusFilter : '') + (nameSearch ? ' | Search: ' + nameSearch : '')],
-    [],
-    ['Rank','Referrer','Team','Total Referrals','Converted (Booked)','Pending','Cancelled / Lost','Conversion Rate (%)','Revenue Generated (£)','Avg Deal Size (£)']
-  ];
-  entries.forEach(function(e, i) {
-    rows.push([
-      i + 1,
-      e.name,
-      e.team,
-      e.count,
-      e.bookedCount,
-      e.pendingCount,
-      e.cancelledCount,
-      e.conversionRate,
-      e.bookedValue.toFixed(2),
-      e.avgDeal > 0 ? e.avgDeal.toFixed(2) : ''
-    ]);
-  });
-
-  const dateStr = new Date().toISOString().split('T')[0];
-  downloadCSV('referral-performance-' + dateStr + '.csv', rows);
 }
 
-// Export the modal drill-down table (one row per individual referral, respecting active filters/preset)
-function exportReferralModalCSV() {
-  if(!currentReferralPerson) return;
-  let rows = allData.filter(r => r.referredBy && r.referredBy.name === currentReferralPerson);
-  const fFrom = document.getElementById('referralFilterDateFrom').value;
-  const fTo   = document.getElementById('referralFilterDateTo').value;
-  const fStatus = document.getElementById('referralFilterStatus').value;
-  if(fFrom) rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] >= fFrom);
-  if(fTo)   rows = rows.filter(r => r.ts && r.ts.toISOString().split('T')[0] <= fTo);
+// Format a date as DD/MM/YYYY or blank
+function _fmtXlsxDate(d) {
+  if(!d) return '';
+  try {
+    const dd = new Date(d);
+    if(isNaN(dd)) return '';
+    return dd.toLocaleDateString('en-GB');
+  } catch(e) { return ''; }
+}
+
+// Format month key → label e.g. "2026-01" → "Jan-26"
+function _monthLabel(key) {
+  const [y, m] = key.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(m,10)-1] + '-' + String(y).slice(2);
+}
+
+// Style helpers for SheetJS
+function _hdrStyle(bg) {
+  return { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: bg || '5B4BE7' } }, alignment: { horizontal: 'center', wrapText: true }, border: { bottom: { style: 'thin', color: { rgb: 'CCCCCC' } } } };
+}
+function _subHdrStyle() {
+  return { font: { bold: true, sz: 9, color: { rgb: '4A4F70' } }, fill: { fgColor: { rgb: 'EEF0FF' } }, alignment: { horizontal: 'center', wrapText: true } };
+}
+function _cellStyle(alt) {
+  return { fill: { fgColor: { rgb: alt ? 'F7F8FC' : 'FFFFFF' } }, alignment: { horizontal: 'left' } };
+}
+function _numStyle(alt) {
+  return { fill: { fgColor: { rgb: alt ? 'F7F8FC' : 'FFFFFF' } }, alignment: { horizontal: 'center' } };
+}
+function _moneyStyle(alt) {
+  return { fill: { fgColor: { rgb: alt ? 'F7F8FC' : 'FFFFFF' } }, numFmt: '£#,##0.00', alignment: { horizontal: 'right' } };
+}
+function _pctStyle(alt) {
+  return { fill: { fgColor: { rgb: alt ? 'F7F8FC' : 'FFFFFF' } }, alignment: { horizontal: 'center' } };
+}
+
+function _addCell(ws, r, c, value, style) {
+  const addr = XLSX.utils.encode_cell({ r, c });
+  ws[addr] = { v: value, t: typeof value === 'number' ? 'n' : 's', s: style };
+}
+
+// ── SHEET 1: Summary — referrers down left, months across top ──────────────
+function _buildSummarySheet(rows) {
+  const ws = {};
+
+  // Collect all referrers (sorted by total desc) and all months (sorted asc)
+  const referrers = {};
+  const monthSet = new Set();
+
+  rows.forEach(r => {
+    const name = r.referredBy.name;
+    const team = r.referredBy.team || '';
+    if(!referrers[name]) referrers[name] = { name, team, months: {} };
+    const monthKey = r.ts ? (r.ts.getFullYear() + '-' + String(r.ts.getMonth()+1).padStart(2,'0')) : '__none__';
+    monthSet.add(monthKey);
+    if(!referrers[name].months[monthKey]) referrers[name].months[monthKey] = { total:0, booked:0, upcoming:0, notConverted:0, value:0 };
+    const today = new Date(); today.setHours(0,0,0,0);
+    referrers[name].months[monthKey].total++;
+    if(r.status === 'Booked' && r.bookedOn && r.bookedOn < today) referrers[name].months[monthKey].booked++;
+    else if(r.status === 'Booked' && r.bookedOn && r.bookedOn >= today) referrers[name].months[monthKey].upcoming++;
+    else if(r.status !== 'Booked') referrers[name].months[monthKey].notConverted++;
+    if(r.status === 'Booked') referrers[name].months[monthKey].value += r.invoiceValue || 0;
+  });
+
+  const sortedMonths = Array.from(monthSet).filter(k => k !== '__none__').sort();
+  if(monthSet.has('__none__')) sortedMonths.push('__none__');
+  const sortedReferrers = Object.values(referrers).sort((a,b) => {
+    const ta = Object.values(a.months).reduce((s,m)=>s+m.total,0);
+    const tb = Object.values(b.months).reduce((s,m)=>s+m.total,0);
+    return tb - ta;
+  });
+
+  // Column layout:
+  // Col 0: Referrer | Col 1: Team | Col 2: Total | then per month: [Total, ✓ Completed, 📅 Upcoming, ✗ Not Conv., £ Value]
+  const MONTH_COLS = 5;
+  const FIXED_COLS = 3; // Referrer, Team, Grand Total
+  const totalCols = FIXED_COLS + sortedMonths.length * MONTH_COLS;
+
+  // Row 0: Main headers
+  _addCell(ws, 0, 0, 'Referrer',    _hdrStyle('12152A'));
+  _addCell(ws, 0, 1, 'Team',        _hdrStyle('12152A'));
+  _addCell(ws, 0, 2, 'Grand Total', _hdrStyle('12152A'));
+  sortedMonths.forEach(function(mk, mi) {
+    const col = FIXED_COLS + mi * MONTH_COLS;
+    const label = mk === '__none__' ? 'No Date' : _monthLabel(mk);
+    _addCell(ws, 0, col, label, _hdrStyle('5B4BE7'));
+    // Merge the 5 sub-columns under the month label
+    if(!ws['!merges']) ws['!merges'] = [];
+    if(MONTH_COLS > 1) ws['!merges'].push({ s:{r:0,c:col}, e:{r:0,c:col+MONTH_COLS-1} });
+  });
+
+  // Row 1: Sub-headers for each month block
+  _addCell(ws, 1, 0, '',        _subHdrStyle());
+  _addCell(ws, 1, 1, '',        _subHdrStyle());
+  _addCell(ws, 1, 2, 'Referrals', _subHdrStyle());
+  sortedMonths.forEach(function(mk, mi) {
+    const col = FIXED_COLS + mi * MONTH_COLS;
+    _addCell(ws, 1, col,   'Total',        _subHdrStyle());
+    _addCell(ws, 1, col+1, '✓ Completed',  _subHdrStyle());
+    _addCell(ws, 1, col+2, '📅 Upcoming',  _subHdrStyle());
+    _addCell(ws, 1, col+3, '✗ Not Conv.',  _subHdrStyle());
+    _addCell(ws, 1, col+4, '£ Value',      _subHdrStyle());
+  });
+
+  // Data rows
+  sortedReferrers.forEach(function(ref, ri) {
+    const row = ri + 2;
+    const alt = ri % 2 === 1;
+    const grandTotal = Object.values(ref.months).reduce((s,m)=>s+m.total,0);
+    _addCell(ws, row, 0, ref.name,    _cellStyle(alt));
+    _addCell(ws, row, 1, ref.team,    _cellStyle(alt));
+    _addCell(ws, row, 2, grandTotal,  _numStyle(alt));
+    sortedMonths.forEach(function(mk, mi) {
+      const col = FIXED_COLS + mi * MONTH_COLS;
+      const m = ref.months[mk] || { total:0, booked:0, upcoming:0, notConverted:0, value:0 };
+      _addCell(ws, row, col,   m.total || '',          _numStyle(alt));
+      _addCell(ws, row, col+1, m.booked || '',         _numStyle(alt));
+      _addCell(ws, row, col+2, m.upcoming || '',       _numStyle(alt));
+      _addCell(ws, row, col+3, m.notConverted || '',   _numStyle(alt));
+      _addCell(ws, row, col+4, m.value > 0 ? m.value : '', _moneyStyle(alt));
+    });
+  });
+
+  // Totals row
+  const totRow = sortedReferrers.length + 2;
+  _addCell(ws, totRow, 0, 'TOTALS', _hdrStyle('3D30B5'));
+  _addCell(ws, totRow, 1, '',       _hdrStyle('3D30B5'));
+  const grandGrand = rows.length;
+  _addCell(ws, totRow, 2, grandGrand, _hdrStyle('3D30B5'));
+  sortedMonths.forEach(function(mk, mi) {
+    const col = FIXED_COLS + mi * MONTH_COLS;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const mRows = rows.filter(r => {
+      const k = r.ts ? (r.ts.getFullYear() + '-' + String(r.ts.getMonth()+1).padStart(2,'0')) : '__none__';
+      return k === mk;
+    });
+    const totTotal = mRows.length;
+    const totBooked   = mRows.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn < today).length;
+    const totUpcoming = mRows.filter(r => r.status==='Booked' && r.bookedOn && r.bookedOn >= today).length;
+    const totNotConv  = mRows.filter(r => r.status!=='Booked').length;
+    const totVal      = mRows.filter(r => r.status==='Booked').reduce((s,r)=>s+(r.invoiceValue||0),0);
+    _addCell(ws, totRow, col,   totTotal,                      _hdrStyle('3D30B5'));
+    _addCell(ws, totRow, col+1, totBooked,                     _hdrStyle('3D30B5'));
+    _addCell(ws, totRow, col+2, totUpcoming,                   _hdrStyle('3D30B5'));
+    _addCell(ws, totRow, col+3, totNotConv,                    _hdrStyle('3D30B5'));
+    _addCell(ws, totRow, col+4, totVal > 0 ? totVal : '',      _hdrStyle('3D30B5'));
+  });
+
+  // Set column widths
+  const colWidths = [{ wch: 22 }, { wch: 18 }, { wch: 12 }];
+  sortedMonths.forEach(() => {
+    colWidths.push({ wch: 9 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 });
+  });
+  ws['!cols'] = colWidths;
+
+  // Set ref range
+  ws['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:totRow, c:totalCols-1} });
+  // Freeze panes: top 2 rows + left 2 columns
+  ws['!freeze'] = { xSplit: 2, ySplit: 2 };
+
+  return ws;
+}
+
+// ── SHEET per referrer: detailed breakdown ──────────────────────────────────
+function _buildReferrerSheet(name, rows) {
+  const ws = {};
+  const myRows = rows.filter(r => r.referredBy && r.referredBy.name === name);
+
+  // Headers
+  const headers = ['Customer Name','Referral Type / Option','Date Referred','Training Date','Days','Amount Invoiced (£)','Status'];
+  headers.forEach(function(h, c) { _addCell(ws, 0, c, h, _hdrStyle('5B4BE7')); });
 
   const today = new Date(); today.setHours(0,0,0,0);
-  let presetLabel = 'All';
-  if(_referralModalPreset === 'completed') {
-    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn < today);
-    presetLabel = 'Booked & Completed';
-  } else if(_referralModalPreset === 'upcoming') {
-    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today);
-    presetLabel = 'Booked & Upcoming';
-  } else if(_referralModalPreset === 'notconverted') {
-    rows = rows.filter(r => r.status !== 'Booked');
-    presetLabel = 'Not Converted / Cancelled';
-  } else {
-    if(fStatus) rows = rows.filter(r => r.status === fStatus);
-  }
+  myRows.sort(function(a,b) { return (a.ts||0) - (b.ts||0); });
 
-  const dateStr = new Date().toISOString().split('T')[0];
-  const csvRows = [
-    ['Referrals by ' + currentReferralPerson + ' — ' + presetLabel],
-    [],
-    ['Submitted','Company','Training Option','Booked Date','Invoice Value (£)','Status','Referral Notes']
-  ];
-  rows.forEach(function(r) {
-    csvRows.push([
-      r.ts ? r.ts.toISOString().split('T')[0] : '',
-      getCompanyName(r),
-      r.trainingOption || '',
-      r.bookedOn ? r.bookedOn.toISOString().split('T')[0] : '',
-      r.invoiceValue !== null && r.invoiceValue !== undefined ? r.invoiceValue.toFixed(2) : '',
-      r.status || '',
-      r.referralNotes || (r.referredBy && r.referredBy.notes) || ''
-    ]);
+  myRows.forEach(function(r, ri) {
+    const row = ri + 1;
+    const alt = ri % 2 === 1;
+    const days = r.trainingDays === 0.5 ? '½ day' : r.trainingDays === 1 ? '1 day' : r.trainingDays ? r.trainingDays + ' days' : '1 day';
+    let statusLabel = r.status;
+    if(r.status === 'Booked' && r.bookedOn && r.bookedOn < today) statusLabel = 'Booked & Completed';
+    else if(r.status === 'Booked' && r.bookedOn && r.bookedOn >= today) statusLabel = 'Booked & Upcoming';
+    else if(r.status === 'Cancelled') statusLabel = 'Not Converted / Cancelled';
+
+    _addCell(ws, row, 0, getCompanyName(r),                           _cellStyle(alt));
+    _addCell(ws, row, 1, r.trainingOption || '',                       _cellStyle(alt));
+    _addCell(ws, row, 2, _fmtXlsxDate(r.ts),                          _cellStyle(alt));
+    _addCell(ws, row, 3, r.bookedOn ? _fmtXlsxDate(r.bookedOn) : '',  _cellStyle(alt));
+    _addCell(ws, row, 4, days,                                         _numStyle(alt));
+    _addCell(ws, row, 5, r.invoiceValue !== null && r.invoiceValue !== undefined ? r.invoiceValue : '', _moneyStyle(alt));
+    _addCell(ws, row, 6, statusLabel,                                  _cellStyle(alt));
   });
 
-  const safeName = currentReferralPerson.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  downloadCSV('referrals-' + safeName + '-' + presetLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + dateStr + '.csv', csvRows);
+  ws['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 8 }, { wch: 18 }, { wch: 24 }];
+  ws['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r: myRows.length, c: 6} });
+
+  return ws;
 }
 
+// Safe sheet name: max 31 chars, strip invalid chars
+function _safeSheetName(name) {
+  return name.replace(/[:\\\/\?\*\[\]]/g, '').substring(0, 31);
+}
+
+// Main export entry point (called by both buttons)
+function exportReferralLeaderboardCSV() {
+  const rows = _getReferralExportRows();
+  if(!rows.length) { alert('No referral data matches the current filters.'); return; }
+  _buildAndDownloadReferralXlsx(rows);
+}
+
+function exportReferralModalCSV() {
+  // When called from the modal, apply modal preset filter first
+  let rows = _getReferralExportRows();
+  if(currentReferralPerson) {
+    rows = rows.filter(r => r.referredBy && r.referredBy.name === currentReferralPerson);
+  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  if(_referralModalPreset === 'completed') {
+    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn < today);
+  } else if(_referralModalPreset === 'upcoming') {
+    rows = rows.filter(r => r.status === 'Booked' && r.bookedOn && r.bookedOn >= today);
+  } else if(_referralModalPreset === 'notconverted') {
+    rows = rows.filter(r => r.status !== 'Booked');
+  }
+  if(!rows.length) { alert('No referral data matches the current filters.'); return; }
+  _buildAndDownloadReferralXlsx(rows);
+}
+
+function _buildAndDownloadReferralXlsx(rows) {
+  if(typeof XLSX === 'undefined') { alert('Export library not loaded yet. Please try again in a moment.'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Summary matrix
+  const summaryWs = _buildSummarySheet(rows);
+  XLSX.utils.book_append_sheet(wb, summaryWs, '📊 Summary');
+
+  // One sheet per referrer
+  const referrerNames = Array.from(new Set(rows.map(r => r.referredBy.name))).sort();
+  referrerNames.forEach(function(name) {
+    const ws = _buildReferrerSheet(name, rows);
+    XLSX.utils.book_append_sheet(wb, ws, _safeSheetName(name));
+  });
+
+  const dateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, 'referral-performance-' + dateStr + '.xlsx', { bookType: 'xlsx', type: 'binary', cellStyles: true });
+}
 // ===================== PROFILE SIDEBAR =====================
 // ── Profile section definitions ─────────────────────────────────────────────
 // Each field entry: [displayLabel, recordKey, displayHtml, inputType]
