@@ -1975,7 +1975,19 @@ function AISummaryGenerator({ row, allNotes, setAllNotes, selectedIdx }) {
   const prioritiesStr = h(row, "priorities");
   const followUpStr   = h(row, "followUp");
 
-  const PROMPT = `You are a professional training consultant writing a post-training summary pack for an estate agency that uses Street.co.uk CRM software.
+  const generate = async () => {
+    if (!rawNotes.trim()) { setError("Please paste your training notes first."); return; }
+    setGenerating(true);
+    setError("");
+    setDone(false);
+    try {
+      // Truncate very large notes to ~12,000 words to stay within token limits
+      const words = rawNotes.trim().split(/\s+/);
+      const truncatedNotes = words.length > 12000
+        ? words.slice(0, 12000).join(" ") + "\n\n[Notes truncated to 12,000 words for processing]"
+        : rawNotes.trim();
+
+      const finalPrompt = `You are a professional training consultant writing a post-training summary pack for an estate agency that uses Street.co.uk CRM software.
 
 CLIENT CONTEXT:
 - Company: ${companyName}
@@ -1986,7 +1998,7 @@ CLIENT CONTEXT:
 
 RAW TRAINER NOTES FROM THE SESSION:
 ---
-${rawNotes}
+${truncatedNotes}
 ---
 
 Using the raw notes above, write a structured post-training summary. Return ONLY a valid JSON object with exactly these keys (no markdown, no preamble):
@@ -2014,21 +2026,22 @@ Rules:
 - Keep bullet points concise — one clear action or topic per bullet.
 - If the notes are sparse, make reasonable professional inferences based on the training areas and priorities provided.`;
 
-  const generate = async () => {
-    if (!rawNotes.trim()) { setError("Please paste your training notes first."); return; }
-    setGenerating(true);
-    setError("");
-    setDone(false);
-    try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: PROMPT }],
+          model: "claude-sonnet-4-5",
+          max_tokens: 2000,
+          messages: [{ role: "user", content: finalPrompt }],
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `API error ${res.status}`);
+      }
       const data = await res.json();
       const text = (data.content || []).map(b => b.text || "").join("").trim();
       // Strip any accidental markdown fences
