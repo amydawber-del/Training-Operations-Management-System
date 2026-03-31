@@ -4363,8 +4363,8 @@ function renderTrainerWorkload() {
     const utilisationPct = Math.min(100, Math.round((last30.length / Math.max(CAPACITY_30D, 1)) * 100));
     return { t, idx, meta, last30, upcoming, utilisationPct };
   });
-  // The most available trainer = lowest utilisation among those not over capacity
-  const available = trainerStats.filter(s => s.utilisationPct < 85);
+  // The most available trainer = lowest utilisation among those not over capacity and not shadowing
+  const available = trainerStats.filter(s => s.utilisationPct < 85 && !s.meta.shadowing);
   const mostAvailable = available.length ? available.reduce((a, b) => a.utilisationPct <= b.utilisationPct ? a : b) : null;
 
   let html = '';
@@ -4471,7 +4471,8 @@ function getNextFreeDate(trainerName) {
 
 function trainersByWorkload() {
   const today = new Date(); today.setHours(0,0,0,0);
-  const eligible = trainers.filter(u => u.role === 'trainer' || u.role === 'admin');
+  // Exclude trainers who are in shadowing mode — they are learning and should not be recommended
+  const eligible = trainers.filter(u => (u.role === 'trainer' || u.role === 'admin') && !getTrainerMeta(u.name).shadowing);
   const load = {};
   eligible.forEach(t => { load[t.name] = 0; });
   allData.forEach(r => {
@@ -6134,7 +6135,7 @@ function openAssignModal(idx) {
   const suggested = suggestTrainer(rowPos >= 0 ? rowPos : 0);
   const sel = document.getElementById('assignTrainerSel');
   sel.innerHTML = '<option value="">— Select trainer —</option>';
-  trainers.filter(u => u.role === 'trainer' || u.role === 'admin').forEach(t => {
+  trainers.filter(u => (u.role === 'trainer' || u.role === 'admin') && !getTrainerMeta(u.name).shadowing).forEach(t => {
     const isSugg = suggested && t.name === suggested.name;
     sel.innerHTML += `<option value="${t.name}" ${isSugg ? 'selected' : ''}>${t.name}${isSugg ? ' 💡 Suggested' : ''}</option>`;
   });
