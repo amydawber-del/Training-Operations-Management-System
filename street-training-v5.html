@@ -1968,6 +1968,18 @@ function AISummaryGenerator({ row, allNotes, setAllNotes, selectedIdx }) {
   const [generating, setGenerating] = useState(false);
   const [error,      setError]      = useState("");
   const [done,       setDone]       = useState(false);
+  const [apiKey,     setApiKey]     = useState(() => {
+    try { return localStorage.getItem("street_anthropic_key") || ""; } catch { return ""; }
+  });
+  const [keyVisible, setKeyVisible] = useState(false);
+  const [keySaved,   setKeySaved]   = useState(false);
+
+  const saveKey = (val) => {
+    try { localStorage.setItem("street_anthropic_key", val); } catch {}
+    setApiKey(val);
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2000);
+  };
 
   const companyName   = h(row, "company");
   const trainerName   = h(row, "trainer");
@@ -1976,6 +1988,7 @@ function AISummaryGenerator({ row, allNotes, setAllNotes, selectedIdx }) {
   const followUpStr   = h(row, "followUp");
 
   const generate = async () => {
+    if (!apiKey.trim()) { setError("Please enter and save your Anthropic API key above before generating."); return; }
     if (!rawNotes.trim()) { setError("Please paste your training notes first."); return; }
     setGenerating(true);
     setError("");
@@ -2030,6 +2043,8 @@ Rules:
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-api-key": apiKey.trim(),
+          "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
@@ -2091,6 +2106,43 @@ Rules:
         </div>
         <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 8, padding: "10px 14px", fontSize: 12, color: C.dark40, lineHeight: "18px" }}>
           <strong style={{ color: C.blue }}>How it works:</strong> Paste your notes from the training session below — bullet points, voice memo transcripts, rough scribbles, anything. AI will read the client context automatically and write a complete, professional Summary Pack. Switch to the <strong>Summary Pack</strong> tab to review, edit and print it.
+        </div>
+      </div>
+
+      {/* API Key input */}
+      <div style={{ background: "#fff", border: `1px solid ${apiKey ? C.border : "#f9b4bc"}`, borderRadius: 12, padding: "16px 20px", marginBottom: 16, boxShadow: "0 1px 4px rgba(18,21,42,0.05)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M8 11a4 4 0 116.928-4 4 4 0 01-6.928 4zm0 0l-5 5m5-5l2 2" stroke={apiKey ? C.greenDark : C.redDark} strokeWidth="1.8" strokeLinecap="round"/></svg>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.07em" }}>Anthropic API Key</div>
+          {apiKey && <span style={{ fontSize: 10, background: C.greenBg, color: C.greenDark, border: "1px solid #7bc97a", borderRadius: 4, padding: "1px 7px", fontWeight: 700 }}>SAVED</span>}
+          {!apiKey && <span style={{ fontSize: 10, background: C.red, color: C.redDark, border: "1px solid #f9b4bc", borderRadius: 4, padding: "1px 7px", fontWeight: 700 }}>REQUIRED</span>}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <input
+              type={keyVisible ? "text" : "password"}
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") saveKey(apiKey); }}
+              placeholder="sk-ant-api03-..."
+              style={{ width: "100%", padding: "9px 36px 9px 12px", fontFamily: "'DM Sans', sans-serif", fontSize: 13, border: `1.5px solid ${apiKey ? C.border : "#f9b4bc"}`, borderRadius: 8, outline: "none", color: C.dark, background: "#FAFBFF", letterSpacing: keyVisible ? "normal" : "0.1em" }}
+              onFocus={e => e.target.style.borderColor = C.blue}
+              onBlur={e => e.target.style.borderColor = apiKey ? C.border : "#f9b4bc"}
+            />
+            <button onClick={() => setKeyVisible(v => !v)} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: C.dark30, padding: "2px", display: "flex" }}>
+              {keyVisible
+                ? <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M3 3l14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                : <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" stroke="currentColor" strokeWidth="1.5"/><circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+              }
+            </button>
+          </div>
+          <button
+            onClick={() => saveKey(apiKey)}
+            style={{ background: keySaved ? C.greenDark : C.blue, color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'DM Sans', sans-serif", transition: "background 0.2s" }}
+          >{keySaved ? "✓ Saved" : "Save Key"}</button>
+        </div>
+        <div style={{ fontSize: 11, color: C.dark30, marginTop: 8, lineHeight: "16px" }}>
+          Your key is stored only in this browser's local storage — never sent anywhere except directly to Anthropic. Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" style={{ color: C.blue }}>console.anthropic.com</a>.
         </div>
       </div>
 
