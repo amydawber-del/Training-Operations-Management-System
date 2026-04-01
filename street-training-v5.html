@@ -919,9 +919,8 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     return getAreasForDay(dayNum).reduce((sum, item) => sum + parseDuration(item.dur), 0);
   };
 
-  // Keep these stubs so nothing downstream breaks
+  // Stubs — selectedModules/toggleModule no longer used in new sheet-driven flow
   const selectedModules = [];
-  const sectionKeysForModule = () => [];
   const toggleModule = () => {};
   const selected = [];
   const isSelected = () => false;
