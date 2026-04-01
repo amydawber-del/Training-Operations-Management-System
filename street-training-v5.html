@@ -186,23 +186,35 @@ function mapRow(headers, row) {
   headers.forEach((header, i) => { obj[header] = row[i] || ""; });
   return obj;
 }
-function parseCSV(text) {
+function parseCSVLine(line) {
+  const cols = []; let cur = "", inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+    else { cur += ch; }
+  }
+  cols.push(cur.trim());
+  return cols.map(c => c.replace(/^"|"$/g, ""));
+}
+
+// General CSV parser — skipRows lets you skip title/description rows before the header
+function parseCSV(text, skipRows = 0) {
   const lines = text.trim().split("\n");
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-  return lines.slice(1).map(line => {
-    const cols = []; let cur = "", inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { inQ = !inQ; }
-      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
-      else { cur += ch; }
-    }
-    cols.push(cur.trim());
+  if (lines.length < skipRows + 2) return [];
+  const headers = parseCSVLine(lines[skipRows]).map(h => h.trim());
+  return lines.slice(skipRows + 1).map(line => {
+    const cols = parseCSVLine(line);
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = (cols[i] || "").replace(/^"|"$/g, ""); });
+    headers.forEach((h, i) => { obj[h] = (cols[i] || "").trim(); });
     return obj;
-  });
+  }).filter(row => Object.values(row).some(v => v !== ""));
+}
+
+// Agenda-specific CSV parser — skips the 2 title/description rows above the real headers
+// Sheet layout: row 1 = title, row 2 = description, row 3 = column headers, row 4+ = data
+function parseAgendaCSV(text) {
+  return parseCSV(text, 2);
 }
 // New column names from the updated "Training Agenda Checklist — All Areas" sheet:
 //   ✓ Include? | Street Settings Category | Area of Street | What It Involves (Trainer Detail)
@@ -239,13 +251,27 @@ function buildAgendaFromAreas(areasStr, agendaData) {
 
   const grouped = {};
   agendaData.forEach(row => {
+    // ── Column name aliases — handles exact sheet headers + any variant ──
+    // Sheet headers (row 3): ✓ Include? | Street Settings Category | Area of Street |
+    //   What It Involves (Trainer Detail) | Why It Matters to the Client (Client Pitch) |
+    //   Typical Training Duration | Sales / Lettings / Both / PM / Accts | Training Notes / Done?
+
+    const include  = (row["✓ Include?"] || row["Include?"] || "Y").trim().toUpperCase();
+    // Skip rows explicitly marked N
+    if (include === "N") return;
+
     const category = (row["Street Settings Category"] || "").trim();
     const area     = (row["Area of Street"] || "").trim();
     if (!area || !category) return;
 
-    const dept     = (row["Sales / Lettings / Both / PM / Accts"] ||
-                      row["Sales /\nLettings / Both"] ||
-                      row["Sales / Lettings / Both"] || "Both").trim();
+    const dept     = (
+      row["Sales / Lettings / Both / PM / Accts"] ||
+      row["Sales / Lettings / Both / PM / Accounting"] ||
+      row["Sales /\nLettings / Both"] ||
+      row["Sales / Lettings / Both"] ||
+      "Both"
+    ).trim();
+
     const areaLow  = area.toLowerCase();
     const catLow   = category.toLowerCase();
 
@@ -262,7 +288,7 @@ function buildAgendaFromAreas(areasStr, agendaData) {
       if (!grouped[groupKey]) grouped[groupKey] = { dept, items: [] };
       const involves = row["What It Involves (Trainer Detail)"] || row["What it Involves:"] || "";
       const why      = row["Why It Matters to the Client (Client Pitch)"] || row["Why It Matters to the Client\n(Client Pitch)"] || "";
-      const duration = row["Typical Training\nDuration"] || row["Typical Training Duration"] || "";
+      const duration = row["Typical Training Duration"] || row["Typical Training\nDuration"] || "";
       grouped[groupKey].items.push({ item: area, involves, why, duration, category, dept });
     }
   });
@@ -2194,7 +2220,29 @@ function App() {
   }, []);
 
   useEffect(() => {
-    fetch(AGENDA_CSV_URL).then(r => r.text()).then(text => { setAgendaData(parseCSV(text)); setAgendaLoading(false); }).catch(() => setAgendaLoading(false));
+    // Primary: fetch agenda via Apps Script (action=getAgenda)
+    // This reads the "✅ All Areas" tab directly, no publish/gid needed.
+    // Fallback: published CSV (requires correct gid and skip of 2 title rows).
+    const loadAgenda = async () => {
+      // Try Apps Script first
+      try {
+        const res = await fetch(`${SHEET_URL}?action=getAgenda&t=${Date.now()}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.rows) && json.rows.length) {
+          setAgendaData(json.rows);
+          setAgendaLoading(false);
+          return;
+        }
+      } catch (_) {}
+      // Fallback: published CSV — skip 2 header rows (title + description)
+      try {
+        const text = await fetch(AGENDA_CSV_URL).then(r => r.text());
+        const rows = parseAgendaCSV(text);
+        if (rows.length) { setAgendaData(rows); setAgendaLoading(false); return; }
+      } catch (_) {}
+      setAgendaLoading(false);
+    };
+    loadAgenda();
   }, []);
 
   // Auto-select a company when opened from the dashboard via ?company=... URL param
