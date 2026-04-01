@@ -936,8 +936,7 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     const map = {};
     agendaData.forEach(row => {
       const area     = (row["Area of Street"] || "").trim();
-      const duration = (row["Typical Training Duration"] || row["Typical Training
-Duration"] || "").trim();
+      const duration = (row["Typical Training Duration"] || row["Typical Training Duration"] || "").trim();
       if (area && duration) map[area] = duration;
     });
     return map;
@@ -1166,7 +1165,7 @@ Duration"] || "").trim();
                   </div>
                 );
               })()}
-              </div>
+            </div>
             ))}
           </div>
 
