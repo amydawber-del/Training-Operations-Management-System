@@ -771,7 +771,7 @@ function ClientAgendaBlock({ title, sections }) {
   );
 }
 
-function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = false }) {
+function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = false, agendaError = null }) {
   const n  = k => notes[k] !== undefined ? notes[k] : "";
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
 
@@ -1082,7 +1082,19 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
 
           {/* ── THREE-LEVEL SELECTOR ─────────────────────────────────────────── */}
           {agendaLoading && <div style={{ fontSize: 12, color: C.dark20, padding: "8px 0" }}>Loading agenda from sheet…</div>}
-          {!agendaLoading && !allDepts.length && <div style={{ fontSize: 12, color: C.dark20, padding: "8px 0" }}>No agenda data — check Apps Script getAgenda is deployed.</div>}
+          {!agendaLoading && !allDepts.length && (
+            <div style={{ background: "#FFF0E6", border: "1px solid #FDC89A", borderRadius: 7, padding: "10px 14px", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#C04000", marginBottom: 4 }}>⚠ No agenda data loaded</div>
+              {agendaError ? (
+                <div style={{ fontSize: 11, color: "#C04000", marginBottom: 6, fontFamily: "monospace", background: "#fff4ee", padding: "4px 8px", borderRadius: 4 }}>{agendaError}</div>
+              ) : null}
+              <div style={{ fontSize: 11, color: "#7A3A00", lineHeight: "17px" }}>
+                <strong>To fix:</strong> Open the Apps Script editor → Deploy → Manage deployments → create a new version.
+                The deployed script must include the <code>getAgenda</code> action.
+                Check the browser console for the full error.
+              </div>
+            </div>
+          )}
 
           {allDepts.length > 0 && (
             <div>
@@ -2335,6 +2347,7 @@ function App() {
   const [usingMock, setUsingMock] = useState(false);
   const [agendaData, setAgendaData] = useState([]);
   const [agendaLoading, setAgendaLoading] = useState(true);
+  const [agendaError, setAgendaError] = useState(null);
   const [allNotes, setAllNotes] = useState({});
   const [sidebarSearch, setSidebarSearch] = useState("");
 
@@ -2360,14 +2373,17 @@ function App() {
       try {
         const res  = await fetch(SHEET_URL + "?action=getAgenda&t=" + Date.now());
         const json = await res.json();
+        console.log("[Agenda] getAgenda response:", JSON.stringify(json).slice(0, 200));
         if (json.success && Array.isArray(json.rows) && json.rows.length) {
           setAgendaData(json.rows);
           setAgendaLoading(false);
           return;
         }
-        console.warn("[Agenda] getAgenda returned:", json.error || "no rows");
+        // Surface the exact error so it's visible on screen
+        setAgendaError(json.error || (json.success === false ? "getAgenda returned no rows" : "Unexpected response"));
       } catch (err) {
         console.warn("[Agenda] Apps Script fetch failed:", err.message);
+        setAgendaError("Network error: " + err.message);
       }
       // CSV fallback — sheet has 2 title rows before the actual headers on row 3
       try {
@@ -2579,7 +2595,7 @@ function App() {
             )}
             {loading && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>Loading…</div>}
             {!loading && currentRow && view === "ai-generator" && <AISummaryGenerator row={currentRow} allNotes={allNotes} setAllNotes={setAllNotes} selectedIdx={selected} />}
-            {!loading && currentRow && view === "client" && <ClientView row={currentRow} notes={notes} setNotes={setNotes} agendaData={agendaData} agendaLoading={agendaLoading} />}
+            {!loading && currentRow && view === "client" && <ClientView row={currentRow} notes={notes} setNotes={setNotes} agendaData={agendaData} agendaLoading={agendaLoading} agendaError={agendaError} />}
             {!loading && currentRow && view === "post-client" && <PostTrainingClientView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} />}
             {!loading && currentRow && view === "post-internal" && <PostTrainingInternalView row={currentRow} notes={notes} setNotes={setNotes} />}
             {!loading && rows.length === 0 && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>No records found.</div>}
