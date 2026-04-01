@@ -926,17 +926,40 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     const next = cur.includes(d) ? (cur.length > 1 ? cur.filter(x => x !== d) : cur) : [...cur, d].sort((a,b)=>a-b);
     sn("areaDay")({ ...areaDay, [key]: next });
   };
+  const copyAreaDayToAll = (days) => {
+    // Apply the same day assignment to every currently-selected area
+    const updated = { ...areaDay };
+    allAreaKeys.filter(k => effectiveAreas.has(k)).forEach(k => { updated[k] = [...days]; });
+    sn("areaDay")(updated);
+  };
+
+  // Safe key parser — handles area names that may contain "::"
+  const parseAreaKey = k => {
+    const first  = k.indexOf("::");
+    const second = k.indexOf("::", first + 2);
+    if (first === -1 || second === -1) return null;
+    return { dept: k.slice(0, first), cat: k.slice(first + 2, second), area: k.slice(second + 2) };
+  };
 
   // All selected area rows for a given day
   const getAreasForDay = dayNum =>
     allAreaKeys
       .filter(k => effectiveAreas.has(k))
-      .filter(k => selectedDepts.has(k.split("::")[0]))
+      .filter(k => {
+        const p = parseAreaKey(k);
+        if (!p) return false;
+        // Dept must be selected
+        if (!selectedDepts.has(p.dept)) return false;
+        // Category must be selected (effectiveCats)
+        if (!effectiveCats.has(p.dept + "::" + p.cat)) return false;
+        return true;
+      })
       .filter(k => trainingDays === 1 || getAreaDays(k).includes(dayNum))
       .map(k => {
-        const [dept, cat, area] = k.split("::");
-        const item = (agendaTree[dept]?.[cat] || []).find(i => i.area === area);
-        return item ? { ...item, dept, cat, key: k } : null;
+        const p = parseAreaKey(k);
+        if (!p) return null;
+        const item = (agendaTree[p.dept]?.[p.cat] || []).find(i => i.area === p.area);
+        return item ? { ...item, dept: p.dept, cat: p.cat, key: k } : null;
       })
       .filter(Boolean);
 
@@ -1230,7 +1253,7 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
                                   {item.dur && <span style={{ fontSize: 10, color: C.dark30, flexShrink: 0, background: "#f0f0f5", borderRadius: 3, padding: "1px 6px" }}>{item.dur}</span>}
                                   {/* Day assignment — multi-day only */}
                                   {trainingDays > 1 && areaOn && (
-                                    <div style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+                                    <div style={{ display: "flex", gap: 2, flexShrink: 0, alignItems: "center" }}>
                                       {Array.from({ length: trainingDays }, (_, i) => i + 1).map(num => (
                                         <button key={num} onClick={() => toggleAreaDay(areaKey, num)}
                                           style={{ width: 24, height: 20, fontSize: 9, fontWeight: 700, cursor: "pointer",
@@ -1241,6 +1264,15 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
                                           D{num}
                                         </button>
                                       ))}
+                                      <button
+                                        title="Copy this day assignment to all selected areas"
+                                        onClick={() => copyAreaDayToAll(days)}
+                                        style={{ height: 20, padding: "0 5px", fontSize: 9, fontWeight: 700, cursor: "pointer",
+                                          fontFamily: "'DM Sans', sans-serif", borderRadius: 3,
+                                          background: "#f0f0f5", color: C.dark30,
+                                          border: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>
+                                        → all
+                                      </button>
                                     </div>
                                   )}
                                 </div>
