@@ -795,38 +795,58 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
   const updateAttendee= (i, f, v) => { const a = [...attendeesList]; a[i] = { ...a[i], [f]: v }; setAttendees(a); };
   const removeAttendee= i => setAttendees(attendeesList.filter((_, j) => j !== i));
 
-  // ── Modules derived from live sheet data (col G = dept, col B = category) ──
-  // Dept order for display
-  const DEPT_ORDER = ["Both", "Sales", "Lettings", "Property Management", "Accounting"];
+  // ── Modules — always the 5 fixed departments ──────────────────────────────
+  // The module list never changes — it always shows these 5 in order.
+  // agendaData (col G + col B) is used only to populate the category pills
+  // that expand beneath each module when it is selected.
+  const MODULES = ["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting"];
+  const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
 
-  // Build module list from agendaData: group by dept, collect unique categories
-  const sheetModules = useMemo(() => {
-    if (!agendaData.length) return null; // null = not loaded yet, fall back to hardcoded
-    const deptMap = {};
+  // Map each fixed module to the col G dept values that belong to it.
+  // "Both" rows belong to Sales AND Lettings — they appear under whichever
+  // of those two is selected, and only once if both are selected.
+  const MODULE_DEPT_MATCH = {
+    "Settings & Core Platform": ["settings", "general"],
+    "Sales":                    ["sales", "both"],
+    "Lettings":                 ["lettings", "letting", "both"],
+    "Property Management":      ["property management", "pm"],
+    "Accounting":               ["accounting", "accts", "account"],
+  };
+
+  // Build category list per module from agendaData col B, filtered by col G
+  const moduleCats = useMemo(() => {
+    const result = {};
+    MODULES.forEach(m => { result[m] = new Set(); });
     agendaData.forEach(row => {
-      const dept = (
+      const rawDept = (
         row["Sales / Lettings / Both / PM / Accts"] ||
         row["Sales / Lettings / Both / PM / Accounting"] ||
         ""
-      ).trim();
+      ).trim().toLowerCase();
       const cat = (row["Street Settings Category"] || "").trim();
-      if (!dept || !cat) return;
-      if (!deptMap[dept]) deptMap[dept] = new Set();
-      deptMap[dept].add(cat);
+      if (!rawDept || !cat) return;
+      MODULES.forEach(m => {
+        const matches = MODULE_DEPT_MATCH[m] || [];
+        if (matches.some(k => rawDept === k || rawDept.includes(k) || k.includes(rawDept))) {
+          result[m].add(cat);
+        }
+      });
     });
-    // Sort depts by preferred order, append any unknown depts at end
-    const known   = DEPT_ORDER.filter(d => deptMap[d]);
-    const unknown = Object.keys(deptMap).filter(d => !DEPT_ORDER.includes(d)).sort();
-    return [...known, ...unknown].map(dept => ({
-      dept,
-      categories: Array.from(deptMap[dept]).sort(),
-    }));
+    return result;
   }, [agendaData]);
 
-  // Fallback module names when sheet not loaded
-  const MODULES_FALLBACK = ["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting"];
-  const MODULES = sheetModules ? sheetModules.map(m => m.dept) : MODULES_FALLBACK;
-  const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
+  // For "Both" categories: collect all cats already shown by other selected modules
+  // so we can deduplicate — if Sales is selected, its "Both" cats won't repeat under Lettings
+  const getCatsForModule = m => {
+    const allCats = Array.from(moduleCats[m] || []).sort();
+    if (m !== "Lettings") return allCats;
+    // If Sales is also selected, remove any cats that are already shown there
+    if (selectedModules.includes("Sales")) {
+      const salesCats = new Set(moduleCats["Sales"] || []);
+      return allCats.filter(c => !salesCats.has(c));
+    }
+    return allCats;
+  };
 
   // Agenda sections
   const ALL_SECTIONS = [
@@ -1080,7 +1100,7 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>Topics & Modules</div>
-              {agendaLoading && <span style={{ fontSize: 10, color: C.dark20, fontStyle: "italic" }}>Loading from sheet…</span>}
+              {agendaLoading && <span style={{ fontSize: 10, color: C.dark20, fontStyle: "italic" }}>Loading agenda…</span>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {MODULES.map(m => {
@@ -1089,10 +1109,9 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
                 const selCount   = childKeys.filter(k => selected.includes(k)).length;
                 const totalCount = childKeys.length;
                 const partial    = chk && selCount < totalCount && selCount > 0;
-                // Categories for this dept from live sheet data
-                const cats = sheetModules
-                  ? (sheetModules.find(sm => sm.dept === m) || {}).categories || []
-                  : [];
+                // Categories from live sheet data (col B), filtered by col G dept
+                // "Both" rows show under Sales and/or Lettings — deduplicated if both selected
+                const cats = getCatsForModule(m);
                 // Dept badge colour
                 const deptColour = {
                   "Sales":               { bg: "#EAF1FF", fg: "#1E4DB7" },
