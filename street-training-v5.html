@@ -1681,9 +1681,88 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
 
 
 // ─── POST-TRAINING SUMMARY PACK (CLIENT) ──────────────────────────────────
-function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNotes }) {
+function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNotes, clientNotes, agendaData }) {
   const n = (k, def) => notes[k] !== undefined ? notes[k] : (def !== undefined ? def : "");
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
+
+  // ── Pull through from Client Doc ────────────────────────────────────────
+  const cn = (k, def) => clientNotes[k] !== undefined ? clientNotes[k] : (def !== undefined ? def : "");
+
+  // Attendees from client doc
+  const clientAttendees = cn("attendeesList", []);
+  const attendeesDisplay = clientAttendees.filter(a => a.name).map(a => `${a.name}${a.role ? " — " + a.role : ""}`).join(", ") || h(row, "attendees");
+
+  // Training dates from client doc
+  const trainingDays = cn("trainingDays", 1);
+  const dayDates = cn("dayDates", []);
+  const dayTimes = cn("dayTimes", []);
+  const fmtDisplayDate = dateStr => { if (!dateStr) return ""; const d = new Date(dateStr + "T00:00:00"); if (isNaN(d)) return dateStr; return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); };
+  const fmtTime12 = t => { if (!t) return ""; const [hh, mm] = t.split(":"); const hr = parseInt(hh); const ampm = hr >= 12 ? "pm" : "am"; return `${hr > 12 ? hr - 12 : hr || 12}:${mm}${ampm}`; };
+  const sessionDatesStr = dayDates.filter(Boolean).map((d, i) => {
+    const t = dayTimes[i] || {};
+    const timeStr = `${fmtTime12(t.start || "10:30")} – ${fmtTime12(t.end || "16:30")}`;
+    return fmtDisplayDate(d) + (trainingDays > 1 ? ` (Day ${i+1}, ${timeStr})` : ` (${timeStr})`);
+  }).join(" | ") || fmtTrainingDate(h(row, "date"));
+
+  // Session notes from client doc
+  const clientSessionNotes = cn("session", "");
+
+  // Follow-up actions from client doc
+  const clientFollowupActions = cn("followupActions", "");
+
+  // Follow-up options ticked in client doc
+  const clientFollowupOptions = cn("followupOptions", []);
+
+  // Selected agenda areas from client doc — build a flat list grouped by dept/cat
+  const selectedDepts  = new Set(cn("selectedDepts", []));
+  const selectedCats   = new Set(cn("selectedCats", []));
+  const selectedAreas  = new Set(cn("selectedAreas", []));
+
+  // Build the agenda tree (reuse normRow / rf helpers via agendaData)
+  const normRow2 = row => { const out = {}; Object.keys(row).forEach(k => { const clean = k.replace(/\s*\n\s*/g, " ").replace(/\s+/g, " ").trim(); out[clean] = row[k]; }); return out; };
+  const rf2 = (row, ...keys) => { for (const k of keys) { if (row[k] !== undefined && row[k] !== "") return row[k]; } return ""; };
+  const normDept2 = raw => { const s = (raw || "").trim().toLowerCase(); if (s === "sales") return "Sales"; if (s === "lettings" || s === "letting") return "Lettings"; if (s === "both") return "Both"; if (s === "property management" || s === "pm") return "Property Management"; if (s.includes("account") || s === "accts") return "Accounting"; return raw.trim(); };
+
+  const agendaTree2 = useMemo(() => {
+    const tree = {};
+    agendaData.forEach(rawRow => {
+      const r = normRow2(rawRow);
+      const includeRaw = rf2(r, "✓ Include?", "Include?").trim().toUpperCase();
+      if (includeRaw === "N" || includeRaw === "NO" || includeRaw === "FALSE") return;
+      const dept = normDept2(rf2(r, "Sales / Lettings / Both / PM / Accts", "Sales / Lettings / Both / PM / Accounting", "Sales / Lettings / Both"));
+      const cat = rf2(r, "Street Settings Category").trim();
+      const area = rf2(r, "Area of Street").trim();
+      const dur = rf2(r, "Typical Training Duration").trim();
+      const involves = rf2(r, "What It Involves (Trainer Detail)", "What it Involves:").trim();
+      if (!dept || !cat || !area) return;
+      if (!tree[dept]) tree[dept] = {};
+      if (!tree[dept][cat]) tree[dept][cat] = [];
+      tree[dept][cat].push({ area, dur, involves });
+    });
+    return tree;
+  }, [agendaData]);
+
+  // Derive the selected agenda items from client doc selection state
+  const allDepts2 = Object.keys(agendaTree2);
+  const parseAreaKey2 = k => { const f = k.indexOf("::"); const s = k.indexOf("::", f + 2); if (f === -1 || s === -1) return null; return { dept: k.slice(0, f), cat: k.slice(f + 2, s), area: k.slice(s + 2) }; };
+
+  // Build selected agenda items grouped by dept > category
+  const selectedAgenda = useMemo(() => {
+    if (!selectedAreas.size && !selectedDepts.size) return null; // no client doc selection yet
+    const grouped = {};
+    [...selectedAreas].forEach(key => {
+      const p = parseAreaKey2(key);
+      if (!p) return;
+      if (selectedDepts.size && !selectedDepts.has(p.dept)) return;
+      if (selectedCats.size && !selectedCats.has(p.dept + "::" + p.cat)) return;
+      const item = (agendaTree2[p.dept]?.[p.cat] || []).find(i => i.area === p.area);
+      if (!item) return;
+      if (!grouped[p.dept]) grouped[p.dept] = {};
+      if (!grouped[p.dept][p.cat]) grouped[p.dept][p.cat] = [];
+      grouped[p.dept][p.cat].push(item);
+    });
+    return Object.keys(grouped).length ? grouped : null;
+  }, [selectedAreas, selectedDepts, selectedCats, agendaTree2]);
 
   const preConf = n("preConfidence", 0);
   const postConf = n("postConfidence", 0);
@@ -1699,9 +1778,6 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
   const toggleCat = (cat) => setHelpActive(p => p.includes(cat) ? p.filter(c => c !== cat) : [...p, cat]);
   const toggleItem = (key) => { const next = helpSelected.includes(key) ? helpSelected.filter(k => k !== key) : [...helpSelected, key]; setHelpSelected(next); sn("helpSelected")(next); };
   const selectedLinks = helpSelected.map(key => { const [cat, idx] = key.split("-"); return HELP_CENTRE_BANK[cat]?.[parseInt(idx)]; }).filter(Boolean);
-
-  const confColor = (v) => v <= 4 ? C.redDark : v <= 6 ? C.amberDark : C.greenDark;
-  const confBg = (v) => v <= 4 ? "#ef5350" : v <= 6 ? "#ff9800" : "#4caf50";
 
   const BulletList = ({ text }) => {
     if (!text || text === "—") return null;
@@ -1721,8 +1797,8 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
         <div style={{ fontSize: 11, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Post-Training Summary Pack</div>
         <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 700, lineHeight: 1.1 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
-          {[["Training Date", fmtTrainingDate(h(row, "date"))], ["Trainer", h(row, "trainer")], ["Attendees", h(row, "attendees")]].map(([l, v]) => (
-            <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600, maxWidth: 300 }}>{v}</div></div>
+          {[["Training Date", sessionDatesStr], ["Trainer", h(row, "trainer")], ["Attendees", attendeesDisplay]].map(([l, v]) => (
+            <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600, maxWidth: 400 }}>{v}</div></div>
           ))}
         </div>
       </div>
@@ -1762,17 +1838,46 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
         </div>
         <p style={{ fontSize: 14, color: C.dark40, marginBottom: 8 }}>With particular attention to:</p>
         <BulletList text={h(row, "priorities")} />
-        <NotesBlock label="Session Overview Notes" placeholder="Additional overview context…" value={n("overviewNotes")} onChange={sn("overviewNotes")} minHeight={52} />
+        {clientSessionNotes && (
+          <div style={{ marginTop: 12, background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 6, padding: "10px 14px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.yellow, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Session Notes (from Client Doc)</div>
+            <div style={{ fontSize: 13, color: C.dark, lineHeight: "20px", whiteSpace: "pre-wrap" }}>{clientSessionNotes}</div>
+          </div>
+        )}
+        <NotesBlock label="Additional Overview Notes" placeholder="Additional overview context…" value={n("overviewNotes")} onChange={sn("overviewNotes")} minHeight={52} />
       </Section>
 
       <Section num="2" title="What We Covered">
-        <p style={{ fontSize: 12, color: C.dark30, marginBottom: 14, fontStyle: "italic" }}>Customise before sending — fill in what was actually covered.</p>
-        {[["Settings & Core Platform", "covered_settings"], ["Sales", "covered_sales"], ["Lettings", "covered_lettings"], ["Property Management", "covered_pm"], ["Accounting & Invoicing", "covered_accounting"]].map(([label, k]) => (
-          <div key={k} style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>{label}</div>
-            <EditableBulletList items={n(k, [""])} onChange={sn(k)} placeholder="Add topic covered…" />
+        {selectedAgenda ? (
+          <div>
+            <div style={{ fontSize: 12, color: C.dark30, marginBottom: 12, fontStyle: "italic" }}>Pulled from your Client Doc agenda selection — edit the bullets below as needed.</div>
+            {Object.entries(selectedAgenda).map(([dept, cats]) => (
+              <div key={dept} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>{dept}</div>
+                {Object.entries(cats).map(([cat, items]) => (
+                  <div key={cat} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, letterSpacing: "0.04em", marginBottom: 6, textTransform: "uppercase" }}>{cat}</div>
+                    <EditableBulletList
+                      items={n(`covered_${dept}_${cat}`, items.map(i => i.area + (i.involves ? ` — ${i.involves}` : "")))}
+                      onChange={sn(`covered_${dept}_${cat}`)}
+                      placeholder="Add topic covered…"
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
-        ))}
+        ) : (
+          <div>
+            <p style={{ fontSize: 12, color: C.dark30, marginBottom: 14, fontStyle: "italic" }}>No agenda selected in Client Doc yet — fill in below, or build the agenda in the Client Doc tab first.</p>
+            {[["Settings & Core Platform", "covered_settings"], ["Sales", "covered_sales"], ["Lettings", "covered_lettings"], ["Property Management", "covered_pm"], ["Accounting & Invoicing", "covered_accounting"]].map(([label, k]) => (
+              <div key={k} style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.dark40, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${C.border}` }}>{label}</div>
+                <EditableBulletList items={n(k, [""])} onChange={sn(k)} placeholder="Add topic covered…" />
+              </div>
+            ))}
+          </div>
+        )}
       </Section>
 
       <Section num="3" title="Key Workflow Improvements Identified">
@@ -1817,6 +1922,12 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
       </Section>
 
       <Section num="5" title="Agreed Actions">
+        {clientFollowupActions && (
+          <div style={{ background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 6, padding: "10px 14px", marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.yellow, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Follow-up Actions (from Client Doc)</div>
+            <div style={{ fontSize: 13, color: C.dark, lineHeight: "20px", whiteSpace: "pre-wrap" }}>{clientFollowupActions}</div>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {[["Actions for " + h(row, "company"), "actionsClient"], ["Actions for Street", "actionsStreet"]].map(([label, k]) => (
             <div key={k}>
@@ -1841,7 +1952,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
               {HELP_CENTRE_BANK[cat].map((link, i) => {
                 const key = `${cat}-${i}`; const isSel = helpSelected.includes(key);
                 return (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", borderRadius: 4, background: isSel ? C.blueLight : C.grey, border: `1px solid ${isSel ? C.blueBorder : C.border}`, cursor: "pointer", borderRadius: 6 }} onClick={() => toggleItem(key)}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, padding: "6px 10px", borderRadius: 6, background: isSel ? C.blueLight : C.grey, border: `1px solid ${isSel ? C.blueBorder : C.border}`, cursor: "pointer" }} onClick={() => toggleItem(key)}>
                     <div style={{ width: 14, height: 14, borderRadius: 2, background: isSel ? C.blue : "#fff", border: `1.5px solid ${isSel ? C.blue : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {isSel && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}
                     </div>
@@ -1869,6 +1980,13 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
         <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderLeft: `3px solid ${C.blue}`, borderRadius: "0 4px 4px 0", padding: "14px 18px", marginBottom: 14 }}>
           <div style={{ fontSize: 12, color: C.dark30, marginBottom: 6, fontWeight: 600 }}>As requested by {h(row, "company")}:</div>
           <div style={{ fontSize: 14, color: C.dark }}>{h(row, "followUp")}</div>
+          {clientFollowupOptions.length > 0 && (
+            <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {clientFollowupOptions.map(opt => (
+                <span key={opt} style={{ fontSize: 11, fontWeight: 700, background: C.blue, color: "#fff", borderRadius: 5, padding: "3px 10px" }}>{opt}</span>
+              ))}
+            </div>
+          )}
         </div>
         {["Booking a follow-up session in 2–4 weeks", "Reviewing internal workflows with the team", "Identifying one system owner per department"].map((item, i) => (
           <div key={i} style={{ display: "flex", gap: 10, marginBottom: 7 }}>
@@ -1880,7 +1998,7 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
       </Section>
 
       <Section num="8" title="Overall Objective Reminder">
-        {["Full system utilisation", "Workflow clarity across the team", "Cross-team consistency", "Confidence in accounting and invoicing processes"].map((item, i) => (
+        {buildClientObjectives(h(row, "areas"), h(row, "priorities")).slice(0, 4).map((item, i) => (
           <div key={i} style={{ display: "flex", gap: 10, marginBottom: 7 }}>
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.blue, marginTop: 7, flexShrink: 0 }} />
             <span style={{ fontSize: 14, color: C.dark }}>{item}</span>
@@ -1896,9 +2014,8 @@ function PostTrainingClientView({ row, agendaBlocks, agendaLoading, notes, setNo
     </div>
   );
 }
-
 // ─── INTERNAL DEBRIEF VIEW ────────────────────────────────────────────────
-function PostTrainingInternalView({ row, notes, setNotes }) {
+function PostTrainingInternalView({ row, notes, setNotes, clientNotes }) {
   const n = (k, def) => notes[k] !== undefined ? notes[k] : (def !== undefined ? def : "");
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
   const nb = (label, k, ph, mh = 68, def = "") => <NotesBlock label={label} placeholder={ph} value={n(k, def)} onChange={sn(k)} minHeight={mh} />;
@@ -1919,11 +2036,21 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
     }
   };
 
-  const preConf = n("preConfidence", 0);
-  const postConf = n("postConfidence", 0);
-  const delta = preConf && postConf ? postConf - preConf : null;
+  // ── Pull through from Client Doc ──────────────────────────────────────
+  const cn = (k, def) => clientNotes[k] !== undefined ? clientNotes[k] : (def !== undefined ? def : "");
+  const clientAttendees = cn("attendeesList", []);
+  const attendeesDisplay2 = clientAttendees.filter(a => a.name).map(a => `${a.name}${a.role ? " — " + a.role : ""}`).join(", ") || h(row, "attendees");
+  const trainingDays2 = cn("trainingDays", 1);
+  const dayDates2 = cn("dayDates", []);
+  const dayTimes2 = cn("dayTimes", []);
+  const fmtD2 = dateStr => { if (!dateStr) return ""; const d = new Date(dateStr + "T00:00:00"); if (isNaN(d)) return dateStr; return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); };
+  const fmtT2 = t => { if (!t) return ""; const [hh, mm] = t.split(":"); const hr = parseInt(hh); return `${hr > 12 ? hr - 12 : hr || 12}:${mm}${hr >= 12 ? "pm" : "am"}`; };
+  const sessionDates2 = dayDates2.filter(Boolean).map((d, i) => { const t = dayTimes2[i] || {}; return fmtD2(d) + ` (${fmtT2(t.start || "10:30")} – ${fmtT2(t.end || "16:30")})`; }).join(" | ") || fmtTrainingDate(h(row, "date"));
+  const clientSessionNotes2 = cn("session", "");
+  const clientFollowupActions2 = cn("followupActions", "");
+  const clientLogisticsNotes2 = cn("logisticsNotes", "");
 
-  const prepHours = parseFloat(n("prepHours", "")) || 0;
+  const preConf = n("preConfidence", 0);
   const deliveryHours = parseFloat(n("deliveryHours", "")) || 0;
   const followUpHours = parseFloat(n("followUpHours", "")) || 0;
   const totalHours = prepHours + deliveryHours + followUpHours;
@@ -1944,8 +2071,8 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
         <div style={{ fontSize: 10, color: C.blue, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700, marginBottom: 6, background: C.blueLight, padding: "4px 10px", borderRadius: 5, display: "inline-block" }}>POST-TRAINING INTERNAL DEBRIEF — NOT CLIENT FACING</div>
         <h1 style={{ margin: "0 0 12px", fontSize: 20, fontWeight: 700 }}>{h(row, "company")}</h1>
         <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-          {[["Date", fmtTrainingDate(h(row, "date"))], ["Trainer", h(row, "trainer")], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
-            <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600 }}>{v}</div></div>
+          {[["Session Date(s)", sessionDates2 || fmtTrainingDate(h(row, "date"))], ["Trainer", h(row, "trainer")], ["Attendees", attendeesDisplay2], ["Invoice", `£${h(row, "invoice")}`]].map(([l, v]) => (
+            <div key={l}><div style={{ fontSize: 10, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 600, maxWidth: 380 }}>{v}</div></div>
           ))}
         </div>
       </div>
@@ -1957,6 +2084,33 @@ function PostTrainingInternalView({ row, notes, setNotes }) {
           <span style={{ fontSize: 13, fontWeight: 700, color: riskStyle.color }}>{riskStyle.label}</span>
           <span style={{ fontSize: 12, color: riskStyle.color, marginLeft: 4 }}>— Adoption Risk: {notes.adoption_risk || "—"} | Escalation: {notes.escalation_required_ || "—"}</span>
         </div>
+      )}
+
+      {/* Client Doc Snapshot */}
+      {(clientSessionNotes2 || clientFollowupActions2 || clientLogisticsNotes2) && (
+        <Section num={null} title="Client Doc Snapshot">
+          <div style={{ background: C.yellowBg, border: `1px dashed ${C.yellow}`, borderRadius: 8, padding: "14px 16px", marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#6b5e00", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Pulled from Client Doc — read-only reference</div>
+            {clientSessionNotes2 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Session Notes</div>
+                <div style={{ fontSize: 13, color: C.dark, lineHeight: "20px", whiteSpace: "pre-wrap" }}>{clientSessionNotes2}</div>
+              </div>
+            )}
+            {clientFollowupActions2 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Follow-up Actions (agreed on the day)</div>
+                <div style={{ fontSize: 13, color: C.dark, lineHeight: "20px", whiteSpace: "pre-wrap" }}>{clientFollowupActions2}</div>
+              </div>
+            )}
+            {clientLogisticsNotes2 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Logistics Notes</div>
+                <div style={{ fontSize: 13, color: C.dark, lineHeight: "20px", whiteSpace: "pre-wrap" }}>{clientLogisticsNotes2}</div>
+              </div>
+            )}
+          </div>
+        </Section>
       )}
 
       {/* Data Engine snapshot — structured fields for sheet export */}
@@ -2214,209 +2368,6 @@ async function saveDebriefToSheet(row, notes, allNotes, selected) {
   return json;
 }
 
-// ─── AI SUMMARY PACK GENERATOR ───────────────────────────────────────────
-function AISummaryGenerator({ row, allNotes, setAllNotes, selectedIdx }) {
-  const [rawNotes,   setRawNotes]   = useState("");
-  const [generating, setGenerating] = useState(false);
-  const [error,      setError]      = useState("");
-  const [done,       setDone]       = useState(false);
-
-  const companyName   = h(row, "company");
-  const trainerName   = h(row, "trainer");
-  const areasStr      = h(row, "areas");
-  const prioritiesStr = h(row, "priorities");
-  const followUpStr   = h(row, "followUp");
-
-  const PROMPT = `You are a professional training consultant writing a post-training summary pack for an estate agency that uses Street.co.uk CRM software.
-
-CLIENT CONTEXT:
-- Company: ${companyName}
-- Trainer: ${trainerName}
-- Training areas requested: ${areasStr}
-- Client's top priorities: ${prioritiesStr}
-- Post-training support preference: ${followUpStr}
-
-RAW TRAINER NOTES FROM THE SESSION:
----
-${rawNotes}
----
-
-Using the raw notes above, write a structured post-training summary. Return ONLY a valid JSON object with exactly these keys (no markdown, no preamble):
-
-{
-  "overviewNotes": "2-3 sentence narrative overview of what the session achieved",
-  "covered_settings": ["bullet 1", "bullet 2"],
-  "covered_sales": ["bullet 1", "bullet 2"],
-  "covered_lettings": ["bullet 1", "bullet 2"],
-  "covered_pm": ["bullet 1", "bullet 2"],
-  "covered_accounting": ["bullet 1", "bullet 2"],
-  "workflows": ["workflow improvement 1", "workflow improvement 2", "workflow improvement 3"],
-  "actionsClient": ["action 1 for the client agency", "action 2"],
-  "actionsStreet": ["action 1 for Street to follow up on", "action 2"],
-  "nextSteps": "Brief paragraph on recommended next steps and follow-up",
-  "qa": [
-    { "area": "area name", "q": "question raised", "a": "answer/outcome", "followUp": false }
-  ]
-}
-
-Rules:
-- Only include covered_* arrays for departments that were actually discussed in the notes. Leave as empty array [] if not covered.
-- qa array should capture any specific questions or issues raised during the session. Use followUp: true if it still needs resolving.
-- Be specific and professional. Reference actual features and workflows mentioned in the notes.
-- Keep bullet points concise — one clear action or topic per bullet.
-- If the notes are sparse, make reasonable professional inferences based on the training areas and priorities provided.`;
-
-  const generate = async () => {
-    if (!rawNotes.trim()) { setError("Please paste your training notes first."); return; }
-    setGenerating(true);
-    setError("");
-    setDone(false);
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: PROMPT }],
-        }),
-      });
-      const data = await res.json();
-      const text = (data.content || []).map(b => b.text || "").join("").trim();
-      // Strip any accidental markdown fences
-      const clean = text.replace(/^```json\s*/i, "").replace(/```\s*$/,"").trim();
-      const parsed = JSON.parse(clean);
-
-      // Merge into the post notes for this client
-      const postKey = `${selectedIdx}-post`;
-      setAllNotes(prev => ({
-        ...prev,
-        [postKey]: {
-          ...(prev[postKey] || {}),
-          overviewNotes:    parsed.overviewNotes    || "",
-          covered_settings: parsed.covered_settings || [],
-          covered_sales:    parsed.covered_sales    || [],
-          covered_lettings: parsed.covered_lettings || [],
-          covered_pm:       parsed.covered_pm       || [],
-          covered_accounting: parsed.covered_accounting || [],
-          workflows:        parsed.workflows        || [],
-          actionsClient:    parsed.actionsClient    || [],
-          actionsStreet:    parsed.actionsStreet    || [],
-          nextSteps:        parsed.nextSteps        || "",
-          qa:               parsed.qa               || [],
-        }
-      }));
-      setDone(true);
-    } catch (e) {
-      setError("Something went wrong generating the summary. Check your notes and try again. (" + e.message + ")");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", color: C.dark, maxWidth: 760 }}>
-
-      {/* Header */}
-      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "20px 24px", marginBottom: 20, boxShadow: "0 1px 4px rgba(18,21,42,0.07)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div style={{ background: C.blue, borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2a1 1 0 011 1v1.07A7.002 7.002 0 0116.93 10H18a1 1 0 110 2h-1.07A7.002 7.002 0 0111 17.93V19a1 1 0 11-2 0v-1.07A7.002 7.002 0 013.07 12H2a1 1 0 110-2h1.07A7.002 7.002 0 019 3.07V2a1 1 0 011-1zm0 4a4 4 0 100 8 4 4 0 000-8zm0 2a2 2 0 110 4 2 2 0 010-4z" fill="white"/></svg>
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>AI Summary Pack Generator</h2>
-            <div style={{ fontSize: 12, color: C.dark30, marginTop: 2 }}>{companyName} — paste your raw session notes and AI will write the full Summary Pack</div>
-          </div>
-        </div>
-        <div style={{ background: C.blueLight, border: `1px solid ${C.blueBorder}`, borderRadius: 8, padding: "10px 14px", fontSize: 12, color: C.dark40, lineHeight: "18px" }}>
-          <strong style={{ color: C.blue }}>How it works:</strong> Paste your notes from the training session below — bullet points, voice memo transcripts, rough scribbles, anything. AI will read the client context automatically and write a complete, professional Summary Pack. Switch to the <strong>Summary Pack</strong> tab to review, edit and print it.
-        </div>
-      </div>
-
-      {/* Context preview */}
-      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 20px", marginBottom: 16, boxShadow: "0 1px 4px rgba(18,21,42,0.05)" }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Client context AI will use automatically</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {[
-            ["Company",          companyName],
-            ["Trainer",          trainerName],
-            ["Areas requested",  areasStr],
-            ["Top priorities",   prioritiesStr],
-            ["Follow-up pref.",  followUpStr],
-          ].map(([label, val]) => (
-            <div key={label} style={{ background: C.grey, borderRadius: 6, padding: "8px 12px" }}>
-              <div style={{ fontSize: 10, color: C.dark30, fontWeight: 600, textTransform: "uppercase", marginBottom: 2 }}>{label}</div>
-              <div style={{ fontSize: 12, color: C.dark, lineHeight: "17px" }}>{val || "—"}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Notes input */}
-      <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px 20px", marginBottom: 16, boxShadow: "0 1px 4px rgba(18,21,42,0.05)" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>Your raw training notes</div>
-        <textarea
-          value={rawNotes}
-          onChange={e => { setRawNotes(e.target.value); setDone(false); setError(""); }}
-          placeholder={`Paste anything here — rough notes, bullet points, voice memo transcript, key moments from the session...\n\nExamples:\n- Covered lettings application workflow, team struggled with the AML tile\n- Showed how to receipt rent and allocate payments — clicked straight away\n- Sarah asked about NRL tax setup for their overseas landlords\n- Accounting go-live planned for 1st of next month\n- Action: Street to send NRL guide and reconciliation checklist`}
-          style={{
-            width: "100%", minHeight: 220, padding: "12px 14px",
-            fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: C.dark,
-            background: "#FAFBFF", border: `1.5px solid ${C.border}`,
-            borderRadius: 8, resize: "vertical", outline: "none", lineHeight: "20px",
-          }}
-          onFocus={e => e.target.style.borderColor = C.blue}
-          onBlur={e => e.target.style.borderColor = C.border}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-          <div style={{ fontSize: 11, color: C.dark20 }}>{rawNotes.length > 0 ? `${rawNotes.split(/\s+/).filter(Boolean).length} words` : "Start typing or paste notes above"}</div>
-          <button
-            onClick={generate}
-            disabled={generating || !rawNotes.trim()}
-            style={{
-              background: generating ? C.dark20 : done ? C.greenDark : C.blue,
-              color: "#fff", border: "none", borderRadius: 8,
-              padding: "10px 22px", fontSize: 13, fontWeight: 700,
-              cursor: generating || !rawNotes.trim() ? "not-allowed" : "pointer",
-              display: "flex", alignItems: "center", gap: 8,
-              boxShadow: generating || !rawNotes.trim() ? "none" : "0 2px 8px rgba(91,75,231,0.35)",
-              transition: "all 0.2s", opacity: !rawNotes.trim() ? 0.5 : 1,
-            }}
-          >
-            {generating ? (
-              <>
-                <span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-                Writing summary…
-              </>
-            ) : done ? (
-              <><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Generated — regenerate?</>
-            ) : (
-              <><svg width="13" height="13" viewBox="0 0 20 20" fill="none"><path d="M10 2a1 1 0 011 1v1.07A7.002 7.002 0 0116.93 10H18a1 1 0 110 2h-1.07A7.002 7.002 0 0111 17.93V19a1 1 0 11-2 0v-1.07A7.002 7.002 0 013.07 12H2a1 1 0 110-2h1.07A7.002 7.002 0 019 3.07V2a1 1 0 011-1zm0 4a4 4 0 100 8 4 4 0 000-8zm0 2a2 2 0 110 4 2 2 0 010-4z" fill="white"/></svg> Generate Summary Pack</>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div style={{ background: C.red, border: `1px solid #f9b4bc`, borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13, color: C.redDark }}>
-          ⚠ {error}
-        </div>
-      )}
-
-      {/* Success */}
-      {done && !error && (
-        <div style={{ background: C.greenBg, border: `1px solid #7bc97a`, borderRadius: 8, padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" stroke="#1B6B42" strokeWidth="1.5"/><path d="M6 10l3 3 5-5" stroke="#1B6B42" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.greenDark }}>Summary Pack written successfully</div>
-            <div style={{ fontSize: 12, color: C.greenDark, marginTop: 2 }}>Switch to the <strong>Summary Pack</strong> tab to review, edit and print it. You can regenerate as many times as you like.</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────
 function App() {
@@ -2432,7 +2383,7 @@ function App() {
   const [sidebarSearch, setSidebarSearch] = useState("");
 
   const isPost = view === "post-client" || view === "post-internal";
-  const notesKey = isPost ? `${selected}-post` : `${selected}-${view === "ai-generator" ? "client" : view}`;
+  const notesKey = isPost ? `${selected}-post` : `${selected}-${view}`;
   const notes = allNotes[notesKey] || {};
   const setNotes = updater => setAllNotes(prev => ({ ...prev, [notesKey]: typeof updater === "function" ? updater(prev[notesKey] || {}) : updater }));
 
@@ -2514,7 +2465,7 @@ function App() {
 
   const TAB_GROUPS = [
     { label: "Pre-Training",  tabs: [{ id: "client",        label: "Client Doc"       }] },
-    { label: "Post-Training", tabs: [{ id: "ai-generator",  label: "✦ AI Summary"     }, { id: "post-client", label: "Summary Pack" }, { id: "post-internal", label: "Internal Debrief" }] },
+    { label: "Post-Training", tabs: [{ id: "post-client", label: "Summary Pack" }, { id: "post-internal", label: "Internal Debrief" }] },
   ];
 
   return (
@@ -2526,7 +2477,6 @@ function App() {
         ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #F4F5FA; } ::-webkit-scrollbar-thumb { background: #C9C4F8; border-radius: 10px; }
         .sb-btn:hover { background: #F0EFFE !important; border-color: #C9C4F8 !important; }
         .tab-btn:hover { color: #5B4BE7 !important; background: #F0EFFE !important; }
-        .tab-btn-ai { background: linear-gradient(135deg, rgba(91,75,231,0.3), rgba(139,92,246,0.3)) !important; }
         .print-btn:hover { background: #4538D4 !important; }
         .notes-input:focus { border-color: #5B4BE7 !important; background: #FFFBF0 !important; }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; }
@@ -2575,7 +2525,7 @@ function App() {
             ))}
             <button className="print-btn" onClick={() => {
                 // Set document title for PDF filename
-                const tabLabels = { client: "Client Doc", "ai-generator": "AI Summary Generator", "post-client": "Summary Pack", "post-internal": "Internal Debrief" };
+                const tabLabels = { client: "Client Doc", "post-client": "Summary Pack", "post-internal": "Internal Debrief" };
                 const company = currentRow ? h(currentRow, "company") : "Street Training";
                 const docType = tabLabels[view] || "Document";
                 const prevTitle = document.title;
@@ -2674,10 +2624,9 @@ function App() {
               </div>
             )}
             {loading && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>Loading…</div>}
-            {!loading && currentRow && view === "ai-generator" && <AISummaryGenerator row={currentRow} allNotes={allNotes} setAllNotes={setAllNotes} selectedIdx={selected} />}
             {!loading && currentRow && view === "client" && <ClientView row={currentRow} notes={notes} setNotes={setNotes} agendaData={agendaData} agendaLoading={agendaLoading} agendaError={agendaError} />}
-            {!loading && currentRow && view === "post-client" && <PostTrainingClientView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} />}
-            {!loading && currentRow && view === "post-internal" && <PostTrainingInternalView row={currentRow} notes={notes} setNotes={setNotes} />}
+            {!loading && currentRow && view === "post-client" && <PostTrainingClientView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} clientNotes={allNotes[`${selected}-client`] || {}} agendaData={agendaData} />}
+            {!loading && currentRow && view === "post-internal" && <PostTrainingInternalView row={currentRow} notes={notes} setNotes={setNotes} clientNotes={allNotes[`${selected}-client`] || {}} />}
             {!loading && rows.length === 0 && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>No records found.</div>}
           </div>
         </div>
