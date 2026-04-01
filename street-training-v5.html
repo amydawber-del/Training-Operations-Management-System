@@ -921,8 +921,8 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     sn("dayAssign")({ ...dayAssign, [key]: next });
   };
 
-  // Build a lookup from "Area of Street" → involves text, using live sheet data
-  const involvesLookup = useMemo(() => {
+  // Build lookups from "Area of Street" → involves text + duration, using live sheet data
+  const involvesLookup  = useMemo(() => {
     const map = {};
     agendaData.forEach(row => {
       const area     = (row["Area of Street"] || "").trim();
@@ -931,6 +931,54 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     });
     return map;
   }, [agendaData]);
+
+  const durationLookup = useMemo(() => {
+    const map = {};
+    agendaData.forEach(row => {
+      const area     = (row["Area of Street"] || "").trim();
+      const duration = (row["Typical Training Duration"] || row["Typical Training
+Duration"] || "").trim();
+      if (area && duration) map[area] = duration;
+    });
+    return map;
+  }, [agendaData]);
+
+  // Parse a duration string like "15 mins", "30 mins", "1 hr", "1.5 hrs" → minutes
+  const parseDuration = str => {
+    if (!str) return 0;
+    const s = str.toLowerCase().trim();
+    const hrMatch  = s.match(/(\d+\.?\d*)\s*hr/);
+    const minMatch = s.match(/(\d+\.?\d*)\s*min/);
+    let mins = 0;
+    if (hrMatch)  mins += parseFloat(hrMatch[1])  * 60;
+    if (minMatch) mins += parseFloat(minMatch[1]);
+    return Math.round(mins);
+  };
+
+  const fmtMins = mins => {
+    if (!mins) return null;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h && m) return `${h}hr ${m}min`;
+    if (h)      return `${h}hr${h > 1 ? "s" : ""}`;
+    return `${m}min`;
+  };
+
+  // Total estimated duration for a given day number (from selected sections)
+  const getDayEstimate = dayNum => {
+    let total = 0;
+    CLIENT_AGENDA.forEach((agenda, di) => {
+      agenda.sections.forEach((sec, si) => {
+        const key = `d${di}s${si}`;
+        if (!isSelected(key)) return;
+        if (trainingDays > 1 && !getDays(key).includes(dayNum)) return;
+        sec.items.forEach(itemText => {
+          total += parseDuration(durationLookup[itemText] || "");
+        });
+      });
+    });
+    return total;
+  };
 
   const buildDayBlocks = dayNum => {
     const result = [];
@@ -1092,6 +1140,32 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
                     </div>
                   ))}
                 </div>
+              {/* Duration estimate — trainer only, never prints */}
+              {(() => {
+                const estMins = getDayEstimate(i + 1);
+                const estStr  = fmtMins(estMins);
+                if (!estStr) return null;
+                const sessionMins = (() => {
+                  const t = dayTimes[i] || {};
+                  const [sh, sm] = (t.start || "10:30").split(":").map(Number);
+                  const [eh, em] = (t.end   || "16:30").split(":").map(Number);
+                  return (eh * 60 + em) - (sh * 60 + sm);
+                })();
+                const overrun = sessionMins > 0 && estMins > sessionMins;
+                return (
+                  <div style={{
+                    marginTop: 8, padding: "5px 8px", borderRadius: 4,
+                    background: overrun ? "#FFF0E6" : "#EDFAF4",
+                    border: `1px solid ${overrun ? "#FDC89A" : "#A9DFBF"}`,
+                  }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: overrun ? "#C04000" : "#1B6B42", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>⏱ Est. content time</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: overrun ? "#C04000" : "#1B6B42" }}>{estStr}</div>
+                    {overrun && (
+                      <div style={{ fontSize: 9, color: "#C04000", marginTop: 2 }}>Over session length by {fmtMins(estMins - sessionMins)}</div>
+                    )}
+                  </div>
+                );
+              })()}
               </div>
             ))}
           </div>
