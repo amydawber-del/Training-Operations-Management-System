@@ -816,19 +816,42 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
   const DEPT_ORDER = ["Sales", "Lettings", "Both", "Property Management", "Accounting"];
 
   // Build the full tree from agendaData: dept → category → [{ area, duration, involves, why }]
+  // Normalise a row from the sheet — collapse any wrapped header newlines into spaces
+  // e.g. "Street Settings\nCategory" → "Street Settings Category"
+  const normRow = row => {
+    const out = {};
+    Object.keys(row).forEach(k => {
+      const clean = k.replace(/\s*\n\s*/g, " ").replace(/\s+/g, " ").trim();
+      out[clean] = row[k];
+    });
+    return out;
+  };
+
+  // Helper to read a field trying both the clean name and common wrapped variants
+  const rf = (row, ...keys) => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== "") return row[k];
+    }
+    return "";
+  };
+
   const agendaTree = useMemo(() => {
     const tree = {};
-    agendaData.forEach(row => {
-      const include = (row["✓ Include?"] || "Y").trim().toUpperCase();
+    agendaData.forEach(rawRow => {
+      const row     = normRow(rawRow);
+      const include = (rf(row, "✓ Include?", "Include?") || "Y").trim().toUpperCase();
       if (include === "N" || include === "NO") return;
-      const rawDept = row["Sales / Lettings / Both / PM / Accts"] ||
-                      row["Sales / Lettings / Both / PM / Accounting"] || "";
+      const rawDept = rf(row,
+        "Sales / Lettings / Both / PM / Accts",
+        "Sales / Lettings / Both / PM / Accounting",
+        "Sales / Lettings / Both"
+      );
       const dept    = normDept(rawDept);
-      const cat     = (row["Street Settings Category"] || "").trim();
-      const area    = (row["Area of Street"] || "").trim();
-      const dur     = (row["Typical Training Duration"] || "").trim();
-      const involves= (row["What It Involves (Trainer Detail)"] || "").trim();
-      const why     = (row["Why It Matters to the Client (Client Pitch)"] || "").trim();
+      const cat     = rf(row, "Street Settings Category").trim();
+      const area    = rf(row, "Area of Street").trim();
+      const dur     = rf(row, "Typical Training Duration").trim();
+      const involves= rf(row, "What It Involves (Trainer Detail)", "What it Involves:").trim();
+      const why     = rf(row, "Why It Matters to the Client (Client Pitch)", "Why It Matters to the Client").trim();
       if (!dept || !cat || !area) return;
       if (!tree[dept]) tree[dept] = {};
       if (!tree[dept][cat]) tree[dept][cat] = [];
