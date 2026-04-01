@@ -1343,25 +1343,25 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
                 <span style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>Date(s) of training</span>
               </div>
               <div style={{ padding: "12px 14px" }}>
-                {Array.from({ length: trainingDays }, (_, i) => (
-                  <div key={i} style={{ marginBottom: i < trainingDays - 1 ? 7 : 0, fontSize: 13, color: C.dark, display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                    {trainingDays > 1 && (
-                      <span style={{ fontWeight: 700, color: C.blue, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", minWidth: 40 }}>Day {i + 1}</span>
-                    )}
-                    {dayDates[i] ? (
-                      <>
-                        <span style={{ fontWeight: 600 }}>{fmtDisplayDate(dayDates[i])}</span>
-                        {((dayTimes[i] || {}).start || (dayTimes[i] || {}).end) && (
-                          <span style={{ color: C.dark40, fontSize: 12 }}>
-                            {fmtTime12((dayTimes[i] || {}).start || "10:30")} – {fmtTime12((dayTimes[i] || {}).end || "16:30")}
-                          </span>
+                <div style={{ display: "grid", gridTemplateColumns: trainingDays > 1 ? "max-content 1fr max-content" : "1fr max-content", gap: "6px 16px", alignItems: "baseline" }}>
+                  {Array.from({ length: trainingDays }, (_, i) => {
+                    const t = dayTimes[i] || {};
+                    const timeStr = `${fmtTime12(t.start || "10:30")} – ${fmtTime12(t.end || "16:30")}`;
+                    return (
+                      <React.Fragment key={i}>
+                        {trainingDays > 1 && (
+                          <span style={{ fontWeight: 700, color: C.blue, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.07em", whiteSpace: "nowrap" }}>Day {i + 1}</span>
                         )}
-                      </>
-                    ) : (
-                      <span style={{ color: C.dark20, fontStyle: "italic" }}>[Session Date]</span>
-                    )}
-                  </div>
-                ))}
+                        {dayDates[i] ? (
+                          <span style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{fmtDisplayDate(dayDates[i])}</span>
+                        ) : (
+                          <span style={{ fontSize: 13, color: C.dark20, fontStyle: "italic" }}>[Session Date]</span>
+                        )}
+                        <span style={{ fontSize: 12, color: C.dark40, whiteSpace: "nowrap" }}>{timeStr}</span>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
