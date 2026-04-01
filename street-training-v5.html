@@ -186,35 +186,23 @@ function mapRow(headers, row) {
   headers.forEach((header, i) => { obj[header] = row[i] || ""; });
   return obj;
 }
-function parseCSVLine(line) {
-  const cols = []; let cur = "", inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') { inQ = !inQ; }
-    else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
-    else { cur += ch; }
-  }
-  cols.push(cur.trim());
-  return cols.map(c => c.replace(/^"|"$/g, ""));
-}
-
-// General CSV parser — skipRows lets you skip title/description rows before the header
-function parseCSV(text, skipRows = 0) {
+function parseCSV(text) {
   const lines = text.trim().split("\n");
-  if (lines.length < skipRows + 2) return [];
-  const headers = parseCSVLine(lines[skipRows]).map(h => h.trim());
-  return lines.slice(skipRows + 1).map(line => {
-    const cols = parseCSVLine(line);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map(line => {
+    const cols = []; let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim());
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = (cols[i] || "").trim(); });
+    headers.forEach((h, i) => { obj[h] = (cols[i] || "").replace(/^"|"$/g, ""); });
     return obj;
-  }).filter(row => Object.values(row).some(v => v !== ""));
-}
-
-// Agenda-specific CSV parser — skips the 2 title/description rows above the real headers
-// Sheet layout: row 1 = title, row 2 = description, row 3 = column headers, row 4+ = data
-function parseAgendaCSV(text) {
-  return parseCSV(text, 2);
+  });
 }
 // New column names from the updated "Training Agenda Checklist — All Areas" sheet:
 //   ✓ Include? | Street Settings Category | Area of Street | What It Involves (Trainer Detail)
@@ -251,27 +239,13 @@ function buildAgendaFromAreas(areasStr, agendaData) {
 
   const grouped = {};
   agendaData.forEach(row => {
-    // ── Column name aliases — handles exact sheet headers + any variant ──
-    // Sheet headers (row 3): ✓ Include? | Street Settings Category | Area of Street |
-    //   What It Involves (Trainer Detail) | Why It Matters to the Client (Client Pitch) |
-    //   Typical Training Duration | Sales / Lettings / Both / PM / Accts | Training Notes / Done?
-
-    const include  = (row["✓ Include?"] || row["Include?"] || "Y").trim().toUpperCase();
-    // Skip rows explicitly marked N
-    if (include === "N") return;
-
     const category = (row["Street Settings Category"] || "").trim();
     const area     = (row["Area of Street"] || "").trim();
     if (!area || !category) return;
 
-    const dept     = (
-      row["Sales / Lettings / Both / PM / Accts"] ||
-      row["Sales / Lettings / Both / PM / Accounting"] ||
-      row["Sales /\nLettings / Both"] ||
-      row["Sales / Lettings / Both"] ||
-      "Both"
-    ).trim();
-
+    const dept     = (row["Sales / Lettings / Both / PM / Accts"] ||
+                      row["Sales /\nLettings / Both"] ||
+                      row["Sales / Lettings / Both"] || "Both").trim();
     const areaLow  = area.toLowerCase();
     const catLow   = category.toLowerCase();
 
@@ -288,7 +262,7 @@ function buildAgendaFromAreas(areasStr, agendaData) {
       if (!grouped[groupKey]) grouped[groupKey] = { dept, items: [] };
       const involves = row["What It Involves (Trainer Detail)"] || row["What it Involves:"] || "";
       const why      = row["Why It Matters to the Client (Client Pitch)"] || row["Why It Matters to the Client\n(Client Pitch)"] || "";
-      const duration = row["Typical Training Duration"] || row["Typical Training\nDuration"] || "";
+      const duration = row["Typical Training\nDuration"] || row["Typical Training Duration"] || "";
       grouped[groupKey].items.push({ item: area, involves, why, duration, category, dept });
     }
   });
@@ -865,16 +839,28 @@ function ClientView({ row, notes, setNotes }) {
     }
     sn("agendaSections")(newSections);
   };
-  const dayAssign   = notes.dayAssign || {};
-  const getDay      = key => dayAssign[key] || 1;
-  const setDay      = (key, d) => sn("dayAssign")({ ...dayAssign, [key]: d });
+  const dayAssign = notes.dayAssign || {};
+  // Returns array of assigned days for a section key, e.g. [1] or [1,2]
+  const getDays   = key => {
+    const v = dayAssign[key];
+    if (!v) return [1];
+    return Array.isArray(v) ? v : [v];  // back-compat with old single-value saves
+  };
+  // Toggle a day number in/out of a section's day array
+  const toggleDay = (key, d) => {
+    const current = getDays(key);
+    const next    = current.includes(d)
+      ? current.filter(x => x !== d).length ? current.filter(x => x !== d) : [d]  // keep at least one day
+      : [...current, d].sort((a, b) => a - b);
+    sn("dayAssign")({ ...dayAssign, [key]: next });
+  };
 
   const buildDayBlocks = dayNum => {
     const result = [];
     CLIENT_AGENDA.forEach((agenda, di) => {
       const secs = agenda.sections.filter((_, si) => {
         const key = `d${di}s${si}`;
-        return isSelected(key) && (trainingDays === 1 || getDay(key) === dayNum);
+        return isSelected(key) && (trainingDays === 1 || getDays(key).includes(dayNum));
       });
       if (secs.length) result.push({ ...agenda, sections: secs });
     });
@@ -904,13 +890,14 @@ function ClientView({ row, notes, setNotes }) {
   );
 
   const DayToggle = ({ sectionKey }) => {
-    const d = getDay(sectionKey);
+    const days = getDays(sectionKey);
     return (
       <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${C.border}`, flexShrink: 0, marginLeft: 6 }}>
         {Array.from({ length: trainingDays }, (_, i) => i + 1).map(num => (
-          <button key={num} onClick={e => { e.stopPropagation(); setDay(sectionKey, num); }}
+          <button key={num} onClick={e => { e.stopPropagation(); toggleDay(sectionKey, num); }}
             style={{ padding: "2px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-              background: d === num ? C.blue : "#fff", color: d === num ? "#fff" : C.dark30,
+              background: days.includes(num) ? C.blue : "#fff",
+              color:      days.includes(num) ? "#fff" : C.dark30,
               border: "none", borderRight: num < trainingDays ? `1px solid ${C.border}` : "none" }}>
             D{num}
           </button>
@@ -1069,35 +1056,97 @@ function ClientView({ row, notes, setNotes }) {
                 {selected.length === ALL_SECTIONS.length ? "Deselect all" : "Select all"}
               </button>
             </div>
-            {CLIENT_AGENDA.map((agenda, di) => {
-              const moduleSelected = selectedModules.includes(agenda.title);
+
+            {/* Column headers when multi-day */}
+            {trainingDays > 1 && (
+              <div style={{ display: "flex", alignItems: "center", paddingLeft: 14, marginBottom: 6, gap: 8 }}>
+                <div style={{ flex: 1, fontSize: 9, color: C.dark20, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Section</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {Array.from({ length: trainingDays }, (_, i) => (
+                    <div key={i} style={{ width: 28, textAlign: "center", fontSize: 9, fontWeight: 700, color: C.dark20, textTransform: "uppercase", letterSpacing: "0.06em" }}>D{i + 1}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Render each module group */}
+            {[...CLIENT_AGENDA.map((agenda, di) => ({
+              title: agenda.title,
+              sections: agenda.sections.map((sec, si) => ({ key: `d${di}s${si}`, heading: sec.heading })),
+            })),
+            {
+              title: "Settings & Core Platform",
+              _extra: true,
+              sections: [{ key: "ops", heading: "Operational Settings Review" }],
+            }
+            ].reduce((acc, group) => {
+              // Merge ops into Settings group instead of duplicating
+              if (group._extra) {
+                const existing = acc.find(g => g.title === "Settings & Core Platform");
+                if (existing) { existing.sections.push(...group.sections); return acc; }
+              }
+              acc.push(group);
+              return acc;
+            }, []).map((group, gi) => {
+              const moduleSelected = selectedModules.includes(group.title);
               return (
-                <div key={di} style={{ marginBottom: 10, opacity: moduleSelected ? 1 : 0.45, transition: "opacity 0.15s" }}>
-                  {/* Module group header — clickable shortcut to toggle the whole module */}
-                  <div
-                    onClick={() => toggleModule(agenda.title)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5, cursor: "pointer", userSelect: "none" }}
-                  >
+                <div key={gi} style={{ marginBottom: 10, opacity: moduleSelected ? 1 : 0.45, transition: "opacity 0.15s" }}>
+                  {/* Module group header */}
+                  <div onClick={() => toggleModule(group.title)}
+                    style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, cursor: "pointer", userSelect: "none" }}>
                     <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0,
                       background: moduleSelected ? C.blue : C.dark10,
                       border: `1.5px solid ${moduleSelected ? C.blue : C.border}`,
                       display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {moduleSelected && <svg width="5" height="4" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: moduleSelected ? C.blue : C.dark20, textTransform: "uppercase", letterSpacing: "0.08em" }}>{agenda.title}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: moduleSelected ? C.blue : C.dark20, textTransform: "uppercase", letterSpacing: "0.08em" }}>{group.title}</span>
                   </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, paddingLeft: 14 }}>
-                    {agenda.sections.map((sec, si) => {
-                      const key = `d${di}s${si}`; const chk = isSelected(key);
+
+                  {/* Section rows */}
+                  <div style={{ paddingLeft: 14, display: "flex", flexDirection: "column", gap: 3 }}>
+                    {group.sections.map(({ key, heading }) => {
+                      const chk = isSelected(key);
+                      const assignedDays = getDays(key);
                       return (
-                        <div key={key} onClick={() => toggle(key)} style={{
-                          display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 6, cursor: "pointer",
+                        <div key={key} style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: trainingDays > 1 ? "5px 8px" : "4px 8px",
+                          borderRadius: 6, cursor: "pointer",
                           background: chk ? C.blueLight : C.grey,
                           border: `1px solid ${chk ? C.blueBorder : C.border}`,
+                          transition: "all 0.1s",
                         }}>
-                          <Tick checked={chk} />
-                          <span style={{ fontSize: 11, color: chk ? C.blue : C.dark40, fontWeight: chk ? 600 : 400 }}>{sec.heading}</span>
-                          {chk && trainingDays > 1 && <DayToggle sectionKey={key} />}
+                          {/* Checkbox — toggles inclusion */}
+                          <div onClick={() => toggle(key)} style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                            <Tick checked={chk} />
+                            <span style={{ fontSize: 11, color: chk ? C.blue : C.dark40, fontWeight: chk ? 600 : 400, lineHeight: "15px" }}>{heading}</span>
+                          </div>
+
+                          {/* Day assignment buttons — only when multi-day */}
+                          {trainingDays > 1 && (
+                            <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                              {Array.from({ length: trainingDays }, (_, i) => i + 1).map(num => {
+                                const active = chk && assignedDays.includes(num);
+                                return (
+                                  <button key={num}
+                                    onClick={e => { e.stopPropagation(); if (!chk) toggle(key); toggleDay(key, num); }}
+                                    title={active ? `Remove from Day ${num}` : `Add to Day ${num}`}
+                                    style={{
+                                      width: 28, height: 22, fontSize: 10, fontWeight: 700,
+                                      cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                                      borderRadius: 4,
+                                      background: active ? C.blue : chk ? "#e8e6fb" : C.grey,
+                                      color:      active ? "#fff"  : chk ? C.blue   : C.dark20,
+                                      border: `1.5px solid ${active ? C.blue : chk ? C.blueBorder : C.border}`,
+                                      transition: "all 0.1s",
+                                    }}>
+                                    D{num}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1105,15 +1154,6 @@ function ClientView({ row, notes, setNotes }) {
                 </div>
               );
             })}
-            {/* Ops section lives under Settings & Core Platform */}
-            <div style={{ paddingLeft: 14, marginTop: -4 }}>
-              <div onClick={() => toggle("ops")} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 6, cursor: "pointer",
-                background: isSelected("ops") ? C.blueLight : C.grey, border: `1px solid ${isSelected("ops") ? C.blueBorder : C.border}` }}>
-                <Tick checked={isSelected("ops")} />
-                <span style={{ fontSize: 11, color: isSelected("ops") ? C.blue : C.dark40, fontWeight: isSelected("ops") ? 600 : 400 }}>Operational Settings Review</span>
-                {isSelected("ops") && trainingDays > 1 && <DayToggle sectionKey="ops" />}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1334,7 +1374,7 @@ function ClientView({ row, notes, setNotes }) {
           {Array.from({ length: trainingDays }, (_, dayIdx) => {
             const dayNum    = dayIdx + 1;
             const dayBlocks = buildDayBlocks(dayNum);
-            const opsInDay  = isSelected("ops") && (trainingDays === 1 || getDay("ops") === dayNum);
+            const opsInDay  = isSelected("ops") && (trainingDays === 1 || getDays("ops").includes(dayNum));
             if (dayBlocks.length === 0 && !opsInDay) return null;
             return (
               <div key={dayNum} style={{ marginBottom: 24 }}>
@@ -2220,29 +2260,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Primary: fetch agenda via Apps Script (action=getAgenda)
-    // This reads the "✅ All Areas" tab directly, no publish/gid needed.
-    // Fallback: published CSV (requires correct gid and skip of 2 title rows).
-    const loadAgenda = async () => {
-      // Try Apps Script first
-      try {
-        const res = await fetch(`${SHEET_URL}?action=getAgenda&t=${Date.now()}`);
-        const json = await res.json();
-        if (json.success && Array.isArray(json.rows) && json.rows.length) {
-          setAgendaData(json.rows);
-          setAgendaLoading(false);
-          return;
-        }
-      } catch (_) {}
-      // Fallback: published CSV — skip 2 header rows (title + description)
-      try {
-        const text = await fetch(AGENDA_CSV_URL).then(r => r.text());
-        const rows = parseAgendaCSV(text);
-        if (rows.length) { setAgendaData(rows); setAgendaLoading(false); return; }
-      } catch (_) {}
-      setAgendaLoading(false);
-    };
-    loadAgenda();
+    fetch(AGENDA_CSV_URL).then(r => r.text()).then(text => { setAgendaData(parseCSV(text)); setAgendaLoading(false); }).catch(() => setAgendaLoading(false));
   }, []);
 
   // Auto-select a company when opened from the dashboard via ?company=... URL param
