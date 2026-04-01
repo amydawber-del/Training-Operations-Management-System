@@ -919,84 +919,7 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     return getAreasForDay(dayNum).reduce((sum, item) => sum + parseDuration(item.dur), 0);
   };
 
-  // Stubs — selectedModules/toggleModule no longer used in new sheet-driven flow
-  const selectedModules = [];
-  const toggleModule = () => {};
-  const selected = [];
-  const isSelected = () => false;
-  const toggle = () => {};
-  const getDays = () => [1];
 
-  // Map each module name to the CLIENT_AGENDA index (and "ops" for Settings)
-  // Handles both hardcoded titles and sheet-derived dept names (col G)
-  const MODULE_AGENDA_INDEX = {
-    "Settings & Core Platform": 0,
-    "Both": 0,               // sheet col G uses "Both" for the settings/core dept
-    "Sales": 1,
-    "Lettings": 2,
-    "Property Management": 3,
-    "PM": 3,
-    "Accounting": 4,
-    "Accts": 4,
-  };
-
-  // Get all section keys that belong to a given module
-  const sectionKeysForModule = m => {
-    const di = MODULE_AGENDA_INDEX[m];
-    if (di === undefined) return [];
-    const agenda = CLIENT_AGENDA[di];
-    if (!agenda) return [];
-    const keys = agenda.sections.map((_, si) => `d${di}s${si}`);
-    // Settings/Both module also owns the "ops" section
-    if (m === "Settings & Core Platform" || m === "Both") keys.push("ops");
-    return keys;
-  };
-
-  // Toggle a module — cascades to all its child agenda sections
-  const toggleModule = m => {
-    const nowSelected = selectedModules.includes(m);
-    const newModules  = nowSelected ? selectedModules.filter(x => x !== m) : [...selectedModules, m];
-    sn("selectedModules")(newModules);
-
-    const childKeys = sectionKeysForModule(m);
-    if (!childKeys.length) return;
-
-    let newSections = [...selected];
-    if (nowSelected) {
-      // Deselecting module — remove all its child sections
-      newSections = newSections.filter(k => !childKeys.includes(k));
-    } else {
-      // Selecting module — add all its child sections (avoid duplicates)
-      childKeys.forEach(k => { if (!newSections.includes(k)) newSections.push(k); });
-    }
-    sn("agendaSections")(newSections);
-  };
-  const dayAssign = notes.dayAssign || {};
-  // Returns array of assigned days for a section key, e.g. [1] or [1,2]
-  const getDays   = key => {
-    const v = dayAssign[key];
-    if (!v) return [1];
-    return Array.isArray(v) ? v : [v];  // back-compat with old single-value saves
-  };
-  // Toggle a day number in/out of a section's day array
-  const toggleDay = (key, d) => {
-    const current = getDays(key);
-    const next    = current.includes(d)
-      ? current.filter(x => x !== d).length ? current.filter(x => x !== d) : [d]  // keep at least one day
-      : [...current, d].sort((a, b) => a - b);
-    sn("dayAssign")({ ...dayAssign, [key]: next });
-  };
-
-  // Build lookups from "Area of Street" → involves text + duration, using live sheet data
-  const involvesLookup  = useMemo(() => {
-    const map = {};
-    agendaData.forEach(row => {
-      const area     = (row["Area of Street"] || "").trim();
-      const involves = (row["What It Involves (Trainer Detail)"] || "").trim();
-      if (area && involves) map[area] = involves;
-    });
-    return map;
-  }, [agendaData]);
 
   // ── Duration helpers ─────────────────────────────────────────────────────
   // Parse col F strings e.g. "15 mins", "30 mins", "1 hr", "1.5 hrs", "45 minutes"
@@ -1029,75 +952,7 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     "Accounting":               ["accounting", "accts", "account"],
   };
 
-  // Build per-day duration breakdown from agendaData directly.
-  // Groups by Street Settings Category (col B), sums Typical Training Duration (col F).
-  // Filtered by: selected modules (col G) and — for multi-day — which day each module is on.
-  const getDayDurationBreakdown = dayNum => {
-    if (!agendaData.length) return null;
 
-    // Which depts are active for this day?
-    // A module is "on this day" if any of its agenda section keys are assigned to dayNum
-    const activeModules = selectedModules.filter(m => {
-      if (trainingDays === 1) return true;
-      const keys = sectionKeysForModule(m);
-      return keys.some(k => isSelected(k) && getDays(k).includes(dayNum));
-    });
-    if (!activeModules.length) return null;
-
-    // Collect the dept strings for all active modules
-    const activeDepts = new Set();
-    activeModules.forEach(m => {
-      (DEPT_FOR_MODULE[m] || []).forEach(d => activeDepts.add(d));
-    });
-
-    // Sum durations per Street Settings Category
-    const catTotals = {};  // category → minutes
-    let grandTotal = 0;
-    agendaData.forEach(row => {
-      const rawDept = (
-        row["Sales / Lettings / Both / PM / Accts"] ||
-        row["Sales / Lettings / Both / PM / Accounting"] || ""
-      ).trim().toLowerCase();
-      const cat      = (row["Street Settings Category"] || "").trim();
-      const durStr   = (row["Typical Training Duration"] || "").trim();
-      if (!rawDept || !cat || !durStr) return;
-
-      // Check if this row's dept matches any active module
-      const matches = [...activeDepts].some(d =>
-        rawDept === d || rawDept.includes(d) || d.includes(rawDept)
-      );
-      if (!matches) return;
-
-      const mins = parseDuration(durStr);
-      if (!mins) return;
-      catTotals[cat] = (catTotals[cat] || 0) + mins;
-      grandTotal += mins;
-    });
-
-    if (!grandTotal) return null;
-    return { catTotals, grandTotal };
-  };
-
-  const buildDayBlocks = dayNum => {
-    const result = [];
-    CLIENT_AGENDA.forEach((agenda, di) => {
-      const secs = agenda.sections
-        .filter((_, si) => {
-          const key = `d${di}s${si}`;
-          return isSelected(key) && (trainingDays === 1 || getDays(key).includes(dayNum));
-        })
-        .map(sec => ({
-          ...sec,
-          // Enrich each item with involves text from the live sheet
-          items: sec.items.map(itemText => ({
-            text:     itemText,
-            involves: involvesLookup[itemText] || "",
-          })),
-        }));
-      if (secs.length) result.push({ ...agenda, sections: secs });
-    });
-    return result;
-  };
 
   // Date/time helpers
   const fmtDisplayDate = dateStr => {
@@ -1121,22 +976,7 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     </div>
   );
 
-  const DayToggle = ({ sectionKey }) => {
-    const days = getDays(sectionKey);
-    return (
-      <div style={{ display: "flex", borderRadius: 3, overflow: "hidden", border: `1px solid ${C.border}`, flexShrink: 0, marginLeft: 6 }}>
-        {Array.from({ length: trainingDays }, (_, i) => i + 1).map(num => (
-          <button key={num} onClick={e => { e.stopPropagation(); toggleDay(sectionKey, num); }}
-            style={{ padding: "2px 7px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-              background: days.includes(num) ? C.blue : "#fff",
-              color:      days.includes(num) ? "#fff" : C.dark30,
-              border: "none", borderRight: num < trainingDays ? `1px solid ${C.border}` : "none" }}>
-            D{num}
-          </button>
-        ))}
-      </div>
-    );
-  };
+
 
   const objectives = buildClientObjectives(h(row, "areas"), h(row, "priorities"));
 
