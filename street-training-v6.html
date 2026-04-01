@@ -839,18 +839,10 @@ function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = fal
     const tree = {};
     agendaData.forEach(rawRow => {
       const row     = normRow(rawRow);
-      const includeRaw = rf(row, "✓ Include?", "Include?").trim();
-      // Column uses Google Sheets checkboxes: ☑ = include, ☐ = exclude
-      // Also handles Y/N text and TRUE/FALSE
-      const includeStr = includeRaw.toUpperCase();
-      const excluded = includeStr === "☐"
-        || includeStr === "N" || includeStr === "NO"
-        || includeStr === "FALSE";
-      // If blank, default to included (treat as Y)
-      const included = !includeStr || includeStr === "☑"
-        || includeStr === "Y" || includeStr === "YES"
-        || includeStr === "TRUE";
-      if (excluded || (!included && includeStr)) return;
+      // Only skip rows explicitly marked N/NO/FALSE — checkbox ☐ means unchecked
+      // but all rows should appear unless deliberately excluded with N
+      const includeRaw = rf(row, "✓ Include?", "Include?").trim().toUpperCase();
+      if (includeRaw === "N" || includeRaw === "NO" || includeRaw === "FALSE") return;
       const rawDept = rf(row,
         "Sales / Lettings / Both / PM / Accts",
         "Sales / Lettings / Both / PM / Accounting",
