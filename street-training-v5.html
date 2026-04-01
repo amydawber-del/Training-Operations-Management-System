@@ -730,6 +730,10 @@ function buildClientObjectives(areasStr, prioritiesStr) {
 }
 
 function ClientAgendaBlock({ title, sections }) {
+  // items may be strings (legacy) or { text, involves } objects (enriched)
+  const getText     = item => typeof item === "string" ? item : item.text;
+  const getInvolves = item => typeof item === "string" ? "" : (item.involves || "");
+
   return (
     <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden" }}>
       <div style={{ background: C.dark, padding: "10px 16px" }}>
@@ -738,12 +742,21 @@ function ClientAgendaBlock({ title, sections }) {
       {sections.map((sec, si) => (
         <div key={si} style={{ padding: "12px 16px", borderBottom: si < sections.length - 1 ? `1px solid ${C.border}` : "none" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>{sec.heading}</div>
-          {sec.items.map((item, ii) => (
-            <div key={ii} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "flex-start" }}>
-              <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: C.dark40, lineHeight: "20px" }}>{item}</span>
-            </div>
-          ))}
+          {sec.items.map((item, ii) => {
+            const text     = getText(item);
+            const involves = getInvolves(item);
+            return (
+              <div key={ii} style={{ display: "flex", gap: 10, marginBottom: involves ? 10 : 5, alignItems: "flex-start" }}>
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.dark20, marginTop: 8, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: C.dark, lineHeight: "20px", fontWeight: 500 }}>{text}</div>
+                  {involves && (
+                    <div style={{ fontSize: 11, color: C.dark30, lineHeight: "16px", marginTop: 2 }}>{involves}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ))}
       <div style={{ background: C.blueLight, padding: "8px 16px", borderTop: `1px solid ${C.blueBorder}`, display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -758,7 +771,7 @@ function ClientAgendaBlock({ title, sections }) {
   );
 }
 
-function ClientView({ row, notes, setNotes }) {
+function ClientView({ row, notes, setNotes, agendaData = [], agendaLoading = false }) {
   const n  = k => notes[k] !== undefined ? notes[k] : "";
   const sn = k => v => setNotes(p => ({ ...p, [k]: v }));
 
@@ -782,8 +795,37 @@ function ClientView({ row, notes, setNotes }) {
   const updateAttendee= (i, f, v) => { const a = [...attendeesList]; a[i] = { ...a[i], [f]: v }; setAttendees(a); };
   const removeAttendee= i => setAttendees(attendeesList.filter((_, j) => j !== i));
 
-  // Modules — aligned to the 5 departments in the new checklist
-  const MODULES = ["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting"];
+  // ── Modules derived from live sheet data (col G = dept, col B = category) ──
+  // Dept order for display
+  const DEPT_ORDER = ["Both", "Sales", "Lettings", "Property Management", "Accounting"];
+
+  // Build module list from agendaData: group by dept, collect unique categories
+  const sheetModules = useMemo(() => {
+    if (!agendaData.length) return null; // null = not loaded yet, fall back to hardcoded
+    const deptMap = {};
+    agendaData.forEach(row => {
+      const dept = (
+        row["Sales / Lettings / Both / PM / Accts"] ||
+        row["Sales / Lettings / Both / PM / Accounting"] ||
+        ""
+      ).trim();
+      const cat = (row["Street Settings Category"] || "").trim();
+      if (!dept || !cat) return;
+      if (!deptMap[dept]) deptMap[dept] = new Set();
+      deptMap[dept].add(cat);
+    });
+    // Sort depts by preferred order, append any unknown depts at end
+    const known   = DEPT_ORDER.filter(d => deptMap[d]);
+    const unknown = Object.keys(deptMap).filter(d => !DEPT_ORDER.includes(d)).sort();
+    return [...known, ...unknown].map(dept => ({
+      dept,
+      categories: Array.from(deptMap[dept]).sort(),
+    }));
+  }, [agendaData]);
+
+  // Fallback module names when sheet not loaded
+  const MODULES_FALLBACK = ["Settings & Core Platform", "Sales", "Lettings", "Property Management", "Accounting"];
+  const MODULES = sheetModules ? sheetModules.map(m => m.dept) : MODULES_FALLBACK;
   const selectedModules = notes.selectedModules !== undefined ? notes.selectedModules : MODULES;
 
   // Agenda sections
@@ -800,12 +842,16 @@ function ClientView({ row, notes, setNotes }) {
   const toggleAll   = () => sn("agendaSections")(selected.length === ALL_SECTIONS.length ? [] : defaultSelected);
 
   // Map each module name to the CLIENT_AGENDA index (and "ops" for Settings)
+  // Handles both hardcoded titles and sheet-derived dept names (col G)
   const MODULE_AGENDA_INDEX = {
     "Settings & Core Platform": 0,
+    "Both": 0,               // sheet col G uses "Both" for the settings/core dept
     "Sales": 1,
     "Lettings": 2,
     "Property Management": 3,
+    "PM": 3,
     "Accounting": 4,
+    "Accts": 4,
   };
 
   // Get all section keys that belong to a given module
@@ -815,8 +861,8 @@ function ClientView({ row, notes, setNotes }) {
     const agenda = CLIENT_AGENDA[di];
     if (!agenda) return [];
     const keys = agenda.sections.map((_, si) => `d${di}s${si}`);
-    // "Settings & Core Platform" also owns the "ops" section
-    if (m === "Settings & Core Platform") keys.push("ops");
+    // Settings/Both module also owns the "ops" section
+    if (m === "Settings & Core Platform" || m === "Both") keys.push("ops");
     return keys;
   };
 
@@ -855,13 +901,33 @@ function ClientView({ row, notes, setNotes }) {
     sn("dayAssign")({ ...dayAssign, [key]: next });
   };
 
+  // Build a lookup from "Area of Street" → involves text, using live sheet data
+  const involvesLookup = useMemo(() => {
+    const map = {};
+    agendaData.forEach(row => {
+      const area     = (row["Area of Street"] || "").trim();
+      const involves = (row["What It Involves (Trainer Detail)"] || "").trim();
+      if (area && involves) map[area] = involves;
+    });
+    return map;
+  }, [agendaData]);
+
   const buildDayBlocks = dayNum => {
     const result = [];
     CLIENT_AGENDA.forEach((agenda, di) => {
-      const secs = agenda.sections.filter((_, si) => {
-        const key = `d${di}s${si}`;
-        return isSelected(key) && (trainingDays === 1 || getDays(key).includes(dayNum));
-      });
+      const secs = agenda.sections
+        .filter((_, si) => {
+          const key = `d${di}s${si}`;
+          return isSelected(key) && (trainingDays === 1 || getDays(key).includes(dayNum));
+        })
+        .map(sec => ({
+          ...sec,
+          // Enrich each item with involves text from the live sheet
+          items: sec.items.map(itemText => ({
+            text:     itemText,
+            involves: involvesLookup[itemText] || "",
+          })),
+        }));
       if (secs.length) result.push({ ...agenda, sections: secs });
     });
     return result;
@@ -1010,37 +1076,78 @@ function ClientView({ row, notes, setNotes }) {
             ))}
           </div>
 
-          {/* Modules — clicking toggles all child sections automatically */}
+          {/* Modules — driven by sheet col G (dept) + col B (categories) */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.dark30, textTransform: "uppercase", letterSpacing: "0.06em" }}>Topics & Modules</div>
-              <span style={{ fontSize: 10, color: C.dark20, fontStyle: "italic" }}>Selecting/deselecting a module auto-selects its agenda sections</span>
+              {agendaLoading && <span style={{ fontSize: 10, color: C.dark20, fontStyle: "italic" }}>Loading from sheet…</span>}
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {MODULES.map(m => {
-                const chk = selectedModules.includes(m);
-                const childKeys = sectionKeysForModule(m);
-                const selectedChildCount = childKeys.filter(k => selected.includes(k)).length;
-                const totalChildCount = childKeys.length;
-                // Partially selected = module on but some child sections manually unticked
-                const partial = chk && selectedChildCount < totalChildCount && selectedChildCount > 0;
+                const chk        = selectedModules.includes(m);
+                const childKeys  = sectionKeysForModule(m);
+                const selCount   = childKeys.filter(k => selected.includes(k)).length;
+                const totalCount = childKeys.length;
+                const partial    = chk && selCount < totalCount && selCount > 0;
+                // Categories for this dept from live sheet data
+                const cats = sheetModules
+                  ? (sheetModules.find(sm => sm.dept === m) || {}).categories || []
+                  : [];
+                // Dept badge colour
+                const deptColour = {
+                  "Sales":               { bg: "#EAF1FF", fg: "#1E4DB7" },
+                  "Lettings":            { bg: "#EDFAF4", fg: "#1B6B42" },
+                  "Both":                { bg: C.blueLight, fg: C.blue   },
+                  "Property Management": { bg: "#FFF0E6", fg: "#C04000" },
+                  "Accounting":          { bg: "#FFF8E1", fg: "#8A6000" },
+                }[m] || { bg: C.grey, fg: C.dark30 };
+
                 return (
-                  <div key={m} onClick={() => toggleModule(m)} style={{
-                    display: "flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 6, cursor: "pointer",
-                    background: chk ? C.blueLight : C.grey,
+                  <div key={m} style={{
                     border: `1.5px solid ${partial ? C.blue : chk ? C.blueBorder : C.border}`,
+                    borderRadius: 8,
+                    background: chk ? C.blueLight : "#fff",
                     transition: "all 0.1s",
-                    boxShadow: chk ? "0 1px 4px rgba(91,75,231,0.10)" : "none",
+                    boxShadow: chk ? "0 1px 4px rgba(91,75,231,0.08)" : "none",
+                    overflow: "hidden",
                   }}>
-                    <Tick checked={chk} />
-                    <span style={{ fontSize: 12, color: chk ? C.blue : C.dark40, fontWeight: chk ? 700 : 400 }}>{m}</span>
-                    {totalChildCount > 0 && (
+                    {/* Module header row — click to toggle */}
+                    <div onClick={() => toggleModule(m)} style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "8px 12px", cursor: "pointer",
+                    }}>
+                      <Tick checked={chk} />
+                      {/* Dept badge */}
                       <span style={{
-                        fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "1px 6px",
-                        background: chk ? C.blue : C.dark10,
-                        color: chk ? "#fff" : C.dark30,
-                        marginLeft: 2,
-                      }}>{selectedChildCount}/{totalChildCount}</span>
+                        fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
+                        background: deptColour.bg, color: deptColour.fg, flexShrink: 0,
+                      }}>{m}</span>
+                      {/* Section count badge */}
+                      {totalCount > 0 && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "1px 6px",
+                          background: chk ? C.blue : C.dark10,
+                          color:      chk ? "#fff"  : C.dark30,
+                          marginLeft: "auto",
+                        }}>{selCount}/{totalCount}</span>
+                      )}
+                    </div>
+                    {/* Category pills — Street Settings Category (col B) */}
+                    {chk && cats.length > 0 && (
+                      <div style={{
+                        padding: "0 12px 8px 12px",
+                        display: "flex", flexWrap: "wrap", gap: 4,
+                        borderTop: `1px solid ${C.blueBorder}`,
+                        paddingTop: 6,
+                      }}>
+                        {cats.map(cat => (
+                          <span key={cat} style={{
+                            fontSize: 10, padding: "2px 7px", borderRadius: 4,
+                            background: "#fff", border: `1px solid ${C.border}`,
+                            color: C.dark40,
+                          }}>{cat}</span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 );
@@ -2443,7 +2550,7 @@ function App() {
             )}
             {loading && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>Loading…</div>}
             {!loading && currentRow && view === "ai-generator" && <AISummaryGenerator row={currentRow} allNotes={allNotes} setAllNotes={setAllNotes} selectedIdx={selected} />}
-            {!loading && currentRow && view === "client" && <ClientView row={currentRow} notes={notes} setNotes={setNotes} />}
+            {!loading && currentRow && view === "client" && <ClientView row={currentRow} notes={notes} setNotes={setNotes} agendaData={agendaData} agendaLoading={agendaLoading} />}
             {!loading && currentRow && view === "post-client" && <PostTrainingClientView row={currentRow} agendaBlocks={agendaBlocks} agendaLoading={agendaLoading} notes={notes} setNotes={setNotes} />}
             {!loading && currentRow && view === "post-internal" && <PostTrainingInternalView row={currentRow} notes={notes} setNotes={setNotes} />}
             {!loading && rows.length === 0 && <div style={{ color: C.dark20, fontSize: 14, paddingTop: 60, textAlign: "center" }}>No records found.</div>}
