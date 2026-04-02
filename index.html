@@ -2831,7 +2831,7 @@ const SESSION_ID = 'S-' + Date.now().toString(36).toUpperCase() + '-' + Math.ran
  * Call this from any action that should be audited.
  *
  * @param {object} entry
- *   actionType   - "Status Change" | "Note Added" | "Login" | "Form Submission" |
+ *   actionType   - "Status Change" | "Note Added" | "Form Submission" |
  *                  "Button Click" | "User Management" | "Cancellation" | "Assignment"
  *   description  - human-readable summary, e.g. "Pending changed to Booked"
  *   module       - "Dashboard" | "Calendar" | "Training Requests" | "Settings" | "Client Profile"
@@ -3645,16 +3645,6 @@ function enterDashboard() {
   setReferralPreset('7d');
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
-  writeActivityLog({
-    actionType: 'Login',
-    description: currentUser.name + ' logged in',
-    module: 'Dashboard',
-    recordType: 'User',
-    recordId: currentUser.id,
-    after: 'Logged in',
-    reason: 'Manual',
-    source: 'Dashboard',
-  });
 }
 
 function logout() {
