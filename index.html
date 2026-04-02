@@ -3642,6 +3642,7 @@ function enterDashboard() {
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
   applyPermVisibility();
   updateCalTrainerFilter();
+  setReferralPreset('7d');
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
   writeActivityLog({
