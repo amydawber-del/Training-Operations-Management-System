@@ -3645,6 +3645,18 @@ function enterDashboard() {
   setReferralPreset('7d');
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
+  _updateLastActive();
+}
+
+function _updateLastActive() {
+  if (!SCRIPT_URL || !currentUser) return;
+  const params = new URLSearchParams({
+    action:   'updateLastActive',
+    userId:   currentUser.id,
+    lastActive: new Date().toISOString(),
+  });
+  fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' })
+    .catch(e => console.warn('[lastActive] update failed:', e.message));
 }
 
 function logout() {
