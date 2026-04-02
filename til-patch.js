@@ -1,6 +1,6 @@
 /**
  * =====================================================================
- * STREET TRAINING DASHBOARD — TIL TRACKER INTEGRATION PATCH  v1.2
+ * STREET TRAINING DASHBOARD — TIL TRACKER INTEGRATION PATCH  v1.3
  * =====================================================================
  * Compatible with the Apps Script code.js getTilLog action.
  *
@@ -56,21 +56,26 @@
   //
   // We sum earned for entries that are Approved (or have no status set),
   // and sum used for entries marked TiL Taken = Y.
+  // Statuses that mean "this entry does NOT count toward earned balance"
+  var _EXCLUDED_STATUSES = ['pending', 'rejected', 'denied', 'declined', 'refused'];
+
   function _calcBalance(entries) {
     var earned = 0;
     var used   = 0;
 
     entries.forEach(function (e) {
       var status = String(e.approvalStatus || '').trim().toLowerCase();
-      var taken  = String(e.tilTaken       || '').trim().toUpperCase();
+      // Treat any status that isn't explicitly excluded as approved.
+      // This handles "Approved", "approved", "Yes", "yes", blank, "N/A", etc.
+      var isExcluded = _EXCLUDED_STATUSES.indexOf(status) !== -1;
 
-      // Count TiL earned: approved entries (or entries with no status — treat as approved)
-      if (status === 'approved' || status === '' || status === 'n/a') {
+      if (!isExcluded) {
         earned += (parseFloat(e.tilEarned) || 0);
       }
 
-      // Count TiL used: any entry where TiL Taken = Y
-      if (taken === 'Y') {
+      // Case-insensitive Y check so "y" and "Y" both count
+      var taken = String(e.tilTaken || '').trim().toLowerCase();
+      if (taken === 'y') {
         used += (parseFloat(e.hrsUsed) || 0);
       }
     });
