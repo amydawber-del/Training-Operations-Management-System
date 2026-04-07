@@ -2469,7 +2469,7 @@ ${extraNotes || "None provided"}`;
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
+      max_tokens: 4000,
       messages: [{ role: "user", content: prompt }],
     }),
   });
@@ -2478,7 +2478,30 @@ ${extraNotes || "None provided"}`;
   const data = await response.json();
   const text = data.content.map(b => b.text || "").join("").trim();
   const clean = text.replace(/^```json\s*/,"").replace(/```\s*$/,"").trim();
-  return JSON.parse(clean);
+
+  // Robust parse — repair JSON truncated by token limit
+  let parsed;
+  try {
+    parsed = JSON.parse(clean);
+  } catch (e) {
+    let repaired = clean;
+    let inStr = false, escape = false, opens = [];
+    for (let i = 0; i < repaired.length; i++) {
+      const ch = repaired[i];
+      if (escape)      { escape = false; continue; }
+      if (ch === "\\") { escape = true;  continue; }
+      if (ch === '"')  { inStr = !inStr; continue; }
+      if (inStr)       { continue; }
+      if (ch === "[" || ch === "{") opens.push(ch);
+      if (ch === "]" || ch === "}") opens.pop();
+    }
+    if (inStr) repaired += '"';
+    repaired = repaired.replace(/,\s*$/, "");
+    opens.reverse().forEach(ch => { repaired += ch === "[" ? "]" : "}"; });
+    try { parsed = JSON.parse(repaired); }
+    catch (e2) { throw new Error("AI returned malformed JSON — please try again."); }
+  }
+  return parsed;
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────
@@ -2724,26 +2747,7 @@ function App() {
                     <><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 4h4l-3 2.5 1 4L7 9l-3.5 2.5 1-4L1.5 5h4z" fill="white"/></svg>Generate with AI</>
                   )}
                 </button>
-                {/* Post-Training Docs shortcut */}
-                <button
-                  onClick={() => setView("post-client")}
-                  style={{
-                    background: (view === "post-client" || view === "post-internal") ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
-                    color: "#fff", border: "1px solid rgba(255,255,255,0.22)", borderRadius: 8,
-                    padding: "7px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center",
-                    gap: 6, whiteSpace: "nowrap",
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                    <rect x="2" y="1.5" width="10" height="11" rx="1.5" stroke="white" strokeWidth="1.4"/>
-                    <path d="M4.5 5h5M4.5 7.5h5M4.5 10h3" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                  </svg>
-                  Post-Training Docs
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M3.5 2L7 5l-3.5 3" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </button>
+
               </>
             )}
             <button className="print-btn" onClick={() => {
