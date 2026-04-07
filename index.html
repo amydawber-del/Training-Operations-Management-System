@@ -1959,6 +1959,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
   <div class="nav-section-label">Resources</div>
   <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank"><span class="nav-item-icon">&#128196;</span> Bookings Spreadsheet</a>
   <a href="https://amydawber-del.github.io/Street-training-request/" class="nav-item" target="_blank"><span class="nav-item-icon">&#128221;</span> Training Request Form</a>
+  <a href="https://amydawber-del.github.io/TilTracker/" class="nav-item" target="_blank"><span class="nav-item-icon">&#9203;</span> Time in Lieu Tracker</a>
   <a href="https://app.hubspot.com/contacts/7658438/objects/0-5/views/all/board?prefetch=" class="nav-item" target="_blank"><span class="nav-item-icon">&#127760;</span> HubSpot Tickets</a>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Account</div>
@@ -4273,6 +4274,27 @@ function getTrainerMeta(name) {
   return TRAINER_META[name];
 }
 
+// TIL Tracker integration - reads from localStorage shared with amydawber-del.github.io/TilTracker/
+function getTilBalance(trainerName) {
+  try {
+    var k1 = 'tilBalance_' + trainerName;
+    var v1 = localStorage.getItem(k1);
+    if(v1 !== null) return parseFloat(v1);
+    var k2 = 'til_' + trainerName.toLowerCase().replace(/\s+/g,'_');
+    var v2 = localStorage.getItem(k2);
+    if(v2 !== null) return parseFloat(v2);
+    var raw3 = localStorage.getItem('tilData');
+    if(raw3) { var o3=JSON.parse(raw3); var fn3=trainerName.split(' ')[0]; if(o3[trainerName]!==undefined) return parseFloat(o3[trainerName]); if(o3[fn3]!==undefined) return parseFloat(o3[fn3]); }
+    var raw4 = localStorage.getItem('tilBalances');
+    if(raw4) { var o4=JSON.parse(raw4); var fn4=trainerName.split(' ')[0]; if(o4[trainerName]!==undefined) return parseFloat(o4[trainerName]); if(o4[fn4]!==undefined) return parseFloat(o4[fn4]); }
+    var k5 = 'TilTracker_' + trainerName;
+    var v5 = localStorage.getItem(k5);
+    if(v5 !== null) { try { var p5=JSON.parse(v5); return parseFloat(p5.balance!=null?p5.balance:p5.hours!=null?p5.hours:p5); } catch(e2) { return parseFloat(v5); } }
+  } catch(e) {}
+  return null;
+}
+function fmtTil(h) { if(h===null||isNaN(h)) return null; return (h>=0?'+':'')+h.toFixed(1)+'h'; }
+
 function saveTrainerMeta(name, updates) {
   const m = getTrainerMeta(name);
   Object.assign(m, updates);
@@ -4392,6 +4414,14 @@ function renderTrainerWorkload() {
     const cardCursor = canViewProfile ? 'pointer' : 'default';
     const profileHint = canViewProfile ? '<div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>' : '';
 
+    // TIL balance from shared localStorage with TilTracker
+    const tilHours = canDo('viewTilTracker') ? getTilBalance(t.name) : null;
+    const tilFormatted = fmtTil(tilHours);
+    const tilColour = tilHours === null ? '' : tilHours > 0 ? '#0FA976' : tilHours < 0 ? '#DC2F4B' : '#7B80A0';
+    const tilStatHtml = tilFormatted !== null
+      ? `<div class="trainer-stat"><span>TiL Balance</span><span class="trainer-stat-val" style="color:${tilColour};font-weight:700;">${tilFormatted}</span></div>`
+      : '';
+
     // Risk / availability badges
     let riskBadge = '';
     let availBadge = '';
@@ -4420,6 +4450,7 @@ function renderTrainerWorkload() {
       <div class="trainer-stat"><span>Revenue Last 30d</span><span class="trainer-stat-val">${fmtMoney(revLast30)}</span></div>
       <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
       <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
+      ${tilStatHtml}
       ${riskBadge}
       ${availBadge}
       ${nextFreeHtml}
@@ -7757,6 +7788,9 @@ function openTrainerProfile(name) {
   if(revDelta!==null && revDelta<-15) talkingPoints.push(`Revenue down ${Math.abs(revDelta)}% — discuss causes`);
   if(upcoming.length===0) talkingPoints.push('No upcoming sessions booked — review pipeline');
   if(last30.length > 0 && !paidSess.length) talkingPoints.push('All sessions this period have £0 value — check invoicing');
+  const tpTilCheck = getTilBalance(name);
+  if(tpTilCheck !== null && tpTilCheck < -4) talkingPoints.push('TiL balance is ' + fmtTil(tpTilCheck) + ' — discuss owed time and when to take it');
+  if(tpTilCheck !== null && tpTilCheck > 8)  talkingPoints.push('TiL balance is ' + fmtTil(tpTilCheck) + ' — encourage taking time off soon');
 
   // Next available
   const nextFree = getNextFreeDate(name);
@@ -7772,6 +7806,24 @@ function openTrainerProfile(name) {
   panel.querySelector('#tpRevenue30').textContent = fmtMoney(rev30);
   panel.querySelector('#tpUtilPct').textContent = utilPct + '%';
   panel.querySelector('#tpAvgVal').textContent = fmtMoney(avgVal);
+
+  // TIL Balance — read from shared localStorage with amydawber-del.github.io/TilTracker/
+  const tilEl = panel.querySelector('#tpTilBal');
+  const tilWrap = panel.querySelector('#tpTilWrap');
+  if(tilEl) {
+    const tpTilHours = canDo('viewTilTracker') ? getTilBalance(name) : null;
+    const tpTilFmt = fmtTil(tpTilHours);
+    if(tpTilFmt !== null) {
+      tilEl.textContent = tpTilFmt;
+      const tpTilCol = tpTilHours > 0 ? '#6EE7B7' : tpTilHours < 0 ? '#FCA5A5' : 'rgba(255,255,255,0.6)';
+      tilEl.style.color = tpTilCol;
+      if(tpTilHours < -4) flags.push({col:'#DC2F4B', icon:'🕐', text:'TiL balance negative (' + tpTilFmt + ') — review workload'});
+      if(tpTilHours > 8)  flags.push({col:'#D97706', icon:'🕐', text:'TiL balance high (' + tpTilFmt + ') — schedule time off'});
+    } else {
+      tilEl.textContent = '—';
+      tilEl.style.color = 'rgba(255,255,255,0.4)';
+    }
+  }
 
   // Skills
   panel.querySelector('#tpSkillTags').innerHTML = ALL_SKILLS.map(s => {
@@ -8164,7 +8216,7 @@ function closeTrainerProfile() {
       <button onclick="closeTrainerProfile()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;cursor:pointer;font-size:16px;border-radius:6px;padding:5px 9px;">✕</button>
     </div>
     <!-- Quick stats row -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
       <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;">
         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">Sessions 30d</div>
         <div id="tpSessions30" style="font-size:20px;font-weight:700;color:#fff;"></div>
@@ -8180,6 +8232,10 @@ function closeTrainerProfile() {
       <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;">
         <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">Avg Value</div>
         <div id="tpAvgVal" style="font-size:16px;font-weight:700;color:#fff;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;text-align:center;" id="tpTilWrap">
+        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:rgba(255,255,255,0.5);margin-bottom:4px;">TiL Balance</div>
+        <div id="tpTilBal" style="font-size:18px;font-weight:700;color:#fff;">—</div>
       </div>
     </div>
   </div>
