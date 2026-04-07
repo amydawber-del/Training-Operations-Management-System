@@ -2050,7 +2050,9 @@ function PostTrainingInternalView({ row, notes, setNotes, clientNotes }) {
   const clientFollowupActions2 = cn("followupActions", "");
   const clientLogisticsNotes2 = cn("logisticsNotes", "");
 
-  const preConf = n("preConfidence", 0);
+  const preConf  = n("preConfidence",  0);
+  const postConf = n("postConfidence", 0);
+  const delta    = preConf && postConf ? postConf - preConf : null;
   const prepHours     = parseFloat(n("prepHours",     "")) || 0;
   const deliveryHours = parseFloat(n("deliveryHours", "")) || 0;
   const followUpHours = parseFloat(n("followUpHours", "")) || 0;
