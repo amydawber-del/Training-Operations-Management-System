@@ -2051,6 +2051,7 @@ function PostTrainingInternalView({ row, notes, setNotes, clientNotes }) {
   const clientLogisticsNotes2 = cn("logisticsNotes", "");
 
   const preConf = n("preConfidence", 0);
+  const prepHours     = parseFloat(n("prepHours",     "")) || 0;
   const deliveryHours = parseFloat(n("deliveryHours", "")) || 0;
   const followUpHours = parseFloat(n("followUpHours", "")) || 0;
   const totalHours = prepHours + deliveryHours + followUpHours;
