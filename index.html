@@ -3800,7 +3800,7 @@ const COL = {
   SCORE:12, COMPANY:13, TEAM_FAMILIARITY:14, PRIORITIES:15, FOLLOW_UP:16,
   ANYTHING_ELSE:17, GO_LIVE_DATE:18, REFERRED_BY:19,
   INVOICE_VALUE:20, TRAINER:21, BOOKED_DATE:22, TRAINING_DAYS:23,
-  SPLIT_DATES:24
+  SPLIT_DATES:24, SPLIT_TOPICS:25, CAL_EVENT_ID:26
 };
 
 function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
@@ -3842,7 +3842,8 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
     trainer:        row[COL.TRAINER]          || '',
     bookedOn,
     trainingDays:   row[COL.TRAINING_DAYS] ? parseInt(row[COL.TRAINING_DAYS]) || 1 : 1,
-    splitDates:     (() => { try { const v = row[COL.SPLIT_DATES]; return v ? JSON.parse(v) : null; } catch(e) { return null; } })(),
+    splitDates:     (() => { try { const v = row[COL.SPLIT_DATES];  return v ? JSON.parse(v) : null; } catch(e) { return null; } })(),
+    splitTopics:    (() => { try { const v = row[COL.SPLIT_TOPICS]; return v ? JSON.parse(v) : null; } catch(e) { return null; } })(),
     notes:          [],   // populated by loadNotes() after fetch
     rawRow: row
   };
