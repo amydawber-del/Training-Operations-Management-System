@@ -2330,8 +2330,14 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <div class="form-hint" id="bookTypeHint"></div>
       </div>
       <div class="form-2col">
-        <div class="form-row"><label class="form-label required">Training Date</label><input type="date" class="form-input" id="bookDate" oninput="checkBookingWarnings()"><div class="form-hint">Date training takes place</div></div>
-        <div class="form-row"><label class="form-label required">Training Days</label><input type="number" class="form-input" id="bookDays" min="1" max="14" value="1" oninput="checkBookingWarnings()"></div>
+        <div class="form-row"><label class="form-label required">Training Date <span style="font-size:10px;color:var(--s-text-muted);font-weight:400;">(Day 1 if split)</span></label><input type="date" class="form-input" id="bookDate" oninput="checkBookingWarnings(); syncBookDay1()"><div class="form-hint">First training date</div></div>
+        <div class="form-row"><label class="form-label required">Training Days</label><input type="number" class="form-input" id="bookDays" min="1" max="14" value="1" oninput="renderBookSplitGrid(); checkBookingWarnings()"></div>
+      </div>
+      <!-- Split dates grid — shown when training days > 1 -->
+      <div id="bookSplitGrid" style="display:none;margin-bottom:12px;padding:12px 14px;background:#f8f9ff;border:1.5px solid #c7d2fe;border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:#3730a3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px;">📆 Individual Day Dates &amp; Topics</div>
+        <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.4;">Set the date and topic(s) for each day. Days booked back-to-back share one travel &amp; admin buffer. Gaps between days each get their own.</div>
+        <div id="bookSplitGridRows" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
       <div class="form-row"><label class="form-label required">Trainer</label><select class="form-select" id="bookTrainer" onchange="checkBookingWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select></div>
       <div class="form-row"><label class="form-label">Invoice Value (&#163;) <span style="font-size:10px;color:var(--text--dark--30);font-weight:400;">optional</span></label><input type="number" class="form-input" id="bookValue" min="0" step="50" placeholder="e.g. 1100"><div class="form-hint" id="bookValueHint">&#8212;</div></div>
@@ -2380,8 +2386,14 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       <div class="warning-box info" style="margin-bottom:16px;"><span>&#8505;&#65039;</span><span>Amend the training date, invoice value, trainer, or number of days.</span></div>
       <div id="editBookingWarnings"></div>
       <div class="form-2col">
-        <div class="form-row"><label class="form-label required">Training Date</label><input type="date" class="form-input" id="editBookDate" oninput="checkEditWarnings()"></div>
-        <div class="form-row"><label class="form-label required">Training Days</label><input type="number" class="form-input" id="editBookDays" min="1" max="14" value="1" oninput="checkEditWarnings()"></div>
+        <div class="form-row"><label class="form-label required">Training Date <span style="font-size:10px;color:#c4b5fd;font-weight:400;">(Day 1 if split)</span></label><input type="date" class="form-input" id="editBookDate" oninput="checkEditWarnings(); syncEditDay1()"></div>
+        <div class="form-row"><label class="form-label required">Training Days</label><input type="number" class="form-input" id="editBookDays" min="1" max="14" value="1" oninput="renderEditSplitGrid(); checkEditWarnings()"></div>
+      </div>
+      <!-- Split dates grid — shown when training days > 1 -->
+      <div id="editSplitGrid" style="display:none;margin-bottom:12px;padding:12px 14px;background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:8px;">
+        <div style="font-size:11px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">📆 Individual Day Dates &amp; Topics</div>
+        <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.4;">Set the date and topic(s) for each day. Back-to-back days share one travel &amp; admin buffer; gaps each get their own.</div>
+        <div id="editSplitGridRows" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
       <div class="form-row"><label class="form-label required">Trainer</label><select class="form-select" id="editBookTrainer" onchange="checkEditWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select></div>
       <div class="form-row"><label class="form-label">Invoice Value (&#163;)</label><input type="number" class="form-input" id="editBookValue" min="0" step="50" placeholder="e.g. 1100"></div>
@@ -3787,7 +3799,8 @@ const COL = {
   AREAS:6, FEATURES:7, ATTENDEES:8, LOCATION:9, PARKING:10, VENUE_SETUP:11,
   SCORE:12, COMPANY:13, TEAM_FAMILIARITY:14, PRIORITIES:15, FOLLOW_UP:16,
   ANYTHING_ELSE:17, GO_LIVE_DATE:18, REFERRED_BY:19,
-  INVOICE_VALUE:20, TRAINER:21, BOOKED_DATE:22, TRAINING_DAYS:23
+  INVOICE_VALUE:20, TRAINER:21, BOOKED_DATE:22, TRAINING_DAYS:23,
+  SPLIT_DATES:24
 };
 
 function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
@@ -3829,6 +3842,7 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
     trainer:        row[COL.TRAINER]          || '',
     bookedOn,
     trainingDays:   row[COL.TRAINING_DAYS] ? parseInt(row[COL.TRAINING_DAYS]) || 1 : 1,
+    splitDates:     (() => { try { const v = row[COL.SPLIT_DATES]; return v ? JSON.parse(v) : null; } catch(e) { return null; } })(),
     notes:          [],   // populated by loadNotes() after fetch
     rawRow: row
   };
@@ -4479,17 +4493,15 @@ function getNextFreeDate(trainerName) {
   const busyDates = new Set();
 
   booked.forEach(r => {
-    const start = new Date(r.bookedOn); start.setHours(0,0,0,0);
-    const days = r.trainingDays || 1;
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + i);
-      busyDates.add(d.toISOString().split('T')[0]);
-    }
-    const travel = prevWorkingDay(start);
-    busyDates.add(travel.toISOString().split('T')[0]);
-    const trainingEnd = new Date(start); trainingEnd.setDate(trainingEnd.getDate() + days - 1);
-    const admin = nextWorkingDay(trainingEnd);
-    busyDates.add(admin.toISOString().split('T')[0]);
+    const bookingDates = getBookingDates(r);
+    bookingDates.forEach(iso => busyDates.add(iso));
+    const clusters = bookingDates.length > 0 ? clusterDates(bookingDates) : [];
+    clusters.forEach(cluster => {
+      const clusterStart = new Date(cluster[0] + 'T12:00:00');
+      const clusterEnd   = new Date(cluster[cluster.length - 1] + 'T12:00:00');
+      busyDates.add(prevWorkingDay(clusterStart).toISOString().split('T')[0]);
+      busyDates.add(nextWorkingDay(clusterEnd).toISOString().split('T')[0]);
+    });
   });
 
   // Also treat leave days as busy
@@ -6001,22 +6013,31 @@ function renderCalendar() {
     eventsByDay[day].push(event);
   }
   bookedRows.forEach(r => {
-    const days = r.trainingDays || 1;
     const t = trainers.find(u => u.name === r.trainer);
     const color = t ? t.color : '#5B4BE7';
     const start = new Date(r.bookedOn); start.setHours(0,0,0,0);
-    // Training days
-    for (let i = 0; i < days; i++) {
-      const d = new Date(start); d.setDate(d.getDate() + i);
+
+    // Get the actual dates for this booking (split or consecutive)
+    const bookingDates = getBookingDates(r);
+
+    // Training day pills — one per actual date
+    bookingDates.forEach(iso => {
+      const d = new Date(iso + 'T12:00:00');
       addCalEvent(d, { label: getCompanyName(r), color, type: 'training', rowIdx: r._idx });
-    }
-    // Travel day = last working day before training (respects bank holidays & weekends)
-    const travel = prevWorkingDay(start);
-    addCalEvent(travel, { label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', type: 'travel', rowIdx: r._idx });
-    // Admin day = first working day after training ends (respects bank holidays & weekends)
-    const trainingEnd = new Date(start); trainingEnd.setDate(trainingEnd.getDate() + days - 1);
-    const admin = nextWorkingDay(trainingEnd);
-    addCalEvent(admin, { label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', type: 'admin', rowIdx: r._idx });
+    });
+
+    // Travel & admin days — cluster-aware:
+    // Back-to-back days share one travel day before the first and one admin day after the last.
+    // Days with gaps each get their own travel and admin day.
+    const clusters = bookingDates.length > 0 ? clusterDates(bookingDates) : [[r.bookedOn.toISOString().split('T')[0]]];
+    clusters.forEach(cluster => {
+      const clusterStart = new Date(cluster[0] + 'T12:00:00');
+      const clusterEnd   = new Date(cluster[cluster.length - 1] + 'T12:00:00');
+      const travel = prevWorkingDay(clusterStart);
+      addCalEvent(travel, { label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', type: 'travel', rowIdx: r._idx });
+      const admin = nextWorkingDay(clusterEnd);
+      addCalEvent(admin, { label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', type: 'admin', rowIdx: r._idx });
+    });
   });
   // Bank holidays from ICS — show on each day within range
   calIcsEvents.forEach(ev => {
@@ -6216,7 +6237,89 @@ async function confirmAssign() {
   } catch(e) { showToast('Error updating — try again', 'error'); }
 }
 
+// ===================== SPLIT DATES HELPERS =====================
+
+// Build an array of ISO date strings for a row that has splitDates set,
+// or fall back to the contiguous block starting at bookedOn.
+function getBookingDates(r) {
+  if(r.splitDates && Array.isArray(r.splitDates) && r.splitDates.length) return r.splitDates;
+  if(!r.bookedOn) return [];
+  const days = r.trainingDays || 1;
+  const dates = [];
+  for(let i = 0; i < days; i++) {
+    const d = new Date(r.bookedOn); d.setDate(d.getDate() + i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
+// Cluster an array of ISO date strings into consecutive runs.
+// e.g. ['2025-05-01','2025-05-02','2025-05-15'] → [['2025-05-01','2025-05-02'],['2025-05-15']]
+function clusterDates(isoArr) {
+  const sorted = [...isoArr].sort();
+  const clusters = [];
+  let cur = [];
+  sorted.forEach(iso => {
+    if(!cur.length) { cur.push(iso); return; }
+    const prev = new Date(cur[cur.length-1] + 'T12:00:00');
+    const next = new Date(prev); next.setDate(next.getDate()+1);
+    const nextIso = next.toISOString().split('T')[0];
+    if(nextIso === iso) { cur.push(iso); }
+    else { clusters.push(cur); cur = [iso]; }
+  });
+  if(cur.length) clusters.push(cur);
+  return clusters;
+}
+
+// Render the per-day date+topic rows inside a grid container
+function renderSplitGrid(gridId, rowsId, days, existingDates, existingTopics, onChangeFn) {
+  const grid = document.getElementById(gridId);
+  const rowsEl = document.getElementById(rowsId);
+  if(!grid || !rowsEl) return;
+  if(days < 2) { grid.style.display = 'none'; return; }
+  grid.style.display = 'block';
+  rowsEl.innerHTML = '';
+  for(let i = 0; i < days; i++) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;';
+    const badge = `<div style="width:22px;height:22px;border-radius:50%;background:#6366f1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">${i+1}</div>`;
+    const dateInput = `<input type="date" id="${rowsId}_date_${i}" value="${(existingDates&&existingDates[i])||''}" oninput="${onChangeFn}()" style="border:1px solid #e0e7ff;border-radius:5px;padding:5px 7px;font-family:'DM Sans',sans-serif;font-size:12px;color:#111827;outline:none;width:150px;flex-shrink:0;">`;
+    const topicInput = `<input type="text" id="${rowsId}_topic_${i}" placeholder="Topic(s) for Day ${i+1} e.g. Lettings front-end, portals…" value="${(existingTopics&&existingTopics[i])||''}" style="border:1px solid #e0e7ff;border-radius:5px;padding:5px 8px;font-family:'DM Sans',sans-serif;font-size:12px;color:#111827;outline:none;flex:1;min-width:160px;">`;
+    row.innerHTML = badge + dateInput + topicInput;
+    rowsEl.appendChild(row);
+  }
+}
+
+// Read split dates and topics from a grid
+function readSplitGrid(rowsId, days) {
+  const dates = [], topics = [];
+  for(let i = 0; i < days; i++) {
+    const d = document.getElementById(`${rowsId}_date_${i}`);
+    const t = document.getElementById(`${rowsId}_topic_${i}`);
+    dates.push(d ? d.value : '');
+    topics.push(t ? t.value.trim() : '');
+  }
+  return { dates, topics };
+}
+
 // ===================== BOOK MODAL =====================
+function renderBookSplitGrid() {
+  const days = parseInt(document.getElementById('bookDays').value) || 1;
+  const { dates, topics } = readSplitGrid('bookSplitGridRows', 14); // read existing before rebuild
+  renderSplitGrid('bookSplitGrid', 'bookSplitGridRows', days, dates, topics, 'checkBookingWarnings');
+  if(days > 1 && !dates[0] && document.getElementById('bookDate').value) {
+    const d0 = document.getElementById(`bookSplitGridRows_date_0`);
+    if(d0) d0.value = document.getElementById('bookDate').value;
+  }
+}
+
+function syncBookDay1() {
+  const days = parseInt(document.getElementById('bookDays').value) || 1;
+  if(days < 2) return;
+  const d0 = document.getElementById('bookSplitGridRows_date_0');
+  if(d0 && !d0.value) d0.value = document.getElementById('bookDate').value;
+}
+
 function openBookModal(idx) {
   const r = allData.find(x => x._idx === idx);
   if(!r) return;
@@ -6250,17 +6353,21 @@ function openBookModal(idx) {
   document.getElementById('bookingOverrideRow').style.display = 'none';
   document.getElementById('bookingBlockMsg').style.display = 'none';
   document.getElementById('confirmBookBtn').disabled = false;
+
+  // Render split grid with any existing split dates/topics
+  const existingDates = r.splitDates || [];
+  const existingTopics = r.splitTopics || [];
+  renderSplitGrid('bookSplitGrid', 'bookSplitGridRows', r.trainingDays || 1, existingDates, existingTopics, 'checkBookingWarnings');
+
   // Gate: if skipped sections exist, block booking date until trainer completes them
   const skipped = getSkippedSections(r);
   const blockMsg = document.getElementById('bookingBlockMsg');
   const confirmBtn = document.getElementById('confirmBookBtn');
-  // Show training details panel if any section was skipped
   const trainingDetailsPanel = document.getElementById('bookTrainingDetailsSection');
   const hasTrainingSkip  = skipped.includes('Training Details');
   const hasLogisticsSkip = skipped.includes('Priorities & Logistics');
   if(hasTrainingSkip || hasLogisticsSkip) {
     trainingDetailsPanel.style.display = 'block';
-    // Pre-fill with any existing values from the record
     document.getElementById('bookAreas').value     = r.areas        || '';
     document.getElementById('bookLocation').value  = r.locationRaw  || '';
     document.getElementById('bookParking').value   = r.parking      || '';
@@ -6268,7 +6375,7 @@ function openBookModal(idx) {
     blockMsg.style.display = 'block';
     blockMsg.textContent = '⚠️ Complete the highlighted Training Details below before confirming.';
     confirmBtn.disabled = true;
-    document.getElementById('bookDate').disabled = false; // date can still be set
+    document.getElementById('bookDate').disabled = false;
   } else {
     trainingDetailsPanel.style.display = 'none';
     if(skipped.length) {
@@ -6287,6 +6394,8 @@ function closeBookModal() {
   document.getElementById('bookOverlay').classList.remove('open');
   document.getElementById('bookDate').disabled = false;
   document.getElementById('bookTrainingDetailsSection').style.display = 'none';
+  document.getElementById('bookSplitGrid').style.display = 'none';
+  document.getElementById('bookSplitGridRows').innerHTML = '';
   ['bookAreas','bookLocation','bookParking','bookPriorities'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
@@ -6324,7 +6433,6 @@ function checkBookingWarnings() {
     const locationEl = document.getElementById('bookLocation');
     const areas    = (areasEl?.value    || '').trim();
     const location = (locationEl?.value || '').trim();
-    // Visual feedback on required fields
     if(areasEl)    areasEl.classList.toggle('td-field-required-error',    !areas);
     if(locationEl) locationEl.classList.toggle('td-field-required-error', !location);
     if(!areas || !location) {
@@ -6339,61 +6447,99 @@ function checkBookingWarnings() {
 
   if(!date || !trainer) return;
 
-  const bookD = new Date(date);
+  // For split dates, build the list of dates we need to check
+  let datesToCheck = [date]; // default: just the one date
+  if(days > 1) {
+    const { dates: splitDates } = readSplitGrid('bookSplitGridRows', days);
+    const filled = splitDates.filter(Boolean);
+    if(filled.length > 0) datesToCheck = filled;
+    else {
+      // No split dates entered yet — fall back to consecutive from date
+      datesToCheck = [];
+      for(let i = 0; i < days; i++) {
+        const d = new Date(date + 'T12:00:00'); d.setDate(d.getDate()+i);
+        datesToCheck.push(d.toISOString().split('T')[0]);
+      }
+    }
+  }
+
   let warnings = [];
   let blocking  = false;
 
-  // 1. Double-booking check (existing bookings)
+  // 1. Double-booking check — test each date against existing bookings
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentBookRow._idx);
-  conflicts.forEach(r => {
-    const rStart = new Date(r.bookedOn); rStart.setHours(0,0,0,0);
-    const rEnd   = new Date(rStart); rEnd.setDate(rEnd.getDate() + (r.trainingDays||1));
-    if(bookD >= rStart && bookD < rEnd) {
-      warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`);
-      blocking = true;
-    }
+  datesToCheck.forEach((iso, dayIdx) => {
+    const bookD = new Date(iso + 'T12:00:00');
+    conflicts.forEach(r => {
+      const existingDates = getBookingDates(r);
+      if(existingDates.includes(iso)) {
+        const label = days > 1 ? ` (Day ${dayIdx+1})` : '';
+        warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on <strong>${fmtDate(bookD)}</strong>${label}.</span></div>`);
+        blocking = true;
+      }
+    });
   });
 
-  // 2. Trainer leave check across all training days
+  // 2. Trainer leave check across all dates
   let leaveDays = [];
-  for(let i = 0; i < days; i++) {
-    const d = new Date(bookD); d.setDate(d.getDate() + i);
-    const iso = d.toISOString().split('T')[0];
-    if(isTrainerOnLeave(trainer, iso)) leaveDays.push(fmtDate(d));
-  }
+  datesToCheck.forEach(iso => {
+    if(isTrainerOnLeave(trainer, iso)) leaveDays.push(fmtDate(new Date(iso + 'T12:00:00')));
+  });
   if(leaveDays.length) {
     warnings.push(`<div class="warning-box warn" style="border-color:#c0303d;background:#fff0f0;"><span>🏖️</span><span><strong>${trainer} is on leave</strong> on: ${leaveDays.join(', ')}. Check their Humaans calendar before confirming.</span></div>`);
     blocking = true;
   }
 
-  // 3. Provisional date soft warning — non-blocking, just a heads-up
+  // 3. Provisional date soft warning — non-blocking
+  const bookD0 = new Date(date + 'T12:00:00');
   Object.entries(provisionalDates).forEach(([rowNum, prov]) => {
-    if(prov.date === date && prov.trainer === trainer && String(rowNum) !== String(currentBookRow._rowNum)) {
+    if(datesToCheck.includes(prov.date) && prov.trainer === trainer && String(rowNum) !== String(currentBookRow._rowNum)) {
       warnings.push(`<div class="warning-box warn" style="background:#fffbeb;border-color:#f59e0b;">
         <span>📅</span>
-        <span>This date is currently being <strong>discussed provisionally</strong> with <strong>${escHtml(prov.company)}</strong> for ${escHtml(trainer)}${prov.note ? ' — ' + escHtml(prov.note) : ''}. Are you sure you want to confirm a different booking here?</span>
+        <span>One of these dates is currently being <strong>discussed provisionally</strong> with <strong>${escHtml(prov.company)}</strong> for ${escHtml(trainer)}${prov.note ? ' — ' + escHtml(prov.note) : ''}. Are you sure you want to confirm here?</span>
       </div>`);
-      // Soft warning only — does not block or require override
     }
   });
 
   // 4. Bank holiday info
-  if(isBankHoliday(bookD)) {
-    warnings.push(`<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(bookD)} is a UK bank holiday.</span></div>`);
-  }
+  datesToCheck.forEach((iso, dayIdx) => {
+    const d = new Date(iso + 'T12:00:00');
+    if(isBankHoliday(d)) {
+      const label = days > 1 ? ` (Day ${dayIdx+1})` : '';
+      warnings.push(`<div class="warning-box info"><span>ℹ️</span><span>${fmtDate(d)}${label} is a UK bank holiday.</span></div>`);
+    }
+  });
 
-  // 5. Blocked day check (respects trainer scope)
-  for(let i = 0; i < days; i++) {
-    const d = new Date(bookD); d.setDate(d.getDate() + i);
-    const iso = d.toISOString().split('T')[0];
+  // 5. Blocked day check
+  datesToCheck.forEach((iso, dayIdx) => {
+    const d = new Date(iso + 'T12:00:00');
     const bi = calBlockedDays[iso];
     if(bi) {
       const appliesToTrainer = !bi.scope || bi.scope === 'all' || (bi.scope === 'select' && (bi.trainers||[]).includes(trainer));
       if(appliesToTrainer) {
-        const reason = bi.fullReason || bi.reason || 'Blocked';
-        warnings.push('<div class="warning-box warn" style="border-color:#DC2F4B;background:#FDEAED;"><span>🔒</span><span><strong>' + fmtDate(d) + ' is blocked</strong> — ' + escHtml(reason) + '. Remove the block or choose a different date.</span></div>');
+        const label = days > 1 ? ` (Day ${dayIdx+1})` : '';
+        warnings.push('<div class="warning-box warn" style="border-color:#DC2F4B;background:#FDEAED;"><span>🔒</span><span><strong>' + fmtDate(d) + label + ' is blocked</strong> — ' + escHtml(bi.fullReason || bi.reason || 'Blocked') + '.</span></div>');
         blocking = true;
       }
+    }
+  });
+
+  // 6. Split-dates summary — show the date spread and how buffers will be allocated
+  if(days > 1) {
+    const { dates: splitDates } = readSplitGrid('bookSplitGridRows', days);
+    const filled = splitDates.filter(Boolean);
+    if(filled.length === days && !blocking) {
+      const clusters = clusterDates(filled);
+      const desc = clusters.map(c => {
+        if(c.length === 1) return fmtDate(new Date(c[0]+'T12:00:00'));
+        return fmtDate(new Date(c[0]+'T12:00:00')) + ' – ' + fmtDate(new Date(c[c.length-1]+'T12:00:00'));
+      }).join(', ');
+      const bufferNote = clusters.length > 1
+        ? `${clusters.length} separate travel &amp; admin day buffers will appear on the calendar — one per gap.`
+        : 'One travel day before and one admin day after will be added to the calendar.';
+      warnings.push(`<div class="warning-box info" style="border-color:#93c5fd;background:#eff6ff;"><span>📆</span><span><strong>Split booking:</strong> ${escHtml(desc)}. ${bufferNote}</span></div>`);
+    } else if(filled.length > 0 && filled.length < days) {
+      warnings.push(`<div class="warning-box info" style="border-color:#fbbf24;background:#fffbeb;"><span>📋</span><span>${filled.length} of ${days} day dates filled in — you can confirm now, or fill all dates for precise calendar blocking.</span></div>`);
     }
   }
 
@@ -6424,11 +6570,14 @@ async function confirmBook() {
   const newParking   = tdVisible ? (document.getElementById('bookParking')?.value.trim()   || '') : '';
   const newPriorities= tdVisible ? (document.getElementById('bookPriorities')?.value.trim()|| '') : '';
 
-  // Validate required training detail fields before proceeding
   if(tdVisible && (!newAreas || !newLocation)) {
     showToast('Please fill in Areas to Cover and Location before confirming.', 'error');
     return;
   }
+
+  // Collect split dates and topics
+  const { dates: splitDates, topics: splitTopics } = readSplitGrid('bookSplitGridRows', days);
+  const hasSplitDates = days > 1 && splitDates.some(Boolean);
 
   const params = new URLSearchParams({
     action: 'assign', row: currentBookRow._rowNum,
@@ -6437,21 +6586,22 @@ async function confirmBook() {
     option: typeVal,
   });
 
-  // Include training detail fields in the save if they were filled in
+  if(hasSplitDates) {
+    params.set('splitDates',  JSON.stringify(splitDates));
+    params.set('splitTopics', JSON.stringify(splitTopics));
+  }
+
   if(tdVisible) {
     if(newAreas)      params.set('areas',       newAreas);
     if(newLocation)   params.set('location',    newLocation);
     if(newParking)    params.set('parking',     newParking);
     if(newPriorities) params.set('priorities',  newPriorities);
-    // Clear the skipped sections flag now that they've been filled in
     params.set('skippedSections', '');
   }
 
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
 
-    // Write filled values back to the in-memory record so the client profile
-    // reflects the new data immediately without waiting for a full reload
     if(tdVisible && currentBookRow) {
       if(newAreas)      currentBookRow.areas        = newAreas;
       if(newLocation)   currentBookRow.locationRaw  = newLocation;
@@ -6459,8 +6609,13 @@ async function confirmBook() {
       if(newPriorities) currentBookRow.priorities    = newPriorities;
       currentBookRow.skippedSections = '';
     }
+    if(hasSplitDates) {
+      currentBookRow.splitDates  = splitDates;
+      currentBookRow.splitTopics = splitTopics;
+    }
 
-    logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`);
+    const datesLabel = hasSplitDates ? splitDates.filter(Boolean).map(d => fmtDate(new Date(d+'T12:00:00'))).join(', ') : fmtDate(new Date(date));
+    logActivity(currentUser?.name||'?', 'Confirmed booking', getCompanyName(currentBookRow), `${trainer} · ${datesLabel} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`);
     writeActivityLog({
       actionType:  'Status Change',
       description: 'Status changed from ' + (currentBookRow.status||'Pending') + ' to Booked',
@@ -6468,7 +6623,7 @@ async function confirmBook() {
       recordType:  'Booking',
       recordId:    String(currentBookRow._rowNum),
       before:      currentBookRow.status || 'Pending',
-      after:       `Booked — ${trainer} · ${fmtDate(new Date(date))} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`,
+      after:       `Booked — ${trainer} · ${datesLabel} · ${days}d · ${fmtMoney(parseFloat(value)||0)}`,
       reason:      'Manual',
       source:      'Dashboard Button',
       company:     getCompanyName(currentBookRow),
@@ -6481,6 +6636,23 @@ async function confirmBook() {
 }
 
 // ===================== EDIT BOOKING MODAL =====================
+function renderEditSplitGrid() {
+  const days = parseInt(document.getElementById('editBookDays').value) || 1;
+  const { dates, topics } = readSplitGrid('editSplitGridRows', 14);
+  renderSplitGrid('editSplitGrid', 'editSplitGridRows', days, dates, topics, 'checkEditWarnings');
+  if(days > 1 && !dates[0] && document.getElementById('editBookDate').value) {
+    const d0 = document.getElementById('editSplitGridRows_date_0');
+    if(d0) d0.value = document.getElementById('editBookDate').value;
+  }
+}
+
+function syncEditDay1() {
+  const days = parseInt(document.getElementById('editBookDays').value) || 1;
+  if(days < 2) return;
+  const d0 = document.getElementById('editSplitGridRows_date_0');
+  if(d0 && !d0.value) d0.value = document.getElementById('editBookDate').value;
+}
+
 function openEditBookingModal(idx) {
   const r = allData.find(x => x._idx === idx);
   if(!r) return;
@@ -6497,10 +6669,21 @@ function openEditBookingModal(idx) {
   document.getElementById('editBookingOverrideRow').style.display = 'none';
   document.getElementById('editBookingBlockMsg').style.display = 'none';
   document.getElementById('confirmEditBookBtn').disabled = false;
+
+  // Render split grid with any existing split dates/topics
+  const existingDates = r.splitDates || [];
+  const existingTopics = r.splitTopics || [];
+  renderSplitGrid('editSplitGrid', 'editSplitGridRows', r.trainingDays || 1, existingDates, existingTopics, 'checkEditWarnings');
+
   document.getElementById('editBookingOverlay').classList.add('open');
 }
 
-function closeEditBookingModal() { document.getElementById('editBookingOverlay').classList.remove('open'); currentEditRow = null; }
+function closeEditBookingModal() {
+  document.getElementById('editBookingOverlay').classList.remove('open');
+  document.getElementById('editSplitGrid').style.display = 'none';
+  document.getElementById('editSplitGridRows').innerHTML = '';
+  currentEditRow = null;
+}
 
 function checkEditWarnings() {
   if(!currentEditRow) return;
@@ -6515,28 +6698,43 @@ function checkEditWarnings() {
   warnEl.innerHTML = ''; overrideRow.style.display = 'none'; blockMsg.style.display = 'none'; btn.disabled = false;
   if(!date || !trainer) return;
 
-  const bookD = new Date(date);
+  // Build the list of dates to check
+  let datesToCheck = [date];
+  if(days > 1) {
+    const { dates: splitDates } = readSplitGrid('editSplitGridRows', days);
+    const filled = splitDates.filter(Boolean);
+    if(filled.length > 0) datesToCheck = filled;
+    else {
+      datesToCheck = [];
+      for(let i = 0; i < days; i++) {
+        const d = new Date(date + 'T12:00:00'); d.setDate(d.getDate()+i);
+        datesToCheck.push(d.toISOString().split('T')[0]);
+      }
+    }
+  }
+
   let warnings = [];
   let blocking = false;
 
   // 1. Double-booking check
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentEditRow._idx);
-  conflicts.forEach(r => {
-    const rStart = new Date(r.bookedOn); rStart.setHours(0,0,0,0);
-    const rEnd = new Date(rStart); rEnd.setDate(rEnd.getDate() + (r.trainingDays||1));
-    if(bookD >= rStart && bookD < rEnd) {
-      warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on or around ${fmtDate(bookD)}.</span></div>`);
-      blocking = true;
-    }
+  datesToCheck.forEach((iso, dayIdx) => {
+    const bookD = new Date(iso + 'T12:00:00');
+    conflicts.forEach(r => {
+      const existingDates = getBookingDates(r);
+      if(existingDates.includes(iso)) {
+        const label = days > 1 ? ` (Day ${dayIdx+1})` : '';
+        warnings.push(`<div class="warning-box warn"><span>⚠️</span><span>${trainer} already has a booking on <strong>${fmtDate(bookD)}</strong>${label}.</span></div>`);
+        blocking = true;
+      }
+    });
   });
 
-  // 2. Leave check across all training days
+  // 2. Leave check
   let leaveDays = [];
-  for(let i = 0; i < days; i++) {
-    const d = new Date(bookD); d.setDate(d.getDate() + i);
-    const iso = d.toISOString().split('T')[0];
-    if(isTrainerOnLeave(trainer, iso)) leaveDays.push(fmtDate(d));
-  }
+  datesToCheck.forEach(iso => {
+    if(isTrainerOnLeave(trainer, iso)) leaveDays.push(fmtDate(new Date(iso + 'T12:00:00')));
+  });
   if(leaveDays.length) {
     warnings.push(`<div class="warning-box warn" style="border-color:#c0303d;background:#fff0f0;"><span>🏖️</span><span><strong>${trainer} is on leave</strong> on: ${leaveDays.join(', ')}. Check their Humaans calendar before confirming.</span></div>`);
     blocking = true;
@@ -6556,9 +6754,16 @@ async function confirmEditBooking() {
   const value = document.getElementById('editBookValue').value;
   const reason = document.getElementById('editBookReason').value.trim();
   if(!date || !trainer || !currentEditRow) return;
+
+  const { dates: splitDates, topics: splitTopics } = readSplitGrid('editSplitGridRows', days);
+  const hasSplitDates = days > 1 && splitDates.some(Boolean);
+
   const params = new URLSearchParams({ action: 'assign', row: currentEditRow._rowNum, status: 'Booked', trainer, bookedOn: date, trainingDays: days, value: value || '' });
+  if(hasSplitDates) {
+    params.set('splitDates',  JSON.stringify(splitDates));
+    params.set('splitTopics', JSON.stringify(splitTopics));
+  }
   try {
-    // Auto-save amendment note into profile progress notes before fetch
     if(reason) {
       if(!currentEditRow.notes) currentEditRow.notes = [];
       const amendText = 'Amendment: ' + reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`;
@@ -6567,6 +6772,10 @@ async function confirmEditBooking() {
       writeNoteToSheet(currentEditRow._rowNum, getCompanyName(currentEditRow), amendText, 'Booking Edit');
     }
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
+    if(hasSplitDates) {
+      currentEditRow.splitDates  = splitDates;
+      currentEditRow.splitTopics = splitTopics;
+    }
     logActivity(currentUser?.name||'?', 'Edited booking', getCompanyName(currentEditRow), `${trainer} · ${fmtDate(new Date(date))} · ${days}d${reason?' · '+reason:''}`);
     if(reason) logNote(currentUser?.name||'?', 'Amendment note', getCompanyName(currentEditRow), reason + ` (${trainer}, ${fmtDate(new Date(date))}, ${days}d)`);
     writeActivityLog({
