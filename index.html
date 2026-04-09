@@ -2316,6 +2316,57 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
   <div class="modal modal-lg">
     <div class="modal-header"><div><div class="modal-title">&#128200; Confirm Booking</div><div class="modal-subtitle" id="bookModalCompany">&#8212;</div></div><button class="modal-close" onclick="closeBookModal()">&#10005;</button></div>
     <div class="modal-body">
+
+      <!-- ── Strategy & Planning Call Banner ── -->
+      <div id="strategyCallBanner" style="margin-bottom:14px;border-radius:10px;overflow:hidden;border:1.5px solid #c7d2fe;">
+        <button onclick="toggleStrategyCallPanel()" style="width:100%;background:#EEF0FF;border:none;padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;">
+          <span id="strategyCallIcon" style="font-size:15px;">📞</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:700;color:#3730a3;line-height:1.3;">Training Strategy &amp; Planning Call</div>
+            <div style="font-size:11px;color:#6366f1;margin-top:1px;" id="strategyCallSubtitle">Initial call to plan and scope upcoming training — check items completed below</div>
+          </div>
+          <div id="strategyCallBadge" style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">Not confirmed</div>
+          <span id="strategyChevron" style="font-size:11px;color:#6366f1;margin-left:4px;">▼</span>
+        </button>
+        <div id="strategyCallPanel" style="background:#fff;padding:14px 16px;border-top:1px solid #c7d2fe;">
+          <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.5;">Tick each item that was covered during the initial planning call with the client. All items should be confirmed before booking.</div>
+          <div style="display:flex;flex-direction:column;gap:7px;" id="strategyCheckboxList">
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
+              <input type="checkbox" id="sc_priorities" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
+              <span><strong>Priorities &amp; key areas of focus</strong> confirmed with client</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
+              <input type="checkbox" id="sc_features" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
+              <span><strong>Features, workflows or challenges</strong> to address identified</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
+              <input type="checkbox" id="sc_structure" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
+              <span><strong>Preferred training structure &amp; delivery approach</strong> agreed</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
+              <input type="checkbox" id="sc_logistics" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
+              <span><strong>Logistics</strong> covered — location, setup, access if applicable</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
+              <input type="checkbox" id="sc_trainer" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
+              <span><strong>Trainer allocation</strong> discussed (where relevant)</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
+              <input type="checkbox" id="sc_followup" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
+              <span><strong>Follow-up preferences &amp; next steps</strong> confirmed with client</span>
+            </label>
+          </div>
+          <!-- Missing enquiry details prompt -->
+          <div id="strategyMissingFields" style="display:none;margin-top:12px;padding:10px 12px;background:#fff8f0;border:1px solid #fde8c8;border-radius:7px;">
+            <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠️ Missing enquiry details — complete these before confirming:</div>
+            <div id="strategyMissingList" style="font-size:11px;color:#b45309;line-height:1.6;"></div>
+          </div>
+          <div style="margin-top:12px;padding:10px 12px;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:7px;font-size:11px;color:#065f46;line-height:1.5;">
+            <strong>Outcome:</strong> A clear, agreed training plan tailored to the team, with next steps confirmed.
+          </div>
+        </div>
+      </div>
+
       <div id="bookWarnings"></div>
       <!-- Training type — required before confirming; must not be "Help me choose" -->
       <div class="form-row" id="bookTypeRow">
@@ -2371,7 +2422,23 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         </div>
       </div>
 
-      <div class="status-preview booked">&#128200; Status will be set to <strong>Booked</strong></div>
+      <!-- Progress Notes -->
+      <div style="margin-top:16px;border:1.5px solid var(--s-border-mid);border-radius:9px;overflow:hidden;">
+        <div style="background:var(--s-surface);padding:10px 14px;border-bottom:1px solid var(--s-border);display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;">📝</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--s-text-primary);">Progress Notes</div>
+            <div style="font-size:11px;color:var(--s-text-muted);">Add a note to the client profile — saved when you confirm</div>
+          </div>
+        </div>
+        <div style="padding:12px 14px;background:#fff;">
+          <div id="bookModalNotesList" style="max-height:120px;overflow-y:auto;margin-bottom:10px;display:none;"></div>
+          <textarea id="bookProgressNote" rows="2" placeholder="e.g. Strategy call completed — client confirmed focus on Lettings onboarding and Sales CRM workflows…" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:7px;padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;color:var(--s-text-primary);box-sizing:border-box;line-height:1.5;"></textarea>
+          <div style="font-size:11px;color:var(--s-text-muted);margin-top:4px;">Note will be attached to the client profile and saved to the Progress Notes sheet.</div>
+        </div>
+      </div>
+
+      <div class="status-preview booked" style="margin-top:14px;">&#128200; Status will be set to <strong>Booked</strong></div>
     </div>
     <div id="bookingOverrideRow" style="display:none;padding:8px 20px;background:#fff8f0;border-top:1px solid #fde8c8;"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;cursor:pointer;font-weight:600;"><input type="checkbox" id="bookingOverride" onchange="checkBookingWarnings()">&#9888;&#65039; Admin override &#8212; confirm despite double booking conflict</label></div>
     <div class="modal-footer"><span id="bookingBlockMsg" style="font-size:12px;color:#c0303d;font-weight:600;margin-right:auto;display:none;"></span><button class="btn btn-ghost" onclick="closeBookModal()">Cancel</button><button class="btn btn-success" id="confirmBookBtn" onclick="confirmBook()">&#10003; Confirm Booking</button></div>
@@ -6321,6 +6388,105 @@ function syncBookDay1() {
   if(d0 && !d0.value) d0.value = document.getElementById('bookDate').value;
 }
 
+/* ── Strategy & Planning Call helpers ── */
+function toggleStrategyCallPanel() {
+  const panel   = document.getElementById('strategyCallPanel');
+  const chevron = document.getElementById('strategyChevron');
+  const open    = panel.style.display !== 'none';
+  panel.style.display  = open ? 'none' : 'block';
+  chevron.textContent  = open ? '▶' : '▼';
+}
+
+const STRATEGY_CHECKBOXES = ['sc_priorities','sc_features','sc_structure','sc_logistics','sc_trainer','sc_followup'];
+
+function updateStrategyCallBadge() {
+  const checked = STRATEGY_CHECKBOXES.filter(id => document.getElementById(id)?.checked).length;
+  const total   = STRATEGY_CHECKBOXES.length;
+  const badge   = document.getElementById('strategyCallBadge');
+  const subtitle= document.getElementById('strategyCallSubtitle');
+  const icon    = document.getElementById('strategyCallIcon');
+  if(!badge) return;
+  if(checked === 0) {
+    badge.style.cssText = 'font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;background:#fdeaed;color:#c0303d;border:1px solid #fca5a5;';
+    badge.textContent   = 'Not started';
+    icon.textContent    = '📞';
+    subtitle.textContent= 'Initial call to plan and scope upcoming training — check items completed below';
+  } else if(checked < total) {
+    badge.style.cssText = 'font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;background:#fef3c7;color:#92400e;border:1px solid #fde68a;';
+    badge.textContent   = `${checked}/${total} items`;
+    icon.textContent    = '⏳';
+    subtitle.textContent= `${total - checked} item${total - checked === 1 ? '' : 's'} still to cover before confirming`;
+  } else {
+    badge.style.cssText = 'font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;';
+    badge.textContent   = '✓ Call complete';
+    icon.textContent    = '✅';
+    subtitle.textContent= 'All planning call items confirmed — ready to book';
+  }
+}
+
+function populateStrategyMissingFields(r) {
+  /* Map each strategy checkbox to the enquiry field(s) it covers */
+  const checks = [
+    { id: 'sc_priorities', label: 'Priorities & areas of focus', fields: ['priorities','areas'],
+      hint: 'Add via enquiry profile → Training Details' },
+    { id: 'sc_features',   label: 'Features, workflows & challenges', fields: ['features'],
+      hint: 'Add via enquiry profile → Training Details' },
+    { id: 'sc_structure',  label: 'Preferred training structure', fields: ['trainingOption'],
+      hint: 'Select a Training Type above' },
+    { id: 'sc_logistics',  label: 'Location, setup & access', fields: ['locationRaw','parking'],
+      hint: 'Add via enquiry profile → Logistics' },
+    { id: 'sc_trainer',    label: 'Trainer allocation', fields: ['trainer'],
+      hint: 'Assign a trainer above' },
+    { id: 'sc_followup',   label: 'Follow-up preferences', fields: ['followUp'],
+      hint: 'Add via enquiry profile → Logistics' },
+  ];
+
+  const missing = [];
+  checks.forEach(c => {
+    const hasData = c.fields.some(f => r[f] && String(r[f]).trim() && String(r[f]).trim() !== '—');
+    /* Pre-tick the checkbox if data exists */
+    const el = document.getElementById(c.id);
+    if(el) el.checked = hasData;
+    if(!hasData) {
+      missing.push(`<div style="display:flex;align-items:flex-start;gap:6px;"><span style="color:#d97706;flex-shrink:0;">•</span><span><strong>${c.label}</strong> — ${c.hint}</span></div>`);
+    }
+  });
+
+  const wrap = document.getElementById('strategyMissingFields');
+  const list = document.getElementById('strategyMissingList');
+  if(missing.length && wrap && list) {
+    list.innerHTML = missing.join('');
+    wrap.style.display = 'block';
+  } else if(wrap) {
+    wrap.style.display = 'none';
+  }
+  updateStrategyCallBadge();
+}
+
+function resetStrategyCallPanel() {
+  STRATEGY_CHECKBOXES.forEach(id => { const el = document.getElementById(id); if(el) el.checked = false; });
+  const panel   = document.getElementById('strategyCallPanel');
+  const chevron = document.getElementById('strategyChevron');
+  if(panel)   panel.style.display  = 'block';
+  if(chevron) chevron.textContent  = '▼';
+  updateStrategyCallBadge();
+}
+
+function renderBookModalNotes(r) {
+  const list = document.getElementById('bookModalNotesList');
+  if(!list) return;
+  const notes = (r.notes || []).slice().reverse().slice(0, 5); // show last 5
+  if(!notes.length) { list.style.display = 'none'; return; }
+  list.style.display = 'block';
+  list.innerHTML = notes.map(n => {
+    const d = n.ts ? new Date(n.ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    return `<div style="padding:7px 9px;border:1px solid var(--s-border);border-radius:6px;margin-bottom:6px;background:var(--s-surface);">
+      <div style="font-size:10px;color:var(--s-text-muted);margin-bottom:3px;">${escHtml(n.author||'?')} · ${d}</div>
+      <div style="font-size:11px;color:var(--s-text-primary);line-height:1.4;">${escHtml(n.text||'')}</div>
+    </div>`;
+  }).join('');
+}
+
 function openBookModal(idx) {
   const r = allData.find(x => x._idx === idx);
   if(!r) return;
@@ -6389,6 +6555,13 @@ function openBookModal(idx) {
     }
   }
   document.getElementById('bookOverlay').classList.add('open');
+  /* Strategy & Planning Call — pre-tick from existing data, show missing fields */
+  resetStrategyCallPanel();
+  populateStrategyMissingFields(r);
+  /* Clear progress note textarea and show existing notes */
+  const noteTA = document.getElementById('bookProgressNote');
+  if(noteTA) noteTA.value = '';
+  renderBookModalNotes(r);
 }
 
 function closeBookModal() {
@@ -6400,6 +6573,12 @@ function closeBookModal() {
   ['bookAreas','bookLocation','bookParking','bookPriorities'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
+  /* Reset strategy call panel */
+  resetStrategyCallPanel();
+  const noteTA = document.getElementById('bookProgressNote');
+  if(noteTA) noteTA.value = '';
+  const notesList = document.getElementById('bookModalNotesList');
+  if(notesList) { notesList.innerHTML = ''; notesList.style.display = 'none'; }
   currentBookRow = null;
 }
 
@@ -6631,6 +6810,50 @@ async function confirmBook() {
       trainer,
     });
     showToast('Booking confirmed!', 'success');
+
+    /* Save progress note if one was entered */
+    const progressNoteText = (document.getElementById('bookProgressNote')?.value || '').trim();
+    if(progressNoteText && currentBookRow) {
+      const note = { text: progressNoteText, author: currentUser?.name || 'Unknown', ts: Date.now() };
+      if(!currentBookRow.notes) currentBookRow.notes = [];
+      currentBookRow.notes.push(note);
+      writeNoteToSheet(currentBookRow._rowNum, getCompanyName(currentBookRow), progressNoteText, 'Booking Confirmed');
+      logNote(currentUser?.name||'?', 'Note added at booking confirmation', getCompanyName(currentBookRow), progressNoteText.slice(0,120));
+      writeActivityLog({
+        actionType:  'Note Added',
+        description: 'Progress note added at booking confirmation',
+        module:      'Dashboard',
+        recordType:  'Booking',
+        recordId:    String(currentBookRow._rowNum),
+        before:      '—',
+        after:       progressNoteText.slice(0, 200),
+        reason:      'Manual entry',
+        source:      'Dashboard Button',
+        company:     getCompanyName(currentBookRow),
+        trainer,
+      });
+    }
+
+    /* Log strategy call checklist completion status */
+    const scChecked  = STRATEGY_CHECKBOXES.filter(id => document.getElementById(id)?.checked).length;
+    const scTotal    = STRATEGY_CHECKBOXES.length;
+    if(scChecked > 0 && currentBookRow) {
+      const scNote = `Strategy & Planning Call: ${scChecked}/${scTotal} items confirmed at booking`;
+      writeActivityLog({
+        actionType:  'Strategy Call',
+        description: scNote,
+        module:      'Dashboard',
+        recordType:  'Booking',
+        recordId:    String(currentBookRow._rowNum),
+        before:      '—',
+        after:       scNote,
+        reason:      'Booking confirmation',
+        source:      'Dashboard Button',
+        company:     getCompanyName(currentBookRow),
+        trainer,
+      });
+    }
+
     closeBookModal();
     await loadData();
   } catch(e) { showToast('Error confirming booking', 'error'); }
