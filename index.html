@@ -1959,7 +1959,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
   <div class="nav-section-label">Resources</div>
   <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank"><span class="nav-item-icon">&#128196;</span> Bookings Spreadsheet</a>
   <a href="https://amydawber-del.github.io/Street-training-request/" class="nav-item" target="_blank"><span class="nav-item-icon">&#128221;</span> Training Request Form</a>
-  <a href="https://amydawber-del.github.io/TilTracker/" class="nav-item" target="_blank"><span class="nav-item-icon">&#9203;</span> Time in Lieu Tracker</a>
   <a href="https://app.hubspot.com/contacts/7658438/objects/0-5/views/all/board?prefetch=" class="nav-item" target="_blank"><span class="nav-item-icon">&#127760;</span> HubSpot Tickets</a>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Account</div>
@@ -2317,55 +2316,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
     <div class="modal-header"><div><div class="modal-title">&#128200; Confirm Booking</div><div class="modal-subtitle" id="bookModalCompany">&#8212;</div></div><button class="modal-close" onclick="closeBookModal()">&#10005;</button></div>
     <div class="modal-body">
 
-      <!-- ── Strategy & Planning Call Banner ── -->
-      <div id="strategyCallBanner" style="margin-bottom:14px;border-radius:10px;overflow:hidden;border:1.5px solid #c7d2fe;">
-        <button onclick="toggleStrategyCallPanel()" style="width:100%;background:#EEF0FF;border:none;padding:11px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;">
-          <span id="strategyCallIcon" style="font-size:15px;">📞</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:700;color:#3730a3;line-height:1.3;">Training Strategy &amp; Planning Call</div>
-            <div style="font-size:11px;color:#6366f1;margin-top:1px;" id="strategyCallSubtitle">Initial call to plan and scope upcoming training — check items completed below</div>
-          </div>
-          <div id="strategyCallBadge" style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;background:#fef3c7;color:#92400e;border:1px solid #fde68a;">Not confirmed</div>
-          <span id="strategyChevron" style="font-size:11px;color:#6366f1;margin-left:4px;">▼</span>
-        </button>
-        <div id="strategyCallPanel" style="background:#fff;padding:14px 16px;border-top:1px solid #c7d2fe;">
-          <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.5;">Tick each item that was covered during the initial planning call with the client. All items should be confirmed before booking.</div>
-          <div style="display:flex;flex-direction:column;gap:7px;" id="strategyCheckboxList">
-            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
-              <input type="checkbox" id="sc_priorities" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
-              <span><strong>Priorities &amp; key areas of focus</strong> confirmed with client</span>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
-              <input type="checkbox" id="sc_features" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
-              <span><strong>Features, workflows or challenges</strong> to address identified</span>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
-              <input type="checkbox" id="sc_structure" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
-              <span><strong>Preferred training structure &amp; delivery approach</strong> agreed</span>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
-              <input type="checkbox" id="sc_logistics" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
-              <span><strong>Logistics</strong> covered — location, setup, access if applicable</span>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
-              <input type="checkbox" id="sc_trainer" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
-              <span><strong>Trainer allocation</strong> discussed (where relevant)</span>
-            </label>
-            <label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;font-size:12px;color:var(--s-text-primary);line-height:1.4;">
-              <input type="checkbox" id="sc_followup" onchange="updateStrategyCallBadge()" style="margin-top:2px;accent-color:#5B4BE7;flex-shrink:0;">
-              <span><strong>Follow-up preferences &amp; next steps</strong> confirmed with client</span>
-            </label>
-          </div>
-          <!-- Missing enquiry details prompt -->
-          <div id="strategyMissingFields" style="display:none;margin-top:12px;padding:10px 12px;background:#fff8f0;border:1px solid #fde8c8;border-radius:7px;">
-            <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:6px;">⚠️ Missing enquiry details — complete these before confirming:</div>
-            <div id="strategyMissingList" style="font-size:11px;color:#b45309;line-height:1.6;"></div>
-          </div>
-          <div style="margin-top:12px;padding:10px 12px;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:7px;font-size:11px;color:#065f46;line-height:1.5;">
-            <strong>Outcome:</strong> A clear, agreed training plan tailored to the team, with next steps confirmed.
-          </div>
-        </div>
-      </div>
 
       <div id="bookWarnings"></div>
       <!-- Training type — required before confirming; must not be "Help me choose" -->
@@ -2724,10 +2674,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
   <div class="notif-panel-header">
     <div class="notif-panel-title">&#128276; Notifications <span class="notif-unread-badge" id="notifUnreadBadge" style="display:none;">0</span></div>
     <button class="notif-close" onclick="closeNotifPanel()">&#10005;</button>
-  </div>
-  <div class="notif-tabs">
-    <button class="notif-tab active" id="notifTabEvents" onclick="switchNotifTab('event')">Events <span class="notif-tab-badge" id="notifTabEventsBadge" style="display:none;">0</span></button>
-    <button class="notif-tab" id="notifTabNotes" onclick="switchNotifTab('note')">Notes <span class="notif-tab-badge" id="notifTabNotesBadge" style="display:none;">0</span></button>
   </div>
   <div class="notif-toolbar">
     <span class="notif-count" id="notifCount">0 notifications</span>
@@ -3136,7 +3082,7 @@ let currentCancelRow = null;
 let currentProfileRow = null;
 // Provisional dates: { [rowNum]: { date:'YYYY-MM-DD', trainer:'Name', company:'Name' } }
 let provisionalDates = JSON.parse(localStorage.getItem('provisionalDates') || '{}');
-let sortCol = null, sortDir = 1;
+let sortCol = 'bookedOn', sortDir = 1;
 let upcomingPage = 1, completedPage = 1;
 const PAGE_SIZE = 15;
 let revenueChartInst = null, optionChartInst = null;
@@ -3941,7 +3887,8 @@ async function loadNotes() {
           text:   n.text,
           author: n.author,
           role:   n.role,
-          ts:     n.ts,  // stored as "dd/mm/yyyy, hh:mm:ss" string — keep as-is for display
+          ts:     n.ts,
+          rowRef: String(rowRef), // store for ownership verification
         }));
       }
     });
@@ -5982,7 +5929,8 @@ async function saveProfileSection(si) {
 
 function renderProfileNotes(r) {
   const list = document.getElementById('profileNotesList');
-  const notes = r.notes || [];
+  // Guard: only show notes whose rowRef matches this record's row number
+  const notes = (r.notes || []).filter(n => !n.rowRef || String(n.rowRef) === String(r._rowNum));
   if(!notes.length) { list.innerHTML = '<div style="font-size:11px;color:var(--text--dark--30);padding:4px 0;">No notes yet.</div>'; return; }
   list.innerHTML = notes.map(n => {
     // ts can be a ms number (local) or a "dd/mm/yyyy, hh:mm:ss" string (from sheet)
@@ -6475,7 +6423,9 @@ function resetStrategyCallPanel() {
 function renderBookModalNotes(r) {
   const list = document.getElementById('bookModalNotesList');
   if(!list) return;
-  const notes = (r.notes || []).slice().reverse().slice(0, 5); // show last 5
+  // Guard: only show notes whose rowRef matches this record's row number
+  const ownNotes = (r.notes || []).filter(n => !n.rowRef || String(n.rowRef) === String(r._rowNum));
+  const notes = ownNotes.slice().reverse().slice(0, 5);
   if(!notes.length) { list.style.display = 'none'; return; }
   list.style.display = 'block';
   list.innerHTML = notes.map(n => {
@@ -6555,9 +6505,6 @@ function openBookModal(idx) {
     }
   }
   document.getElementById('bookOverlay').classList.add('open');
-  /* Strategy & Planning Call — pre-tick from existing data, show missing fields */
-  resetStrategyCallPanel();
-  populateStrategyMissingFields(r);
   /* Clear progress note textarea and show existing notes */
   const noteTA = document.getElementById('bookProgressNote');
   if(noteTA) noteTA.value = '';
@@ -6573,8 +6520,6 @@ function closeBookModal() {
   ['bookAreas','bookLocation','bookParking','bookPriorities'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
-  /* Reset strategy call panel */
-  resetStrategyCallPanel();
   const noteTA = document.getElementById('bookProgressNote');
   if(noteTA) noteTA.value = '';
   const notesList = document.getElementById('bookModalNotesList');
@@ -6828,26 +6773,6 @@ async function confirmBook() {
         before:      '—',
         after:       progressNoteText.slice(0, 200),
         reason:      'Manual entry',
-        source:      'Dashboard Button',
-        company:     getCompanyName(currentBookRow),
-        trainer,
-      });
-    }
-
-    /* Log strategy call checklist completion status */
-    const scChecked  = STRATEGY_CHECKBOXES.filter(id => document.getElementById(id)?.checked).length;
-    const scTotal    = STRATEGY_CHECKBOXES.length;
-    if(scChecked > 0 && currentBookRow) {
-      const scNote = `Strategy & Planning Call: ${scChecked}/${scTotal} items confirmed at booking`;
-      writeActivityLog({
-        actionType:  'Strategy Call',
-        description: scNote,
-        module:      'Dashboard',
-        recordType:  'Booking',
-        recordId:    String(currentBookRow._rowNum),
-        before:      '—',
-        after:       scNote,
-        reason:      'Booking confirmation',
         source:      'Dashboard Button',
         company:     getCompanyName(currentBookRow),
         trainer,
@@ -7525,10 +7450,7 @@ function closeNotifPanel() {
 }
 
 function switchNotifTab(tab) {
-  notifCurrentTab = tab;
-  document.getElementById('notifTabEvents').classList.toggle('active', tab === 'event');
-  document.getElementById('notifTabNotes').classList.toggle('active', tab === 'note');
-  renderNotifPanel();
+  // Tabs removed — single combined feed, nothing to switch
 }
 
 // Save a log entry of type 'event' or 'note'
@@ -7568,21 +7490,16 @@ function markAllNotifRead() {
 }
 
 function clearNotifLog() {
-  const type = notifCurrentTab;
-  activityLog = activityLog.filter(e => e.type !== type);
-  // Clean up unread set for deleted entries
-  const remaining = new Set(activityLog.map(e => e.id));
-  notifUnread = new Set([...notifUnread].filter(id => remaining.has(id)));
+  activityLog = [];
+  notifUnread = new Set();
   localStorage.setItem('dashActivityLog', JSON.stringify(activityLog));
-  localStorage.setItem('dashNotifUnread', JSON.stringify([...notifUnread]));
+  localStorage.setItem('dashNotifUnread', '[]');
   updateBellBadge();
   renderNotifPanel();
 }
 
 function updateBellBadge() {
-  const unreadEvents = activityLog.filter(e => e.type === 'event' && notifUnread.has(e.id)).length;
-  const unreadNotes  = activityLog.filter(e => e.type === 'note'  && notifUnread.has(e.id)).length;
-  const total = unreadEvents + unreadNotes;
+  const total = activityLog.filter(e => notifUnread.has(e.id)).length;
   const bellDot   = document.getElementById('bellDot');
   const bellCount = document.getElementById('bellCount');
   const unreadBadge = document.getElementById('notifUnreadBadge');
@@ -7591,37 +7508,32 @@ function updateBellBadge() {
   if(bellCount)  { bellCount.style.display = total > 0 ? 'flex' : 'none'; bellCount.textContent = total > 99 ? '99+' : total; }
   if(unreadBadge){ unreadBadge.style.display = total > 0 ? 'inline-flex' : 'none'; unreadBadge.textContent = total; }
   if(navDot)     { navDot.style.display = total > 0 ? 'block' : 'none'; }
-  // Tab badges
-  const evBadge = document.getElementById('notifTabEventsBadge');
-  const ntBadge = document.getElementById('notifTabNotesBadge');
-  if(evBadge) { evBadge.style.display = unreadEvents > 0 ? 'inline' : 'none'; evBadge.textContent = unreadEvents; }
-  if(ntBadge) { ntBadge.style.display = unreadNotes  > 0 ? 'inline' : 'none'; ntBadge.textContent = unreadNotes; }
 }
 
 function renderNotifPanel() {
   const body = document.getElementById('notifFeedBody');
   if(!body) return;
-  const filtered = activityLog.filter(e => (e.type || 'event') === notifCurrentTab);
-  const unreadInTab = filtered.filter(e => notifUnread.has(e.id)).length;
+  const unreadCount = activityLog.filter(e => notifUnread.has(e.id)).length;
   document.getElementById('notifCount').textContent =
-    filtered.length + ' ' + (notifCurrentTab === 'note' ? 'note' : 'event') + (filtered.length !== 1 ? 's' : '') +
-    (unreadInTab > 0 ? ` · ${unreadInTab} unread` : '');
+    activityLog.length + ' notification' + (activityLog.length !== 1 ? 's' : '') +
+    (unreadCount > 0 ? ` · ${unreadCount} unread` : '');
 
-  if(!filtered.length) {
-    body.innerHTML = `<div class="notif-empty">${notifCurrentTab === 'note' ? '&#128221; No notes yet' : '&#128203; No events yet'}</div>`;
+  if(!activityLog.length) {
+    body.innerHTML = '<div class="notif-empty">&#128203; No notifications yet</div>';
     return;
   }
 
-  body.innerHTML = filtered.map(e => {
+  body.innerHTML = activityLog.map(e => {
     const isUnread = notifUnread.has(e.id);
     const d = new Date(e.ts);
     const timeStr = fmtDate(d) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const typeIcon = e.type === 'note' ? '📝' : '🔔';
     return `<div class="notif-entry ${isUnread ? 'unread' : 'read'}" id="notif_${e.id}">
       <div class="notif-entry-top">
         <div style="display:flex;gap:8px;align-items:flex-start;min-width:0;">
           <div class="notif-type-dot ${e.type || 'event'}" style="margin-top:5px;"></div>
           <div style="min-width:0;">
-            <div class="notif-who">${escHtml(e.who || '—')}</div>
+            <div class="notif-who">${typeIcon} ${escHtml(e.who || '—')}</div>
             <div class="notif-what">${escHtml(e.what || '')}${e.company ? ' &mdash; <strong>' + escHtml(e.company) + '</strong>' : ''}</div>
             ${e.detail ? `<div class="notif-detail">${escHtml(e.detail)}</div>` : ''}
             <div class="notif-time">${timeStr}</div>
