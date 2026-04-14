@@ -8177,8 +8177,6 @@ function openTrainerProfile(name) {
   const colour = t.color || '#5B4BE7';
 
   const rev30 = last30.reduce((s,r)=>s+(r.invoiceValue||0),0);
-  const revPrev30 = prev30.reduce((s,r)=>s+(r.invoiceValue||0),0);
-  const revDelta = revPrev30>0 ? Math.round(((rev30-revPrev30)/revPrev30)*100) : null;
   const paidSess = last30.filter(r=>r.invoiceValue>0);
   const avgVal = paidSess.length ? rev30/paidSess.length : 0;
 
@@ -8186,44 +8184,6 @@ function openTrainerProfile(name) {
   const utilPct = Math.min(100, Math.round((last30.length/Math.max(CAPACITY_30D,1))*100));
   let statusDot = utilPct>=90?'🔴 Over capacity':utilPct>=60?'🟢 Available':utilPct>=30?'🟠 Under-utilised':'🔴 Low activity';
   let statusColour = utilPct>=90?'#DC2F4B':utilPct>=60?'#0FA976':'#D97706';
-
-  // Cancellation rate
-  const allAssigned = allData.filter(r => r.trainer===name);
-  const cancelled = allAssigned.filter(r => r.status==='Cancelled');
-  const cancelRate = allAssigned.length ? Math.round((cancelled.length/allAssigned.length)*100) : 0;
-
-  // Goals progress
-  const monthGoalSess = meta.goals?.sessionTarget || 10;
-  const monthGoalRev = meta.goals?.revenueTarget || 0;
-  const sessProgress = Math.min(100, Math.round((last30.length/monthGoalSess)*100));
-  const revProgress = monthGoalRev > 0 ? Math.min(100, Math.round((rev30/monthGoalRev)*100)) : 0;
-
-  // Skill stars
-  const ALL_SKILLS = ['Sales','Lettings','Accounting','Property Management'];
-  const skillLevels = meta.skillLevels || {};
-
-  // Notes / 1:1 log
-  const notes = meta.notes || [];
-  const managerNotes = meta.managerNotes || '';
-
-  // Auto flags
-  const flags = [];
-  if(utilPct>=90) flags.push({col:'#DC2F4B', icon:'🔴', text:'Over capacity this period'});
-  if(utilPct<30 && last30.length<3) flags.push({col:'#D97706', icon:'🟡', text:'Low utilisation — may need more sessions assigned'});
-  if(cancelRate>=20) flags.push({col:'#DC2F4B', icon:'🔴', text:`High cancellation rate (${cancelRate}%)`});
-  if(last30.length===0) flags.push({col:'#D97706', icon:'🟡', text:'No sessions in last 30 days'});
-
-  // Auto 1:1 talking points
-  const talkingPoints = [];
-  if(utilPct>=90) talkingPoints.push('Workload imbalance — consider redistributing');
-  if(utilPct<30)  talkingPoints.push('Under-utilised — discuss pipeline & support');
-  if(revDelta!==null && revDelta>15) talkingPoints.push(`Revenue up ${revDelta}% — great month, celebrate!`);
-  if(revDelta!==null && revDelta<-15) talkingPoints.push(`Revenue down ${Math.abs(revDelta)}% — discuss causes`);
-  if(upcoming.length===0) talkingPoints.push('No upcoming sessions booked — review pipeline');
-  if(last30.length > 0 && !paidSess.length) talkingPoints.push('All sessions this period have £0 value — check invoicing');
-  const tpTilCheck = getTilBalance(name);
-  if(tpTilCheck !== null && tpTilCheck < -4) talkingPoints.push('TiL balance is ' + fmtTil(tpTilCheck) + ' — discuss owed time and when to take it');
-  if(tpTilCheck !== null && tpTilCheck > 8)  talkingPoints.push('TiL balance is ' + fmtTil(tpTilCheck) + ' — encourage taking time off soon');
 
   // Next available
   const nextFree = getNextFreeDate(name);
@@ -8239,10 +8199,7 @@ function openTrainerProfile(name) {
   panel.querySelector('#tpRevenue30').textContent = fmtMoney(rev30);
   panel.querySelector('#tpUtilPct').textContent = utilPct + '%';
   panel.querySelector('#tpAvgVal').textContent = fmtMoney(avgVal);
-
-  // TIL Balance — read from shared localStorage with amydawber-del.github.io/TilTracker/
   const tilEl = panel.querySelector('#tpTilBal');
-  const tilWrap = panel.querySelector('#tpTilWrap');
   if(tilEl) {
     const tpTilHours = canDo('viewTilTracker') ? getTilBalance(name) : null;
     const tpTilFmt = fmtTil(tpTilHours);
@@ -8250,55 +8207,21 @@ function openTrainerProfile(name) {
       tilEl.textContent = tpTilFmt;
       const tpTilCol = tpTilHours > 0 ? '#6EE7B7' : tpTilHours < 0 ? '#FCA5A5' : 'rgba(255,255,255,0.6)';
       tilEl.style.color = tpTilCol;
-      if(tpTilHours < -4) flags.push({col:'#DC2F4B', icon:'🕐', text:'TiL balance negative (' + tpTilFmt + ') — review workload'});
-      if(tpTilHours > 8)  flags.push({col:'#D97706', icon:'🕐', text:'TiL balance high (' + tpTilFmt + ') — schedule time off'});
     } else {
       tilEl.textContent = '—';
       tilEl.style.color = 'rgba(255,255,255,0.4)';
     }
   }
 
-  // Skills
-  panel.querySelector('#tpSkillTags').innerHTML = ALL_SKILLS.map(s => {
-    const active = (meta.skills||[]).includes(s);
-    const level = skillLevels[s]||0;
-    const stars = active ? '⭐'.repeat(Math.min(5,Math.max(1,level||3))) + '☆'.repeat(Math.max(0,5-(level||3))) : '';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:6px;background:${active?colour+'12':'var(--s-surface)'};border:1px solid ${active?colour+'30':'var(--s-border)'};margin-bottom:4px;">
-      <span style="font-size:12px;font-weight:600;color:${active?colour:'var(--s-text-muted)'};">${s}</span>
-      ${active ? `<span style="font-size:11px;">${stars}</span>` : '<span style="font-size:10px;color:var(--s-text-faint);">Not active</span>'}
-    </div>`;
-  }).join('');
-
-  // Capacity bar
+  // Capacity bar (workload)
   const capPct = Math.min(100, Math.round((upcoming.length/Math.max((meta.capacity||1)*4.3,1))*100));
   panel.querySelector('#tpCapBar').style.width = capPct + '%';
   panel.querySelector('#tpCapBar').style.background = capPct>=100?'#DC2F4B':capPct>=70?'#D97706':'#0FA976';
   panel.querySelector('#tpCapLabel').textContent = upcoming.length + ' upcoming · target ' + (meta.capacity||1) + ' session' + ((meta.capacity||1)!==1?'s':'') + '/week';
   panel.querySelector('#tpNextFree').textContent = nextFree || 'No free slots in 90 days';
 
-  // Goals
-  panel.querySelector('#tpGoalSessBar').style.width = sessProgress + '%';
-  panel.querySelector('#tpGoalSessLabel').textContent = last30.length + ' / ' + monthGoalSess + ' sessions';
-  panel.querySelector('#tpGoalRevBar').style.width = revProgress + '%';
-  panel.querySelector('#tpGoalRevLabel').textContent = fmtMoney(rev30) + ' / ' + fmtMoney(monthGoalRev);
-
-  // Flags
-  panel.querySelector('#tpFlags').innerHTML = flags.length
-    ? flags.map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:${f.col}12;border:1px solid ${f.col}30;margin-bottom:4px;font-size:12px;color:${f.col};font-weight:600;">${f.icon} ${f.text}</div>`).join('')
-    : '<div style="font-size:12px;color:var(--s-text-muted);">✅ No flags — all looking healthy</div>';
-
-  // Talking points
-  panel.querySelector('#tpTalkingPoints').innerHTML = talkingPoints.length
-    ? talkingPoints.map(p=>`<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--s-border);font-size:12px;color:var(--s-text-secondary);"><span style="color:var(--s-purple);flex-shrink:0;">→</span>${p}</div>`).join('')
-    : '<div style="font-size:12px;color:var(--s-text-muted);">No auto-generated talking points</div>';
-
-  // Notes
-  panel.querySelector('#tpManagerNotes').value = managerNotes;
-  renderTrainerNotes(notes, panel.querySelector('#tpNotesList'));
-
-  // Skill checkboxes are now rendered dynamically in renderSkillStars() when Skills tab opens
-  // Shadowing toggle still needs setting
-  panel.querySelector('#tpShadowToggle').checked = !!meta.shadowing;
+  // Populate upcoming sessions list
+  tpSwitchTab('workload');
 
   document.getElementById('trainerProfileOverlay').classList.add('open');
   panel.classList.add('open');
@@ -8452,18 +8375,7 @@ function renderVolunteerDays(days, container) {
 }
 
 function tpSwitchTab(tab) {
-  ['overview','workload','skills','onetoone','settings'].forEach(t => {
-    const el = document.getElementById('tpTab-'+t);
-    if(el) el.style.display = t===tab?'':'none';
-  });
-  document.querySelectorAll('.tp-tab').forEach(btn => {
-    const active = btn.dataset.tab === tab;
-    btn.style.color = active ? 'var(--s-purple)' : 'var(--s-text-muted)';
-    btn.style.borderBottom = active ? '2px solid var(--s-purple)' : '2px solid transparent';
-    btn.style.marginBottom = '-2px';
-  });
-
-  // Workload tab — populate upcoming sessions for THIS trainer only
+  // Only workload tab remains — populate upcoming sessions
   if(tab==='workload' && _trainerProfileName) {
     const today = new Date(); today.setHours(0,0,0,0);
     const upcoming = allData
@@ -8488,22 +8400,6 @@ function tpSwitchTab(tab) {
         }).join('');
       }
     }
-  }
-
-  // Settings tab — populate targets + volunteer days
-  if(tab==='settings' && _trainerProfileName) {
-    const meta = getTrainerMeta(_trainerProfileName);
-    const panel = document.getElementById('trainerProfilePanel');
-    const revT = panel.querySelector('#tpRevTarget');
-    const sessT = panel.querySelector('#tpSessTarget');
-    if(revT) revT.value = meta.goals?.revenueTarget || 0;
-    if(sessT) sessT.value = meta.goals?.sessionTarget || 10;
-    renderVolunteerDays(meta.volunteerDays||[], panel.querySelector('#tpVolunteerList'));
-  }
-
-  // Skills tab — render interactive star ratings
-  if(tab==='skills' && _trainerProfileName) {
-    renderSkillStars(_trainerProfileName);
   }
 }
 
@@ -8673,36 +8569,12 @@ function closeTrainerProfile() {
     </div>
   </div>
 
-  <!-- Tab nav -->
-  <div style="display:flex;border-bottom:2px solid var(--s-border);background:var(--s-surface);flex-shrink:0;" id="tpTabNav">
-    <button onclick="tpSwitchTab('overview')" class="tp-tab tp-tab-active" data-tab="overview" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-purple);border-bottom:2px solid var(--s-purple);margin-bottom:-2px;font-family:'DM Sans',sans-serif;">Overview</button>
-    <button onclick="tpSwitchTab('workload')" class="tp-tab" data-tab="workload" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">Workload</button>
-    <button onclick="tpSwitchTab('skills')" class="tp-tab" data-tab="skills" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">Skills</button>
-    <button onclick="tpSwitchTab('onetoone')" class="tp-tab" data-tab="onetoone" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">1:1 Prep</button>
-    <button onclick="tpSwitchTab('settings')" class="tp-tab" data-tab="settings" style="padding:10px 16px;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--s-text-muted);font-family:'DM Sans',sans-serif;">Settings</button>
-  </div>
+  <!-- Tab nav removed — Workload is the only view -->
 
   <div style="flex:1;overflow-y:auto;padding:20px 22px;">
 
-    <!-- OVERVIEW TAB -->
-    <div id="tpTab-overview">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">⚠️ Flags</div>
-      <div id="tpFlags" style="margin-bottom:18px;"></div>
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">🎯 Goals Progress (Last 30 days)</div>
-      <div style="margin-bottom:18px;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--s-text-secondary);font-weight:600;">Sessions</span><span id="tpGoalSessLabel" style="color:var(--s-text-muted);"></span></div>
-        <div style="height:7px;background:var(--s-border);border-radius:4px;overflow:hidden;margin-bottom:10px;"><div id="tpGoalSessBar" style="height:100%;background:var(--s-purple);border-radius:4px;transition:width 0.4s;"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="color:var(--s-text-secondary);font-weight:600;">Revenue</span><span id="tpGoalRevLabel" style="color:var(--s-text-muted);"></span></div>
-        <div style="height:7px;background:var(--s-border);border-radius:4px;overflow:hidden;"><div id="tpGoalRevBar" style="height:100%;background:var(--s-green);border-radius:4px;transition:width 0.4s;"></div></div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">🛠 Skills</div>
-      <div id="tpSkillTags" style="margin-bottom:18px;"></div>
-    </div>
-
-    <!-- WORKLOAD TAB -->
-    <div id="tpTab-workload" style="display:none;">
+    <!-- WORKLOAD (only view) -->
+    <div id="tpTab-workload">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📅 Capacity</div>
       <div style="margin-bottom:18px;">
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
@@ -8718,107 +8590,6 @@ function closeTrainerProfile() {
       <div id="tpUpcomingList" style="margin-bottom:18px;font-size:12px;color:var(--s-text-muted);">
         <!-- populated dynamically below -->
       </div>
-    </div>
-
-    <!-- SKILLS TAB -->
-    <div id="tpTab-skills" style="display:none;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:4px;">Skill Coverage &amp; Ratings</div>
-      <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:12px;">Tick to mark active · Click stars to set proficiency level · Click same star again to clear</div>
-      <div id="tpSkillStarGrid" style="margin-bottom:16px;">
-        <!-- populated dynamically by renderSkillStars() -->
-      </div>
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">👀 Shadowing Status</div>
-      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:7px;border:1px solid var(--s-border);cursor:pointer;margin-bottom:16px;">
-        <input type="checkbox" id="tpShadowToggle" style="width:15px;height:15px;accent-color:var(--s-purple);">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:var(--s-text-primary);">Currently Shadowing</div>
-          <div style="font-size:11px;color:var(--s-text-muted);">Show 👀 badge on workload card</div>
-        </div>
-      </label>
-      <button onclick="saveTrainerSettings()" class="btn btn-primary" style="width:100%;">Save Skills &amp; Settings</button>
-    </div>
-
-    <!-- 1:1 PREP TAB -->
-    <div id="tpTab-onetoone" style="display:none;">
-      <div style="background:var(--s-lavender);border-radius:10px;padding:14px 16px;margin-bottom:18px;">
-        <div style="font-size:12px;font-weight:700;color:var(--s-purple);margin-bottom:8px;">🤖 Auto-Generated Talking Points</div>
-        <div id="tpTalkingPoints"></div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📝 Manager Notes (Private)</div>
-      <textarea id="tpManagerNotes" rows="3" placeholder="Private notes — only visible to you…" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:7px;padding:10px 12px;font-size:12px;font-family:'DM Sans',sans-serif;resize:vertical;color:var(--s-text-primary);margin-bottom:12px;box-sizing:border-box;"></textarea>
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:8px;">📓 1:1 Log</div>
-      <div id="tpNotesList" style="max-height:220px;overflow-y:auto;margin-bottom:12px;"></div>
-
-      <div style="display:flex;gap:8px;margin-bottom:4px;">
-        <textarea id="tpNewNote" rows="2" placeholder="Add a note or 1:1 log entry…" style="flex:1;border:1.5px solid var(--s-border-mid);border-radius:7px;padding:8px 10px;font-size:12px;font-family:'DM Sans',sans-serif;resize:none;color:var(--s-text-primary);"></textarea>
-        <div style="display:flex;flex-direction:column;gap:5px;">
-          <button onclick="saveTrainerProfileNote('note')" class="btn btn-primary btn-sm">Add Note</button>
-          <button onclick="saveTrainerProfileNote('1:1')" class="btn btn-ghost btn-sm" style="border-color:var(--s-purple);color:var(--s-purple);">+ 1:1</button>
-        </div>
-      </div>
-      <button onclick="saveTrainerSettings()" class="btn btn-primary btn-sm" style="width:100%;margin-top:8px;">Save Notes</button>
-    </div>
-
-    <!-- SETTINGS TAB -->
-    <div id="tpTab-settings" style="display:none;">
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">📅 Weekly Structure</div>
-      <div style="background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:12px 14px;margin-bottom:6px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div style="text-align:center;padding:8px;background:#EEF0FF;border-radius:6px;">
-            <div style="font-size:18px;">🏢</div>
-            <div style="font-size:10px;font-weight:700;color:var(--s-purple);margin-top:2px;">Office</div>
-            <div style="font-size:11px;color:var(--s-text-muted);">1 day/week</div>
-          </div>
-          <div style="text-align:center;padding:8px;background:#E8F9F3;border-radius:6px;">
-            <div style="font-size:18px;">🏠</div>
-            <div style="font-size:10px;font-weight:700;color:var(--s-green);margin-top:2px;">WFH</div>
-            <div style="font-size:11px;color:var(--s-text-muted);">1 day/week</div>
-          </div>
-          <div style="text-align:center;padding:8px;background:#FEF3CD;border-radius:6px;">
-            <div style="font-size:18px;">🚗</div>
-            <div style="font-size:10px;font-weight:700;color:var(--s-amber);margin-top:2px;">Client Site</div>
-            <div style="font-size:11px;color:var(--s-text-muted);">3 days = 1 session</div>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--s-text-muted);line-height:1.5;">A standard week = 1 training session (3 client-site days + 1 office + 1 WFH). Adjust below if a trainer has a different target.</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;margin-top:10px;">
-        <label style="font-size:12px;color:var(--s-text-secondary);font-weight:600;">Target sessions/week:</label>
-        <input type="number" id="tpCapacityInput" min="1" max="20" value="1" style="width:70px;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;">
-      </div>
-      <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:20px;">1 = one session per week (default). Increase if they regularly do more.</div>
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">🌱 Volunteering Days</div>
-      <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;padding:12px 14px;margin-bottom:10px;">
-        <div style="font-size:12px;color:#065F46;font-weight:600;margin-bottom:4px;">2 paid volunteering days per year</div>
-        <div style="font-size:11px;color:#047857;">Block a volunteering day on the calendar so sessions can't be assigned on that date.</div>
-      </div>
-      <div style="margin-bottom:8px;">
-        <label style="font-size:11px;color:var(--s-text-muted);font-weight:600;display:block;margin-bottom:5px;">Book a volunteering day</label>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input type="date" id="tpVolunteerDate" style="border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'DM Sans',sans-serif;flex:1;min-width:140px;">
-          <input type="text" id="tpVolunteerOrg" placeholder="Organisation (optional)" style="border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'DM Sans',sans-serif;flex:2;min-width:140px;">
-          <button onclick="bookVolunteerDay()" class="btn btn-success btn-sm">🌱 Block Day</button>
-        </div>
-      </div>
-      <div id="tpVolunteerList" style="margin-bottom:20px;"></div>
-
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--s-text-muted);margin-bottom:10px;">🎯 Monthly Targets</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
-        <div>
-          <label style="font-size:11px;color:var(--s-text-muted);font-weight:600;display:block;margin-bottom:5px;">Session Target</label>
-          <input type="number" id="tpSessTarget" min="0" value="10" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--s-text-muted);font-weight:600;display:block;margin-bottom:5px;">Revenue Target (£)</label>
-          <input type="number" id="tpRevTarget" min="0" value="0" style="width:100%;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;box-sizing:border-box;">
-        </div>
-      </div>
-
-      <button onclick="saveTrainerSettings()" class="btn btn-primary" style="width:100%;">💾 Save Settings</button>
     </div>
 
   </div>
