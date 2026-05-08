@@ -185,6 +185,59 @@
     .topic-row:hover { border-color: var(--purple-border); box-shadow: 0 2px 8px rgba(91,75,231,0.08); }
     .topic-row.dragging { opacity: 0.5; cursor: grabbing; }
 
+    /* ── Section group reorder ──────────────────────────────────────────────── */
+    .section-group {
+      border-radius: 10px;
+      transition: opacity 0.15s, box-shadow 0.15s;
+    }
+    .section-group.dragging-section { opacity: 0.4; }
+    .section-group.drop-above { box-shadow: 0 -3px 0 var(--purple); }
+    .section-group.drop-below { box-shadow: 0 3px 0 var(--purple); }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      cursor: grab;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .section-header:hover { filter: brightness(0.97); }
+    .section-header.dragging { cursor: grabbing; }
+    .section-handle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      opacity: 0.45;
+    }
+    .section-arrows {
+      display: inline-flex;
+      gap: 2px;
+      margin-left: 6px;
+    }
+    .section-arrow-btn {
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.55;
+      padding: 0;
+      transition: all 0.12s;
+    }
+    .section-arrow-btn:hover:not(:disabled) { opacity: 1; background: rgba(0,0,0,0.06); }
+    .section-arrow-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
     .ref-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
     .ref-value { font-size: 13px; color: var(--dark); font-weight: 500; line-height: 1.4; }
 
@@ -2048,6 +2101,8 @@ function StepAgenda({ data, onChange, wizard }) {
   const [newTopic, setNewTopic] = useState({});
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  const [draggingSection, setDraggingSection] = useState(null);
+  const [dragOverSection, setDragOverSection] = useState(null); // { gi, position: 'above'|'below' }
   const [activeDay, setActiveDay] = useState("day1");
   const [showNotes, setShowNotes] = useState({});
   const [agendaBuilt, setAgendaBuilt] = useState(false);
@@ -2092,6 +2147,36 @@ function StepAgenda({ data, onChange, wizard }) {
     arr.splice(toIdx, 0, item);
     onChange({ ...data, [dayKey]: arr });
   };
+
+  // Move an entire section (group) to a new position. Items within the section
+  // keep their relative order; this just rearranges the chunks in dayTopics.
+  const moveSection = (fromGi, toGi, position = "above") => {
+    if (fromGi == null || toGi == null) return;
+    if (fromGi === toGi) return;
+    const fromGroup = groupedTopics[fromGi];
+    const toGroup = groupedTopics[toGi];
+    if (!fromGroup || !toGroup) return;
+
+    const fromIds = new Set(fromGroup.topics.map(t => t.id));
+    const fromItems = fromGroup.topics.map(t => dayTopics[t._idx]);
+    const remaining = dayTopics.filter(t => !fromIds.has(t.id));
+
+    let insertAt;
+    if (position === "below") {
+      const toLastId = toGroup.topics[toGroup.topics.length - 1].id;
+      insertAt = remaining.findIndex(t => t.id === toLastId) + 1;
+    } else {
+      const toFirstId = toGroup.topics[0].id;
+      insertAt = remaining.findIndex(t => t.id === toFirstId);
+    }
+    if (insertAt < 0) insertAt = remaining.length;
+
+    const next = [...remaining.slice(0, insertAt), ...fromItems, ...remaining.slice(insertAt)];
+    onChange({ ...data, [dayKey]: next });
+  };
+
+  const moveSectionUp   = (gi) => { if (gi > 0) moveSection(gi, gi - 1, "above"); };
+  const moveSectionDown = (gi) => { if (gi < groupedTopics.length - 1) moveSection(gi, gi + 1, "below"); };
 
   const updateDur = (id, val) => {
     onChange({ ...data, [dayKey]: dayTopics.map(t => t.id === id ? { ...t, dur: Math.max(5, parseInt(val) || 30) } : t) });
@@ -2175,23 +2260,89 @@ function StepAgenda({ data, onChange, wizard }) {
         {/* Left: grouped topic editor */}
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 12 }}>
-            Topics — drag to reorder
+            Drag sections or topics to reorder · use ↑ ↓ on a section to move it
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {groupedTopics.map((group, gi) => {
               const style = getSectionStyle(group.label);
+              const isDraggingSec = draggingSection === gi;
+              const dropAbove = dragOverSection?.gi === gi && dragOverSection?.position === "above";
+              const dropBelow = dragOverSection?.gi === gi && dragOverSection?.position === "below";
               return (
-                <div key={gi}>
-                  {/* Section label */}
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "5px 10px", borderRadius: 8, marginBottom: 4,
-                    background: style.bg,
-                  }}>
+                <div
+                  key={gi}
+                  className={`section-group ${isDraggingSec ? "dragging-section" : ""} ${dropAbove ? "drop-above" : ""} ${dropBelow ? "drop-below" : ""}`}
+                  onDragOver={e => {
+                    if (draggingSection === null || draggingSection === gi) return;
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const position = (e.clientY - rect.top) < rect.height / 2 ? "above" : "below";
+                    setDragOverSection({ gi, position });
+                  }}
+                  onDrop={e => {
+                    if (draggingSection !== null && draggingSection !== gi) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      moveSection(draggingSection, gi, dragOverSection?.position || "above");
+                    }
+                    setDraggingSection(null);
+                    setDragOverSection(null);
+                  }}
+                >
+                  {/* Section header — draggable for whole-section reorder */}
+                  <div
+                    className={`section-header ${isDraggingSec ? "dragging" : ""}`}
+                    style={{ background: style.bg }}
+                    draggable
+                    onDragStart={e => {
+                      setDraggingSection(gi);
+                      // Prevent topic-level drag handlers from firing on the children
+                      e.stopPropagation();
+                      try { e.dataTransfer.effectAllowed = "move"; } catch (_) {}
+                    }}
+                    onDragEnd={() => { setDraggingSection(null); setDragOverSection(null); }}
+                    title="Drag to move this whole section"
+                  >
+                    <span className="section-handle" aria-hidden="true">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <circle cx="2" cy="2" r="1" fill={style.color}/>
+                        <circle cx="2" cy="5" r="1" fill={style.color}/>
+                        <circle cx="2" cy="8" r="1" fill={style.color}/>
+                        <circle cx="6" cy="2" r="1" fill={style.color}/>
+                        <circle cx="6" cy="5" r="1" fill={style.color}/>
+                        <circle cx="6" cy="8" r="1" fill={style.color}/>
+                      </svg>
+                    </span>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: style.dot, flexShrink: 0 }} />
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: style.color }}>{group.label}</span>
                     <span style={{ fontSize: 10, color: style.color, opacity: 0.6, marginLeft: "auto" }}>
                       {group.topics.reduce((a,t) => a+t.dur, 0)}m
+                    </span>
+                    <span className="section-arrows" style={{ color: style.color }} onMouseDown={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="section-arrow-btn"
+                        disabled={gi === 0}
+                        onClick={e => { e.stopPropagation(); moveSectionUp(gi); }}
+                        title="Move section up"
+                        aria-label="Move section up"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 6l3-3 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="section-arrow-btn"
+                        disabled={gi === groupedTopics.length - 1}
+                        onClick={e => { e.stopPropagation(); moveSectionDown(gi); }}
+                        title="Move section down"
+                        aria-label="Move section down"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
                     </span>
                   </div>
                   {/* Topics */}
@@ -2200,8 +2351,8 @@ function StepAgenda({ data, onChange, wizard }) {
                       key={topic.id}
                       className={`topic-row ${dragging === topic._idx ? "dragging" : ""}`}
                       draggable
-                      onDragStart={() => setDragging(topic._idx)}
-                      onDragOver={e => { e.preventDefault(); setDragOver(topic._idx); }}
+                      onDragStart={e => { if (draggingSection !== null) { e.preventDefault(); return; } setDragging(topic._idx); }}
+                      onDragOver={e => { if (draggingSection !== null) return; e.preventDefault(); setDragOver(topic._idx); }}
                       onDrop={() => { if (dragging !== null && dragging !== topic._idx) moveTopic(dragging, topic._idx); setDragging(null); setDragOver(null); }}
                       onDragEnd={() => { setDragging(null); setDragOver(null); }}
                       style={{
