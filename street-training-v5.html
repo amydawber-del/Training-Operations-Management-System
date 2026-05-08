@@ -609,13 +609,12 @@ function buildSmartAgenda({ selectedAreas, familiarity, days, structure }) {
 const FAMILIARITY_LEVELS = ["New to Street", "Some familiarity", "Regular users", "Power users"];
 
 const STEPS = [
-  { id: "client",     title: "Client Overview",       icon: "👤" },
-  { id: "structure",  title: "Training Structure",     icon: "📅" },
-  { id: "areas",      title: "Areas to Cover",         icon: "🗂️" },
-  { id: "agenda",     title: "Agenda Builder",         icon: "⏱️" },
-  { id: "goals",      title: "Goals & Outcomes",       icon: "🎯" },
-  { id: "logistics",  title: "Logistics",              icon: "📍" },
-  { id: "generate",   title: "Generate Document",      icon: "✨" },
+  { id: "client",    title: "Client Overview",    icon: "👤" },
+  { id: "structure", title: "Training Structure",  icon: "📅" },
+  { id: "areas",     title: "Areas to Cover",      icon: "🗂️" },
+  { id: "agenda",    title: "Agenda Builder",      icon: "⏱️" },
+  { id: "logistics", title: "Logistics",            icon: "📍" },
+  { id: "generate",  title: "Generate Document",   icon: "✨" },
 ];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -666,130 +665,272 @@ function buildTimeline(topics, startTime, lunchStart, lunchDur) {
   return items;
 }
 
-// ─── DOCX GENERATION ─────────────────────────────────────────────────────────
+// ─── DOCX GENERATION — matches Product_Training_Agenda_Blank_x_Street_Group template ──
 function generateDocx(wizard) {
-  const { client, structure, selectedAreas, agenda, goals, logistics } = wizard;
+  const { client, structure, selectedAreas, agenda, logistics } = wizard;
+  const areas = selectedAreas?.selected || [];
+  const dayAssignment = selectedAreas?.dayAssignment || {};
+  const days = structure.days || 1;
 
-  const escXml = s => (s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const escXml = s => (s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/\u2019/g, "&#x2019;")
+    .replace(/\u2018/g, "&#x2018;")
+    .replace(/\u201C/g, "&#x201C;")
+    .replace(/\u201D/g, "&#x201D;");
 
-  const para = (text, opts = {}) => {
-    const { bold, size = 22, color = "12152A", spacing = 200, indent = 0 } = opts;
-    return `<w:p><w:pPr><w:spacing w:after="${spacing}"/>${indent ? `<w:ind w:left="${indent}"/>` : ""}</w:pPr><w:r><w:rPr>${bold ? "<w:b/>" : ""}<w:sz w:val="${size}"/><w:color w:val="${color}"/></w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r></w:p>`;
+  // ── Shared cell/para builders ────────────────────────────────────────────────
+  const cellPara = (text, bold = false, color = "") => {
+    const rPr = [
+      bold ? "<w:b/><w:bCs/>" : "",
+      color ? `<w:color w:val="${color}"/>` : "",
+      `<w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>`,
+    ].filter(Boolean).join("");
+    return `<w:p>
+      <w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="0" w:firstLine="0"/></w:pPr>
+      <w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r>
+    </w:p>`;
   };
 
-  const heading = (text, level = 1) => {
-    if (level === 1) return para(text, { bold: true, size: 36, color: "12152A", spacing: 240 });
-    if (level === 2) return para(text, { bold: true, size: 26, color: "5B4BE7", spacing: 160 });
-    return para(text, { bold: true, size: 22, color: "3D4166", spacing: 120 });
+  const tableRow = (labelText, valueContent, labelBold = true) => `
+    <w:tr>
+      <w:trPr><w:cantSplit w:val="0"/></w:trPr>
+      <w:tc>
+        <w:tcPr>
+          <w:tcW w:w="3795" w:type="dxa"/>
+          <w:shd w:fill="auto" w:val="clear"/>
+          <w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>
+        </w:tcPr>
+        ${cellPara(labelText, labelBold)}
+      </w:tc>
+      <w:tc>
+        <w:tcPr>
+          <w:tcW w:w="7320" w:type="dxa"/>
+          <w:shd w:fill="auto" w:val="clear"/>
+          <w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>
+        </w:tcPr>
+        ${valueContent}
+      </w:tc>
+    </w:tr>`;
+
+  const simpleRow = (label, value) => tableRow(label, cellPara(value || "—"), true);
+
+  // ── Format date for display ─────────────────────────────────────────────────
+  const fmtDate = raw => {
+    if (!raw) return "—";
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      try {
+        return new Date(raw + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      } catch (_) { return raw; }
+    }
+    return raw;
   };
 
-  const bullet = text => `<w:p><w:pPr><w:pStyle w:val="ListBullet"/><w:ind w:left="360" w:hanging="360"/><w:spacing w:after="100"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r></w:p>`;
+  // ── Build date display ──────────────────────────────────────────────────────
+  const dayDates = structure.dayDates || [];
+  let dateDisplay = "";
+  if (days === 1) {
+    dateDisplay = fmtDate(dayDates[0]) || fmtDate(client.trainingDate) || "—";
+  } else {
+    dateDisplay = Array.from({ length: days }, (_, i) => {
+      const d = fmtDate(dayDates[i]);
+      return d && d !== "—" ? `Day ${i+1}: ${d}` : `Day ${i+1}`;
+    }).join("\n");
+  }
 
-  const hr = `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="E2E4F0"/></w:pBdr><w:spacing w:after="160"/></w:pPr></w:p>`;
+  // ── Build session timing ────────────────────────────────────────────────────
+  const dayTimes = structure.dayTimes || [];
+  const t0 = dayTimes[0] || { start: "10:30", end: "16:30" };
+  const timingDisplay = days > 1
+    ? Array.from({ length: days }, (_, i) => {
+        const t = dayTimes[i] || { start: "10:30", end: "16:30" };
+        return `Day ${i+1}: ${t.start} – ${t.end}`;
+      }).join("  |  ")
+    : `${t0.start} – ${t0.end}`;
 
-  const dayKeys = Object.keys(agenda).filter(k => k.startsWith("day")).sort();
-  let agendaXml = "";
-  dayKeys.forEach((dayKey, di) => {
-    const dayTopics = (agenda[dayKey] || []);
-    const dayDate = structure.dayDates?.[di] || "";
-    const startTime = structure.dayTimes?.[di]?.start || "10:30";
-    const endTime = structure.dayTimes?.[di]?.end || "16:30";
+  // ── Areas/modules section ───────────────────────────────────────────────────
+  const AREA_EMOJI = {
+    "Settings & Core Platform": "⚙️",
+    "Sales": "🏡",
+    "Lettings": "🔑",
+    "Property Management": "🔧",
+    "Accounting": "📊",
+    "Reporting & Analytics": "📈",
+    "Integrations": "🔗",
+  };
+
+  // Build areas value — if multi-day, group by day
+  let areasValueXml = "";
+  if (days > 1 && Object.keys(dayAssignment).length > 0) {
+    // Group by day
+    const byDay = {};
+    areas.forEach(area => {
+      const d = dayAssignment[area] || 0;
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(area);
+    });
+    const sortedDays = Object.keys(byDay).sort((a,b) => Number(a) - Number(b));
+    areasValueXml = sortedDays.map(d => {
+      const label = d === "0" ? "All days" : `Day ${d}`;
+      const areaList = byDay[d].map(a => `${AREA_EMOJI[a] || ""} ${a}`).join(", ");
+      return cellPara(`${label}: ${areaList}`);
+    }).join("");
+  } else {
+    areasValueXml = areas.map(a => cellPara(`${AREA_EMOJI[a] || ""} ${a}`)).join("") || cellPara("—");
+  }
+
+  // ── Agenda section per day ──────────────────────────────────────────────────
+  const agendaRows = Object.keys(agenda).filter(k => k.startsWith("day")).sort().map((dayKey, di) => {
+    const dayTopics = agenda[dayKey] || [];
+    const startTime = dayTimes[di]?.start || "10:30";
     const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 60);
-    agendaXml += heading(`Day ${di + 1}${dayDate ? " \u2014 " + dayDate : ""}`, 2);
-    agendaXml += para(`${startTime} \u2013 ${endTime}`, { size: 20, color: "8E93BB", spacing: 120 });
+    const dayLabel = days > 1 ? `📋 Agenda — Day ${di + 1}` : "📋 Session Agenda";
+    const dayDateStr = fmtDate(dayDates[di]);
+    const headerLabel = dayDateStr && dayDateStr !== "—" ? `${dayLabel} (${dayDateStr})` : dayLabel;
 
-    // Group by section for visual clarity in the DOCX
+    // Group timeline by section for cleaner output
     let prevSection = null;
-    timeline.forEach(item => {
-      const section = item.isLunch ? null : item.isQA ? "Q\u0026A" : item.isBreak ? "Break" : (item.section || null);
-      if (section && section !== prevSection && !item.isLunch) {
-        agendaXml += para(section.toUpperCase(), { bold: true, size: 16, color: "8E93BB", spacing: 40 });
+    const agendaLines = timeline.map(item => {
+      const isSpecial = item.isLunch || item.isQA || item.isBreak;
+      const section = isSpecial ? null : (item.section || null);
+      let sectionHeader = "";
+      if (section && section !== prevSection) {
+        sectionHeader = cellPara(`— ${section} —`, false, "888888");
         prevSection = section;
       }
-      const timeStr = escXml(item.time || "");
-      const titleStr = escXml(item.title || "");
-      const isSpecial = item.isLunch || item.isQA || item.isBreak;
-      agendaXml += `<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>
-        <w:r><w:rPr><w:b/><w:sz w:val="20"/><w:color w:val="${isSpecial ? "8E93BB" : "5B4BE7"}"/></w:rPr><w:t xml:space="preserve">${timeStr}&#x2003;</w:t></w:r>
-        <w:r><w:rPr><w:sz w:val="20"/>${isSpecial ? "<w:i/>" : "<w:b/>"}<w:color w:val="${isSpecial ? "8E93BB" : "12152A"}"/></w:rPr><w:t xml:space="preserve">${titleStr}</w:t></w:r>
-        ${!isSpecial && item.dur ? `<w:r><w:rPr><w:sz w:val="18"/><w:color w:val="A0A4C8"/></w:rPr><w:t xml:space="preserve">  (${item.dur} min)</w:t></w:r>` : ""}
-      </w:p>`;
-    });
-    agendaXml += hr;
-  });
+      if (isSpecial) prevSection = null;
+      const timeStr = item.time || "";
+      const label = isSpecial ? item.title : item.title;
+      const durStr = !isSpecial && item.dur ? ` (${item.dur} min)` : "";
+      return sectionHeader + cellPara(`${timeStr}  ${label}${durStr}`, !isSpecial && !item.isLunch, isSpecial ? "888888" : "");
+    }).join("");
 
-  const objectives = (goals.objectives || "").split("\n").filter(Boolean);
-  const pain = (goals.pain || "").split("\n").filter(Boolean);
-  const success = goals.success || "";
+    return tableRow(headerLabel, agendaLines || cellPara("Agenda to be confirmed"), true);
+  }).join("");
 
-  const body = `
-    ${heading("Training Plan")}
-    ${para(`${client.company}`, { bold: true, size: 30, spacing: 80 })}
-    ${para(`Prepared by ${client.trainer || "Street Training Team"}  ·  ${client.trainingDate || ""}`, { size: 18, color: "8E93BB", spacing: 320 })}
-    ${hr}
+  // ── Logistics ───────────────────────────────────────────────────────────────
+  const locationText = logistics.location || client.location || "—";
+  const logisticsContent = [
+    logistics.parking && `🅿️ Parking: ${logistics.parking}`,
+    logistics.wifi && `📶 Wi-Fi: ${logistics.wifi}`,
+    logistics.equipment && `💻 Equipment: ${logistics.equipment}`,
+    logistics.followup && `📋 Follow-up: ${logistics.followup}`,
+    client.venueSetup && `✅ Venue setup: ${client.venueSetup}`,
+  ].filter(Boolean);
+  const logisticsValueXml = logisticsContent.length
+    ? logisticsContent.map(l => cellPara(l)).join("")
+    : cellPara(locationText);
 
-    ${heading("Client Overview", 2)}
-    ${para(`Stakeholder: ${client.stakeholder || "—"}`, { size: 20, spacing: 80 })}
-    ${para(`Attendees: ${client.attendees || "—"}`, { size: 20, spacing: 80 })}
-    ${para(`Training type: ${client.trainingType || "—"}`, { size: 20, spacing: 80 })}
-    ${para(`Familiarity: ${client.familiar || "—"}`, { size: 20, spacing: 80 })}
-    ${para(`Location: ${logistics.location || client.location || "—"}`, { size: 20, spacing: 240 })}
-    ${hr}
+  // ── Attendees — parse to list ───────────────────────────────────────────────
+  const attendeesRaw = client.attendees || "";
+  const attendeesValueXml = cellPara(attendeesRaw || "—");
 
-    ${heading("Training Structure", 2)}
-    ${para(`${structure.days || 1} training day${structure.days > 1 ? "s" : ""}  ·  Remote: ${structure.remote === "Remote" ? "Yes" : "No, on-site"}`, { size: 20, spacing: 200 })}
-    ${hr}
+  // ── Priorities ──────────────────────────────────────────────────────────────
+  const priorityLines = (client.priorities || "").split("\n").filter(Boolean);
+  const prioritiesXml = priorityLines.length
+    ? priorityLines.map(p => cellPara(p.replace(/^\d+\.\s*/, ""))).join("")
+    : cellPara("—");
 
-    ${heading("Session Agenda", 2)}
-    ${agendaXml}
+  // ── Main table XML ──────────────────────────────────────────────────────────
+  const tblXml = `
+  <w:tbl>
+    <w:tblPr>
+      <w:tblW w:w="11115" w:type="dxa"/>
+      <w:jc w:val="left"/>
+      <w:tblInd w:w="-900" w:type="dxa"/>
+      <w:tblBorders>
+        <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:insideH w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:insideV w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+      </w:tblBorders>
+      <w:tblLayout w:type="fixed"/>
+    </w:tblPr>
+    <w:tblGrid>
+      <w:gridCol w:w="3795"/>
+      <w:gridCol w:w="7320"/>
+    </w:tblGrid>
+    ${simpleRow("📅 Date(s) of training", dateDisplay)}
+    ${simpleRow("⏰ Session timing", timingDisplay)}
+    ${tableRow("📍 Location &amp; Logistics", logisticsValueXml, true)}
+    ${simpleRow("📍 Client / Company", client.company || "—")}
+    ${simpleRow("Stakeholder (Authorising Training)", [client.stakeholder, client.stakeholderPhone].filter(Boolean).join(" — ") || "—")}
+    ${tableRow("Attendees &amp; Roles", attendeesValueXml, true)}
+    ${tableRow("Topics &amp; Modules to Cover", areasValueXml, true)}
+    ${agendaRows}
+    ${tableRow("Training Context &amp; Goals", prioritiesXml, true)}
+    ${simpleRow("Familiarity with Street", client.familiar || "—")}
+    ${simpleRow("Specific workflows / features", client.features || "—")}
+    ${simpleRow("Post-training support", client.followUp || "—")}
+    ${simpleRow("Additional notes", client.anything || "—")}
+  </w:tbl>`;
 
-    ${heading("Goals & Outcomes", 2)}
-    ${objectives.length ? heading("What success looks like", 3) + objectives.map(bullet).join("") : ""}
-    ${pain.length ? heading("Current pain points", 3) + pain.map(bullet).join("") : ""}
-    ${success ? para(success, { size: 20, spacing: 200 }) : ""}
-    ${hr}
-
-    ${heading("Logistics", 2)}
-    ${logistics.parking ? para(`🅿️  ${logistics.parking}`, { size: 20, spacing: 80 }) : ""}
-    ${logistics.wifi ? para(`📶  ${logistics.wifi}`, { size: 20, spacing: 80 }) : ""}
-    ${logistics.equipment ? para(`💻  ${logistics.equipment}`, { size: 20, spacing: 80 }) : ""}
-    ${logistics.followup ? para(`📋  Follow-up: ${logistics.followup}`, { size: 20, spacing: 200 }) : ""}
-    ${hr}
-
-    ${para("This document was generated by the Street Training Planner. All sessions are subject to minor adjustments on the day to ensure the best possible learning experience.", { size: 18, color: "8E93BB", spacing: 200 })}
-  `;
-
+  // ── Full document XML ───────────────────────────────────────────────────────
   const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+  xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
   <w:body>
-    ${body}
+    <w:p>
+      <w:pPr><w:pStyle w:val="Title"/></w:pPr>
+      <w:r><w:t xml:space="preserve">${escXml(client.company || "Client Name")} x Street Group</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr><w:spacing w:after="120"/></w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+          <w:color w:val="666666"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>Training Agenda</w:t>
+      </w:r>
+    </w:p>
+    ${tblXml}
     <w:sectPr>
-      <w:pgSz w:w="12240" w:h="15840"/>
-      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1134" w:right="845" w:bottom="1134" w:left="1701"/>
     </w:sectPr>
   </w:body>
 </w:document>`;
 
   const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:sz w:val="22"/></w:rPr></w:style>
-  <w:style w:type="paragraph" w:styleId="ListBullet"><w:name w:val="List Bullet"/><w:basedOn w:val="Normal"/>
-    <w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:style>
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+      <w:sz w:val="22"/>
+    </w:rPr></w:rPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:rPr><w:sz w:val="22"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:after="80"/></w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+      <w:b/>
+      <w:sz w:val="52"/>
+    </w:rPr>
+  </w:style>
 </w:styles>`;
-
-  const numbering = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/></w:lvl></w:abstractNum>
-  <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
-</w:numbering>`;
 
   const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>
 </Relationships>`;
 
   const appRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -803,32 +944,31 @@ function generateDocx(wizard) {
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
-  <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
 </Types>`;
 
-  return { docXml, stylesXml, numbering, relsXml, appRels, contentTypes };
+  return { docXml, stylesXml, relsXml, appRels, contentTypes };
 }
 
 async function downloadDocx(wizard) {
   const { JSZip } = window;
   if (!JSZip) { alert("JSZip not loaded"); return; }
-  const { docXml, stylesXml, numbering, relsXml, appRels, contentTypes } = generateDocx(wizard);
+  const { docXml, stylesXml, relsXml, appRels, contentTypes } = generateDocx(wizard);
   const zip = new JSZip();
   zip.file("[Content_Types].xml", contentTypes);
   zip.folder("_rels").file(".rels", appRels);
   const word = zip.folder("word");
   word.file("document.xml", docXml);
   word.file("styles.xml", stylesXml);
-  word.file("numbering.xml", numbering);
   word.folder("_rels").file("document.xml.rels", relsXml);
   const blob = await zip.generateAsync({ type: "blob" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${(wizard.client.company || "Training").replace(/\s+/g, "_")}_Training_Plan.docx`;
+  a.download = `${(wizard.client.company || "Training").replace(/\s+/g, "_")}_x_Street_Group_Training_Agenda.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }
+
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
 
@@ -928,31 +1068,59 @@ function StepClient({ data, onChange, rows, loading }) {
   const normaliseFamiliar = raw => {
     if (!raw || raw === "—") return "";
     const r = raw.toLowerCase();
-    if (r.includes("new") || r.includes("just migrated") || r.includes("brand new")) return "New to Street";
+    if (r.includes("new") || r.includes("just migrated") || r.includes("brand new") || r.includes("complete beginner")) return "New to Street";
     if (r.includes("power") || r.includes("advanced") || r.includes("heavy user")) return "Power users";
     if (r.includes("regular") || r.includes("consistent") || r.includes("daily")) return "Regular users";
-    if (r.includes("some") || r.includes("familiar") || r.includes("6 month") || r.includes("inconsistent") || r.includes("mixed")) return "Some familiarity";
     return "Some familiarity";
   };
 
   const selectRow = row => {
     setSelectedRow(row.company);
+    // Build day dates from splitDates if available, else from trainingDate
+    const splitDates = (row.splitDates || []).filter(Boolean);
+    const numDays = row.trainingDays || (splitDates.length > 1 ? splitDates.length : 1);
+    // Build dayDates array: use split dates if present, else repeat trainingDate
+    const dayDatesArr = Array.from({ length: 5 }, (_, i) => {
+      if (splitDates[i]) {
+        // Convert ISO date (2025-03-25) to input[type=date] format (yyyy-mm-dd)
+        return splitDates[i].slice(0, 10);
+      }
+      if (i === 0 && row.trainingDate) {
+        // Try to parse various date formats into yyyy-mm-dd for the date input
+        const raw = row.trainingDate;
+        // ISO format
+        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+        // dd/mm/yyyy
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
+          const [d, m, y] = raw.split("/");
+          return `${y}-${m}-${d}`;
+        }
+        return "";
+      }
+      return "";
+    });
     onChange({
-      company: row.company || "",
-      trainer: row.trainer || "",
-      stakeholder: row.stakeholder || "",
+      company:      row.company || "",
+      trainer:      row.trainer || "",
+      stakeholder:  row.stakeholder || "",
       stakeholderPhone: row.stakeholderPhone || "",
-      email: row.email || "",
-      attendees: row.attendees || "",
-      familiar: normaliseFamiliar(row.familiar),
+      email:        row.email || "",
+      attendees:    row.attendees || "",
+      familiar:     normaliseFamiliar(row.familiar),
       trainingType: row.trainingType || "",
       trainingDate: row.trainingDate || "",
-      goLive: row.goLive || "",
-      location: row.location || "",
-      priorities: row.priorities || "",
-      features: row.features || "",
-      areas: row.areas || "",
-      followUp: row.followUp || "",
+      goLive:       row.goLive || "",
+      location:     row.location || "",
+      priorities:   row.priorities || "",
+      features:     row.features || "",
+      areas:        row.areas || "",
+      followUp:     row.followUp || "",
+      parking:      row.parking || "",
+      venueSetup:   row.venueSetup || "",
+      anything:     row.anything || "",
+      // Pass through for structure step pre-fill
+      _trainingDays: numDays,
+      _dayDates:     dayDatesArr,
     });
   };
 
@@ -1038,12 +1206,21 @@ function StepClient({ data, onChange, rows, loading }) {
 }
 
 // ─── STEP 2: TRAINING STRUCTURE ───────────────────────────────────────────────
-function StepStructure({ data, onChange }) {
+function StepStructure({ data, onChange, clientData }) {
   const set = (k, v) => onChange({ ...data, [k]: v });
   const DEFAULT_TIMES = () => Array.from({ length: 5 }, () => ({ start: "10:30", end: "16:30" }));
   const days = data.days || 1;
   const dayDates = data.dayDates || Array(5).fill("");
   const dayTimes = data.dayTimes || DEFAULT_TIMES();
+
+  // On first render, pre-fill from client data if present
+  useEffect(() => {
+    const preDays = clientData?._trainingDays;
+    const preDates = clientData?._dayDates;
+    if (preDays && data.days === 1 && !data._prefilled) {
+      onChange({ ...data, days: preDays, dayDates: preDates || Array(5).fill(""), _prefilled: true });
+    }
+  }, [clientData?._trainingDays]);
 
   const setDayDate = (i, v) => {
     const a = Array.from({ length: 5 }, (_, j) => dayDates[j] || "");
@@ -1125,11 +1302,21 @@ function StepStructure({ data, onChange }) {
 }
 
 // ─── STEP 3: AREAS ────────────────────────────────────────────────────────────
-function StepAreas({ data, onChange, clientData }) {
+function StepAreas({ data, onChange, clientData, structure }) {
   const areas = data.selected || [];
+  const days = structure?.days || 1;
+  const dayAssignment = data.dayAssignment || {}; // { "Sales": 1, "Lettings": 2, ... }
+
   const toggle = area => {
     const next = areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area];
-    onChange({ ...data, selected: next });
+    // Clean up day assignment if area removed
+    const newDA = { ...dayAssignment };
+    if (!next.includes(area)) delete newDA[area];
+    onChange({ ...data, selected: next, dayAssignment: newDA });
+  };
+
+  const setDay = (area, day) => {
+    onChange({ ...data, dayAssignment: { ...dayAssignment, [area]: day } });
   };
 
   // Pre-suggest based on client areas string
@@ -1154,14 +1341,25 @@ function StepAreas({ data, onChange, clientData }) {
     { key: "Integrations", emoji: "🔗", desc: "Portals, WhatsApp, Goodlord" },
   ];
 
+  const formatDayDate = (i) => {
+    const dates = structure?.dayDates || [];
+    const d = dates[i];
+    if (!d) return `Day ${i + 1}`;
+    // Convert yyyy-mm-dd to readable
+    try {
+      const dt = new Date(d + "T12:00:00");
+      return `Day ${i + 1} — ${dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
+    } catch (_) { return `Day ${i + 1}`; }
+  };
+
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 3 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 3 of 6</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           What are we covering?
         </h2>
-        <p style={{ color: "var(--muted)", fontSize: 16 }}>Select the areas to include. Pre-filled based on the onboarding form.</p>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Select the areas to include.{days > 1 ? " Then assign each to a training day." : ""} Pre-filled from the onboarding form.</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
@@ -1173,6 +1371,49 @@ function StepAreas({ data, onChange, clientData }) {
           </div>
         ))}
       </div>
+
+      {/* Day assignment — only shown when multiple days selected */}
+      {days > 1 && areas.length > 0 && (
+        <div>
+          <label className="field-label" style={{ marginBottom: 12 }}>Assign areas to training days</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {areas.map(area => (
+              <div key={area} className="client-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "var(--dark)" }}>{area}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {Array.from({ length: days }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setDay(area, i + 1)}
+                      style={{
+                        padding: "6px 14px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                        border: `1.5px solid ${dayAssignment[area] === i + 1 ? "var(--purple)" : "var(--border)"}`,
+                        background: dayAssignment[area] === i + 1 ? "var(--purple)" : "var(--white)",
+                        color: dayAssignment[area] === i + 1 ? "#fff" : "var(--mid)",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {formatDayDate(i)}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setDay(area, 0)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                      border: `1.5px solid ${!dayAssignment[area] ? "var(--purple-border)" : "var(--border)"}`,
+                      background: !dayAssignment[area] ? "var(--purple-light)" : "var(--white)",
+                      color: !dayAssignment[area] ? "var(--purple)" : "var(--muted)",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    All days
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {areas.length > 0 && (
         <div style={{ background: "var(--purple-light)", borderRadius: 12, padding: "14px 18px", display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -1331,7 +1572,7 @@ function StepAgenda({ data, onChange, wizard }) {
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 4 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 4 of 6</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           Build the agenda
         </h2>
@@ -1560,7 +1801,7 @@ function StepLogistics({ data, onChange, clientData }) {
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 6 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 5 of 6</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           Logistics & follow-up
         </h2>
@@ -1641,7 +1882,7 @@ function StepGenerate({ wizard, onReset }) {
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 7 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 6 of 6</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           Ready to generate
         </h2>
@@ -1712,7 +1953,6 @@ function App() {
     structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 60, remote: "On-site" },
     selectedAreas: { selected: [] },
     agenda: {},
-    goals: {},
     logistics: {},
   });
 
@@ -1725,29 +1965,62 @@ function App() {
     fetch(SHEET_URL)
       .then(r => r.json())
       .then(data => {
-        if (data?.rows?.length) {
-          const mapped = data.rows.map(r => ({
-            company: r["Company / Business Name:"] || r["Company Name"] || "",
-            trainer: r["Assigned Trainer"] || "",
-            trainingDate: r["Preferred Training Date(s)"] || r["Booked On Date"] || "",
-            goLive: r["Target go-live date"] || "",
-            stakeholder: (r["Client Stakeholder Name and Phone Number (Authorising Training)"] || "").split("—")[0].trim(),
-            stakeholderPhone: (r["Client Stakeholder Name and Phone Number (Authorising Training)"] || "").split("—")[1]?.trim() || "",
-            email: r["Email address"] || "",
-            attendees: r["Attendees"] || "",
-            familiar: r["How familiar is your team with Street.co.uk?"] || "",
-            trainingType: r["What type of training are you interested in?"] || "",
-            areas: r["Which areas of Street are you wanting to cover during your training?"] || "",
-            features: r["Are there specific features or workflows you want to cover?"] || "",
-            priorities: r["What are your top 3 priorities for this training day?"] || "",
-            followUp: r["How would you like us to handle post-training support?"] || "",
-            location: r["Training Location (If Applicable and Not at Street HQ)"] || "",
-            parking: r["Parking Instructions or Specific Venue Information"] || "",
-            venueSetup: r["Venue Setup Confirmation"] || "",
-            anything: r["Is there anything else we should know to make the training valuable for your team?"] || "",
-            invoice: r["Invoice Value"] || "",
-            status: r["Status"] || "",
-          })).filter(r => r.company);
+        if (data?.data?.length) {
+          // data.data is a 2D array — row 0 is headers, rows 1+ are data
+          // Column indices match Apps Script COL constants (0-based):
+          //  0=Status, 1=Timestamp, 2=Email, 3=Contact/Stakeholder,
+          //  4=Preferred Date, 5=Option/TrainingType, 6=Areas, 7=Features,
+          //  8=Attendees, 9=Location, 10=Parking, 11=VenueSetup, 12=Score,
+          //  13=Company, 14=TeamFamiliarity, 15=Priorities, 16=FollowUp,
+          //  17=AnythingElse, 18=GoLiveDate, 19=ReferredBy, 20=InvoiceValue,
+          //  21=Trainer, 22=BookedDate, 23=TrainingDays, 24=SplitDates,
+          //  25=SplitTopics, 26=CalEventID
+          const rows2d = data.data;
+          const mapped = rows2d.slice(1).map(r => {
+            const company = (r[13] || "").trim();
+            if (!company) return null;
+            // Stakeholder: col 3 may be "Name — Phone" or just name
+            const stakeholderRaw = (r[3] || "").trim();
+            const stakeholderName = stakeholderRaw.includes("—")
+              ? stakeholderRaw.split("—")[0].trim()
+              : stakeholderRaw;
+            const stakeholderPhone = stakeholderRaw.includes("—")
+              ? stakeholderRaw.split("—").slice(1).join("—").trim()
+              : "";
+            // Training date: prefer Booked On Date (col 22), fall back to Preferred Date (col 4)
+            const bookedDate = (r[22] || "").trim();
+            const preferredDate = (r[4] || "").trim();
+            const trainingDate = bookedDate || preferredDate;
+            // Split dates: col 24 is JSON array of ISO date strings
+            let splitDates = [];
+            try { splitDates = JSON.parse(r[24] || "[]"); } catch(_) {}
+            return {
+              company,
+              status:          (r[0]  || "").trim(),
+              trainer:         (r[21] || "").trim(),
+              trainingDate,
+              preferredDate,
+              goLive:          (r[18] || "").trim(),
+              stakeholder:     stakeholderName,
+              stakeholderPhone,
+              email:           (r[2]  || "").trim(),
+              attendees:       (r[8]  || "").trim(),
+              familiar:        (r[14] || "").trim(),
+              trainingType:    (r[5]  || "").trim(),
+              areas:           (r[6]  || "").trim(),
+              features:        (r[7]  || "").trim(),
+              priorities:      (r[15] || "").trim(),
+              followUp:        (r[16] || "").trim(),
+              location:        (r[9]  || "").trim(),
+              parking:         (r[10] || "").trim(),
+              venueSetup:      (r[11] || "").trim(),
+              anything:        (r[17] || "").trim(),
+              invoice:         (r[20] || "").trim(),
+              trainingDays:    parseInt(r[23]) || 1,
+              splitDates,
+              splitTopics:     (() => { try { return JSON.parse(r[25] || "[]"); } catch(_) { return []; } })(),
+            };
+          }).filter(Boolean);
           if (mapped.length) { setRows(mapped); setUsingMock(false); }
         }
       })
@@ -1769,17 +2042,15 @@ function App() {
       structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 60, remote: "On-site" },
       selectedAreas: { selected: [] },
       agenda: {},
-      goals: {},
       logistics: {},
     });
   };
 
   const STEP_COMPONENTS = [
     <StepClient key="c" data={wizard.client} onChange={setSection("client")} rows={rows} loading={loading} />,
-    <StepStructure key="s" data={wizard.structure} onChange={setSection("structure")} />,
-    <StepAreas key="a" data={wizard.selectedAreas} onChange={setSection("selectedAreas")} clientData={wizard.client} />,
+    <StepStructure key="s" data={wizard.structure} onChange={setSection("structure")} clientData={wizard.client} />,
+    <StepAreas key="a" data={wizard.selectedAreas} onChange={setSection("selectedAreas")} clientData={wizard.client} structure={wizard.structure} />,
     <StepAgenda key="ag" data={wizard.agenda} onChange={setSection("agenda")} wizard={wizard} />,
-    <StepGoals key="g" data={wizard.goals} onChange={setSection("goals")} />,
     <StepLogistics key="l" data={wizard.logistics} onChange={setSection("logistics")} clientData={wizard.client} />,
     <StepGenerate key="gen" wizard={wizard} onReset={resetWizard} />,
   ];
@@ -1809,7 +2080,7 @@ function App() {
               PREVIEW DATA
             </span>
           )}
-          {step > 0 && step < 6 && (
+          {step > 0 && step < 5 && (
             <button className="btn-ghost" onClick={resetWizard} style={{ padding: "8px 16px", fontSize: 13 }}>
               ✕ Start over
             </button>
@@ -1818,7 +2089,7 @@ function App() {
       </header>
 
       {/* Progress */}
-      {step < 7 && (
+      {step < 6 && (
         <div style={{ background: "var(--white)", borderBottom: "1.5px solid var(--border)", padding: "16px 32px" }}>
           <div style={{ maxWidth: 900, margin: "0 auto" }}>
             <ProgressStepper currentStep={step} steps={STEPS} />
@@ -1837,7 +2108,7 @@ function App() {
             {STEP_COMPONENTS[step]}
 
             {/* Navigation */}
-            {step < 6 && (
+            {step < 5 && (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 48, paddingTop: 32, borderTop: "1.5px solid var(--border)" }}>
                 <button className="btn-ghost" onClick={() => setStep(s => Math.max(0, s - 1))} style={{ visibility: step === 0 ? "hidden" : "visible" }}>
                   ← Back
@@ -1848,13 +2119,13 @@ function App() {
                   disabled={!canProceed()}
                   style={{ opacity: canProceed() ? 1 : 0.45 }}
                 >
-                  {step === 5 ? "Review & generate →" : "Continue →"}
+                  {step === 4 ? "Review & generate →" : "Continue →"}
                 </button>
               </div>
             )}
-            {step === 6 && (
+            {step === 5 && (
               <div style={{ marginTop: 48, paddingTop: 32, borderTop: "1.5px solid var(--border)" }}>
-                <button className="btn-ghost" onClick={() => setStep(5)}>← Back to logistics</button>
+                <button className="btn-ghost" onClick={() => setStep(4)}>← Back to logistics</button>
               </div>
             )}
           </div>
