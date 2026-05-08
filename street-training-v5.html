@@ -257,6 +257,218 @@
       justify-content: center;
       margin: 0 auto 24px;
     }
+
+    /* ── RUN-SHEET PREVIEW (operational agenda) ─────────────────────────── */
+    .run-sheet {
+      background: var(--white);
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      overflow: hidden;
+      font-feature-settings: "tnum" 1, "ss01" 1;
+    }
+    .rs-day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #FAFAFE 0%, #F6F7FB 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .rs-day-title {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 17px;
+      color: var(--navy);
+      letter-spacing: -0.01em;
+    }
+    .rs-day-meta {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--purple);
+      font-variant-numeric: tabular-nums;
+    }
+    .rs-pacing {
+      display: flex;
+      gap: 14px;
+      padding: 10px 18px;
+      background: var(--purple-light);
+      border-bottom: 1px solid var(--purple-border);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--purple);
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .rs-pacing strong { color: var(--navy); font-weight: 700; }
+    .rs-blocks { padding: 0; }
+    .rs-section {
+      position: relative;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rs-section:last-child { border-bottom: 0; }
+    .rs-section::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--rs-accent, var(--purple));
+    }
+    .rs-sec-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .rs-sec-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--rs-accent-dark, var(--navy));
+    }
+    .rs-sec-emoji {
+      font-size: 14px;
+      line-height: 1;
+    }
+    .rs-sec-time {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--mid);
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .rs-sec-time .dot { color: var(--soft); margin: 0 6px; }
+    .rs-sec-time .dur { color: var(--rs-accent-dark, var(--purple)); }
+    .rs-items {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .rs-item {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      align-items: baseline;
+      gap: 12px;
+      padding: 4px 0 4px 6px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .rs-item-time {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--rs-accent-dark, var(--purple));
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .rs-item-title { color: var(--dark); font-weight: 500; }
+    .rs-item-dur {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .rs-item-note {
+      grid-column: 2 / 4;
+      font-size: 11.5px;
+      color: var(--mid);
+      background: var(--bg);
+      border-radius: 6px;
+      padding: 5px 9px;
+      margin-top: 3px;
+      line-height: 1.45;
+      border-left: 2px solid var(--purple-border);
+    }
+    .rs-break {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 18px;
+      background: repeating-linear-gradient(
+        135deg,
+        #F6F7FB,
+        #F6F7FB 6px,
+        #FFFFFF 6px,
+        #FFFFFF 12px
+      );
+      border-top: 1px dashed var(--border);
+      border-bottom: 1px dashed var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .rs-break-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-style: normal;
+      font-size: 11px;
+      color: var(--mid);
+    }
+    .rs-break.lunch { background: #FFF8E6; border-color: #F0DBA0; color: #7A5A00; }
+    .rs-break.lunch .rs-break-label { color: #7A5A00; }
+    .rs-break.qa { background: var(--purple-light); border-color: var(--purple-border); color: var(--purple); }
+    .rs-break.qa .rs-break-label { color: var(--purple); }
+    .rs-break-time {
+      font-size: 11.5px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: inherit;
+    }
+    .rs-empty {
+      padding: 50px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Sticky timeline rail (Step 4) */
+    .rs-rail {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    /* Day tabs (preview) */
+    .rs-day-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .rs-day-tab {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--mid);
+      transition: all 0.15s;
+      font-family: var(--font-body);
+    }
+    .rs-day-tab:hover { border-color: var(--purple-border); color: var(--purple); }
+    .rs-day-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    @media print {
+      body { background: #fff; }
+      .run-sheet { border: 1px solid #999; box-shadow: none; }
+      .rs-section, .rs-day-header { break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -669,6 +881,71 @@ function buildTimeline(topics, startTime, lunchStart, lunchDur) {
   return items;
 }
 
+// ─── RUN-SHEET HELPERS (shared between on-screen preview + DOCX) ───────────────
+// Section emojis used in the on-screen preview. The DOCX generator has its own
+// copy because it lives inside generateDocx().
+const SECTION_EMOJI_MAP = {
+  "Opening":                   "▶",
+  "Platform Setup":            "⚙",
+  "Properties":                "🏠",
+  "Valuations":                "💷",
+  "Viewings":                  "🚪",
+  "Sales Pipeline":            "📈",
+  "Offers & Sales Progression":"🤝",
+  "Client Experience":         "📱",
+  "Lettings Applications":     "🔑",
+  "Tenancy Management":        "📋",
+  "Maintenance":               "🔧",
+  "Compliance & Certificates": "✅",
+  "Accounting Setup":          "💼",
+  "Money In":                  "💰",
+  "Money Out":                 "💸",
+  "Statements & Reporting":    "📊",
+  "Advanced Accounting":       "📑",
+  "Reporting":                 "📊",
+  "Integrations":              "🔗",
+  "General":                   "▪",
+  "Custom":                    "📌",
+};
+
+function fmtDuration(mins) {
+  if (!mins) return "0m";
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// Group timeline items into operational blocks. Section blocks contain consecutive
+// same-section items; lunch / break / Q&A items become their own standalone blocks.
+function groupTimelineBlocks(timeline) {
+  const blocks = [];
+  let curSection = null;
+  timeline.forEach(item => {
+    if (item.isLunch) {
+      blocks.push({ type: "lunch", label: "Lunch break", startTime: item.time, dur: item.dur || 30 });
+      curSection = null; return;
+    }
+    if (item.isBreak) {
+      blocks.push({ type: "break", label: item.title || "Short comfort break", startTime: item.time, dur: item.dur || 10 });
+      curSection = null; return;
+    }
+    if (item.isQA) {
+      blocks.push({ type: "qa", label: item.title || "Q&A", startTime: item.time, dur: item.dur || 15 });
+      curSection = null; return;
+    }
+    const sec = item.section || "General";
+    if (curSection && curSection.label === sec) {
+      curSection.items.push(item);
+      curSection.dur += (item.dur || 0);
+    } else {
+      curSection = { type: "section", label: sec, startTime: item.time, dur: item.dur || 0, items: [item] };
+      blocks.push(curSection);
+    }
+  });
+  return blocks;
+}
+
 // ─── DOCX GENERATION — matches Product_Training_Agenda_Blank_x_Street_Group template ──
 function generateDocx(wizard) {
   const { client, structure, selectedAreas, agenda, logistics } = wizard;
@@ -786,30 +1063,144 @@ function generateDocx(wizard) {
     areasValueXml = areas.map(a => cellPara(`${AREA_EMOJI[a] || ""} ${a}`)).join("") || cellPara("—");
   }
 
-  // ── Agenda section per day ──────────────────────────────────────────────────
+  // ── Agenda section per day — RUN-SHEET STYLE ────────────────────────────────
+  // Section emojis give trainers a fast visual anchor as they glance through the day
+  const SECTION_EMOJI = {
+    "Opening":                   "▶",
+    "Platform Setup":            "⚙",
+    "Properties":                "🏠",
+    "Valuations":                "💷",
+    "Viewings":                  "🚪",
+    "Sales Pipeline":            "📈",
+    "Offers & Sales Progression":"🤝",
+    "Client Experience":         "📱",
+    "Lettings Applications":     "🔑",
+    "Tenancy Management":        "📋",
+    "Maintenance":               "🔧",
+    "Compliance & Certificates": "✅",
+    "Accounting Setup":          "💼",
+    "Money In":                  "💰",
+    "Money Out":                 "💸",
+    "Statements & Reporting":    "📊",
+    "Advanced Accounting":       "📑",
+    "Reporting":                 "📊",
+    "Integrations":              "🔗",
+    "General":                   "▪",
+    "Custom":                    "📌",
+  };
+
+  const fmtDur = mins => {
+    if (!mins) return "0m";
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins/60);
+    const m = mins % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  };
+
+  // Flexible paragraph builder for agenda body — supports indent, spacing, italics
+  const agendaPara = (text, opts = {}) => {
+    const { bold = false, color = "", indent = 0, before = 0, after = 0, italic = false } = opts;
+    const rPr = [
+      bold ? "<w:b/><w:bCs/>" : "",
+      italic ? "<w:i/><w:iCs/>" : "",
+      color ? `<w:color w:val="${color}"/>` : "",
+      `<w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>`,
+    ].filter(Boolean).join("");
+    return `<w:p>
+      <w:pPr>
+        <w:spacing w:before="${before}" w:after="${after}" w:line="276" w:lineRule="auto"/>
+        <w:ind w:left="${indent}" w:firstLine="0"/>
+      </w:pPr>
+      <w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r>
+    </w:p>`;
+  };
+
   const agendaRows = Object.keys(agenda).filter(k => k.startsWith("day")).sort().map((dayKey, di) => {
     const dayTopics = agenda[dayKey] || [];
     const startTime = dayTimes[di]?.start || "10:30";
+    const endTime   = dayTimes[di]?.end   || "16:30";
     const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 30);
     const dayLabel = days > 1 ? `📋 Agenda — Day ${di + 1}` : "📋 Session Agenda";
     const dayDateStr = fmtDate(dayDates[di]);
     const headerLabel = dayDateStr && dayDateStr !== "—" ? `${dayLabel} (${dayDateStr})` : dayLabel;
 
-    // Clean list view — no timings, grouped by section, lunch/breaks omitted
-    let prevSection = null;
-    const agendaLines = timeline.map(item => {
-      // Skip lunch and comfort breaks entirely in the client doc
-      if (item.isLunch || item.isBreak) return "";
-      const section = item.isQA ? null : (item.section || null);
-      let sectionHeader = "";
-      if (section && section !== prevSection) {
-        sectionHeader = cellPara(`— ${section} —`, false, "888888");
-        prevSection = section;
+    // Group consecutive same-section items into "blocks" — section blocks read like
+    // modules, while breaks/lunch/Q&A appear as their own standalone rows so trainers
+    // never lose visibility of pacing milestones.
+    const blocks = [];
+    let curSection = null;
+    timeline.forEach(item => {
+      if (item.isLunch) {
+        blocks.push({ type: "lunch", label: "Lunch", startTime: item.time, dur: item.dur || 30 });
+        curSection = null; return;
       }
-      if (item.isQA) { prevSection = null; return sectionHeader + cellPara(item.title, false, "888888"); }
-      return sectionHeader + cellPara(item.title, false, "");
-    }).join("");
+      if (item.isBreak) {
+        blocks.push({ type: "break", label: item.title || "Short comfort break", startTime: item.time, dur: item.dur || 10 });
+        curSection = null; return;
+      }
+      if (item.isQA) {
+        blocks.push({ type: "qa", label: item.title || "Q&A", startTime: item.time, dur: item.dur || 15 });
+        curSection = null; return;
+      }
+      const sec = item.section || "General";
+      if (curSection && curSection.label === sec) {
+        curSection.items.push(item);
+        curSection.dur += (item.dur || 0);
+      } else {
+        curSection = { type: "section", label: sec, startTime: item.time, dur: item.dur || 0, items: [item] };
+        blocks.push(curSection);
+      }
+    });
 
+    // Day pacing summary line (sits at the very top of each day cell)
+    const totalContent = blocks.filter(b => b.type === "section").reduce((a,b) => a + b.dur, 0);
+    const totalBreaks  = blocks.filter(b => b.type !== "section").reduce((a,b) => a + b.dur, 0);
+    const sectionCount = blocks.filter(b => b.type === "section").length;
+
+    const lines = [];
+    lines.push(agendaPara(
+      `🕘  ${startTime} – ${endTime}    ·    ${sectionCount} module${sectionCount === 1 ? "" : "s"}    ·    ${fmtDur(totalContent)} content + ${fmtDur(totalBreaks)} breaks`,
+      { color: "5B4BE7", bold: true, after: 120 }
+    ));
+    lines.push(agendaPara("", { after: 40 }));
+
+    blocks.forEach((b, bi) => {
+      const blockEnd = addMinutes(b.startTime, b.dur);
+      const isFirst = bi === 0;
+
+      if (b.type === "section") {
+        const emoji = SECTION_EMOJI[b.label] || "▪";
+        // Bold section header: e.g. "⚙  PLATFORM SETUP — 11:00–12:30  ·  1h 30m"
+        lines.push(agendaPara(
+          `${emoji}  ${b.label.toUpperCase()}  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { bold: true, color: "12152A", before: isFirst ? 0 : 200, after: 60 }
+        ));
+        // Bullet item lines: time + topic + duration
+        b.items.forEach(it => {
+          lines.push(agendaPara(
+            `      •  ${it.time}    ${it.title}    (${fmtDur(it.dur)})`,
+            { color: "4A4E72", indent: 80, before: 0, after: 0 }
+          ));
+        });
+      } else if (b.type === "lunch") {
+        lines.push(agendaPara(
+          `🍽  LUNCH BREAK  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { bold: true, italic: true, color: "8E93BB", before: 200, after: 60 }
+        ));
+      } else if (b.type === "break") {
+        lines.push(agendaPara(
+          `☕  ${b.label}  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { italic: true, color: "8E93BB", before: 160, after: 60 }
+        ));
+      } else if (b.type === "qa") {
+        lines.push(agendaPara(
+          `💬  ${b.label}  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { italic: true, bold: true, color: "5B4BE7", before: 160, after: 60 }
+        ));
+      }
+    });
+
+    const agendaLines = lines.join("");
     return tableRow(headerLabel, agendaLines || cellPara("Agenda to be confirmed"), true);
   }).join("");
 
@@ -1457,6 +1848,136 @@ function getSectionStyle(section) {
   return SECTION_COLORS[section] || { bg: "#F6F7FB", color: "#4A4E72", dot: "#8E93BB" };
 }
 
+// ─── RUN-SHEET PREVIEW COMPONENT ──────────────────────────────────────────────
+// The single source of truth for how the operational agenda *looks on screen*.
+// Used in Step 4 (Agenda Builder, right column) and Step 6 (Generate, full-width preview).
+function RunSheet({ wizard, dayKey = null, showNotes = false, dayLabel = null, dateLabel = null }) {
+  const { structure, agenda } = wizard;
+  const days = structure.days || 1;
+  const dayKeys = dayKey ? [dayKey] : Array.from({ length: days }, (_, i) => `day${i + 1}`);
+  const dayTimes = structure.dayTimes || [];
+  const lunchStart = structure.lunchStart || "12:30";
+  const lunchDur = structure.lunchDur || 30;
+
+  return (
+    <div className="run-sheet">
+      {dayKeys.map((k, di) => {
+        const idx = parseInt(k.replace("day", "")) - 1;
+        const topics = agenda[k] || [];
+        const startTime = dayTimes[idx]?.start || "10:30";
+        const endTime = dayTimes[idx]?.end || "16:30";
+        const timeline = buildTimeline(topics, startTime, lunchStart, lunchDur);
+        const blocks = groupTimelineBlocks(timeline);
+
+        const totalContent = blocks.filter(b => b.type === "section").reduce((a, b) => a + b.dur, 0);
+        const totalBreaks  = blocks.filter(b => b.type !== "section").reduce((a, b) => a + b.dur, 0);
+        const sectionCount = blocks.filter(b => b.type === "section").length;
+
+        const headerLabel = dayLabel || (days > 1 ? `Day ${idx + 1}` : "Session Agenda");
+        const showHeader = !dayKey || dayKey === k;
+
+        if (timeline.length === 0) {
+          return (
+            <div key={k}>
+              {showHeader && (
+                <div className="rs-day-header">
+                  <span className="rs-day-title">{headerLabel}</span>
+                  <span className="rs-day-meta">{startTime} – {endTime}</span>
+                </div>
+              )}
+              <div className="rs-empty">No topics yet — head back to Step 4 to build the agenda.</div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={k}>
+            {showHeader && (
+              <div className="rs-day-header">
+                <span className="rs-day-title">
+                  {headerLabel}
+                  {dateLabel && <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginLeft: 10, letterSpacing: 0 }}>· {dateLabel}</span>}
+                </span>
+                <span className="rs-day-meta">{startTime} – {endTime}</span>
+              </div>
+            )}
+            <div className="rs-pacing">
+              <span><strong>{sectionCount}</strong> module{sectionCount === 1 ? "" : "s"}</span>
+              <span style={{ color: "var(--purple-border)" }}>·</span>
+              <span><strong>{fmtDuration(totalContent)}</strong> content</span>
+              <span style={{ color: "var(--purple-border)" }}>·</span>
+              <span><strong>{fmtDuration(totalBreaks)}</strong> breaks &amp; Q&amp;A</span>
+            </div>
+            <div className="rs-blocks">
+              {blocks.map((b, bi) => {
+                const blockEnd = addMinutes(b.startTime, b.dur);
+                if (b.type === "lunch") {
+                  return (
+                    <div key={bi} className="rs-break lunch">
+                      <span className="rs-break-label">🍽 Lunch break</span>
+                      <span className="rs-break-time">{b.startTime} – {blockEnd} · {fmtDuration(b.dur)}</span>
+                    </div>
+                  );
+                }
+                if (b.type === "break") {
+                  return (
+                    <div key={bi} className="rs-break">
+                      <span className="rs-break-label">☕ {b.label}</span>
+                      <span className="rs-break-time">{b.startTime} – {blockEnd} · {fmtDuration(b.dur)}</span>
+                    </div>
+                  );
+                }
+                if (b.type === "qa") {
+                  return (
+                    <div key={bi} className="rs-break qa">
+                      <span className="rs-break-label">💬 {b.label}</span>
+                      <span className="rs-break-time">{b.startTime} – {blockEnd} · {fmtDuration(b.dur)}</span>
+                    </div>
+                  );
+                }
+                // section
+                const style = getSectionStyle(b.label);
+                const emoji = SECTION_EMOJI_MAP[b.label] || "▪";
+                return (
+                  <div
+                    key={bi}
+                    className="rs-section"
+                    style={{ "--rs-accent": style.dot, "--rs-accent-dark": style.color }}
+                  >
+                    <div className="rs-sec-head">
+                      <span className="rs-sec-label">
+                        <span className="rs-sec-emoji">{emoji}</span>
+                        {b.label}
+                      </span>
+                      <span className="rs-sec-time">
+                        {b.startTime} – {blockEnd}
+                        <span className="dot">·</span>
+                        <span className="dur">{fmtDuration(b.dur)}</span>
+                      </span>
+                    </div>
+                    <div className="rs-items">
+                      {b.items.map((it, ii) => (
+                        <div key={it.id + ii} className="rs-item">
+                          <span className="rs-item-time">{it.time}</span>
+                          <span className="rs-item-title">{it.title}</span>
+                          <span className="rs-item-dur">{fmtDuration(it.dur)}</span>
+                          {showNotes && it.note && (
+                            <div className="rs-item-note">💡 {it.note}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DayLoadBar({ topics, usableMins }) {
   const contentMins = topics.filter(t => !t.isQA && !t.isBreak).reduce((a,t) => a+t.dur, 0);
   const qaMins = topics.filter(t => t.isQA || t.isBreak).reduce((a,t) => a+t.dur, 0);
@@ -1717,41 +2238,31 @@ function StepAgenda({ data, onChange, wizard }) {
           </div>
         </div>
 
-        {/* Right: timeline preview */}
+        {/* Right: run-sheet preview (operational view) */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 12 }}>
-            Timeline preview
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Trainer run-sheet · live preview
+            </div>
+            <div style={{ fontSize: 11, color: "var(--soft)", fontVariantNumeric: "tabular-nums" }}>
+              {startTime} → {endTime}
+            </div>
           </div>
-          <div style={{ background: "var(--white)", borderRadius: 14, border: "1.5px solid var(--border)", overflow: "hidden" }}>
-            {timeline.length === 0 && (
-              <div style={{ padding: "40px 24px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
-                Select areas in Step 3 to auto-build your agenda
-              </div>
-            )}
-            {timeline.map((item, i) => {
-              const sStyle = getSectionStyle(item.section || (item.isQA ? "Q&A" : item.isBreak ? "Break" : "General"));
-              const isSpecial = item.isLunch || item.isQA || item.isBreak;
-              return (
-                <div key={item.id + i} style={{
-                  display: "flex", gap: 12, padding: "9px 16px",
-                  borderBottom: i < timeline.length - 1 ? "1px solid var(--border)" : "none",
-                  background: isSpecial ? "var(--bg)" : "var(--white)",
-                  alignItems: "flex-start",
-                }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--purple)", minWidth: 42, flexShrink: 0, paddingTop: 1 }}>{item.time}</div>
-                  {!isSpecial && <div style={{ width: 3, height: 3, borderRadius: "50%", background: sStyle.dot, marginTop: 7, flexShrink: 0 }} />}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12.5, color: isSpecial ? "var(--muted)" : "var(--dark)", fontStyle: isSpecial ? "italic" : "normal", lineHeight: 1.4, fontWeight: isSpecial ? 400 : 500 }}>
-                      {item.title}
-                    </div>
-                    {!isSpecial && item.section && (
-                      <div style={{ fontSize: 10, color: sStyle.color, marginTop: 1 }}>{item.section}</div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--soft)", flexShrink: 0, paddingTop: 2 }}>{item.dur}m</div>
+          <div className="rs-rail">
+            {timeline.length === 0 ? (
+              <div className="run-sheet">
+                <div className="rs-empty">
+                  Select areas in Step 3 to auto-build your agenda.
                 </div>
-              );
-            })}
+              </div>
+            ) : (
+              <RunSheet
+                wizard={wizard}
+                dayKey={dayKey}
+                showNotes={false}
+                dayLabel={days > 1 ? `Day ${dayIdx + 1}` : "Session Agenda"}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1828,6 +2339,8 @@ function StepGenerate({ wizard, onReset }) {
   const [generating, setGenerating] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
+  const [previewDay, setPreviewDay] = useState("day1");
+  const [showTrainerNotes, setShowTrainerNotes] = useState(true);
 
   useEffect(() => {
     if (!window.JSZip) {
@@ -1877,6 +2390,20 @@ function StepGenerate({ wizard, onReset }) {
     );
   }
 
+  // Date label for the currently-previewed day
+  const previewIdx = parseInt(previewDay.replace("day", "")) - 1;
+  const dayDates = structure.dayDates || [];
+  const fmtDateShort = raw => {
+    if (!raw) return "";
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      try {
+        return new Date(raw + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      } catch (_) { return raw; }
+    }
+    return raw;
+  };
+  const previewDateLabel = fmtDateShort(dayDates[previewIdx]);
+
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
@@ -1884,7 +2411,7 @@ function StepGenerate({ wizard, onReset }) {
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           Ready to generate
         </h2>
-        <p style={{ color: "var(--muted)", fontSize: 16 }}>Review the summary below, then download your Street-branded training document.</p>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Review the run-sheet below, then download your Street-branded training document.</p>
       </div>
 
       {/* Summary */}
@@ -1909,6 +2436,56 @@ function StepGenerate({ wizard, onReset }) {
               <span key={a} style={{ fontSize: 12, background: "var(--purple-light)", color: "var(--purple)", borderRadius: 8, padding: "3px 10px", fontWeight: 600 }}>{a}</span>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Run-sheet preview — what trainers will follow on the day */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)" }}>
+            Trainer run-sheet preview
+          </div>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--mid)", cursor: "pointer", userSelect: "none" }}>
+            <input
+              type="checkbox"
+              checked={showTrainerNotes}
+              onChange={e => setShowTrainerNotes(e.target.checked)}
+              style={{ accentColor: "var(--purple)", width: 14, height: 14 }}
+            />
+            Show trainer notes &amp; reminders
+          </label>
+        </div>
+        {dayCount > 1 && (
+          <div className="rs-day-tabs">
+            {Array.from({ length: dayCount }).map((_, i) => {
+              const k = `day${i + 1}`;
+              const dateStr = fmtDateShort(dayDates[i]);
+              return (
+                <button
+                  key={k}
+                  className={`rs-day-tab ${previewDay === k ? "active" : ""}`}
+                  onClick={() => setPreviewDay(k)}
+                  type="button"
+                >
+                  Day {i + 1}{dateStr ? ` · ${dateStr.split(",")[0]}` : ""}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <RunSheet
+          wizard={wizard}
+          dayKey={previewDay}
+          showNotes={showTrainerNotes}
+          dayLabel={dayCount > 1 ? `Day ${previewIdx + 1}` : "Session Agenda"}
+          dateLabel={previewDateLabel}
+        />
+        <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M6 4v3M6 8v.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          The downloaded .docx mirrors this layout — section headers, time blocks, durations and breaks all preserved.
         </div>
       </div>
 
