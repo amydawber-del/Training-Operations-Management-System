@@ -1097,32 +1097,38 @@ function generateDocx(wizard) {
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
   };
 
-  // Flexible paragraph builder for agenda body — supports indent, spacing, italics
+  // Flexible paragraph builder for agenda body — supports indent, spacing, italics, font size, shading
   const agendaPara = (text, opts = {}) => {
-    const { bold = false, color = "", indent = 0, before = 0, after = 0, italic = false } = opts;
+    const { bold = false, color = "", indent = 0, before = 0, after = 0, italic = false, fontSize = 0, shade = "" } = opts;
+    const sizeXml = fontSize ? `<w:sz w:val="${fontSize * 2}"/><w:szCs w:val="${fontSize * 2}"/>` : "";
     const rPr = [
       bold ? "<w:b/><w:bCs/>" : "",
       italic ? "<w:i/><w:iCs/>" : "",
       color ? `<w:color w:val="${color}"/>` : "",
+      sizeXml,
       `<w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>`,
     ].filter(Boolean).join("");
+    const shadingXml = shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : "";
     return `<w:p>
       <w:pPr>
         <w:spacing w:before="${before}" w:after="${after}" w:line="276" w:lineRule="auto"/>
         <w:ind w:left="${indent}" w:firstLine="0"/>
+        ${shadingXml}
       </w:pPr>
       <w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r>
     </w:p>`;
   };
 
-  const agendaRows = Object.keys(agenda).filter(k => k.startsWith("day")).sort().map((dayKey, di) => {
+  // Render the agenda as full-width body content (NOT inside a table cell) so each
+  // day has the entire page width to breathe.
+  const agendaSectionsXml = Object.keys(agenda).filter(k => k.startsWith("day")).sort().map((dayKey, di) => {
     const dayTopics = agenda[dayKey] || [];
     const startTime = dayTimes[di]?.start || "10:30";
     const endTime   = dayTimes[di]?.end   || "16:30";
     const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 30);
-    const dayLabel = days > 1 ? `📋 Agenda — Day ${di + 1}` : "📋 Session Agenda";
+    const dayLabel = days > 1 ? `Day ${di + 1} Agenda` : "Session Agenda";
     const dayDateStr = fmtDate(dayDates[di]);
-    const headerLabel = dayDateStr && dayDateStr !== "—" ? `${dayLabel} (${dayDateStr})` : dayLabel;
+    const headerLabel = dayDateStr && dayDateStr !== "—" ? `${dayLabel}  —  ${dayDateStr}` : dayLabel;
 
     // Group consecutive same-section items into "blocks" — section blocks read like
     // modules, while breaks/lunch/Q&A appear as their own standalone rows so trainers
@@ -1152,17 +1158,22 @@ function generateDocx(wizard) {
       }
     });
 
-    // Day pacing summary line (sits at the very top of each day cell)
+    // Day pacing summary
     const totalContent = blocks.filter(b => b.type === "section").reduce((a,b) => a + b.dur, 0);
     const totalBreaks  = blocks.filter(b => b.type !== "section").reduce((a,b) => a + b.dur, 0);
     const sectionCount = blocks.filter(b => b.type === "section").length;
 
     const lines = [];
+    // Big day heading
+    lines.push(agendaPara(
+      `📋  ${headerLabel}`,
+      { bold: true, color: "12152A", fontSize: 18, before: di === 0 ? 0 : 480, after: 80 }
+    ));
+    // Pacing summary line
     lines.push(agendaPara(
       `🕘  ${startTime} – ${endTime}    ·    ${sectionCount} module${sectionCount === 1 ? "" : "s"}    ·    ${fmtDur(totalContent)} content + ${fmtDur(totalBreaks)} breaks`,
-      { color: "5B4BE7", bold: true, after: 120 }
+      { color: "5B4BE7", bold: true, after: 200 }
     ));
-    lines.push(agendaPara("", { after: 40 }));
 
     blocks.forEach((b, bi) => {
       const blockEnd = addMinutes(b.startTime, b.dur);
@@ -1200,8 +1211,7 @@ function generateDocx(wizard) {
       }
     });
 
-    const agendaLines = lines.join("");
-    return tableRow(headerLabel, agendaLines || cellPara("Agenda to be confirmed"), true);
+    return lines.length > 0 ? lines.join("") : agendaPara("Agenda to be confirmed", { color: "8E93BB", italic: true });
   }).join("");
 
   // ── Logistics ───────────────────────────────────────────────────────────────
@@ -1227,7 +1237,9 @@ function generateDocx(wizard) {
     ? priorityLines.map(p => cellPara(p.replace(/^\d+\.\s*/, ""))).join("")
     : cellPara("—");
 
-  // ── Main table XML ──────────────────────────────────────────────────────────
+  // ── Cover table — only the 7 key fields, kept compact on the first page ─────
+  // Note: literal "&" in label strings — escXml will handle escaping. Don't pre-escape
+  // (pre-escaping caused "&amp;" to appear as "&amp;amp;" in the rendered document).
   const tblXml = `
   <w:tbl>
     <w:tblPr>
@@ -1250,18 +1262,34 @@ function generateDocx(wizard) {
     </w:tblGrid>
     ${simpleRow("📅 Date(s) of training", dateDisplay)}
     ${simpleRow("⏰ Session timing", timingDisplay)}
-    ${tableRow("📍 Location &amp; Logistics", logisticsValueXml, true)}
+    ${tableRow("📍 Location & Logistics", logisticsValueXml, true)}
     ${simpleRow("📍 Client / Company", client.company || "—")}
     ${simpleRow("Stakeholder (Authorising Training)", [client.stakeholder, client.stakeholderPhone].filter(Boolean).join(" — ") || "—")}
-    ${tableRow("Attendees &amp; Roles", attendeesValueXml, true)}
-    ${tableRow("Topics &amp; Modules to Cover", areasValueXml, true)}
-    ${agendaRows}
-    ${tableRow("Training Context &amp; Goals", prioritiesXml, true)}
-    ${simpleRow("Familiarity with Street", client.familiar || "—")}
-    ${simpleRow("Specific workflows / features", client.features || "—")}
-    ${simpleRow("Post-training support", client.followUp || "—")}
-    ${simpleRow("Additional notes", client.anything || "—")}
+    ${tableRow("Attendees & Roles", attendeesValueXml, true)}
+    ${tableRow("Topics & Modules to Cover", areasValueXml, true)}
   </w:tbl>`;
+
+  // ── Trailing context — rendered as full-width labelled sections AFTER the agenda ──
+  const ctxHeading = (text) => agendaPara(text, { bold: true, color: "12152A", fontSize: 13, before: 320, after: 80 });
+  const ctxBody    = (text) => agendaPara(text || "—", { color: "4A4E72", after: 0 });
+
+  const contextSectionsXml = (() => {
+    const out = [];
+    if (priorityLines.length) {
+      out.push(ctxHeading("Training Context & Goals"));
+      priorityLines.forEach(p => {
+        out.push(agendaPara(`•  ${p.replace(/^\d+\.\s*/, "")}`, { color: "4A4E72", indent: 80, after: 0 }));
+      });
+    }
+    if (client.familiar) { out.push(ctxHeading("Familiarity with Street")); out.push(ctxBody(client.familiar)); }
+    if (client.features) { out.push(ctxHeading("Specific workflows / features")); out.push(ctxBody(client.features)); }
+    if (client.followUp) { out.push(ctxHeading("Post-training support")); out.push(ctxBody(client.followUp)); }
+    if (client.anything) { out.push(ctxHeading("Additional notes")); out.push(ctxBody(client.anything)); }
+    return out.join("");
+  })();
+
+  // Page break between the cover table and the agenda — keeps the cover sheet clean
+  const pageBreak = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
 
   // ── Full document XML ───────────────────────────────────────────────────────
   const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1290,6 +1318,9 @@ function generateDocx(wizard) {
       </w:r>
     </w:p>
     ${tblXml}
+    ${pageBreak}
+    ${agendaSectionsXml}
+    ${contextSectionsXml}
     <w:p>
       <w:pPr><w:spacing w:before="240" w:after="0"/></w:pPr>
       <w:r>
