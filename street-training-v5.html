@@ -317,25 +317,29 @@ const MOCK_ROWS = [
   },
   {
     company: "Newton Fallowell Oadby",
-    status: "Confirmed",
-    trainer: "Amy",
-    trainingDate: "25th March 2025",
-    goLive: "1st May 2025",
-    stakeholder: "Tom Ridgway",
-    stakeholderPhone: "07911 223 441",
-    email: "tom@newtonfallowell.co.uk",
-    attendees: "12 — full team, sales + lettings + property management",
-    familiar: "Mixed — some heavy users, some brand new",
-    trainingType: "Structured onboarding across all departments",
-    areas: "Sales, Lettings, Property Management, Accounting",
-    features: "Maintenance jobs, contractor workflow, tenancy renewals, arrears chasing",
-    priorities: "1. Property management workflow\n2. Accounting go-live\n3. Lettings progression",
-    followUp: "Monthly check-in calls for 3 months",
-    location: "Newton Fallowell Oadby, Station Road, Leicester",
-    parking: "Free on-street parking nearby",
-    venueSetup: "Whiteboard available — will need projector",
-    anything: "Large team — might benefit from splitting into sales and lettings groups",
-    invoice: "2200",
+    status: "Booked",
+    trainer: "Amy Dawber",
+    trainingDate: "5 May 2026",
+    goLive: "27 April 2026",
+    stakeholder: "Remi Mowla",
+    stakeholderPhone: "0116 3660990",
+    email: "remi.mowla@newtonfallowell.co.uk",
+    attendees: "4 Sales Attendees. 3 Lettings Attendees. 1 Accounting",
+    familiar: "Complete Beginners",
+    trainingType: "Face-to-Face Training",
+    areas: "Sales, Lettings Front End, Accounting, Property Management",
+    features: "",
+    priorities: "",
+    followUp: "",
+    location: "Newton Fallowell Estate Agency, Oadby, Leicester - 2 Brooksby Dr, Oadby, Leicester LE2 5AA",
+    parking: "",
+    venueSetup: "",
+    anything: "",
+    invoice: "£3,850.00",
+    trainingDays: 4,
+    splitDates: ["2026-05-05","2026-05-06","2026-05-12","2026-05-13"],
+    _trainingDays: 4,
+    _dayDates: ["2026-05-05","2026-05-06","2026-05-12","2026-05-13",""],
   },
 ];
 
@@ -1068,7 +1072,7 @@ function StepClient({ data, onChange, rows, loading }) {
   const normaliseFamiliar = raw => {
     if (!raw || raw === "—") return "";
     const r = raw.toLowerCase();
-    if (r.includes("new") || r.includes("just migrated") || r.includes("brand new") || r.includes("complete beginner")) return "New to Street";
+    if (r.includes("complete beginner") || r.includes("new") || r.includes("just migrated") || r.includes("brand new")) return "New to Street";
     if (r.includes("power") || r.includes("advanced") || r.includes("heavy user")) return "Power users";
     if (r.includes("regular") || r.includes("consistent") || r.includes("daily")) return "Regular users";
     return "Some familiarity";
@@ -1076,51 +1080,35 @@ function StepClient({ data, onChange, rows, loading }) {
 
   const selectRow = row => {
     setSelectedRow(row.company);
-    // Build day dates from splitDates if available, else from trainingDate
+    // row._dayDates and row._trainingDays are pre-computed in mapRow (live data)
+    // or built inline here for mock data rows
     const splitDates = (row.splitDates || []).filter(Boolean);
-    const numDays = row.trainingDays || (splitDates.length > 1 ? splitDates.length : 1);
-    // Build dayDates array: use split dates if present, else repeat trainingDate
-    const dayDatesArr = Array.from({ length: 5 }, (_, i) => {
-      if (splitDates[i]) {
-        // Convert ISO date (2025-03-25) to input[type=date] format (yyyy-mm-dd)
-        return splitDates[i].slice(0, 10);
-      }
-      if (i === 0 && row.trainingDate) {
-        // Try to parse various date formats into yyyy-mm-dd for the date input
-        const raw = row.trainingDate;
-        // ISO format
-        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-        // dd/mm/yyyy
-        if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
-          const [d, m, y] = raw.split("/");
-          return `${y}-${m}-${d}`;
-        }
-        return "";
-      }
+    const numDays = row._trainingDays || row.trainingDays || (splitDates.length > 1 ? splitDates.length : 1);
+    const dayDatesArr = row._dayDates || Array.from({ length: 5 }, (_, i) => {
+      if (splitDates[i]) return splitDates[i].slice(0, 10);
       return "";
     });
     onChange({
-      company:      row.company || "",
-      trainer:      row.trainer || "",
-      stakeholder:  row.stakeholder || "",
+      company:          row.company || "",
+      trainer:          row.trainer || "",
+      stakeholder:      row.stakeholder || "",
       stakeholderPhone: row.stakeholderPhone || "",
-      email:        row.email || "",
-      attendees:    row.attendees || "",
-      familiar:     normaliseFamiliar(row.familiar),
-      trainingType: row.trainingType || "",
-      trainingDate: row.trainingDate || "",
-      goLive:       row.goLive || "",
-      location:     row.location || "",
-      priorities:   row.priorities || "",
-      features:     row.features || "",
-      areas:        row.areas || "",
-      followUp:     row.followUp || "",
-      parking:      row.parking || "",
-      venueSetup:   row.venueSetup || "",
-      anything:     row.anything || "",
-      // Pass through for structure step pre-fill
-      _trainingDays: numDays,
-      _dayDates:     dayDatesArr,
+      email:            row.email || "",
+      attendees:        row.attendees || "",
+      familiar:         normaliseFamiliar(row.familiar),
+      trainingType:     row.trainingType || "",
+      trainingDate:     row.trainingDate || "",
+      goLive:           row.goLive || "",
+      location:         row.location || "",
+      priorities:       row.priorities || "",
+      features:         row.features || "",
+      areas:            row.areas || "",
+      followUp:         row.followUp || "",
+      parking:          row.parking || "",
+      venueSetup:       row.venueSetup || "",
+      anything:         row.anything || "",
+      _trainingDays:    numDays,
+      _dayDates:        dayDatesArr,
     });
   };
 
@@ -1129,7 +1117,7 @@ function StepClient({ data, onChange, rows, loading }) {
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 1 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 1 of 6</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           Who are we training today?
         </h2>
@@ -1236,7 +1224,7 @@ function StepStructure({ data, onChange, clientData }) {
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 2 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 2 of 6</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           How is the training structured?
         </h2>
@@ -1767,7 +1755,7 @@ function StepGoals({ data, onChange }) {
   return (
     <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 5 of 7</div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 5 of 7 (removed)</div>
         <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
           What does success look like?
         </h2>
@@ -1962,69 +1950,133 @@ function App() {
   useEffect(() => {
     if (!SHEET_URL || SHEET_URL.includes("YOUR_")) return;
     setLoading(true);
-    fetch(SHEET_URL)
+    fetch(SHEET_URL + "?action=getData")
       .then(r => r.json())
-      .then(data => {
-        if (data?.data?.length) {
-          // data.data is a 2D array — row 0 is headers, rows 1+ are data
-          // Column indices match Apps Script COL constants (0-based):
-          //  0=Status, 1=Timestamp, 2=Email, 3=Contact/Stakeholder,
-          //  4=Preferred Date, 5=Option/TrainingType, 6=Areas, 7=Features,
-          //  8=Attendees, 9=Location, 10=Parking, 11=VenueSetup, 12=Score,
-          //  13=Company, 14=TeamFamiliarity, 15=Priorities, 16=FollowUp,
-          //  17=AnythingElse, 18=GoLiveDate, 19=ReferredBy, 20=InvoiceValue,
-          //  21=Trainer, 22=BookedDate, 23=TrainingDays, 24=SplitDates,
-          //  25=SplitTopics, 26=CalEventID
-          const rows2d = data.data;
-          const mapped = rows2d.slice(1).map(r => {
-            const company = (r[13] || "").trim();
-            if (!company) return null;
-            // Stakeholder: col 3 may be "Name — Phone" or just name
-            const stakeholderRaw = (r[3] || "").trim();
-            const stakeholderName = stakeholderRaw.includes("—")
-              ? stakeholderRaw.split("—")[0].trim()
-              : stakeholderRaw;
-            const stakeholderPhone = stakeholderRaw.includes("—")
-              ? stakeholderRaw.split("—").slice(1).join("—").trim()
-              : "";
-            // Training date: prefer Booked On Date (col 22), fall back to Preferred Date (col 4)
-            const bookedDate = (r[22] || "").trim();
-            const preferredDate = (r[4] || "").trim();
-            const trainingDate = bookedDate || preferredDate;
-            // Split dates: col 24 is JSON array of ISO date strings
-            let splitDates = [];
-            try { splitDates = JSON.parse(r[24] || "[]"); } catch(_) {}
-            return {
-              company,
-              status:          (r[0]  || "").trim(),
-              trainer:         (r[21] || "").trim(),
-              trainingDate,
-              preferredDate,
-              goLive:          (r[18] || "").trim(),
-              stakeholder:     stakeholderName,
-              stakeholderPhone,
-              email:           (r[2]  || "").trim(),
-              attendees:       (r[8]  || "").trim(),
-              familiar:        (r[14] || "").trim(),
-              trainingType:    (r[5]  || "").trim(),
-              areas:           (r[6]  || "").trim(),
-              features:        (r[7]  || "").trim(),
-              priorities:      (r[15] || "").trim(),
-              followUp:        (r[16] || "").trim(),
-              location:        (r[9]  || "").trim(),
-              parking:         (r[10] || "").trim(),
-              venueSetup:      (r[11] || "").trim(),
-              anything:        (r[17] || "").trim(),
-              invoice:         (r[20] || "").trim(),
-              trainingDays:    parseInt(r[23]) || 1,
-              splitDates,
-              splitTopics:     (() => { try { return JSON.parse(r[25] || "[]"); } catch(_) { return []; } })(),
-            };
-          }).filter(Boolean);
-          if (mapped.length) { setRows(mapped); setUsingMock(false); }
+      .then(resp => {
+        // The Apps Script getData returns: { success: true, data: [[row0],[row1],...] }
+        // Row 0 is the header row, rows 1+ are data rows
+        const raw2d = resp?.data;
+        if (!Array.isArray(raw2d) || raw2d.length < 2) return;
+
+        const mapRow = r => {
+          // Safely get a string value from a column index
+          const g = i => String(r[i] ?? "").trim();
+
+          const company = g(13);
+          if (!company) return null;
+
+          // Stakeholder (col 3): formats vary — "Name — Phone", "Name Phone", "Name"
+          const stakeholderRaw = g(3);
+          let stakeholderName = stakeholderRaw;
+          let stakeholderPhone = "";
+          if (stakeholderRaw.includes("—")) {
+            const parts = stakeholderRaw.split("—");
+            stakeholderName = parts[0].trim();
+            stakeholderPhone = parts.slice(1).join("—").trim();
+          } else if (/\d{4,}/.test(stakeholderRaw)) {
+            // Has digits that look like a phone number — split on last word-boundary before digits
+            const m = stakeholderRaw.match(/^(.*?)\s+(\d[\d\s]{6,})$/);
+            if (m) { stakeholderName = m[1].trim(); stakeholderPhone = m[2].trim(); }
+          }
+
+          // Training date display: prefer Booked On Date (col 22), then Preferred Date (col 4)
+          // Both may be dd/mm/yyyy or ISO
+          const bookedRaw    = g(22);
+          const preferredRaw = g(4);
+          const trainingDate = bookedRaw || preferredRaw;
+
+          // Human-readable date for display in the client picker and Step 1 field
+          const fmtForDisplay = raw => {
+            if (!raw) return "";
+            // dd/mm/yyyy
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
+              try {
+                const [d, m, y] = raw.split("/");
+                const dt = new Date(`${y}-${m}-${d}T12:00:00`);
+                return dt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+              } catch (_) { return raw; }
+            }
+            // ISO
+            if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+              try {
+                const dt = new Date(raw.slice(0, 10) + "T12:00:00");
+                return dt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+              } catch (_) { return raw; }
+            }
+            return raw;
+          };
+
+          // Convert raw date to yyyy-mm-dd for <input type="date">
+          const toInputDate = raw => {
+            if (!raw) return "";
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
+              const [d, m, y] = raw.split("/");
+              return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+            }
+            if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+            return "";
+          };
+
+          // Split dates (col 24) — JSON array of ISO strings e.g. ["2026-05-05","2026-05-06",...]
+          let splitDates = [];
+          try { const p = JSON.parse(g(24)); if (Array.isArray(p)) splitDates = p.filter(Boolean); } catch(_) {}
+
+          const numDays = parseInt(g(23)) || (splitDates.length > 1 ? splitDates.length : 1);
+
+          // Build dayDates for the structure step: use splitDates if present, else use booked date for day 1
+          const dayDatesArr = Array.from({ length: 5 }, (_, i) => {
+            if (splitDates[i]) return toInputDate(splitDates[i]);
+            if (i === 0) return toInputDate(bookedRaw || preferredRaw);
+            return "";
+          });
+
+          return {
+            company,
+            status:          g(0),
+            trainer:         g(21),
+            trainingDate:    fmtForDisplay(trainingDate),
+            trainingDateRaw: trainingDate,
+            preferredDate:   fmtForDisplay(preferredRaw),
+            goLive:          fmtForDisplay(g(18)),
+            stakeholder:     stakeholderName,
+            stakeholderPhone,
+            email:           g(2),
+            attendees:       g(8),
+            familiar:        g(14),
+            trainingType:    g(5),
+            areas:           g(6),
+            features:        g(7),
+            priorities:      g(15),
+            followUp:        g(16),
+            location:        g(9),
+            parking:         g(10),
+            venueSetup:      g(11),
+            anything:        g(17),
+            invoice:         g(20),
+            trainingDays:    numDays,
+            splitDates,
+            _trainingDays:   numDays,
+            _dayDates:       dayDatesArr,
+          };
+        };
+
+        const mapped = raw2d.slice(1).map(mapRow).filter(Boolean);
+        if (mapped.length) {
+          // Sort: Booked/Confirmed first, then by company name
+          mapped.sort((a, b) => {
+            const statusOrder = { "Booked": 0, "Confirmed": 0, "Unassigned": 1, "Pending": 2, "Cancelled": 3 };
+            const sa = statusOrder[a.status] ?? 1;
+            const sb = statusOrder[b.status] ?? 1;
+            if (sa !== sb) return sa - sb;
+            return a.company.localeCompare(b.company);
+          });
+          setRows(mapped);
+          setUsingMock(false);
         }
       })
-      .catch(() => {})
+      .catch(err => {
+        console.warn("Live data fetch failed:", err);
+      })
       .finally(() => setLoading(false));
   }, []);
 
