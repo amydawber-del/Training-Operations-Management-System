@@ -1,8 +1,21 @@
 /**
  * =====================================================================
- * STREET TRAINING DASHBOARD — TIL TRACKER INTEGRATION PATCH  v1.3
+ * STREET TRAINING DASHBOARD — TIL TRACKER INTEGRATION PATCH  v1.4
  * =====================================================================
  * Compatible with the Apps Script code.js getTilLog action.
+ *
+ * clusterDates guard (v1.4):
+ *   Some Sheets rows have a BOOKED_DATE cell value that new Date() can't
+ *   parse (blank cell, stray text, bad format).  getBookingDates() builds
+ *   ISO strings from those Invalid Dates and passes them to clusterDates,
+ *   which then calls new Date(iso + 'T12:00:00').toISOString() — throwing
+ *   "RangeError: Invalid time value" and crashing renderTrainerWorkload /
+ *   renderCalendar / loadData entirely.
+ *
+ *   Fix: patch window.clusterDates to filter out any ISO string that
+ *   produces an Invalid Date before sorting/clustering.  Any row whose
+ *   bookedOn parsed to Invalid Date will have produced NaN-based ISO
+ *   strings ("NaN-NaN-NaN") — those get dropped silently.
  *
  * Balance calculation fix (v1.2):
  *   The Apps Script reads "Remaining Balance After Entry" (col U) which
@@ -150,6 +163,42 @@
     }
   }
 
+  // ── 4a. Patch clusterDates — guard against Invalid Date ISO strings ─
+  //
+  // getBookingDates() calls new Date(r.bookedOn).toISOString() without
+  // checking isNaN first.  When bookedOn is an Invalid Date the result is
+  // the string "NaN-NaN-NaN" (or throws directly).  clusterDates then
+  // does new Date("NaN-NaN-NaNT12:00:00").toISOString() which throws
+  // "RangeError: Invalid time value", crashing the whole render path.
+  //
+  // Patch: filter isoArr to only valid YYYY-MM-DD strings before processing.
+  function patchClusterDates() {
+    if (typeof window.clusterDates !== 'function') {
+      console.warn('[TilPatch] clusterDates not found on window — skipping guard');
+      return;
+    }
+    var _orig = window.clusterDates;
+    window.clusterDates = function (isoArr) {
+      if (!Array.isArray(isoArr)) return _orig.apply(this, arguments);
+      var clean = isoArr.filter(function (iso) {
+        if (typeof iso !== 'string') return false;
+        // Must match YYYY-MM-DD and parse to a valid Date
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+          console.warn('[TilPatch] clusterDates: dropping invalid ISO string:', iso);
+          return false;
+        }
+        var t = new Date(iso + 'T12:00:00').getTime();
+        if (isNaN(t)) {
+          console.warn('[TilPatch] clusterDates: dropping unparseable date:', iso);
+          return false;
+        }
+        return true;
+      });
+      return _orig.call(this, clean);
+    };
+    console.log('[TilPatch] clusterDates guard installed.');
+  }
+
   // ── 4.  Patch renderTrainerWorkload ──────────────────────────────
   function patchRenderTrainerWorkload() {
     if (typeof window.renderTrainerWorkload !== 'function') return;
@@ -263,11 +312,13 @@
   function bootstrap() {
     _attempts++;
     var ready = typeof window.renderTrainerWorkload === 'function'
-             && typeof window.enterDashboard        === 'function';
+             && typeof window.enterDashboard        === 'function'
+             && typeof window.clusterDates          === 'function';
 
     if (!ready && _attempts < 50) { setTimeout(bootstrap, 200); return; }
 
     injectNavLink();
+    patchClusterDates();
     patchRenderTrainerWorkload();
     patchEnterDashboard();
 
