@@ -518,7 +518,7 @@ function buildSmartAgenda({ selectedAreas, familiarity, days, structure }) {
     const start = times.start || "10:30";
     const end   = times.end   || "16:30";
     const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
-    const lunchMins = parseInt(structure.lunchDur) || 60;
+    const lunchMins = parseInt(structure.lunchDur) || 30;
     return Math.max(0, toMin(end) - toMin(start) - lunchMins);
   });
 
@@ -656,15 +656,15 @@ function buildTimeline(topics, startTime, lunchStart, lunchDur) {
 
   for (const t of topics) {
     if (!lunchInserted && cur >= ls) {
-      items.push({ id: "lunch", title: "Lunch break", dur: parseInt(lunchDur) || 60, time: cur, isLunch: true });
-      cur = addMinutes(cur, parseInt(lunchDur) || 60);
+      items.push({ id: "lunch", title: "Lunch break", dur: parseInt(lunchDur) || 30, time: cur, isLunch: true });
+      cur = addMinutes(cur, parseInt(lunchDur) || 30);
       lunchInserted = true;
     }
     items.push({ ...t, time: cur });
     cur = addMinutes(cur, t.dur || 30);
   }
   if (!lunchInserted) {
-    items.push({ id: "lunch", title: "Lunch break", dur: parseInt(lunchDur) || 60, time: cur, isLunch: true });
+    items.push({ id: "lunch", title: "Lunch break", dur: parseInt(lunchDur) || 30, time: cur, isLunch: true });
   }
   return items;
 }
@@ -790,26 +790,24 @@ function generateDocx(wizard) {
   const agendaRows = Object.keys(agenda).filter(k => k.startsWith("day")).sort().map((dayKey, di) => {
     const dayTopics = agenda[dayKey] || [];
     const startTime = dayTimes[di]?.start || "10:30";
-    const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 60);
+    const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 30);
     const dayLabel = days > 1 ? `📋 Agenda — Day ${di + 1}` : "📋 Session Agenda";
     const dayDateStr = fmtDate(dayDates[di]);
     const headerLabel = dayDateStr && dayDateStr !== "—" ? `${dayLabel} (${dayDateStr})` : dayLabel;
 
-    // Group timeline by section for cleaner output
+    // Clean list view — no timings, grouped by section, lunch/breaks omitted
     let prevSection = null;
     const agendaLines = timeline.map(item => {
-      const isSpecial = item.isLunch || item.isQA || item.isBreak;
-      const section = isSpecial ? null : (item.section || null);
+      // Skip lunch and comfort breaks entirely in the client doc
+      if (item.isLunch || item.isBreak) return "";
+      const section = item.isQA ? null : (item.section || null);
       let sectionHeader = "";
       if (section && section !== prevSection) {
         sectionHeader = cellPara(`— ${section} —`, false, "888888");
         prevSection = section;
       }
-      if (isSpecial) prevSection = null;
-      const timeStr = item.time || "";
-      const label = isSpecial ? item.title : item.title;
-      const durStr = !isSpecial && item.dur ? ` (${item.dur} min)` : "";
-      return sectionHeader + cellPara(`${timeStr}  ${label}${durStr}`, !isSpecial && !item.isLunch, isSpecial ? "888888" : "");
+      if (item.isQA) { prevSection = null; return sectionHeader + cellPara(item.title, false, "888888"); }
+      return sectionHeader + cellPara(item.title, false, "");
     }).join("");
 
     return tableRow(headerLabel, agendaLines || cellPara("Agenda to be confirmed"), true);
@@ -901,6 +899,18 @@ function generateDocx(wizard) {
       </w:r>
     </w:p>
     ${tblXml}
+    <w:p>
+      <w:pPr><w:spacing w:before="240" w:after="0"/></w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+          <w:color w:val="888888"/>
+          <w:sz w:val="16"/>
+          <w:i/>
+        </w:rPr>
+        <w:t xml:space="preserve">Please note: Whilst we always aim to cover all areas outlined within this agenda, training sessions are designed to remain flexible and collaborative based on the needs of the team on the day. Client questions, workflow discussions, and unique business scenarios may naturally result in additional areas being explored outside of the planned agenda. The agenda should therefore be considered a guide and base structure for the session rather than a fixed schedule. Where possible, all planned topics will still be covered; however, depending on the level of discussion and interaction throughout the day, some areas may require follow-up sessions to explore further. Additional sessions may be recommended where appropriate. Refunds or partial refunds will not be issued where agenda items are not fully completed during the scheduled training session.</w:t>
+      </w:r>
+    </w:p>
     <w:sectPr>
       <w:pgSz w:w="11906" w:h="16838"/>
       <w:pgMar w:top="1134" w:right="845" w:bottom="1134" w:left="1701"/>
@@ -1271,7 +1281,7 @@ function StepStructure({ data, onChange, clientData }) {
         </div>
         <div>
           <label className="field-label">Lunch duration (minutes)</label>
-          <input className="wizard-input" type="number" min="30" max="120" step="15" value={data.lunchDur || 60} onChange={e => set("lunchDur", e.target.value)} />
+          <input className="wizard-input" type="number" min="30" max="120" step="15" value={data.lunchDur || 30} onChange={e => set("lunchDur", e.target.value)} />
         </div>
       </div>
 
@@ -1511,8 +1521,8 @@ function StepAgenda({ data, onChange, wizard }) {
   const startTime = structure.dayTimes?.[dayIdx]?.start || "10:30";
   const endTime = structure.dayTimes?.[dayIdx]?.end || "16:30";
   const toMin = t => { const [h,m] = (t||"10:30").split(":").map(Number); return h*60+m; };
-  const usableMins = Math.max(0, toMin(endTime) - toMin(startTime) - (parseInt(structure.lunchDur)||60));
-  const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 60);
+  const usableMins = Math.max(0, toMin(endTime) - toMin(startTime) - (parseInt(structure.lunchDur)||30));
+  const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 30);
 
   const removeTopic = (id) => onChange({ ...data, [dayKey]: dayTopics.filter(t => t.id !== id) });
 
@@ -1938,7 +1948,7 @@ function App() {
 
   const [wizard, setWizard] = useState({
     client: {},
-    structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 60, remote: "On-site" },
+    structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 30, remote: "On-site" },
     selectedAreas: { selected: [] },
     agenda: {},
     logistics: {},
@@ -2091,7 +2101,7 @@ function App() {
     setStep(0);
     setWizard({
       client: {},
-      structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 60, remote: "On-site" },
+      structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 30, remote: "On-site" },
       selectedAreas: { selected: [] },
       agenda: {},
       logistics: {},
