@@ -3811,7 +3811,7 @@ const COL = {
   SCORE:12, COMPANY:13, TEAM_FAMILIARITY:14, PRIORITIES:15, FOLLOW_UP:16,
   ANYTHING_ELSE:17, GO_LIVE_DATE:18, REFERRED_BY:19,
   INVOICE_VALUE:20, TRAINER:21, BOOKED_DATE:22, TRAINING_DAYS:23,
-  SPLIT_DATES:24, SPLIT_TOPICS:25, CAL_EVENT_ID:26
+  SPLIT_DATES:24, SPLIT_TOPICS:25, CAL_EVENT_ID:26, STATUS_CHANGED_AT:27
 };
 
 function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
@@ -3828,10 +3828,12 @@ function parseAppsScriptData(row, arrayIdx, sheetRowNum) {
   const rawInvoice = row[COL.INVOICE_VALUE] ? String(row[COL.INVOICE_VALUE]).replace(/[£$,\s]/g,'') : '';
   const invoiceValue = rawInvoice ? parseFloat(rawInvoice) : null;
   const bookedOn = row[COL.BOOKED_DATE] ? new Date(row[COL.BOOKED_DATE]) : null;
+  const statusChangedAt = row[COL.STATUS_CHANGED_AT] ? new Date(row[COL.STATUS_CHANGED_AT]) : null;
   return {
     _idx:           arrayIdx,
     _rowNum:        sheetRowNum,
     status, ts,
+    statusChangedAt,
     email:          row[COL.EMAIL]            || '',
     contact:        row[COL.CONTACT]          || '',
     company:        row[COL.COMPANY]          || '',
@@ -4281,9 +4283,10 @@ function trainerPill(name) {
   return `<span class="trainer-pill" style="background:${color}22;color:${color};">${escHtml(name)}</span>`;
 }
 
-function staleBadge(r) {
-  if(!r.ts) return '';
-  const days = Math.floor((Date.now() - r.ts) / 86400000);
+function staleBadge(r, refDate) {
+  const date = refDate || r.ts;
+  if(!date) return '';
+  const days = Math.floor((Date.now() - date) / 86400000);
   if(days < STALE_DAYS) return '';
   return `<span class="stale-badge">⏱ ${days}d</span>`;
 }
@@ -4585,10 +4588,15 @@ function renderActionNeeded() {
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(r => {
     const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
-    // Flag anything that's been sat in Pending for longer than STALE_DAYS (5 days)
-    const isStale = r.ts && (Date.now() - r.ts) >= STALE_DAYS*86400000;
+    // Flag anything that's been sat in Pending for longer than STALE_DAYS (5 days).
+    // Uses statusChangedAt (when it actually entered Pending) so this lines up
+    // with the Slack alert sent by checkStalePendingBookings() on the backend —
+    // falls back to the original submitted date (ts) for older rows that
+    // predate the "Status Changed" column.
+    const pendingSince = r.statusChangedAt || r.ts;
+    const isStale = pendingSince && (Date.now() - pendingSince) >= STALE_DAYS*86400000;
     return `<tr class="${isStale?'row-stale':''}">
-      <td>${fmtDate(r.ts)} ${staleBadge(r)}</td>
+      <td>${fmtDate(r.ts)} ${staleBadge(r, pendingSince)}</td>
       <td>${companyCell(r)}</td>
       <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
       <td>${optionBadge(r.trainingOption)}</td>
