@@ -7557,6 +7557,7 @@ function renderActivityFeed() { renderNotifPanel(); }
 let reqCurrentStep = 1;
 const REQ_TOTAL_STEPS = 4;
 let reqSelectedLocation = '';
+let reqSubmitting = false; // guards against double-click/double-tap firing submitRequest() twice (was causing 2x HubSpot tickets)
 const REQ_SKIPPABLE_STEPS = new Set([3, 4]); // Training Details, Priorities & Logistics
 const REQ_SKIP_LABELS = { 3: 'Training Details', 4: 'Priorities & Logistics' };
 let reqSkippedSteps = new Set();
@@ -7773,7 +7774,11 @@ function reqValidateStep(step) {
 
 function reqNextStep() {
   if(!reqValidateStep(reqCurrentStep)) return;
-  if(reqCurrentStep === REQ_TOTAL_STEPS) { submitRequest(); return; }
+  if(reqCurrentStep === REQ_TOTAL_STEPS) {
+    if(reqSubmitting) return; // already submitting — ignore the extra click/tap
+    submitRequest();
+    return;
+  }
   reqCurrentStep++;
   updateReqStep();
 }
@@ -7789,6 +7794,11 @@ function reqSkipStep() {
 }
 
 async function submitRequest() {
+  if(reqSubmitting) return;
+  reqSubmitting = true;
+  const reqNextBtnEl = document.getElementById('reqNextBtn');
+  const reqNextBtnOriginalText = reqNextBtnEl ? reqNextBtnEl.textContent : '';
+  if(reqNextBtnEl) { reqNextBtnEl.disabled = true; reqNextBtnEl.textContent = 'Submitting…'; }
   const name = document.getElementById('reqReferredByName').value.trim();
   const team = document.getElementById('reqReferredByTeam').value.trim() || document.getElementById('reqNewDept')?.value.trim() || '';
   const notes = document.getElementById('reqReferralNotes').value.trim();
@@ -7849,6 +7859,10 @@ async function submitRequest() {
     showToast('Training request submitted!', 'success');
     setTimeout(() => loadData(), 2000);
   } catch(e) { showToast('Error submitting request — try again', 'error'); }
+  finally {
+    reqSubmitting = false;
+    if(reqNextBtnEl) { reqNextBtnEl.disabled = false; reqNextBtnEl.textContent = reqNextBtnOriginalText || 'Continue →'; }
+  }
 }
 
 // ===================== DOC GENERATOR =====================
