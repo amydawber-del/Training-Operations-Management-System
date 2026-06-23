@@ -3751,8 +3751,6 @@ function applyPermVisibility() {
   // Request training button
   const reqBtn = document.querySelector('.req-training-btn');
   if(reqBtn) reqBtn.style.display = p('requestTraining') ? '' : 'none';
-  // Trainer cards — remove click-to-profile if no viewTrainerProfile permission
-  // (done via data attribute read in renderTrainerWorkload, so re-render if needed)
   // Admin-only elements
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = currentUser.role === 'admin' ? '' : 'none');
 }
@@ -4438,10 +4436,6 @@ function renderTrainerWorkload() {
     const skillTags = (meta.skills || []).map(s => `<span style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;margin:1px;">${s}</span>`).join('');
     const shadowingBadge = meta.shadowing ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;background:#f0f0ff;color:#5B4BE7;border-radius:4px;border:1px solid #C8CCFF;margin-left:4px;">👀 Shadowing</span>` : '';
     const revLast30 = last30.reduce((s,r) => s+(r.invoiceValue||0), 0);
-    const canViewProfile = canDo('viewTrainerProfile');
-    const cardClick = canViewProfile ? ' onclick="openTrainerProfile(\'' + escHtml(t.name) + '\')"' : '';
-    const cardCursor = canViewProfile ? 'pointer' : 'default';
-    const profileHint = canViewProfile ? '<div style="margin-top:8px;font-size:10px;color:var(--s-text-faint);text-align:center;">Click to view full profile</div>' : '';
 
     // TIL balance from shared localStorage with TilTracker
     const tilHours = canDo('viewTilTracker') ? getTilBalance(t.name) : null;
@@ -4466,7 +4460,7 @@ function renderTrainerWorkload() {
     if(utilisationPct >= 85) cardBorderStyle = 'border-color:#FECACA;';
     else if(mostAvailable && mostAvailable.t.name === t.name && trainerUsers.length > 1) cardBorderStyle = 'border-color:#6EE7B7;';
 
-    html += `<div class="trainer-card" style="cursor:${cardCursor};${cardBorderStyle}" data-trainer="${escHtml(t.name)}"${cardClick}>
+    html += `<div class="trainer-card" style="${cardBorderStyle}" data-trainer="${escHtml(t.name)}">
       <div class="trainer-name">
         <div class="trainer-color-dot" style="background:${color};"></div>
         ${escHtml(t.name)}
@@ -4477,13 +4471,10 @@ function renderTrainerWorkload() {
       <div class="trainer-stat"><span>Sessions Last 30 Days</span><span class="trainer-stat-val">${sessionsLast30}</span></div>
       <div class="trainer-stat"><span>Upcoming Sessions</span><span class="trainer-stat-val">${sessionsUpcoming}</span></div>
       <div class="trainer-stat"><span>Revenue Last 30d</span><span class="trainer-stat-val">${fmtMoney(revLast30)}</span></div>
-      <div class="trainer-stat"><span>Utilisation (30d)</span><span class="trainer-stat-val" style="color:${utilColour};font-weight:700;">${utilisationPct}% <span style="font-size:9px;padding:1px 5px;background:${utilColour}18;border-radius:4px;">${utilLabel}</span></span></div>
-      <div class="workload-bar-wrap"><div class="workload-bar" style="width:${utilisationPct}%;background:${utilColour};"></div></div>
       ${tilStatHtml}
       ${riskBadge}
       ${availBadge}
       ${nextFreeHtml}
-      ${profileHint}
     </div>`;
   });
   grid.innerHTML = html;
@@ -4594,8 +4585,10 @@ function renderActionNeeded() {
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(r => {
     const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
-    return `<tr>
-      <td>${fmtDate(r.ts)}</td>
+    // Flag anything that's been sat in Pending for longer than STALE_DAYS (5 days)
+    const isStale = r.ts && (Date.now() - r.ts) >= STALE_DAYS*86400000;
+    return `<tr class="${isStale?'row-stale':''}">
+      <td>${fmtDate(r.ts)} ${staleBadge(r)}</td>
       <td>${companyCell(r)}</td>
       <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
       <td>${optionBadge(r.trainingOption)}</td>
