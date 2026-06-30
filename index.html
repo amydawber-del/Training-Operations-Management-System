@@ -953,6 +953,7 @@ th.sort-active { color: var(--s-purple) !important; background: var(--s-lavender
 .opt-3 { background: #E0EAFF !important; color: #2D52D0 !important; }
 .opt-4 { background: #E8F5FF !important; color: #1A7ACC !important; }
 .opt-5 { background: #EEF9F4 !important; color: #0D8A5F !important; }
+.opt-6 { background: #FFF4E0 !important; color: #A05A00 !important; }
 
 /* ── STATUS BADGES ─────────────────────────────────────────── */
 .status-badge {
@@ -2248,9 +2249,12 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <select class="filter-select" id="filterTrainer" onchange="resetPageAndRender()"><option value="">All Trainers</option></select>
         <select class="filter-select" id="filterOption" onchange="resetPageAndRender()">
           <option value="">All Types</option>
-          <option value="Face-to-Face Training">Face-to-Face Training</option>
-          <option value="Online Training / Refresher">Online Training / Refresher</option>
-          <option value="Street Hosted Training Event">Street Hosted Training Event</option>
+          <option value="Bespoke Branch Training">Bespoke Branch Training</option>
+          <option value="Bespoke HQ Training">Bespoke HQ Training</option>
+          <option value="Accounting Training &amp; Go-Live Support">Accounting Training &amp; Go-Live Support</option>
+          <option value="Remote Refresher Training">Remote Refresher Training</option>
+          <option value="Street Hosted Open Training Event">Street Hosted Open Training Event</option>
+          <option value="Self-Led Learning">Self-Led Learning</option>
           <option value="Not Sure – Help Me Choose">Help Me Choose</option>
         </select>
         <input class="filter-input" id="filterDateFrom" type="date" onchange="resetPageAndRender()" style="width:130px;">
@@ -2321,11 +2325,14 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       <!-- Training type — required before confirming; must not be "Help me choose" -->
       <div class="form-row" id="bookTypeRow">
         <label class="form-label required">Training Type</label>
-        <select class="form-select" id="bookTrainingType" onchange="checkBookingWarnings()">
+        <select class="form-select" id="bookTrainingType" onchange="onBookTrainingTypeChange()">
           <option value="">— Select training type —</option>
-          <option value="Face-to-Face Training">Face-to-Face Training</option>
-          <option value="Online Training / Refresher">Online Training / Refresher</option>
-          <option value="Street Hosted Training Event">Street Hosted Training Event</option>
+          <option value="Bespoke Branch Training">Bespoke Branch Training</option>
+          <option value="Bespoke HQ Training">Bespoke HQ Training</option>
+          <option value="Accounting Training &amp; Go-Live Support">Accounting Training &amp; Go-Live Support</option>
+          <option value="Remote Refresher Training">Remote Refresher Training</option>
+          <option value="Street Hosted Open Training Event">Street Hosted Open Training Event</option>
+          <option value="Self-Led Learning">Self-Led Learning</option>
           <option value="Not Sure – Help Me Choose">Not Sure – Help Me Choose</option>
         </select>
         <div class="form-hint" id="bookTypeHint"></div>
@@ -2763,7 +2770,15 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       </div>
       <div class="req-step-pane" id="reqStep3">
         <div class="req-step-title">Training Package &amp; Goals</div><div class="req-step-sub">Help us understand what you need so we can tailor the session.</div>
-        <div class="req-field"><label class="req-label required">What type of training are you interested in?</label><div class="req-check-group"><label class="req-check-item"><input type="radio" name="trainingType" value="Face-to-Face Training"><div><label>Face-to-Face Training</label><div class="req-check-sub">Personalised training delivered in person for your team. This can take place at your office or at Street HQ.</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Online Training / Refresher"><div><label>Online Training / Refresher</label><div class="req-check-sub">A live remote session with a Street trainer to refresh knowledge, answer questions, or cover specific areas.</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Street Hosted Training Event"><div><label>Street Hosted Training Event</label><div class="req-check-sub">Join us at Street HQ for a dedicated in-person training session with a Street trainer.</div></div></label><label class="req-check-item"><input type="radio" name="trainingType" value="Not Sure – Help Me Choose"><div><label>Not Sure &#8212; Help Me Choose</label><div class="req-check-sub">Not sure which option is best? The training team will review your request and recommend the right format.</div></div></label></div></div>
+        <div class="req-field"><label class="req-label required">What type of training are you interested in?</label><div class="req-check-group">
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Bespoke Branch Training"><div><label>Bespoke Branch Training</label><div class="req-check-sub">Personalised in-person training delivered at your office for your team. Available as a one or two-day session.</div></div></label>
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Bespoke HQ Training"><div><label>Bespoke HQ Training</label><div class="req-check-sub">Personalised in-person training delivered at Street HQ for your team. Available as a one or two-day session and charged per attendee.</div></div></label>
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Accounting Training &amp; Go-Live Support"><div><label>Accounting Training &amp; Go-Live Support</label><div class="req-check-sub">A personalised accounting-focused session to support training, go-live preparation, and hands-on accounting workflows. This can take place at your office or Street HQ.</div></div></label>
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Remote Refresher Training"><div><label>Remote Refresher Training</label><div class="req-check-sub">A live online session with a Street trainer to refresh knowledge, answer questions, or cover specific areas.</div></div></label>
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Street Hosted Open Training Event"><div><label>Street Hosted Open Training Event</label><div class="req-check-sub">A Street-hosted training day at Street HQ with a set agenda, open to multiple clients or attendees.</div></div></label>
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Self-Led Learning"><div><label>Self-Led Learning</label><div class="req-check-sub">Free access to on-demand video tutorials, Streetwise content, and Help Centre resources.</div></div></label>
+          <label class="req-check-item"><input type="radio" name="trainingType" value="Not Sure – Help Me Choose"><div><label>Not Sure &#8212; Help Me Choose</label><div class="req-check-sub">Not sure which option is best? The training team will review your request and recommend the right format.</div></div></label>
+        </div></div>
         <div class="req-field" style="margin-top:20px;"><label class="req-label required">How familiar is your team with Street?</label><div class="req-radio-inline"><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Complete Beginners"> Complete Beginners</label><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Mixed Experience"> Mixed Experience</label><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Experienced - need refresher"> Experienced &#8212; Need Refresher</label></div></div>
         <div class="req-field" style="margin-top:20px;"><label class="req-label required">Which areas of Street do you want to cover?</label><div class="req-check-group"><label class="req-check-item"><input type="checkbox" name="areas" value="Sales"> <label>Sales</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Lettings Front End"> <label>Lettings Front End</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Accounting"> <label>Accounting</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Property Management"> <label>Property Management</label></label></div></div>
       </div>
@@ -2815,11 +2830,101 @@ function fmtMoney(v) {
 }
 
 const TRAINING_OPTIONS = {
-  'Face-to-Face Training':          { short: 'Face-to-Face',   cls: 'opt-1' },
-  'Online Training / Refresher':    { short: 'Online',         cls: 'opt-5' },
-  'Street Hosted Training Event':   { short: 'HQ Event',       cls: 'opt-4' },
-  'Not Sure – Help Me Choose':      { short: 'Help me choose', cls: '' },
+  // ── Current selectable types (as of 2026-06-30) ─────────────────
+  'Bespoke Branch Training':              { short: 'Bespoke Branch',  cls: 'opt-1' },
+  'Bespoke HQ Training':                  { short: 'Bespoke HQ',      cls: 'opt-2' },
+  'Accounting Training & Go-Live Support':{ short: 'Accounting',      cls: 'opt-3' },
+  'Remote Refresher Training':            { short: 'Remote Refresher',cls: 'opt-5' },
+  'Street Hosted Open Training Event':    { short: 'HQ Open Event',   cls: 'opt-4' },
+  'Self-Led Learning':                    { short: 'Self-Led',        cls: 'opt-6' },
+  'Not Sure – Help Me Choose':            { short: 'Help me choose',  cls: '' },
+  // ── Legacy values — kept so historical bookings render a badge ──
+  'Face-to-Face Training':                { short: 'Face-to-Face',    cls: 'opt-1' },
+  'Online Training / Refresher':          { short: 'Online',          cls: 'opt-5' },
+  'Street Hosted Training Event':         { short: 'HQ Event',        cls: 'opt-4' },
 };
+
+/**
+ * TRAINING_META — canonical reporting mapping per training type.
+ * Use this when writing rows to the Sheet / reporting layer, or when
+ * surfacing the suggested price in the booking modal.
+ *
+ *   category       — Training Category
+ *   location       — Delivery Location
+ *   method         — Delivery Method
+ *   duration       — Duration
+ *   agendaType     — Agenda Type
+ *   pricingModel   — Pricing Model
+ *   priceExVat     — number (£) | null  (null = TBC / POA / per-person)
+ *   priceLabel     — human-readable price string for hints
+ *   vatApplies     — 'Yes' | 'No' | 'TBC'
+ */
+const TRAINING_META = {
+  'Bespoke Branch Training': {
+    category: 'Bespoke Training', location: 'Agent Branch', method: 'In Person',
+    duration: 'One or Two Days', agendaType: 'Personalised', pricingModel: 'Fixed Fee',
+    priceExVat: 1100, priceLabel: '£1,100 (1 day) / £1,850 (2 days) + VAT', vatApplies: 'Yes',
+  },
+  'Bespoke HQ Training': {
+    category: 'Bespoke Training', location: 'Street HQ', method: 'In Person',
+    duration: 'One or Two Days', agendaType: 'Personalised', pricingModel: 'Per Person',
+    priceExVat: 220, priceLabel: '£220 per person + VAT', vatApplies: 'Yes',
+  },
+  'Accounting Training & Go-Live Support': {
+    category: 'Accounting Training', location: 'Street HQ or Agent Branch', method: 'In Person',
+    duration: '1 Day', agendaType: 'Personalised', pricingModel: 'Fixed Fee',
+    priceExVat: 1000, priceLabel: '£1,000 + VAT', vatApplies: 'Yes',
+  },
+  'Remote Refresher Training': {
+    category: 'Refresher Training', location: 'Online', method: 'Remote',
+    duration: 'TBC', agendaType: 'Personalised / Refresher', pricingModel: 'TBC',
+    priceExVat: null, priceLabel: 'TBC', vatApplies: 'TBC',
+  },
+  'Street Hosted Open Training Event': {
+    category: 'Street Hosted Event', location: 'Street HQ', method: 'In Person',
+    duration: 'TBC', agendaType: 'Set Agenda', pricingModel: 'POA',
+    priceExVat: null, priceLabel: 'POA + VAT', vatApplies: 'Yes',
+  },
+  'Self-Led Learning': {
+    category: 'Self-Led Learning', location: 'Online', method: 'On Demand',
+    duration: 'Flexible', agendaType: 'Self-Led', pricingModel: 'Free',
+    priceExVat: 0, priceLabel: 'Free', vatApplies: 'No',
+  },
+  'Not Sure – Help Me Choose': {
+    category: 'Recommendation Needed', location: 'TBC', method: 'TBC',
+    duration: 'TBC', agendaType: 'TBC', pricingModel: 'TBC',
+    priceExVat: null, priceLabel: 'TBC', vatApplies: 'TBC',
+  },
+};
+
+/**
+ * onBookTrainingTypeChange — wired to the booking modal's Training Type select.
+ * Updates the type hint with the canonical category + price, suggests an
+ * invoice value if the field is empty, and re-runs the booking warnings.
+ */
+function onBookTrainingTypeChange() {
+  const type   = document.getElementById('bookTrainingType').value;
+  const meta   = TRAINING_META[type];
+  const hintEl = document.getElementById('bookTypeHint');
+  const valEl  = document.getElementById('bookValue');
+  const valHintEl = document.getElementById('bookValueHint');
+
+  if(meta && hintEl) {
+    hintEl.style.color = '';
+    hintEl.innerHTML = `<strong>${escHtml(meta.category)}</strong> · ${escHtml(meta.location)} · ${escHtml(meta.method)} · ${escHtml(meta.duration)} · <strong>${escHtml(meta.priceLabel)}</strong>`;
+  } else if(hintEl) {
+    hintEl.textContent = '';
+  }
+
+  // Auto-suggest invoice value if the field is empty AND we have a fixed price.
+  // Don't overwrite values already typed by the booker.
+  if(valEl && !valEl.value && meta && meta.priceExVat !== null) {
+    valEl.value = meta.priceExVat;
+    if(valHintEl) valHintEl.textContent = 'Suggested from training type — edit if needed';
+  }
+
+  checkBookingWarnings();
+}
 
 function optionBadge(opt) {
   const raw = (opt || '').trim();
@@ -6448,19 +6553,27 @@ function openBookModal(idx) {
   document.getElementById('bookValue').value = r.invoiceValue || '';
   document.getElementById('bookValueHint').textContent = r.quotedValue ? 'Quoted: ' + fmtMoney(r.quotedValue) : 'No quoted value on record';
 
-  // Pre-fill training type — clear it if it's "Help me choose" so admin must pick a real one
+  // Pre-fill training type — only if it's a current selectable type.
+  // Legacy values (e.g. "Face-to-Face Training") and "Help me choose" both
+  // force the admin to re-pick from the new list.
   const typeEl   = document.getElementById('bookTrainingType');
   const hintEl   = document.getElementById('bookTypeHint');
   const HELP_VAL = 'Not Sure – Help Me Choose';
   const currentType = (r.trainingOption || '').trim();
-  if(currentType && currentType !== HELP_VAL && TRAINING_OPTIONS[currentType]) {
+  const isCurrentSelectable = currentType && currentType !== HELP_VAL && TRAINING_META[currentType];
+  if(isCurrentSelectable) {
     typeEl.value = currentType;
-    hintEl.textContent = '';
+    hintEl.style.color = '';
+    onBookTrainingTypeChange();           // populate the category/price hint
   } else {
     typeEl.value = '';
-    hintEl.textContent = currentType === HELP_VAL
-      ? '⚠️ Client selected "Help me choose" — please confirm the actual type before booking.'
-      : 'No training type selected yet.';
+    if(currentType === HELP_VAL) {
+      hintEl.textContent = '⚠️ Client selected "Help me choose" — please confirm the actual type before booking.';
+    } else if(currentType) {
+      hintEl.textContent = `⚠️ Legacy type "${currentType}" — please re-select from the current list.`;
+    } else {
+      hintEl.textContent = 'No training type selected yet.';
+    }
     hintEl.style.color = '#c0303d';
   }
 
