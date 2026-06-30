@@ -2530,7 +2530,17 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
 <div class="modal-overlay" id="cancelOverlay" onclick="if(event.target===this)closeCancelModal()">
   <div class="modal">
     <div class="modal-header"><div><div class="modal-title">&#10007; Cancel Enquiry</div><div class="modal-subtitle" id="cancelModalCompany">&#8212;</div></div><button class="modal-close" onclick="closeCancelModal()">&#10005;</button></div>
-    <div class="modal-body"><div class="warning-box warn" style="margin-bottom:16px;"><span>&#9888;&#65039;</span><span>This will move the enquiry to Completed. Undoable by an admin.</span></div><div class="form-row"><label class="form-label required">Cancellation Reason</label><textarea class="form-input" id="cancelReason" rows="3" placeholder="Enter the reason for cancellation&#8230;" style="resize:vertical;"></textarea></div></div>
+    <div class="modal-body">
+      <div class="warning-box warn" style="margin-bottom:16px;"><span>&#9888;&#65039;</span><span>This will move the enquiry to Completed. Undoable by an admin.</span></div>
+      <div class="form-row">
+        <label class="form-label required">Cancelled By</label>
+        <input type="text" class="form-input" id="cancelledBy" placeholder="Who is cancelling this booking?" />
+      </div>
+      <div class="form-row">
+        <label class="form-label required">Cancellation Reason</label>
+        <textarea class="form-input" id="cancelReason" rows="3" placeholder="Enter the reason for cancellation&#8230;" style="resize:vertical;"></textarea>
+      </div>
+    </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeCancelModal()">Go Back</button><button class="btn btn-danger" onclick="confirmCancel()">&#10007; Confirm Cancellation</button></div>
   </div>
 </div>
@@ -7167,6 +7177,7 @@ function openCancelModal(idx) {
   currentCancelRow = r;
   document.getElementById('cancelModalCompany').textContent = getCompanyName(r);
   document.getElementById('cancelReason').value = '';
+  document.getElementById('cancelledBy').value  = currentUser?.name || '';
   document.getElementById('cancelOverlay').classList.add('open');
 }
 
@@ -7235,19 +7246,30 @@ function clearProvisionalDate() {
 }
 
 async function confirmCancel() {
-  const reason = document.getElementById('cancelReason').value.trim();
-  if(!reason || !currentCancelRow) return;
+  if(!currentCancelRow) return;
+  const reason      = document.getElementById('cancelReason').value.trim();
+  const cancelledBy = document.getElementById('cancelledBy').value.trim();
+  if(!cancelledBy) { showToast('Please confirm who is cancelling this booking', 'error'); return; }
+  if(!reason)      { showToast('Please enter a cancellation reason',            'error'); return; }
+
   // Auto-save cancellation reason into profile progress notes
   if(!currentCancelRow.notes) currentCancelRow.notes = [];
-  const cancelText = 'Cancellation: ' + reason;
-  const cancelNote = { text: cancelText, author: currentUser?.name || 'Admin', ts: Date.now() };
+  const cancelText = 'Cancellation: ' + reason + ' (Cancelled by: ' + cancelledBy + ')';
+  const cancelNote = { text: cancelText, author: cancelledBy, ts: Date.now() };
   currentCancelRow.notes.push(cancelNote);
   writeNoteToSheet(currentCancelRow._rowNum, getCompanyName(currentCancelRow), cancelText, 'Cancellation');
-  const params = new URLSearchParams({ action: 'assign', row: currentCancelRow._rowNum, status: 'Cancelled' });
+
+  const params = new URLSearchParams({
+    action:       'assign',
+    row:          currentCancelRow._rowNum,
+    status:       'Cancelled',
+    cancelledBy:  cancelledBy,
+    cancelReason: reason,
+  });
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
-    logActivity(currentUser?.name||'?', 'Cancelled enquiry', getCompanyName(currentCancelRow), reason);
-    logNote(currentUser?.name||'?', 'Cancellation note', getCompanyName(currentCancelRow), reason);
+    logActivity(cancelledBy, 'Cancelled enquiry', getCompanyName(currentCancelRow), reason);
+    logNote(cancelledBy, 'Cancellation note', getCompanyName(currentCancelRow), reason);
     writeActivityLog({
       actionType:  'Cancellation',
       description: 'Enquiry cancelled',
@@ -7260,9 +7282,9 @@ async function confirmCancel() {
       source:      'Dashboard Button',
       company:     getCompanyName(currentCancelRow),
       trainer:     currentCancelRow.trainer || '',
-      notes:       reason,
+      notes:       'Cancelled by ' + cancelledBy + ': ' + reason,
     });
-    showToast('Enquiry cancelled', 'success');
+    showToast('Enquiry cancelled — Slack notified', 'success');
     closeCancelModal();
     await loadData();
   } catch(e) { showToast('Error cancelling', 'error'); }
