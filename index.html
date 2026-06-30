@@ -2276,6 +2276,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <div class="kpi-card"><div class="kpi-card-label">Bespoke HQ Training</div><div class="kpi-card-value" id="mtrRefHQ">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
         <div class="kpi-card"><div class="kpi-card-label">Accounting Training &amp; Go-Live Support</div><div class="kpi-card-value" id="mtrRefAcct">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
         <div class="kpi-card"><div class="kpi-card-label">Street Hosted Open Training Events</div><div class="kpi-card-value" id="mtrRefEvent">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Remote Refresher Training</div><div class="kpi-card-value" id="mtrRefRefresh">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
       </div>
 
       <!-- Revenue KPI cards -->
@@ -2285,6 +2286,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <div class="kpi-card"><div class="kpi-card-label">Bespoke HQ Training</div><div class="kpi-card-value" id="mtrRevHQ">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
         <div class="kpi-card"><div class="kpi-card-label">Accounting Training &amp; Go-Live Support</div><div class="kpi-card-value" id="mtrRevAcct">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
         <div class="kpi-card"><div class="kpi-card-label">Street Hosted Open Training Events</div><div class="kpi-card-value" id="mtrRevEvent">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Remote Refresher Training</div><div class="kpi-card-value" id="mtrRevRefresh">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
       </div>
 
       <!-- Uncategorised warning + table (shown only when there are uncategorised records) -->
@@ -8769,10 +8771,11 @@ document.addEventListener('DOMContentLoaded', function() {
  * The four canonical reporting categories used across cards, drill-down and export.
  */
 const MTR_CATEGORIES = [
-  { key: 'branch', label: 'Bespoke Branch Training' },
-  { key: 'hq',     label: 'Bespoke HQ Training' },
-  { key: 'acct',   label: 'Accounting Training & Go-Live Support' },
-  { key: 'event',  label: 'Street Hosted Open Training Events' }
+  { key: 'branch',  label: 'Bespoke Branch Training' },
+  { key: 'hq',      label: 'Bespoke HQ Training' },
+  { key: 'acct',    label: 'Accounting Training & Go-Live Support' },
+  { key: 'event',   label: 'Street Hosted Open Training Events' },
+  { key: 'refresh', label: 'Remote Refresher Training' }
 ];
 
 /**
@@ -8813,17 +8816,25 @@ function getTrainingReportingCategory(record) {
   const raw = normaliseReportingLabel(record && record.trainingOption);
   if(!raw) return null;
 
-  // 1. Accounting Training & Go-Live Support
+  // 1. Remote Refresher Training — "refresher" is a distinctive signal that
+  //    should win over any location/method words that might appear alongside it.
+  if(/\brefresher\b/.test(raw) ||
+     /\bremote refresher\b/.test(raw) ||
+     /\brefresher training\b/.test(raw)) {
+    return 'refresh';
+  }
+
+  // 2. Accounting Training & Go-Live Support
   if(/\baccount(ing|s)?\b/.test(raw) || /\bgo[\s-]?live\b/.test(raw)) {
     return 'acct';
   }
 
-  // 2. Street Hosted Open Training Events — explicit "open" wins over generic "hq"
+  // 3. Street Hosted Open Training Events — explicit "open" wins over generic "hq"
   if(/\bopen\b/.test(raw) || /\bstreet hosted\b/.test(raw) || /\bhq open\b/.test(raw)) {
     return 'event';
   }
 
-  // 3. Bespoke HQ Training — must include "hq" or "street hq"
+  // 4. Bespoke HQ Training — must include "hq" or "street hq"
   if(/\bbespoke\b.*\bhq\b/.test(raw) ||
      /\bhq training\b/.test(raw) ||
      /\bstreet hq\b/.test(raw) ||
@@ -8832,7 +8843,7 @@ function getTrainingReportingCategory(record) {
     return 'hq';
   }
 
-  // 4. Bespoke Branch Training — branch / onsite / personalised at branch / day packages
+  // 5. Bespoke Branch Training — branch / onsite / personalised at branch / day packages
   if(/\bbespoke\b.*\bbranch\b/.test(raw) ||
      /\bbranch training\b/.test(raw) ||
      /\bpersonalised\b.*\bbranch\b/.test(raw) ||
@@ -8949,8 +8960,8 @@ function calculateMonthlyTrainingReport(rows, selectedMonth) {
   const report = {
     selectedMonth: selectedMonth,
     trainingDays: { booked: 0, completed: 0, forwardBooked: 0, cancelled: 0 },
-    referrals:    { branch: 0, hq: 0, acct: 0, event: 0 },
-    revenue:      { branch: 0, hq: 0, acct: 0, event: 0 },
+    referrals:    { branch: 0, hq: 0, acct: 0, event: 0, refresh: 0 },
+    revenue:      { branch: 0, hq: 0, acct: 0, event: 0, refresh: 0 },
     detail: [],
     uncategorised: []
   };
@@ -9139,16 +9150,18 @@ function renderMonthlyTrainingReporting() {
   setText('mtrCancelled', mtrDays(report.trainingDays.cancelled));
 
   // --- Referral cards
-  setText('mtrRefBranch', String(report.referrals.branch || 0));
-  setText('mtrRefHQ',     String(report.referrals.hq     || 0));
-  setText('mtrRefAcct',   String(report.referrals.acct   || 0));
-  setText('mtrRefEvent',  String(report.referrals.event  || 0));
+  setText('mtrRefBranch',  String(report.referrals.branch  || 0));
+  setText('mtrRefHQ',      String(report.referrals.hq      || 0));
+  setText('mtrRefAcct',    String(report.referrals.acct    || 0));
+  setText('mtrRefEvent',   String(report.referrals.event   || 0));
+  setText('mtrRefRefresh', String(report.referrals.refresh || 0));
 
   // --- Revenue cards
-  setText('mtrRevBranch', fmtMoney(report.revenue.branch || 0));
-  setText('mtrRevHQ',     fmtMoney(report.revenue.hq     || 0));
-  setText('mtrRevAcct',   fmtMoney(report.revenue.acct   || 0));
-  setText('mtrRevEvent',  fmtMoney(report.revenue.event  || 0));
+  setText('mtrRevBranch',  fmtMoney(report.revenue.branch  || 0));
+  setText('mtrRevHQ',      fmtMoney(report.revenue.hq      || 0));
+  setText('mtrRevAcct',    fmtMoney(report.revenue.acct    || 0));
+  setText('mtrRevEvent',   fmtMoney(report.revenue.event   || 0));
+  setText('mtrRevRefresh', fmtMoney(report.revenue.refresh || 0));
 
   // --- Breakdown badge
   const badge = document.getElementById('mtrBreakdownBadge');
@@ -9262,15 +9275,17 @@ function exportMonthlyTrainingReport() {
     { label: 'Forward Booked — Total Training Days',                      value: report.trainingDays.forwardBooked, type: 'days' },
     { label: 'Cancelled — Total Training Days',                           value: report.trainingDays.cancelled,     type: 'days' },
     { label: '', value: '', type: 'spacer' },
-    { label: 'Referrals — Bespoke Branch Training',                       value: report.referrals.branch, type: 'count' },
-    { label: 'Referrals — Bespoke HQ Training',                           value: report.referrals.hq,     type: 'count' },
-    { label: 'Referrals — Accounting Training & Go-Live Support',         value: report.referrals.acct,   type: 'count' },
-    { label: 'Referrals — Street Hosted Open Training Events',            value: report.referrals.event,  type: 'count' },
+    { label: 'Referrals — Bespoke Branch Training',                       value: report.referrals.branch,  type: 'count' },
+    { label: 'Referrals — Bespoke HQ Training',                           value: report.referrals.hq,      type: 'count' },
+    { label: 'Referrals — Accounting Training & Go-Live Support',         value: report.referrals.acct,    type: 'count' },
+    { label: 'Referrals — Street Hosted Open Training Events',            value: report.referrals.event,   type: 'count' },
+    { label: 'Referrals — Remote Refresher Training',                     value: report.referrals.refresh, type: 'count' },
     { label: '', value: '', type: 'spacer' },
-    { label: 'Monthly Revenue — Bespoke Branch Training',                 value: report.revenue.branch, type: 'money' },
-    { label: 'Monthly Revenue — Bespoke HQ Training',                     value: report.revenue.hq,     type: 'money' },
-    { label: 'Monthly Revenue — Accounting Training & Go-Live Support',   value: report.revenue.acct,   type: 'money' },
-    { label: 'Monthly Revenue — Street Hosted Open Training Events',      value: report.revenue.event,  type: 'money' }
+    { label: 'Monthly Revenue — Bespoke Branch Training',                 value: report.revenue.branch,  type: 'money' },
+    { label: 'Monthly Revenue — Bespoke HQ Training',                     value: report.revenue.hq,      type: 'money' },
+    { label: 'Monthly Revenue — Accounting Training & Go-Live Support',   value: report.revenue.acct,    type: 'money' },
+    { label: 'Monthly Revenue — Street Hosted Open Training Events',      value: report.revenue.event,   type: 'money' },
+    { label: 'Monthly Revenue — Remote Refresher Training',               value: report.revenue.refresh, type: 'money' }
   ];
 
   summaryRows.forEach(function(row, i) {
