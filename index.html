@@ -1956,6 +1956,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
   </div>
   <div class="nav-section-label">Dashboard</div>
   <a href="#" class="nav-item" onclick="closeNav()"><span class="nav-item-icon">&#128202;</span> Training Dashboard</a>
+  <a href="#monthlyReportingSection" class="nav-item" onclick="closeNav();jumpToMonthlyReporting();return false;"><span class="nav-item-icon">&#128197;</span> Monthly Reporting</a>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Resources</div>
   <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank"><span class="nav-item-icon">&#128196;</span> Bookings Spreadsheet</a>
@@ -2238,6 +2239,101 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
 
     </div><!-- /insightsContent -->
   </div><!-- /insightsSection -->
+
+  <!-- ===================== MONTHLY TRAINING REPORTING ===================== -->
+  <div id="monthlyReportingSection" style="margin-bottom:24px;">
+    <div class="section-header" style="margin-bottom:12px;">
+      <div class="section-title">&#128197; Monthly Training Reporting</div>
+      <button id="monthlyReportingToggleBtn" onclick="toggleMonthlyReporting()" style="display:inline-flex;align-items:center;gap:6px;background:var(--s-lavender);border:1px solid var(--s-lavender-dark);color:var(--s-purple);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.15s;">
+        <span id="monthlyReportingToggleIcon">&#9660;</span> <span id="monthlyReportingToggleLabel">Hide Report</span>
+      </button>
+    </div>
+
+    <div id="monthlyReportingContent">
+
+      <!-- Controls bar: month selector + export -->
+      <div style="background:#fff;border:1px solid var(--s-border);border-radius:var(--s-r-md);padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--s-shadow-sm);">
+        <label for="monthlyReportingMonth" style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.6px;flex-shrink:0;">Reporting Month</label>
+        <input type="month" id="monthlyReportingMonth" class="filter-input" onchange="renderMonthlyTrainingReporting()" style="width:160px;">
+        <button class="btn btn-ghost btn-sm" onclick="setMonthlyReportingToCurrent()" title="Jump to the current month" style="font-weight:500;">&#8634; This month</button>
+        <span id="monthlyReportingLabel" style="font-size:12px;color:var(--s-text-secondary);font-weight:500;">&nbsp;</span>
+        <button class="btn btn-primary btn-sm" onclick="exportMonthlyTrainingReport()" style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;">&#11015; Export Monthly Report</button>
+      </div>
+
+      <!-- Training Days KPI cards -->
+      <div style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.8px;margin:6px 0 8px 2px;">Training Days</div>
+      <div class="kpi-grid" id="monthlyReportingTrainingDays" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-card-label">Booked</div><div class="kpi-card-value" id="mtrBooked">&#8212;</div><div class="kpi-card-sub">Total Training Days</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Completed</div><div class="kpi-card-value" id="mtrCompleted">&#8212;</div><div class="kpi-card-sub">Total Training Days</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Forward Booked</div><div class="kpi-card-value" id="mtrForward">&#8212;</div><div class="kpi-card-sub">Total Training Days</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Cancelled</div><div class="kpi-card-value" id="mtrCancelled">&#8212;</div><div class="kpi-card-sub">Total Training Days</div></div>
+      </div>
+
+      <!-- Referral KPI cards -->
+      <div style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.8px;margin:6px 0 8px 2px;">Referrals by Category</div>
+      <div class="kpi-grid" id="monthlyReportingReferrals" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-card-label">Bespoke Branch Training</div><div class="kpi-card-value" id="mtrRefBranch">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Bespoke HQ Training</div><div class="kpi-card-value" id="mtrRefHQ">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Accounting Training &amp; Go-Live Support</div><div class="kpi-card-value" id="mtrRefAcct">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Street Hosted Open Training Events</div><div class="kpi-card-value" id="mtrRefEvent">&#8212;</div><div class="kpi-card-sub">Referrals</div></div>
+      </div>
+
+      <!-- Revenue KPI cards -->
+      <div style="font-size:11px;font-weight:700;color:var(--s-text-muted);text-transform:uppercase;letter-spacing:0.8px;margin:6px 0 8px 2px;">Monthly Revenue by Category</div>
+      <div class="kpi-grid" id="monthlyReportingRevenue" style="margin-bottom:18px;">
+        <div class="kpi-card"><div class="kpi-card-label">Bespoke Branch Training</div><div class="kpi-card-value" id="mtrRevBranch">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Bespoke HQ Training</div><div class="kpi-card-value" id="mtrRevHQ">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Accounting Training &amp; Go-Live Support</div><div class="kpi-card-value" id="mtrRevAcct">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
+        <div class="kpi-card"><div class="kpi-card-label">Street Hosted Open Training Events</div><div class="kpi-card-value" id="mtrRevEvent">&#163;&#8212;</div><div class="kpi-card-sub">Monthly Revenue</div></div>
+      </div>
+
+      <!-- Uncategorised warning + table (shown only when there are uncategorised records) -->
+      <div id="monthlyReportingUncatWrap" style="display:none;margin-bottom:18px;">
+        <div class="warning-box warn"><span>&#9888;&#65039;</span><span><strong>Some training records could not be matched to a reporting category.</strong> Review the table below to spot old labels or broken form values.</span></div>
+        <div class="table-wrap" style="border:1px solid var(--s-border);border-radius:var(--s-r-md);overflow:hidden;background:#fff;box-shadow:var(--s-shadow-sm);">
+          <table>
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Current Training Option</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th style="text-align:right;">Invoice Value</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyReportingUncatTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Monthly breakdown table -->
+      <div class="section-header" style="margin:18px 0 10px;">
+        <div class="section-title" style="font-size:13px;">&#128203; Monthly Breakdown <span class="badge blue" id="mtrBreakdownBadge">0</span></div>
+        <span style="font-size:11px;color:var(--s-text-muted);">All records contributing to the report for the selected month</span>
+      </div>
+      <div class="table-wrap" style="border:1px solid var(--s-border);border-radius:var(--s-r-md);overflow:hidden;background:#fff;box-shadow:var(--s-shadow-sm);">
+        <table>
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Referral Source</th>
+              <th>Submitted</th>
+              <th>Training / Booked</th>
+              <th style="text-align:center;">Days</th>
+              <th style="text-align:right;">Invoice</th>
+              <th>Trainer</th>
+            </tr>
+          </thead>
+          <tbody id="monthlyReportingDetailTbody">
+            <tr><td colspan="9" style="text-align:center;color:var(--text--dark--30);font-size:12px;padding:18px;">Loading&#8230;</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /monthlyReportingContent -->
+  </div><!-- /monthlyReportingSection -->
 
   <!-- ALL BOOKINGS: UPCOMING + COMPLETED -->
   <div id="allBookingsSection">
@@ -5261,6 +5357,7 @@ function renderAll() {
   renderCompletedBookings();
   renderCalendar();
   populateFilterDropdowns();
+  renderMonthlyTrainingReporting();
 }
 
 // ===================== TOGGLE HELPERS =====================
@@ -8656,6 +8753,628 @@ document.addEventListener('DOMContentLoaded', function() {
     _tpPanel.style.right = '-520px';
   };
 });
+
+// =================================================================================
+// ============= MONTHLY TRAINING REPORTING ========================================
+// =================================================================================
+// Monthly reporting tool: pick a month, see training days (booked / completed /
+// forward booked / cancelled), referral counts and revenue split across the four
+// canonical reporting categories, with a drill-down table, an uncategorised
+// warning table, and a styled XLSX export. Reuses TRAINING_META, allData,
+// openProfileSidebar, fmtMoney, fmtDate, escHtml, getCompanyName, statusBadge,
+// XLSX helpers (_addCell, _hdrStyle, _cellStyle, _numStyle, _moneyStyle).
+// =================================================================================
+
+/**
+ * The four canonical reporting categories used across cards, drill-down and export.
+ */
+const MTR_CATEGORIES = [
+  { key: 'branch', label: 'Bespoke Branch Training' },
+  { key: 'hq',     label: 'Bespoke HQ Training' },
+  { key: 'acct',   label: 'Accounting Training & Go-Live Support' },
+  { key: 'event',  label: 'Street Hosted Open Training Events' }
+];
+
+/**
+ * Status buckets — defined as case-insensitive sets so historical labels still
+ * count. Anything not matched falls through to "other".
+ */
+const MTR_STATUS = {
+  booked:    ['booked', 'confirmed', 'pending booking confirmed', 'prep', 'ready'],
+  cancelled: ['cancelled', 'not converted / cancelled', 'not converted', 'training cancelled', 'lost'],
+  completed: ['completed', 'delivered', 'training delivered', 'booked & completed']
+};
+
+/**
+ * normaliseReportingLabel(value)
+ * Lower-case, strip punctuation, collapse whitespace. Used for fuzzy matching
+ * training option strings and status labels against keyword lists.
+ */
+function normaliseReportingLabel(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[\u2013\u2014]/g, '-')          // en/em dash → hyphen
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9\s-]/g, ' ')             // strip punctuation
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * getTrainingReportingCategory(record)
+ * Map a record to one of the four reporting category keys, or null if it
+ * cannot be matched. Reads `trainingOption` primarily and tolerates current,
+ * legacy, and short-hand labels.
+ *
+ * Order of checks matters: Accounting first (most specific keyword), then
+ * Bespoke HQ + Open Events disambiguation (both mention "HQ"), then Branch.
+ */
+function getTrainingReportingCategory(record) {
+  const raw = normaliseReportingLabel(record && record.trainingOption);
+  if(!raw) return null;
+
+  // 1. Accounting Training & Go-Live Support
+  if(/\baccount(ing|s)?\b/.test(raw) || /\bgo[\s-]?live\b/.test(raw)) {
+    return 'acct';
+  }
+
+  // 2. Street Hosted Open Training Events — explicit "open" wins over generic "hq"
+  if(/\bopen\b/.test(raw) || /\bstreet hosted\b/.test(raw) || /\bhq open\b/.test(raw)) {
+    return 'event';
+  }
+
+  // 3. Bespoke HQ Training — must include "hq" or "street hq"
+  if(/\bbespoke\b.*\bhq\b/.test(raw) ||
+     /\bhq training\b/.test(raw) ||
+     /\bstreet hq\b/.test(raw) ||
+     /\bpersonalised\b.*\bhq\b/.test(raw) ||
+     /\bhq live\b/.test(raw)) {
+    return 'hq';
+  }
+
+  // 4. Bespoke Branch Training — branch / onsite / personalised at branch / day packages
+  if(/\bbespoke\b.*\bbranch\b/.test(raw) ||
+     /\bbranch training\b/.test(raw) ||
+     /\bpersonalised\b.*\bbranch\b/.test(raw) ||
+     /\bonsite\b/.test(raw) ||
+     /\b[12]\s*day\b.*\btraining\b/.test(raw) ||
+     /\btraining package\b/.test(raw)) {
+    return 'branch';
+  }
+
+  return null;
+}
+
+/**
+ * getTrainingDays(record)
+ * Return the number of training days for a record. Treats blank/null/invalid
+ * values as 1 day. Supports half days via 0.5 / "half" / "½".
+ */
+function getTrainingDays(record) {
+  if(!record) return 1;
+  const v = record.trainingDays;
+  if(v === 0.5 || v === '0.5') return 0.5;
+  const str = String(v == null ? '' : v).toLowerCase().trim();
+  if(str === '' || str === '0' || str === 'null' || str === 'undefined') return 1;
+  if(str === '½' || str === 'half' || str === 'half day' || str.includes('half')) return 0.5;
+  const n = parseFloat(str);
+  if(isNaN(n) || n <= 0) return 1;
+  return n;
+}
+
+/**
+ * getBestDate(record, fields)
+ * Return the first valid Date found from `fields` (in priority order).
+ * Accepts Date instances or anything new Date() can parse.
+ */
+function getBestDate(record, fields) {
+  if(!record || !fields) return null;
+  for(let i=0; i<fields.length; i++) {
+    const v = record[fields[i]];
+    if(v == null || v === '') continue;
+    if(v instanceof Date) {
+      if(!isNaN(v.getTime())) return v;
+      continue;
+    }
+    const d = new Date(v);
+    if(!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+/**
+ * isDateInSelectedMonth(date, selectedMonth)
+ * selectedMonth format: "YYYY-MM". Returns true if `date` falls in that month.
+ */
+function isDateInSelectedMonth(date, selectedMonth) {
+  if(!date || !selectedMonth) return false;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return (y + '-' + m) === selectedMonth;
+}
+
+/**
+ * isDateAfterSelectedMonth(date, selectedMonth)
+ * Returns true if `date` is strictly after the end of the selected month.
+ */
+function isDateAfterSelectedMonth(date, selectedMonth) {
+  if(!date || !selectedMonth) return false;
+  const parts = selectedMonth.split('-');
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  // m is 1-12; Date(y, m, 0) gives the last day of month m
+  const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999);
+  return date > endOfMonth;
+}
+
+/**
+ * mtrStatusBucket(status)
+ * Map any status string to 'booked' | 'cancelled' | 'completed' | 'other'.
+ * Case-insensitive, tolerant of legacy labels.
+ */
+function mtrStatusBucket(status) {
+  const s = String(status || '').toLowerCase().trim();
+  if(!s) return 'other';
+  if(MTR_STATUS.completed.indexOf(s) !== -1) return 'completed';
+  if(MTR_STATUS.cancelled.indexOf(s) !== -1) return 'cancelled';
+  if(MTR_STATUS.booked.indexOf(s) !== -1)    return 'booked';
+  return 'other';
+}
+
+/**
+ * mtrReferralName(record)
+ * Return a non-empty referrer name string or '' if there's no valid source.
+ */
+function mtrReferralName(record) {
+  if(!record || !record.referredBy) return '';
+  const name = String(record.referredBy.name || '').trim();
+  if(!name) return '';
+  const low = name.toLowerCase();
+  if(low === 'none' || low === 'n/a' || low === '—' || low === '-' || low === 'unknown') return '';
+  return name;
+}
+
+/**
+ * calculateMonthlyTrainingReport(rows, selectedMonth)
+ * Core aggregator. Returns an object containing:
+ *   trainingDays.{booked,completed,forwardBooked,cancelled}
+ *   referrals.{branch,hq,acct,event}
+ *   revenue.{branch,hq,acct,event}
+ *   detail[]       — every record that contributes to at least one figure
+ *   uncategorised[] — records in the month that didn't match any category
+ */
+function calculateMonthlyTrainingReport(rows, selectedMonth) {
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const report = {
+    selectedMonth: selectedMonth,
+    trainingDays: { booked: 0, completed: 0, forwardBooked: 0, cancelled: 0 },
+    referrals:    { branch: 0, hq: 0, acct: 0, event: 0 },
+    revenue:      { branch: 0, hq: 0, acct: 0, event: 0 },
+    detail: [],
+    uncategorised: []
+  };
+
+  if(!Array.isArray(rows) || !rows.length || !selectedMonth) return report;
+
+  rows.forEach(function(r) {
+    if(!r) return;
+
+    const bucket   = mtrStatusBucket(r.status);
+    const category = getTrainingReportingCategory(r);
+    const days     = getTrainingDays(r);
+
+    // Date priorities ------------------------------------------------------------
+    const bookedDate    = getBestDate(r, ['bookedOn', 'trainingDate', 'preferredDate']);
+    const completedDate = getBestDate(r, ['trainingDate', 'bookedOn', 'preferredDate']);
+    const cancelDate    = getBestDate(r, ['bookedOn', 'trainingDate', 'preferredDate']);
+    const referralDate  = getBestDate(r, ['ts', 'submitted', 'createdAt', 'bookedOn']);
+    const revenueDate   = getBestDate(r, ['bookedOn', 'trainingDate', 'ts']);
+
+    // A "treat as completed" check: status maps to completed OR (status maps to
+    // booked AND the booked/training date is strictly before today).
+    const isCompletedFlag = (String(r.trainingCompleted || '').toLowerCase() === 'yes' ||
+                             String(r.trainingCompleted || '').toLowerCase() === 'true');
+    const isTreatedCompleted =
+      bucket === 'completed' || isCompletedFlag ||
+      (bucket === 'booked' && completedDate && completedDate < today);
+
+    // --- Training Days totals --------------------------------------------------
+    let contributes = false;
+    let contributionKind = null;
+
+    // Booked — status is booked and the date is in the selected month
+    if(bucket === 'booked' && isDateInSelectedMonth(bookedDate, selectedMonth)) {
+      report.trainingDays.booked += days;
+      contributes = true; contributionKind = contributionKind || 'Booked';
+    }
+
+    // Completed — counts if treated as completed and best date in month
+    if(isTreatedCompleted && isDateInSelectedMonth(completedDate, selectedMonth)) {
+      report.trainingDays.completed += days;
+      contributes = true; contributionKind = contributionKind || 'Completed';
+    }
+
+    // Forward Booked — booked-bucket and date strictly after end of selected month
+    if(bucket === 'booked' && isDateAfterSelectedMonth(bookedDate, selectedMonth)) {
+      report.trainingDays.forwardBooked += days;
+      contributes = true; contributionKind = contributionKind || 'Forward Booked';
+    }
+
+    // Cancelled — cancelled bucket, date in selected month
+    if(bucket === 'cancelled' && isDateInSelectedMonth(cancelDate, selectedMonth)) {
+      report.trainingDays.cancelled += days;
+      contributes = true; contributionKind = contributionKind || 'Cancelled';
+    }
+
+    // --- Referrals -------------------------------------------------------------
+    const refName = mtrReferralName(r);
+    if(refName && category && isDateInSelectedMonth(referralDate, selectedMonth)) {
+      report.referrals[category] = (report.referrals[category] || 0) + 1;
+      contributes = true; contributionKind = contributionKind || 'Referral';
+    }
+
+    // --- Revenue ---------------------------------------------------------------
+    const inv = Number(r.invoiceValue);
+    const hasRevenue = !isNaN(inv) && inv > 0;
+    if(hasRevenue && category && bucket !== 'cancelled' &&
+       isDateInSelectedMonth(revenueDate, selectedMonth)) {
+      report.revenue[category] = (report.revenue[category] || 0) + inv;
+      contributes = true; contributionKind = contributionKind || 'Revenue';
+    }
+
+    // --- Drill-down + uncategorised tracking ----------------------------------
+    if(contributes) {
+      report.detail.push({
+        record: r,
+        category: category,
+        bucket: bucket,
+        contributionKind: contributionKind,
+        days: days,
+        referralDate: referralDate,
+        bookedDate: bookedDate,
+        revenueDate: revenueDate
+      });
+
+      if(!category) report.uncategorised.push(r);
+    } else if(!category) {
+      // Not contributing but might still belong to the month via any date.
+      // Surface for "spot legacy labels": include if any of the priority dates
+      // fall in the selected month so it shows up in the warning table.
+      const anyDate = bookedDate || completedDate || referralDate || revenueDate;
+      if(isDateInSelectedMonth(anyDate, selectedMonth)) report.uncategorised.push(r);
+    }
+  });
+
+  return report;
+}
+
+// =================================================================================
+// ============= UI RENDERING =====================================================
+// =================================================================================
+
+/**
+ * mtrCurrentMonth()
+ * Read the month selector, defaulting to the current month (YYYY-MM).
+ */
+function mtrCurrentMonth() {
+  const el = document.getElementById('monthlyReportingMonth');
+  const fromInput = el && el.value ? el.value : '';
+  if(fromInput) return fromInput;
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function setMonthlyReportingToCurrent() {
+  const d = new Date();
+  const value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  const el = document.getElementById('monthlyReportingMonth');
+  if(el) el.value = value;
+  renderMonthlyTrainingReporting();
+}
+
+function mtrMonthLabel(monthKey) {
+  if(!monthKey) return '';
+  const parts = monthKey.split('-');
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10) - 1;
+  const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return names[m] + ' ' + y;
+}
+
+function mtrDays(n) {
+  if(n == null || isNaN(n)) return '0';
+  // Show halves where applicable
+  if(Math.abs(n - Math.round(n)) < 0.01) return String(Math.round(n));
+  return n.toFixed(1).replace(/\.0$/, '');
+}
+
+function toggleMonthlyReporting() {
+  const content = document.getElementById('monthlyReportingContent');
+  const icon    = document.getElementById('monthlyReportingToggleIcon');
+  const label   = document.getElementById('monthlyReportingToggleLabel');
+  const btn     = document.getElementById('monthlyReportingToggleBtn');
+  if(!content) return;
+  const isHidden = content.style.display === 'none';
+  content.style.display = isHidden ? '' : 'none';
+  if(icon)  icon.innerHTML  = isHidden ? '&#9660;' : '&#9654;';
+  if(label) label.textContent = isHidden ? 'Hide Report' : 'Show Report';
+  if(btn)   btn.style.background = isHidden ? 'var(--s-lavender)' : '#fff';
+}
+
+function jumpToMonthlyReporting() {
+  const el = document.getElementById('monthlyReportingSection');
+  if(!el) return;
+  // Make sure it's expanded
+  const content = document.getElementById('monthlyReportingContent');
+  if(content && content.style.display === 'none') toggleMonthlyReporting();
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * renderMonthlyTrainingReporting()
+ * Entry point: recomputes the report for the current selector value and
+ * paints every card, table and badge.
+ */
+function renderMonthlyTrainingReporting() {
+  // Make sure the month selector has a value (default to current month)
+  const sel = document.getElementById('monthlyReportingMonth');
+  if(sel && !sel.value) {
+    const d = new Date();
+    sel.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  const monthKey = mtrCurrentMonth();
+  const labelEl  = document.getElementById('monthlyReportingLabel');
+  if(labelEl) labelEl.textContent = 'Reporting month: ' + mtrMonthLabel(monthKey);
+
+  const rows = Array.isArray(allData) ? allData : [];
+  const report = calculateMonthlyTrainingReport(rows, monthKey);
+
+  // --- Training Days cards
+  const setText = function(id, val) { const el = document.getElementById(id); if(el) el.textContent = val; };
+  setText('mtrBooked',    mtrDays(report.trainingDays.booked));
+  setText('mtrCompleted', mtrDays(report.trainingDays.completed));
+  setText('mtrForward',   mtrDays(report.trainingDays.forwardBooked));
+  setText('mtrCancelled', mtrDays(report.trainingDays.cancelled));
+
+  // --- Referral cards
+  setText('mtrRefBranch', String(report.referrals.branch || 0));
+  setText('mtrRefHQ',     String(report.referrals.hq     || 0));
+  setText('mtrRefAcct',   String(report.referrals.acct   || 0));
+  setText('mtrRefEvent',  String(report.referrals.event  || 0));
+
+  // --- Revenue cards
+  setText('mtrRevBranch', fmtMoney(report.revenue.branch || 0));
+  setText('mtrRevHQ',     fmtMoney(report.revenue.hq     || 0));
+  setText('mtrRevAcct',   fmtMoney(report.revenue.acct   || 0));
+  setText('mtrRevEvent',  fmtMoney(report.revenue.event  || 0));
+
+  // --- Breakdown badge
+  const badge = document.getElementById('mtrBreakdownBadge');
+  if(badge) badge.textContent = String(report.detail.length);
+
+  // --- Detail table
+  const tb = document.getElementById('monthlyReportingDetailTbody');
+  if(tb) {
+    if(!report.detail.length) {
+      tb.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text--dark--30);font-size:12px;padding:18px;">No records contribute to this month.</td></tr>';
+    } else {
+      // Sort by best display date asc (training/booked, fall back to referral)
+      const sorted = report.detail.slice().sort(function(a,b) {
+        const ad = a.bookedDate || a.referralDate || 0;
+        const bd = b.bookedDate || b.referralDate || 0;
+        return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
+      });
+      tb.innerHTML = sorted.map(function(d) {
+        const r = d.record;
+        const catLabel = d.category ?
+          (MTR_CATEGORIES.find(function(c) { return c.key === d.category; }) || {}).label || 'Uncategorised'
+          : '<span style="color:var(--s-amber);font-weight:600;">Uncategorised</span>';
+        const refName = mtrReferralName(r);
+        return '<tr>' +
+          '<td>' + companyCell(r) + '</td>' +
+          '<td style="font-size:12px;">' + catLabel + '</td>' +
+          '<td>' + statusBadge(r.status) + '</td>' +
+          '<td style="font-size:12px;">' + (refName ? escHtml(refName) : '<span style="color:var(--s-text-faint);">&#8212;</span>') + '</td>' +
+          '<td style="font-size:12px;">' + (d.referralDate ? escHtml(fmtDate(d.referralDate)) : '<span style="color:var(--s-text-faint);">&#8212;</span>') + '</td>' +
+          '<td style="font-size:12px;">' + (d.bookedDate   ? escHtml(fmtDate(d.bookedDate))   : '<span style="color:var(--s-text-faint);">&#8212;</span>') + '</td>' +
+          '<td style="text-align:center;font-weight:600;">' + mtrDays(d.days) + '</td>' +
+          '<td style="text-align:right;font-weight:600;">' + (r.invoiceValue ? escHtml(fmtMoney(r.invoiceValue)) : '<span style="color:var(--s-text-faint);">&#8212;</span>') + '</td>' +
+          '<td>' + trainerPill(r.trainer) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  }
+
+  // --- Uncategorised table
+  const uncatWrap = document.getElementById('monthlyReportingUncatWrap');
+  const uncatTb   = document.getElementById('monthlyReportingUncatTbody');
+  if(uncatWrap && uncatTb) {
+    // De-duplicate uncategorised in case a record was flagged twice
+    const seen = new Set();
+    const uncat = report.uncategorised.filter(function(r) {
+      if(!r || seen.has(r._idx)) return false;
+      seen.add(r._idx); return true;
+    });
+    if(uncat.length === 0) {
+      uncatWrap.style.display = 'none';
+    } else {
+      uncatWrap.style.display = '';
+      uncatTb.innerHTML = uncat.map(function(r) {
+        const date = getBestDate(r, ['bookedOn', 'trainingDate', 'preferredDate', 'ts']);
+        return '<tr>' +
+          '<td>' + companyCell(r) + '</td>' +
+          '<td style="font-size:12px;">' + escHtml(r.trainingOption || '(blank)') + '</td>' +
+          '<td>' + statusBadge(r.status) + '</td>' +
+          '<td style="font-size:12px;">' + (date ? escHtml(fmtDate(date)) : '<span style="color:var(--s-text-faint);">&#8212;</span>') + '</td>' +
+          '<td style="text-align:right;font-weight:600;">' + (r.invoiceValue ? escHtml(fmtMoney(r.invoiceValue)) : '<span style="color:var(--s-text-faint);">&#8212;</span>') + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  }
+}
+
+// =================================================================================
+// ============= EXPORT TO XLSX ====================================================
+// =================================================================================
+
+function _mtrFmtXlsxDate(d) {
+  if(!d) return '';
+  const dt = d instanceof Date ? d : new Date(d);
+  if(isNaN(dt.getTime())) return '';
+  return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+/**
+ * exportMonthlyTrainingReport()
+ * Build a styled XLSX with up to three sheets:
+ *   1. Summary  — the 12 headline figures.
+ *   2. Detail   — every contributing record.
+ *   3. Uncategorised — only if records were flagged.
+ */
+function exportMonthlyTrainingReport() {
+  if(typeof XLSX === 'undefined') {
+    alert('Export library not loaded yet. Please try again in a moment.');
+    return;
+  }
+
+  const monthKey = mtrCurrentMonth();
+  const rows = Array.isArray(allData) ? allData : [];
+  const report = calculateMonthlyTrainingReport(rows, monthKey);
+  const monthLabel = mtrMonthLabel(monthKey);
+
+  const wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Summary ──────────────────────────────────────────────────────
+  const summary = {};
+  _addCell(summary, 0, 0, 'Monthly Training Report', _hdrStyle('12152A'));
+  _addCell(summary, 0, 1, monthLabel,                _hdrStyle('12152A'));
+  if(!summary['!merges']) summary['!merges'] = [];
+  // No merge — keep label + value side by side
+
+  _addCell(summary, 2, 0, 'Metric', _hdrStyle('5B4BE7'));
+  _addCell(summary, 2, 1, 'Value',  _hdrStyle('5B4BE7'));
+
+  const summaryRows = [
+    { label: 'Booked — Total Training Days',                              value: report.trainingDays.booked,        type: 'days' },
+    { label: 'Completed — Total Training Days',                           value: report.trainingDays.completed,     type: 'days' },
+    { label: 'Forward Booked — Total Training Days',                      value: report.trainingDays.forwardBooked, type: 'days' },
+    { label: 'Cancelled — Total Training Days',                           value: report.trainingDays.cancelled,     type: 'days' },
+    { label: '', value: '', type: 'spacer' },
+    { label: 'Referrals — Bespoke Branch Training',                       value: report.referrals.branch, type: 'count' },
+    { label: 'Referrals — Bespoke HQ Training',                           value: report.referrals.hq,     type: 'count' },
+    { label: 'Referrals — Accounting Training & Go-Live Support',         value: report.referrals.acct,   type: 'count' },
+    { label: 'Referrals — Street Hosted Open Training Events',            value: report.referrals.event,  type: 'count' },
+    { label: '', value: '', type: 'spacer' },
+    { label: 'Monthly Revenue — Bespoke Branch Training',                 value: report.revenue.branch, type: 'money' },
+    { label: 'Monthly Revenue — Bespoke HQ Training',                     value: report.revenue.hq,     type: 'money' },
+    { label: 'Monthly Revenue — Accounting Training & Go-Live Support',   value: report.revenue.acct,   type: 'money' },
+    { label: 'Monthly Revenue — Street Hosted Open Training Events',      value: report.revenue.event,  type: 'money' }
+  ];
+
+  summaryRows.forEach(function(row, i) {
+    const r = i + 3;
+    const alt = i % 2 === 1;
+    if(row.type === 'spacer') {
+      _addCell(summary, r, 0, '', _cellStyle(false));
+      _addCell(summary, r, 1, '', _cellStyle(false));
+      return;
+    }
+    _addCell(summary, r, 0, row.label, _cellStyle(alt));
+    if(row.type === 'money') {
+      _addCell(summary, r, 1, Number(row.value) || 0, _moneyStyle(alt));
+    } else {
+      _addCell(summary, r, 1, Number(row.value) || 0, _numStyle(alt));
+    }
+  });
+
+  summary['!cols'] = [{ wch: 56 }, { wch: 18 }];
+  summary['!ref']  = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r: 3 + summaryRows.length, c: 1} });
+  summary['!freeze'] = { xSplit: 0, ySplit: 3 };
+  XLSX.utils.book_append_sheet(wb, summary, '📊 Summary');
+
+  // ── Sheet 2: Detail ───────────────────────────────────────────────────────
+  const detail = {};
+  const detailHeaders = ['Company', 'Category', 'Status', 'Contribution', 'Referral Source',
+                         'Submitted', 'Training / Booked Date', 'Training Days',
+                         'Invoice Value (£)', 'Trainer'];
+  detailHeaders.forEach(function(h, c) { _addCell(detail, 0, c, h, _hdrStyle('5B4BE7')); });
+
+  const sortedDetail = report.detail.slice().sort(function(a,b) {
+    const ad = a.bookedDate || a.referralDate || 0;
+    const bd = b.bookedDate || b.referralDate || 0;
+    return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
+  });
+
+  sortedDetail.forEach(function(d, ri) {
+    const r = d.record;
+    const row = ri + 1;
+    const alt = ri % 2 === 1;
+    const catLabel = d.category ?
+      (MTR_CATEGORIES.find(function(c) { return c.key === d.category; }) || {}).label || 'Uncategorised'
+      : 'Uncategorised';
+    _addCell(detail, row, 0, getCompanyName(r),                              _cellStyle(alt));
+    _addCell(detail, row, 1, catLabel,                                       _cellStyle(alt));
+    _addCell(detail, row, 2, r.status || '',                                 _cellStyle(alt));
+    _addCell(detail, row, 3, d.contributionKind || '',                       _cellStyle(alt));
+    _addCell(detail, row, 4, mtrReferralName(r) || '',                       _cellStyle(alt));
+    _addCell(detail, row, 5, _mtrFmtXlsxDate(d.referralDate),                _cellStyle(alt));
+    _addCell(detail, row, 6, _mtrFmtXlsxDate(d.bookedDate),                  _cellStyle(alt));
+    _addCell(detail, row, 7, d.days,                                         _numStyle(alt));
+    _addCell(detail, row, 8, (r.invoiceValue !== null && r.invoiceValue !== undefined && !isNaN(r.invoiceValue)) ? Number(r.invoiceValue) : '', _moneyStyle(alt));
+    _addCell(detail, row, 9, r.trainer || '',                                _cellStyle(alt));
+  });
+
+  detail['!cols'] = [
+    { wch: 28 }, { wch: 32 }, { wch: 12 }, { wch: 16 }, { wch: 22 },
+    { wch: 14 }, { wch: 18 }, { wch: 10 }, { wch: 16 }, { wch: 18 }
+  ];
+  detail['!ref']  = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r: Math.max(sortedDetail.length, 1), c: detailHeaders.length - 1} });
+  detail['!freeze'] = { xSplit: 0, ySplit: 1 };
+  XLSX.utils.book_append_sheet(wb, detail, '📋 Detail');
+
+  // ── Sheet 3: Uncategorised (only if records exist) ────────────────────────
+  const seen = new Set();
+  const uncat = report.uncategorised.filter(function(r) {
+    if(!r || seen.has(r._idx)) return false;
+    seen.add(r._idx); return true;
+  });
+  if(uncat.length > 0) {
+    const us = {};
+    const usHeaders = ['Company', 'Current Training Option', 'Status', 'Date', 'Invoice Value (£)'];
+    usHeaders.forEach(function(h, c) { _addCell(us, 0, c, h, _hdrStyle('D97706')); });
+    uncat.forEach(function(r, ri) {
+      const row = ri + 1;
+      const alt = ri % 2 === 1;
+      const date = getBestDate(r, ['bookedOn', 'trainingDate', 'preferredDate', 'ts']);
+      _addCell(us, row, 0, getCompanyName(r),       _cellStyle(alt));
+      _addCell(us, row, 1, r.trainingOption || '(blank)', _cellStyle(alt));
+      _addCell(us, row, 2, r.status || '',          _cellStyle(alt));
+      _addCell(us, row, 3, _mtrFmtXlsxDate(date),   _cellStyle(alt));
+      _addCell(us, row, 4, (r.invoiceValue !== null && r.invoiceValue !== undefined && !isNaN(r.invoiceValue)) ? Number(r.invoiceValue) : '', _moneyStyle(alt));
+    });
+    us['!cols'] = [{ wch: 28 }, { wch: 36 }, { wch: 12 }, { wch: 14 }, { wch: 16 }];
+    us['!ref']  = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r: uncat.length, c: usHeaders.length - 1} });
+    us['!freeze'] = { xSplit: 0, ySplit: 1 };
+    XLSX.utils.book_append_sheet(wb, us, '⚠️ Uncategorised');
+  }
+
+  // Filename: monthly-training-report-2026-06.xlsx
+  XLSX.writeFile(wb, 'monthly-training-report-' + monthKey + '.xlsx',
+                 { bookType: 'xlsx', type: 'binary', cellStyles: true });
+}
+
+// Ensure the month selector defaults to current month on page load (renderAll
+// runs after data loads; this guarantees the input has a value even before).
+document.addEventListener('DOMContentLoaded', function() {
+  const el = document.getElementById('monthlyReportingMonth');
+  if(el && !el.value) {
+    const d = new Date();
+    el.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+});
+
 </script>
 
   <script src="til-patch.js"></script>
