@@ -2583,6 +2583,32 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
   </div>
 </div>
 
+<!-- DRAFT EMAIL -->
+<div class="modal-overlay" id="draftEmailOverlay" onclick="if(event.target===this)closeDraftEmailModal()">
+  <div class="modal modal-lg" style="width:640px;">
+    <div class="modal-header" style="background:#166534;">
+      <div><div class="modal-title">✉️ Draft Email</div><div class="modal-subtitle" id="draftEmailCompany">&#8212;</div></div>
+      <button class="modal-close" onclick="closeDraftEmailModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label class="form-label">Subject</label>
+        <input type="text" class="form-input" id="draftEmailSubject">
+      </div>
+      <div class="form-row" style="margin-bottom:0;">
+        <label class="form-label">Email Body</label>
+        <textarea class="form-input" id="draftEmailBody" rows="20" style="resize:vertical;font-family:'DM Sans',sans-serif;font-size:12.5px;line-height:1.55;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="copyDraftSubject()">Copy Subject</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyDraftBody()">Copy Email Body</button>
+      <button class="btn btn-primary btn-sm" onclick="copyDraftFull()">Copy Full Email</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeDraftEmailModal()" style="margin-left:auto;">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- CALENDAR EVENT -->
 <div class="modal-overlay" id="calEventOverlay" onclick="if(event.target===this)closeCalEventModal()">
   <div class="modal">
@@ -4784,6 +4810,7 @@ function renderUnassigned() {
         ${canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
         ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="openDocGenerator('${escHtml(r.company)}')" title="Open Training Doc Generator" style="border-color:#C8CCFF;color:#5B4BE7;">📄 Doc</button>
+        <button class="btn btn-ghost btn-sm" onclick="openDraftEmailModal(${r._idx})" title="Generate a client-facing confirmation email" style="border-color:#86efac;color:#166534;">✉️ Draft Email</button>
       </td>
     </tr>`;
   }).join('');
@@ -8103,9 +8130,214 @@ function openDocGenerator(companyName) {
   window.open(url, '_blank');
 }
 
+// ===================== DRAFT EMAIL GENERATOR =====================
+// A value counts as "missing" for the purposes of the email if it's blank,
+// a placeholder dash, or one of the known "no answer given" phrases.
+function draftFieldMissing(val) {
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim();
+  if (!s) return true;
+  if (s === '—' || s === '--' || s === '-') return true;
+  if (/don'?t have any names? just yet/i.test(s)) return true;
+  return false;
+}
+
+function draftFirstName(contact) {
+  const s = String(contact || '').trim();
+  if (!s) return 'there';
+  const first = s.split(/[\s,]+/)[0].replace(/[^A-Za-z'-]/g, '');
+  return first || 'there';
+}
+
+function draftAreasList(r) {
+  const raw = draftFieldMissing(r.areas) ? '' : String(r.areas).trim();
+  if (!raw) return [];
+  return raw.split(',').map(a => a.trim()).filter(Boolean);
+}
+
+function draftIsHQ(r) {
+  return /street hq|north square|spear st/i.test(String(r.locationRaw || ''));
+}
+
+function draftSubjectLine(r) {
+  const areas = draftAreasList(r);
+  const hasSales = areas.includes('Sales');
+  const hasAccounting = areas.includes('Accounting');
+  const hasLettings = areas.includes('Lettings Front End');
+  const hasPM = areas.includes('Property Management');
+  const company = draftFieldMissing(r.company) ? 'New Client' : r.company.trim();
+  let label;
+  if (hasAccounting && !hasSales && !hasLettings && !hasPM) label = 'Accounting Training Request';
+  else if (hasSales && !hasAccounting && !hasLettings && !hasPM) label = 'Sales Training Request';
+  else if ((hasLettings || hasPM) && !hasSales && !hasAccounting) label = 'Lettings & Property Management Training Request';
+  else if (draftIsHQ(r)) label = 'HQ Training Request';
+  else label = 'Training Request';
+  return `${label} – ${company}`;
+}
+
+// Builds the "From the request, I have:" bullet list — only fields with real data.
+function draftKnownBullets(r) {
+  const bullets = [];
+  if (!draftFieldMissing(r.trainingOption)) bullets.push(`Training type: ${r.trainingOption.trim()}`);
+  const areas = draftAreasList(r);
+  if (areas.length) {
+    let focusLine = `Training focus: ${areas.join(', ')}`;
+    if (!draftFieldMissing(r.features)) focusLine += ` (specifically: ${r.features.trim()})`;
+    bullets.push(focusLine);
+  }
+  if (!draftFieldMissing(r.teamFamiliarity)) {
+    const fam = r.teamFamiliarity.trim();
+    bullets.push(`Team experience level: ${/complete beginners/i.test(fam) ? 'New to Street — happy to keep things nice and clear and start from the basics' : fam}`);
+  }
+  if (!draftFieldMissing(r.attendeesRaw)) bullets.push(`Attendees: ${r.attendeesRaw.trim()}`);
+  if (!draftFieldMissing(r.preferredDate)) {
+    const d = new Date(r.preferredDate);
+    bullets.push(`Preferred date: ${isNaN(d.getTime()) ? r.preferredDate : fmtDate(d)}`);
+  }
+  const rawDays = r.rawRow ? r.rawRow[COL.TRAINING_DAYS] : null;
+  if (!draftFieldMissing(rawDays)) {
+    const days = parseInt(rawDays) || rawDays;
+    bullets.push(`Training days: ${days}${/^\d+$/.test(String(days)) ? (Number(days) === 1 ? ' day' : ' days') : ''}`);
+  }
+  const locationParts = [];
+  if (!draftFieldMissing(r.locationRaw)) locationParts.push(r.locationRaw.trim());
+  if (!draftFieldMissing(r.venueSetup)) locationParts.push(r.venueSetup.trim());
+  if (locationParts.length) bullets.push(`Location / venue: ${locationParts.join(' — ')}`);
+  if (!draftFieldMissing(r.goLiveDate)) {
+    const gd = new Date(r.goLiveDate);
+    bullets.push(`Target go-live: ${isNaN(gd.getTime()) ? r.goLiveDate : fmtDate(gd)}`);
+  }
+  if (!draftFieldMissing(r.priorities)) bullets.push(`Main priority: ${r.priorities.trim()}`);
+  if (!draftFieldMissing(r.followUp)) bullets.push(`Follow-up preference: ${r.followUp.trim()}`);
+  if (r.referredBy && r.referredBy.name) bullets.push(`Referred by: ${r.referredBy.name}${r.referredBy.team ? ' (' + r.referredBy.team + ')' : ''}`);
+  return bullets;
+}
+
+// Builds the dynamic "a couple of things to confirm" questions.
+function draftQuestions(r) {
+  const qs = [];
+  const areas = draftAreasList(r);
+  const isHQ = draftIsHQ(r);
+
+  if (draftFieldMissing(r.attendeesRaw)) {
+    qs.push('Could you send over the names (and email addresses, if possible) of everyone attending?');
+  }
+  if (draftFieldMissing(r.preferredDate)) {
+    qs.push('Do you have any preferred dates or weeks in mind for the session?');
+  }
+  if (isHQ) {
+    if (draftFieldMissing(r.venueSetup)) qs.push('As this will be at Street HQ, could you let me know if anyone has any dietary requirements?');
+  } else if (!draftFieldMissing(r.locationRaw)) {
+    if (draftFieldMissing(r.parking) && draftFieldMissing(r.venueSetup)) {
+      qs.push('As this will be at your office, could you send over any parking/access instructions, and let me know what room setup and screen/TV access will be available?');
+    }
+  }
+  const rawDays = r.rawRow ? r.rawRow[COL.TRAINING_DAYS] : null;
+  const dayCount = parseInt(rawDays) || 1;
+  if (areas.length > 1 && dayCount === 1) {
+    qs.push(`As we've only got one day booked in but a few areas to cover (${areas.join(', ')}), could you let me know which should take priority?`);
+  }
+  if (areas.includes('Accounting')) {
+    qs.push('For the accounting side, are there any specific workflows you\'d like us to focus on — e.g. reconciliation, ledgers, charges and fees, payment runs, statements, deposits, or reporting?');
+  }
+  if (areas.includes('Sales')) {
+    qs.push('For the sales side, are there any specific workflows you\'d like us to focus on — e.g. valuations, listings, offers, sales progression, property matching, enquiries, or reporting?');
+  }
+  if (areas.includes('Lettings Front End')) {
+    qs.push('For the lettings side, are there any specific workflows you\'d like us to focus on — e.g. applications, tenancy progression, offers, move-in workflows, or tenant communication?');
+  }
+  if (areas.includes('Property Management')) {
+    qs.push('For property management, are there any specific workflows you\'d like us to focus on — e.g. maintenance, inspections, compliance, rent reviews, ending tenancies, or landlord/tenant workflows?');
+  }
+  if (draftFieldMissing(r.priorities)) {
+    qs.push('Are there any specific workflows, features, or pain points you\'d like the trainer to focus on?');
+  }
+  return qs;
+}
+
+function draftPricingNote(r) {
+  const notes = (r.referredBy && r.referredBy.notes) ? r.referredBy.notes : '';
+  if (!draftFieldMissing(r.invoiceValue)) return `I can also confirm the training investment as ${fmtMoney(r.invoiceValue)}.`;
+  if (notes && /quoted/i.test(notes)) return `I can also see a note that you were quoted the following: "${notes.trim()}" — I'll confirm this once everything's booked in.`;
+  return '';
+}
+
+function buildDraftEmail(r) {
+  const firstName = draftFirstName(r.contact);
+  const company = draftFieldMissing(r.company) ? 'your business' : r.company.trim();
+  const bullets = draftKnownBullets(r);
+  const questions = draftQuestions(r);
+  const pricingNote = draftPricingNote(r);
+
+  let body = `Hi ${firstName},\n\nHope you're well.\n\n`;
+  body += `I've received the training request for ${company}, so I just wanted to confirm what I have so far and check a few details before we look to get this booked in.\n\n`;
+
+  if (bullets.length) {
+    body += `From the request, I have:\n\n`;
+    body += bullets.map(b => `- ${b}`).join('\n');
+    body += `\n\n`;
+  }
+
+  if (questions.length) {
+    body += `A couple of things to confirm, please:\n\n`;
+    body += questions.map(q => `- ${q}`).join('\n');
+    body += `\n\n`;
+  }
+
+  if (pricingNote) body += `${pricingNote}\n\n`;
+
+  body += `Once I have the above, I can check availability and come back to you with the next steps.\n\n`;
+  body += `Kind regards,\nAmy`;
+
+  return { subject: draftSubjectLine(r), body };
+}
+
+let currentDraftEmailRow = null;
+
+function openDraftEmailModal(idx) {
+  const r = allData.find(x => x._idx === idx);
+  if (!r) return;
+  currentDraftEmailRow = r;
+  const { subject, body } = buildDraftEmail(r);
+  document.getElementById('draftEmailCompany').textContent = getCompanyName(r);
+  document.getElementById('draftEmailSubject').value = subject;
+  document.getElementById('draftEmailBody').value = body;
+  document.getElementById('draftEmailOverlay').classList.add('open');
+}
+
+function closeDraftEmailModal() {
+  document.getElementById('draftEmailOverlay').classList.remove('open');
+  currentDraftEmailRow = null;
+}
+
+function draftCopyToClipboard(text, label) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(
+      () => showToast(label, 'success'),
+      () => showToast('Could not copy — please copy manually', 'error')
+    );
+  } else {
+    showToast('Could not copy — please copy manually', 'error');
+  }
+}
+
+function copyDraftSubject() {
+  draftCopyToClipboard(document.getElementById('draftEmailSubject').value, 'Subject copied to clipboard');
+}
+
+function copyDraftBody() {
+  draftCopyToClipboard(document.getElementById('draftEmailBody').value, 'Email copied to clipboard');
+}
+
+function copyDraftFull() {
+  const subject = document.getElementById('draftEmailSubject').value;
+  const body = document.getElementById('draftEmailBody').value;
+  draftCopyToClipboard(`Subject: ${subject}\n\n${body}`, 'Email copied to clipboard');
+}
+
 // ===================== UTILITY =====================
 function closeAllModals() {
-  ['assignOverlay','bookOverlay','editBookingOverlay','cancelOverlay','calEventOverlay','kpiModalOverlay','referralModalOverlay','reqOverlay'].forEach(id => {
+  ['assignOverlay','bookOverlay','editBookingOverlay','cancelOverlay','calEventOverlay','kpiModalOverlay','referralModalOverlay','reqOverlay','draftEmailOverlay'].forEach(id => {
     const el = document.getElementById(id); if(el) el.classList.remove('open');
   });
 }
