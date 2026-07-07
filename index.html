@@ -2345,13 +2345,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <select class="filter-select" id="filterTrainer" onchange="resetPageAndRender()"><option value="">All Trainers</option></select>
         <select class="filter-select" id="filterOption" onchange="resetPageAndRender()">
           <option value="">All Types</option>
-          <option value="Bespoke Branch Training">Bespoke Branch Training</option>
-          <option value="Bespoke HQ Training">Bespoke HQ Training</option>
-          <option value="Accounting Training &amp; Go-Live Support">Accounting Training &amp; Go-Live Support</option>
-          <option value="Remote Refresher Training">Remote Refresher Training</option>
-          <option value="Street Hosted Open Training Event">Street Hosted Open Training Event</option>
-          <option value="Self-Led Learning">Self-Led Learning</option>
-          <option value="Not Sure – Help Me Choose">Help Me Choose</option>
         </select>
         <input class="filter-input" id="filterDateFrom" type="date" onchange="resetPageAndRender()" style="width:130px;">
         <input class="filter-input" id="filterDateTo" type="date" onchange="resetPageAndRender()" style="width:130px;">
@@ -2423,13 +2416,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <label class="form-label required">Training Type</label>
         <select class="form-select" id="bookTrainingType" onchange="onBookTrainingTypeChange()">
           <option value="">— Select training type —</option>
-          <option value="Bespoke Branch Training">Bespoke Branch Training</option>
-          <option value="Bespoke HQ Training">Bespoke HQ Training</option>
-          <option value="Accounting Training &amp; Go-Live Support">Accounting Training &amp; Go-Live Support</option>
-          <option value="Remote Refresher Training">Remote Refresher Training</option>
-          <option value="Street Hosted Open Training Event">Street Hosted Open Training Event</option>
-          <option value="Self-Led Learning">Self-Led Learning</option>
-          <option value="Not Sure – Help Me Choose">Not Sure – Help Me Choose</option>
         </select>
         <div class="form-hint" id="bookTypeHint"></div>
       </div>
@@ -2902,14 +2888,8 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       </div>
       <div class="req-step-pane" id="reqStep3">
         <div class="req-step-title">Training Package &amp; Goals</div><div class="req-step-sub">Help us understand what you need so we can tailor the session.</div>
-        <div class="req-field"><label class="req-label required">What type of training are you interested in?</label><div class="req-check-group">
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Bespoke Branch Training"><div><label>Bespoke Branch Training</label><div class="req-check-sub">Personalised in-person training delivered at your office for your team. Available as a one or two-day session.</div></div></label>
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Bespoke HQ Training"><div><label>Bespoke HQ Training</label><div class="req-check-sub">Personalised in-person training delivered at Street HQ for your team. Available as a one or two-day session and charged per attendee.</div></div></label>
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Accounting Training &amp; Go-Live Support"><div><label>Accounting Training &amp; Go-Live Support</label><div class="req-check-sub">A personalised accounting-focused session to support training, go-live preparation, and hands-on accounting workflows. This can take place at your office or Street HQ.</div></div></label>
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Remote Refresher Training"><div><label>Remote Refresher Training</label><div class="req-check-sub">A live online session with a Street trainer to refresh knowledge, answer questions, or cover specific areas.</div></div></label>
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Street Hosted Open Training Event"><div><label>Street Hosted Open Training Event</label><div class="req-check-sub">A Street-hosted training day at Street HQ with a set agenda, open to multiple clients or attendees.</div></div></label>
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Self-Led Learning"><div><label>Self-Led Learning</label><div class="req-check-sub">Free access to on-demand video tutorials, Streetwise content, and Help Centre resources.</div></div></label>
-          <label class="req-check-item"><input type="radio" name="trainingType" value="Not Sure – Help Me Choose"><div><label>Not Sure &#8212; Help Me Choose</label><div class="req-check-sub">Not sure which option is best? The training team will review your request and recommend the right format.</div></div></label>
+        <div class="req-field"><label class="req-label required">What type of training are you interested in?</label><div class="req-check-group" id="reqTrainingTypeGroup">
+          <div style="font-size:12px;color:var(--text--dark--30);padding:6px 0;">Loading training options&#8230;</div>
         </div></div>
         <div class="req-field" style="margin-top:20px;"><label class="req-label required">How familiar is your team with Street?</label><div class="req-radio-inline"><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Complete Beginners"> Complete Beginners</label><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Mixed Experience"> Mixed Experience</label><label class="req-radio-chip"><input type="radio" name="teamFamiliarity" value="Experienced - need refresher"> Experienced &#8212; Need Refresher</label></div></div>
         <div class="req-field" style="margin-top:20px;"><label class="req-label required">Which areas of Street do you want to cover?</label><div class="req-check-group"><label class="req-check-item"><input type="checkbox" name="areas" value="Sales"> <label>Sales</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Lettings Front End"> <label>Lettings Front End</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Accounting"> <label>Accounting</label></label><label class="req-check-item"><input type="checkbox" name="areas" value="Property Management"> <label>Property Management</label></label></div></div>
@@ -3343,6 +3323,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadUsers();
   loadPermissions();
   loadDepartments();
+  loadTrainingTypes();
   showLogin();
   loadBankHolidays();
   loadIcsData();
@@ -3376,6 +3357,21 @@ const CANONICAL_USERS = [
 
 // ── User/Department/Permission state ────────────────────────────
 let departments = [];  // loaded from Departments sheet
+let trainingTypes = [];  // loaded from Training Type sheet (Active = TRUE only)
+
+// Sub-text shown under each Training Type option in the internal request
+// modal. Keyed by the exact "Training Type" value from the sheet. Add a
+// new type to the sheet and it still renders — just without a sub-line —
+// unless you also add an entry here.
+const TRAINING_TYPE_DESCRIPTIONS = {
+  'Bespoke Branch Training': 'Personalised in-person training delivered at your office for your team. Available as a one or two-day session.',
+  'Bespoke HQ Training': 'Personalised in-person training delivered at Street HQ for your team. Available as a one or two-day session and charged per attendee.',
+  'Accounting Training & Go-Live Support': 'A personalised accounting-focused session to support training, go-live preparation, and hands-on accounting workflows. This can take place at your office or Street HQ.',
+  'Remote Refresher Training': 'A live online session with a Street trainer to refresh knowledge, answer questions, or cover specific areas.',
+  'Street Hosted Open Training Event': 'A Street-hosted training day at Street HQ with a set agenda, open to multiple clients or attendees.',
+  'Self-Led Learning': 'Free access to on-demand video tutorials, Streetwise content, and Help Centre resources.',
+  'Not Sure – Help Me Choose': 'Not sure which option is best? The training team will review your request and recommend the right format.',
+};
 
 function loadUsers() {
   // Step 1: Populate immediately from cache or CANONICAL_USERS so the login
@@ -3488,6 +3484,52 @@ async function loadDepartments() {
   } catch(e) { console.warn('getDepartments failed — using cache', e.message); }
   const cached = JSON.parse(localStorage.getItem('dashDeptCache') || 'null');
   if (cached) { departments = cached; _populateDeptDropdowns(); }
+}
+
+// Load training types for use in the internal request modal + filter dropdown
+async function loadTrainingTypes() {
+  try {
+    const res  = await fetch(SCRIPT_URL + '?action=getTrainingTypes&t=' + Date.now(), { method:'GET', redirect:'follow' });
+    const json = await res.json();
+    if (json.success && json.trainingTypes && json.trainingTypes.length) {
+      trainingTypes = json.trainingTypes;
+      localStorage.setItem('dashTrainingTypesCache', JSON.stringify(trainingTypes));
+      _renderReqTrainingTypeOptions();
+      _renderBookTrainingTypeOptions();
+      return;
+    }
+  } catch(e) { console.warn('getTrainingTypes failed — using cache', e.message); }
+  const cached = JSON.parse(localStorage.getItem('dashTrainingTypesCache') || 'null');
+  trainingTypes = (cached && cached.length) ? cached : Object.keys(TRAINING_TYPE_DESCRIPTIONS);
+  _renderReqTrainingTypeOptions();
+  _renderBookTrainingTypeOptions();
+}
+
+// Populates the "Confirm Booking" modal's Training Type <select> from the
+// active Training Type sheet list. Falls back to TRAINING_META's keys if
+// the sheet hasn't loaded yet, so the dropdown is never empty.
+function _renderBookTrainingTypeOptions() {
+  const sel = document.getElementById('bookTrainingType');
+  if (!sel) return;
+  const prev = sel.value;
+  const list = (trainingTypes && trainingTypes.length) ? trainingTypes : Object.keys(TRAINING_META);
+  sel.innerHTML = '<option value="">— Select training type —</option>'
+    + list.map(name => `<option value="${escHtml(name)}">${escHtml(name)}</option>`).join('');
+  if (prev) sel.value = prev;
+}
+
+function _renderReqTrainingTypeOptions() {
+  const group = document.getElementById('reqTrainingTypeGroup');
+  if (!group) return;
+  const prevChecked = document.querySelector('[name="trainingType"]:checked')?.value || '';
+  group.innerHTML = trainingTypes.map(name => {
+    const sub = TRAINING_TYPE_DESCRIPTIONS[name] || '';
+    return `<label class="req-check-item"><input type="radio" name="trainingType" value="${escHtml(name)}"><div><label>${escHtml(name)}</label>${sub ? `<div class="req-check-sub">${escHtml(sub)}</div>` : ''}</div></label>`;
+  }).join('');
+  if (prevChecked) {
+    const input = group.querySelector(`input[value="${CSS.escape(prevChecked)}"]`);
+    if (input) input.checked = true;
+  }
 }
 
 function _populateDeptDropdowns() {
@@ -4505,6 +4547,18 @@ function populateFilterDropdowns() {
     const names = [...new Set(allData.map(r => r.trainer).filter(Boolean))].sort();
     names.forEach(n => trainerSel.innerHTML += `<option value="${n}">${n}</option>`);
     trainerSel.value = current;
+  }
+  // Training type filter — built from whatever actually appears on bookings,
+  // so historical/deactivated types remain filterable even after they're
+  // switched off in the "Training Type" sheet, and new active types show
+  // up automatically as soon as a booking uses them.
+  const optionSel = document.getElementById('filterOption');
+  if(optionSel) {
+    const current = optionSel.value;
+    optionSel.innerHTML = '<option value="">All Types</option>';
+    const types = [...new Set(allData.map(r => r.trainingOption).filter(Boolean))].sort();
+    types.forEach(t => optionSel.innerHTML += `<option value="${escHtml(t)}">${escHtml(t)}</option>`);
+    optionSel.value = current;
   }
 }
 
@@ -6694,7 +6748,11 @@ function openBookModal(idx) {
   const hintEl   = document.getElementById('bookTypeHint');
   const HELP_VAL = 'Not Sure – Help Me Choose';
   const currentType = (r.trainingOption || '').trim();
-  const isCurrentSelectable = currentType && currentType !== HELP_VAL && TRAINING_META[currentType];
+  // "Selectable" = has pricing/category metadata OR is an active type on the
+  // Training Type sheet. This lets brand-new sheet-driven types pre-fill
+  // correctly even before anyone's added a matching TRAINING_META entry.
+  const isCurrentSelectable = currentType && currentType !== HELP_VAL
+    && (!!TRAINING_META[currentType] || trainingTypes.includes(currentType));
   if(isCurrentSelectable) {
     typeEl.value = currentType;
     hintEl.style.color = '';
