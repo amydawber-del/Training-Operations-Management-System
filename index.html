@@ -1955,8 +1955,9 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
     <button class="nav-close" onclick="closeNav()">&#10005;</button>
   </div>
   <div class="nav-section-label">Dashboard</div>
-  <a href="#" class="nav-item" onclick="closeNav()"><span class="nav-item-icon">&#128202;</span> Training Dashboard</a>
+  <a href="#" class="nav-item" onclick="closeNav();showDashboardSection();"><span class="nav-item-icon">&#128202;</span> Training Dashboard</a>
   <a href="#monthlyReportingSection" class="nav-item" onclick="closeNav();jumpToMonthlyReporting();return false;"><span class="nav-item-icon">&#128197;</span> Monthly Reporting</a>
+  <a href="#" class="nav-item" onclick="closeNav();showCalculatorSection();return false;"><span class="nav-item-icon">&#128176;</span> Training Cost Calculator</a>
   <div class="nav-divider"></div>
   <div class="nav-section-label">Resources</div>
   <a href="https://docs.google.com/spreadsheets/d/1r_HODYw7kIMpWm8TNcXwJmZQuk0lsjVR6SEl2teytJM/edit" class="nav-item" target="_blank"><span class="nav-item-icon">&#128196;</span> Bookings Spreadsheet</a>
@@ -2068,6 +2069,8 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
 <div class="loading-bar" id="loadingBar" style="display:none;"></div>
 
 <main class="main" id="mainContent" style="display:none;">
+
+<div id="dashboardSection">
 
   <!-- UNASSIGNED REQUESTS -->
   <div id="unassignedSection" style="margin-bottom:24px;">
@@ -2390,6 +2393,602 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       </div>
     </div>
   </div>
+
+</div><!-- /dashboardSection -->
+
+  <!-- ===================== TRAINING COST CALCULATOR ===================== -->
+  <div id="calculatorSection" style="display:none;">
+
+    <style>
+      /* Scoped to #calculatorSection only — reuses the dashboard's own
+         --s-* design tokens, so nothing here leaks out and nothing from
+         the dashboard's global button/input/card rules leaks in. */
+      #calculatorSection .calc-page{ max-width:1080px; margin:0 auto; }
+
+      #calculatorSection .calc-page-header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+      #calculatorSection .calc-brand-mark{ width:36px; height:36px; border-radius:8px; background:var(--s-purple); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:16px; flex-shrink:0; font-family:'DM Sans',sans-serif; }
+      #calculatorSection .calc-title-group{ display:flex; align-items:center; gap:12px; }
+      #calculatorSection .calc-subtitle{ color:var(--s-text-muted); font-size:13px; margin:2px 0 0; font-family:'DM Sans',sans-serif; }
+
+      #calculatorSection .calc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+      @media (max-width:840px){ #calculatorSection .calc-grid{ grid-template-columns:1fr; } }
+
+      #calculatorSection .calc-card{ background:#fff; border:1px solid var(--s-border); border-radius:var(--s-r-md); padding:24px; box-shadow:var(--s-shadow-sm); }
+      #calculatorSection .calc-card h2{ font-size:16px; margin:0 0 16px; color:var(--s-text-primary); font-weight:650; font-family:'DM Sans',sans-serif; }
+
+      #calculatorSection .calc-field{ margin-bottom:16px; }
+      #calculatorSection .calc-field.calc-hidden{ display:none; }
+      #calculatorSection .calc-field label{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; color:var(--s-text-muted); margin-bottom:6px; font-family:'DM Sans',sans-serif; }
+      #calculatorSection .calc-optional-tag{ font-weight:400; text-transform:none; letter-spacing:0; color:var(--s-text-faint); }
+      #calculatorSection .calc-field select,
+      #calculatorSection .calc-field input[type="text"],
+      #calculatorSection .calc-field input[type="number"],
+      #calculatorSection .calc-field textarea{ width:100%; padding:10px 12px; border:1.5px solid var(--s-border-mid); border-radius:var(--s-r-sm); font-family:'DM Sans',sans-serif; font-size:14px; color:var(--s-text-primary); background:#fff; transition:border-color 0.15s, box-shadow 0.15s; }
+      #calculatorSection .calc-field select:focus,
+      #calculatorSection .calc-field input:focus,
+      #calculatorSection .calc-field textarea:focus{ outline:none; border-color:var(--s-purple); box-shadow:0 0 0 3px rgba(91,75,231,0.12); }
+      #calculatorSection .calc-field textarea{ resize:vertical; min-height:70px; }
+      #calculatorSection .calc-field-hint{ font-size:12px; color:var(--s-text-muted); margin-top:4px; font-family:'DM Sans',sans-serif; }
+
+      #calculatorSection .calc-button-row{ display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; }
+      #calculatorSection .calc-button-row button,
+      #calculatorSection .calc-btn-copy{ font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; border-radius:var(--s-r-sm); padding:11px 18px; cursor:pointer; border:1px solid transparent; transition:all 0.15s ease; }
+      #calculatorSection .calc-btn-primary{ background:var(--s-purple); color:#fff; box-shadow:0 2px 6px rgba(91,75,231,0.28); }
+      #calculatorSection .calc-btn-primary:hover{ background:var(--s-purple-hover); box-shadow:0 4px 12px rgba(91,75,231,0.38); transform:translateY(-1px); }
+      #calculatorSection .calc-btn-secondary{ background:#fff; color:var(--s-text-secondary); border-color:var(--s-border-mid); }
+      #calculatorSection .calc-btn-secondary:hover{ background:var(--s-surface); border-color:var(--s-purple); color:var(--s-purple); }
+      #calculatorSection .calc-btn-copy{ background:var(--s-navy); color:#fff; font-size:12px; padding:9px 14px; }
+      #calculatorSection .calc-btn-copy:hover{ background:var(--s-navy-mid); }
+      #calculatorSection .calc-btn-copy.calc-copied{ background:var(--s-green); color:#fff; }
+
+      #calculatorSection .calc-validation-message{ background:var(--s-red-bg); border:1px solid #FECACA; color:var(--s-red); border-radius:var(--s-r-sm); padding:12px 14px; font-size:13px; margin-bottom:16px; display:none; font-family:'DM Sans',sans-serif; }
+      #calculatorSection .calc-validation-message.calc-show{ display:block; }
+      #calculatorSection .calc-validation-message ul{ margin:6px 0 0; padding-left:18px; }
+
+      #calculatorSection #calcOutputCard{ display:none; }
+      #calculatorSection #calcOutputCard.calc-show{ display:block; }
+
+      #calculatorSection .calc-result-row{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--s-border); font-size:13px; font-family:'DM Sans',sans-serif; }
+      #calculatorSection .calc-result-row .calc-label{ color:var(--s-text-muted); font-weight:400; }
+      #calculatorSection .calc-result-row .calc-value{ color:var(--s-text-primary); font-weight:700; text-align:right; }
+
+      #calculatorSection .calc-totals-block{ margin-top:14px; background:var(--s-surface); border-radius:var(--s-r-sm); padding:14px 16px; }
+      #calculatorSection .calc-totals-block .calc-result-row{ border-bottom:1px solid var(--s-border-mid); }
+      #calculatorSection .calc-totals-block .calc-result-row:last-child{ border-bottom:none; }
+
+      #calculatorSection .calc-total-highlight{ margin-top:12px; background:var(--s-green-bg); border:1px solid #A7F3D0; border-radius:var(--s-r-sm); padding:16px; display:flex; justify-content:space-between; align-items:center; }
+      #calculatorSection .calc-total-highlight .calc-label{ font-size:13px; font-weight:700; color:var(--s-text-primary); font-family:'DM Sans',sans-serif; }
+      #calculatorSection .calc-total-highlight .calc-amount{ font-size:24px; font-weight:700; color:var(--s-green); letter-spacing:-0.5px; font-family:'DM Sans',sans-serif; }
+
+      #calculatorSection .calc-custom-quote-banner{ margin-top:12px; background:var(--s-amber-bg); border:1px solid #FDE68A; border-radius:var(--s-r-sm); padding:14px 16px; font-weight:600; color:var(--s-amber); font-family:'DM Sans',sans-serif; font-size:13px; }
+
+      #calculatorSection .calc-pricing-notes{ margin-top:16px; padding:12px 14px; background:var(--s-lavender); border-radius:var(--s-r-sm); font-size:12px; color:var(--s-text-secondary); font-family:'DM Sans',sans-serif; }
+      #calculatorSection .calc-pricing-notes ul{ margin:6px 0 0; padding-left:18px; }
+      #calculatorSection .calc-pricing-notes li{ margin-bottom:4px; }
+
+      #calculatorSection .calc-discount-badge{ display:inline-block; background:var(--s-lavender-mid); color:var(--s-purple); font-size:11px; font-weight:700; border-radius:var(--s-r-sm); padding:2px 8px; margin-left:6px; font-family:'DM Sans',sans-serif; }
+
+      #calculatorSection .calc-email-block{ margin-top:20px; }
+      #calculatorSection .calc-email-block-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+      #calculatorSection .calc-email-block-header h2{ margin:0; }
+      #calculatorSection #calcEmailOutput{ width:100%; min-height:280px; padding:10px 12px; border:1.5px solid var(--s-border-mid); border-radius:var(--s-r-sm); font-family:'DM Sans',sans-serif; font-size:13px; line-height:19px; white-space:pre-wrap; color:var(--s-text-primary); }
+
+      #calculatorSection .calc-empty-state{ color:var(--s-text-muted); font-size:13px; text-align:center; padding:40px 16px; font-family:'DM Sans',sans-serif; }
+    </style>
+
+    <div class="calc-page">
+      <div class="calc-page-header">
+        <div class="calc-title-group">
+          <div class="calc-brand-mark">S</div>
+          <div>
+            <div class="section-title" style="margin-bottom:2px;">&#128176; Product Training Cost Calculator</div>
+            <p class="calc-subtitle">Internal tool &mdash; quickly cost up client training and generate a breakdown email.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="calc-grid">
+
+        <!-- ============ INPUT CARD ============ -->
+        <div class="calc-card">
+          <h2>Training details</h2>
+
+          <div id="calcValidationMessage" class="calc-validation-message">
+            <strong>Please fix the following before calculating:</strong>
+            <ul id="calcValidationList"></ul>
+          </div>
+
+          <form id="calcForm" novalidate>
+
+            <div class="calc-field">
+              <label for="calcTrainingType">Training type</label>
+              <select id="calcTrainingType">
+                <option value="branch">Bespoke Branch Training</option>
+                <option value="hq">Bespoke HQ Training</option>
+                <option value="accounting">Accounting Training &amp; Go-Live Support</option>
+                <option value="remote">Remote Refresher Training</option>
+                <option value="open-event">Street Hosted Open Training Event</option>
+                <option value="self-led">Self-Led Learning</option>
+              </select>
+            </div>
+
+            <div class="calc-field" id="calc-field-days">
+              <label for="calcDays">Number of days</label>
+              <input type="number" id="calcDays" min="1" step="1" placeholder="e.g. 1">
+            </div>
+
+            <div class="calc-field" id="calc-field-hours">
+              <label for="calcHours">Number of hours</label>
+              <input type="number" id="calcHours" min="0.5" step="0.5" placeholder="e.g. 2.5">
+              <div class="calc-field-hint">Decimal hours are fine &mdash; e.g. 1.5 or 3.5.</div>
+            </div>
+
+            <div class="calc-field" id="calc-field-attendees">
+              <label for="calcAttendees">Number of attendees</label>
+              <input type="number" id="calcAttendees" min="1" step="1" placeholder="e.g. 4">
+            </div>
+
+            <div class="calc-field" id="calc-field-ticketPrice">
+              <label for="calcTicketPrice">Ticket price per person (&#163;, ex VAT)</label>
+              <input type="number" id="calcTicketPrice" min="0.01" step="0.01" placeholder="e.g. 250">
+            </div>
+
+            <div class="calc-field">
+              <label for="calcClientName">Client / company name <span class="calc-optional-tag">(optional)</span></label>
+              <input type="text" id="calcClientName" placeholder="e.g. Gascoigne Halman">
+            </div>
+
+            <div class="calc-field">
+              <label for="calcNotes">Notes <span class="calc-optional-tag">(optional)</span></label>
+              <textarea id="calcNotes" placeholder="Anything worth flagging for this quote..."></textarea>
+            </div>
+
+            <div class="calc-button-row">
+              <button type="submit" class="calc-btn-primary">Calculate</button>
+              <button type="button" id="calcResetBtn" class="calc-btn-secondary">Clear / reset</button>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- ============ OUTPUT CARD ============ -->
+        <div id="calcOutputWrapper">
+          <div class="calc-card" id="calcEmptyCard">
+            <div class="calc-empty-state">Fill in the details and hit Calculate to see the cost breakdown here.</div>
+          </div>
+
+          <div class="calc-card" id="calcOutputCard">
+            <h2>Cost breakdown</h2>
+            <div id="calcResultRows"></div>
+
+            <div id="calcCustomQuoteBanner" class="calc-custom-quote-banner" style="display:none;"></div>
+
+            <div id="calcTotalsBlock" class="calc-totals-block">
+              <div class="calc-result-row"><span class="calc-label">Net cost</span><span class="calc-value" id="calcResultNet">&#163;0.00</span></div>
+              <div class="calc-result-row"><span class="calc-label">VAT (20%)</span><span class="calc-value" id="calcResultVat">&#163;0.00</span></div>
+            </div>
+            <div id="calcTotalHighlight" class="calc-total-highlight">
+              <span class="calc-label">Total including VAT</span>
+              <span class="calc-amount" id="calcResultTotal">&#163;0.00</span>
+            </div>
+
+            <div class="calc-pricing-notes">
+              <strong>Pricing notes</strong>
+              <ul id="calcPricingNotesList"></ul>
+            </div>
+
+            <div class="calc-email-block">
+              <div class="calc-email-block-header">
+                <h2>Client breakdown email</h2>
+                <button type="button" id="calcCopyEmailBtn" class="calc-btn-copy">Copy email</button>
+              </div>
+              <textarea id="calcEmailOutput" readonly></textarea>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /calculatorSection -->
+
+
+<script>
+/* ============================================================
+   TRAINING COST CALCULATOR — scoped module
+   All ids are calc-prefixed; wrapped in an IIFE so nothing here
+   touches the dashboard's own globals.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const PRICES = {
+    vatRate: 0.20,
+    branch: { day1: 1100, day2: 1850 },
+    hq: { standardRate: 220, discountedRate: 120, discountThreshold: 3 },
+    accounting: { perDay: 1000 },
+    remote: { perHour: 90 },
+  };
+
+  const TRAINING_CONFIG = {
+    branch: {
+      name: "Bespoke Branch Training",
+      show:     { days: true,  hours: false, attendees: true,  ticketPrice: false },
+      required: { days: true,  hours: false, attendees: true,  ticketPrice: false },
+      attendeesAffectPrice: false,
+      calculate(inputs){
+        if (inputs.days === 1) return { net: PRICES.branch.day1, notes: ["Fixed fee for 1 day of bespoke branch training."] };
+        if (inputs.days === 2) return { net: PRICES.branch.day2, notes: ["Fixed fee for 2 days of bespoke branch training."] };
+        return { customQuote: true, message: "Custom quote required for more than 2 days." };
+      }
+    },
+    hq: {
+      name: "Bespoke HQ Training",
+      show:     { days: true,  hours: false, attendees: true,  ticketPrice: false },
+      required: { days: true,  hours: false, attendees: true,  ticketPrice: false },
+      attendeesAffectPrice: true,
+      calculate(inputs){
+        const standardCount = Math.min(inputs.attendees, PRICES.hq.discountThreshold);
+        const discountedCount = Math.max(inputs.attendees - PRICES.hq.discountThreshold, 0);
+        const perDay = (standardCount * PRICES.hq.standardRate) + (discountedCount * PRICES.hq.discountedRate);
+        const net = perDay * inputs.days;
+        const notes = [`${standardCount} attendee(s) charged at ${formatCurrency(PRICES.hq.standardRate)} per person, per day.`];
+        if (discountedCount > 0) notes.push(`${discountedCount} additional attendee(s) above 3 charged at a discounted ${formatCurrency(PRICES.hq.discountedRate)} per person, per day (£100 off the standard rate).`);
+        notes.push(`Per-day cost: ${formatCurrency(perDay)} × ${inputs.days} day(s) = ${formatCurrency(net)}.`);
+        return { net, notes, discountApplied: discountedCount > 0 };
+      }
+    },
+    accounting: {
+      name: "Accounting Training & Go-Live Support",
+      show:     { days: true,  hours: false, attendees: true,  ticketPrice: false },
+      required: { days: true,  hours: false, attendees: true,  ticketPrice: false },
+      attendeesAffectPrice: false,
+      calculate(inputs){
+        const net = PRICES.accounting.perDay * inputs.days;
+        return { net, notes: [
+          `${formatCurrency(PRICES.accounting.perDay)} per session/day × ${inputs.days} day(s).`,
+          "This is a personalised, accounting-focused session to support training, go-live preparation and hands-on accounting workflows."
+        ]};
+      }
+    },
+    remote: {
+      name: "Remote Refresher Training",
+      show:     { days: false, hours: true,  attendees: true,  ticketPrice: false },
+      required: { days: false, hours: true,  attendees: true,  ticketPrice: false },
+      attendeesAffectPrice: false,
+      calculate(inputs){
+        const net = inputs.hours * PRICES.remote.perHour;
+        return { net, notes: [`Charged hourly at ${formatCurrency(PRICES.remote.perHour)} per hour × ${inputs.hours} hour(s).`] };
+      }
+    },
+    "open-event": {
+      name: "Street Hosted Open Training Event",
+      show:     { days: false, hours: false, attendees: true,  ticketPrice: true },
+      required: { days: false, hours: false, attendees: true,  ticketPrice: true },
+      attendeesAffectPrice: true,
+      calculate(inputs){
+        const net = inputs.ticketPrice * inputs.attendees;
+        return { net, notes: [`${formatCurrency(inputs.ticketPrice)} ticket price per person × ${inputs.attendees} attendee(s).`] };
+      }
+    },
+    "self-led": {
+      name: "Self-Led Learning",
+      show:     { days: false, hours: false, attendees: true,  ticketPrice: false },
+      required: { days: false, hours: false, attendees: false, ticketPrice: false },
+      attendeesAffectPrice: false,
+      calculate(){
+        return { net: 0, included: true, notes: [
+          "Included in setup fee / free access — no charge applies.",
+          "Client has on-demand access to video tutorials, Streetwise content and Help Centre resources."
+        ]};
+      }
+    }
+  };
+
+  function formatCurrency(amount){
+    return "£" + Number(amount).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getEl(id){ return document.getElementById(id); }
+
+  let els = null;
+  function bindEls(){
+    els = {
+      form: getEl("calcForm"),
+      trainingType: getEl("calcTrainingType"),
+      days: getEl("calcDays"),
+      hours: getEl("calcHours"),
+      attendees: getEl("calcAttendees"),
+      ticketPrice: getEl("calcTicketPrice"),
+      clientName: getEl("calcClientName"),
+      notes: getEl("calcNotes"),
+      resetBtn: getEl("calcResetBtn"),
+      validationMessage: getEl("calcValidationMessage"),
+      validationList: getEl("calcValidationList"),
+      emptyCard: getEl("calcEmptyCard"),
+      outputCard: getEl("calcOutputCard"),
+      resultRows: getEl("calcResultRows"),
+      customQuoteBanner: getEl("calcCustomQuoteBanner"),
+      totalsBlock: getEl("calcTotalsBlock"),
+      totalHighlight: getEl("calcTotalHighlight"),
+      resultNet: getEl("calcResultNet"),
+      resultVat: getEl("calcResultVat"),
+      resultTotal: getEl("calcResultTotal"),
+      pricingNotesList: getEl("calcPricingNotesList"),
+      emailOutput: getEl("calcEmailOutput"),
+      copyEmailBtn: getEl("calcCopyEmailBtn"),
+      fieldDays: getEl("calc-field-days"),
+      fieldHours: getEl("calc-field-hours"),
+      fieldAttendees: getEl("calc-field-attendees"),
+      fieldTicketPrice: getEl("calc-field-ticketPrice"),
+    };
+  }
+
+  function updateFieldVisibility(){
+    const config = TRAINING_CONFIG[els.trainingType.value];
+    els.fieldDays.classList.toggle("calc-hidden", !config.show.days);
+    els.fieldHours.classList.toggle("calc-hidden", !config.show.hours);
+    els.fieldAttendees.classList.toggle("calc-hidden", !config.show.attendees);
+    els.fieldTicketPrice.classList.toggle("calc-hidden", !config.show.ticketPrice);
+
+    const attendeesHintId = "calc-attendees-hint";
+    let hint = els.fieldAttendees.querySelector("." + attendeesHintId);
+    if (config.show.attendees && !config.attendeesAffectPrice) {
+      if (!hint) {
+        hint = document.createElement("div");
+        hint.className = "calc-field-hint " + attendeesHintId;
+        els.fieldAttendees.appendChild(hint);
+      }
+      hint.textContent = "Attendee count doesn't affect the price for this training type.";
+    } else if (hint) {
+      hint.remove();
+    }
+  }
+
+  function validate(config){
+    const errors = [];
+    const inputs = {};
+
+    if (config.show.days) {
+      const days = parseInt(els.days.value, 10);
+      if (config.required.days && (isNaN(days) || days < 1)) errors.push("Number of days must be at least 1.");
+      else inputs.days = isNaN(days) ? 0 : days;
+    }
+    if (config.show.hours) {
+      const hours = parseFloat(els.hours.value);
+      if (config.required.hours && (isNaN(hours) || hours <= 0)) errors.push("Number of hours must be greater than 0.");
+      else inputs.hours = isNaN(hours) ? 0 : hours;
+    }
+    if (config.show.attendees) {
+      const attendees = parseInt(els.attendees.value, 10);
+      if (config.required.attendees && (isNaN(attendees) || attendees < 1)) errors.push("Number of attendees must be at least 1.");
+      else inputs.attendees = isNaN(attendees) ? 0 : attendees;
+    }
+    if (config.show.ticketPrice) {
+      const ticketPrice = parseFloat(els.ticketPrice.value);
+      if (config.required.ticketPrice && (isNaN(ticketPrice) || ticketPrice <= 0)) errors.push("Ticket price per person must be greater than 0.");
+      else inputs.ticketPrice = isNaN(ticketPrice) ? 0 : ticketPrice;
+    }
+
+    ["days", "hours", "attendees", "ticketPrice"].forEach(function(key){
+      if (inputs[key] !== undefined && inputs[key] < 0) errors.push("Values cannot be negative.");
+    });
+
+    return { errors, inputs };
+  }
+
+  function showValidationErrors(errors){
+    els.validationList.innerHTML = "";
+    errors.forEach(function(err){
+      const li = document.createElement("li");
+      li.textContent = err;
+      els.validationList.appendChild(li);
+    });
+    els.validationMessage.classList.add("calc-show");
+  }
+
+  function clearValidationErrors(){
+    els.validationMessage.classList.remove("calc-show");
+    els.validationList.innerHTML = "";
+  }
+
+  function addResultRow(label, value){
+    const row = document.createElement("div");
+    row.className = "calc-result-row";
+    row.innerHTML = '<span class="calc-label">' + label + '</span><span class="calc-value">' + value + '</span>';
+    els.resultRows.appendChild(row);
+  }
+
+  function renderResults(config, inputs, result){
+    els.resultRows.innerHTML = "";
+    els.pricingNotesList.innerHTML = "";
+    els.customQuoteBanner.style.display = "none";
+
+    addResultRow("Training type", config.name);
+    if (config.show.days) addResultRow("Number of days", inputs.days);
+    if (config.show.hours) addResultRow("Number of hours", inputs.hours);
+    if (config.show.attendees && inputs.attendees) addResultRow("Number of attendees", inputs.attendees);
+    if (config.show.ticketPrice) addResultRow("Ticket price per person", formatCurrency(inputs.ticketPrice));
+
+    if (result.customQuote) {
+      els.customQuoteBanner.style.display = "block";
+      els.customQuoteBanner.textContent = result.message;
+      els.totalsBlock.style.display = "none";
+      els.totalHighlight.style.display = "none";
+    } else {
+      const net = result.net;
+      const vat = net * PRICES.vatRate;
+      const total = net + vat;
+      els.totalsBlock.style.display = "block";
+      els.totalHighlight.style.display = "flex";
+      els.resultNet.textContent = formatCurrency(net);
+      els.resultVat.textContent = formatCurrency(vat);
+      els.resultTotal.textContent = formatCurrency(total);
+    }
+
+    (result.notes || []).forEach(function(note){
+      const li = document.createElement("li");
+      li.textContent = note;
+      els.pricingNotesList.appendChild(li);
+    });
+
+    if (result.discountApplied) {
+      const badge = document.createElement("span");
+      badge.className = "calc-discount-badge";
+      badge.textContent = "Discount applied";
+      els.pricingNotesList.firstChild && els.pricingNotesList.appendChild(badge);
+    }
+
+    if (result.included) {
+      const li = document.createElement("li");
+      li.textContent = "Output shows £0.00 across net, VAT and total — included in setup fee.";
+      els.pricingNotesList.appendChild(li);
+    }
+  }
+
+  function generateEmail(config, inputs, result){
+    const companyName = els.clientName.value.trim() || "there";
+    const greeting = els.clientName.value.trim() ? (companyName + " team") : "there";
+    let lines = [];
+    lines.push("Subject: Training Cost Breakdown – " + (els.clientName.value.trim() || "[Company Name]"));
+    lines.push("");
+    lines.push("Hi " + greeting + ",");
+    lines.push("");
+    lines.push("Thanks for your interest in " + config.name + ".");
+    lines.push("");
+    lines.push("Based on the details provided, the cost breakdown would be:");
+    lines.push("");
+    lines.push("Training type: " + config.name);
+    if (config.show.days) lines.push("Number of days: " + inputs.days);
+    if (config.show.hours) lines.push("Number of hours: " + inputs.hours);
+    if (config.show.attendees && inputs.attendees) lines.push("Number of attendees: " + inputs.attendees);
+    if (config.show.ticketPrice) lines.push("Ticket price per person: " + formatCurrency(inputs.ticketPrice));
+    lines.push("");
+
+    if (result.customQuote) {
+      lines.push(result.message);
+    } else {
+      const net = result.net;
+      const vat = net * PRICES.vatRate;
+      const total = net + vat;
+      lines.push("Net cost: " + formatCurrency(net));
+      lines.push("VAT: " + formatCurrency(vat));
+      lines.push("Total including VAT: " + formatCurrency(total));
+    }
+    lines.push("");
+
+    if (result.discountApplied) lines.push("Note: a discount has been applied — the first 3 attendees are charged at the standard rate, with £100 per person, per day off for each additional attendee from the 4th onwards.");
+    if (config.key === "remote" || els.trainingType.value === "remote") lines.push("Note: this session is charged hourly at " + formatCurrency(PRICES.remote.perHour) + " per hour.");
+    if (els.trainingType.value === "open-event") lines.push("Note: pricing is based on the ticket price per person entered above.");
+    if (result.included) lines.push("Note: this is included in the setup fee at no additional cost. Your team will have access to on-demand video tutorials, Streetwise content and Help Centre resources.");
+
+    if (els.notes.value.trim()) {
+      lines.push("");
+      lines.push("Additional notes: " + els.notes.value.trim());
+    }
+
+    lines.push("");
+    lines.push("Please let me know if you'd like to go ahead or if you have any questions.");
+    lines.push("");
+    lines.push("Kind regards,");
+    lines.push("Amy");
+
+    return lines.join("\n");
+  }
+
+  function fallbackCopy(text, onSuccess){
+    els.emailOutput.focus();
+    els.emailOutput.select();
+    try { document.execCommand("copy"); onSuccess(); } catch (err) { /* silent fail */ }
+  }
+
+  let _wired = false;
+  function wireEvents(){
+    if (_wired) return;
+    _wired = true;
+
+    els.trainingType.addEventListener("change", updateFieldVisibility);
+
+    els.form.addEventListener("submit", function(e){
+      e.preventDefault();
+      const config = TRAINING_CONFIG[els.trainingType.value];
+      const { errors, inputs } = validate(config);
+
+      if (errors.length > 0) {
+        showValidationErrors(errors);
+        els.emptyCard.style.display = "block";
+        els.outputCard.classList.remove("calc-show");
+        return;
+      }
+      clearValidationErrors();
+
+      const result = config.calculate(inputs);
+      renderResults(config, inputs, result);
+      els.emailOutput.value = generateEmail(config, inputs, result);
+
+      els.emptyCard.style.display = "none";
+      els.outputCard.classList.add("calc-show");
+      els.outputCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    els.resetBtn.addEventListener("click", function(){
+      els.form.reset();
+      els.trainingType.value = "branch";
+      updateFieldVisibility();
+      clearValidationErrors();
+      els.outputCard.classList.remove("calc-show");
+      els.emptyCard.style.display = "block";
+    });
+
+    els.copyEmailBtn.addEventListener("click", function(){
+      const text = els.emailOutput.value;
+      function showCopied(){
+        els.copyEmailBtn.textContent = "Copied!";
+        els.copyEmailBtn.classList.add("calc-copied");
+        setTimeout(function(){
+          els.copyEmailBtn.textContent = "Copy email";
+          els.copyEmailBtn.classList.remove("calc-copied");
+        }, 1800);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(showCopied).catch(function(){ fallbackCopy(text, showCopied); });
+      } else {
+        fallbackCopy(text, showCopied);
+      }
+    });
+  }
+
+  let _initialised = false;
+  function initCalculator(){
+    if (_initialised) { return; }
+    bindEls();
+    if (!els.form) return; // section not in DOM yet
+    _initialised = true;
+    wireEvents();
+    updateFieldVisibility();
+  }
+
+  // Exposed so the dashboard's nav can lazily init the calculator the
+  // first time its section is shown, and switch between the two views.
+  window.showCalculatorSection = function () {
+    const dash = document.getElementById('dashboardSection');
+    const calc = document.getElementById('calculatorSection');
+    if (dash) dash.style.display = 'none';
+    if (calc) calc.style.display = 'block';
+    initCalculator();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  window.showDashboardSection = function () {
+    const dash = document.getElementById('dashboardSection');
+    const calc = document.getElementById('calculatorSection');
+    if (calc) calc.style.display = 'none';
+    if (dash) dash.style.display = 'block';
+  };
+
+}());
+</script>
+
 
 </main>
 
@@ -9424,6 +10023,7 @@ function toggleMonthlyReporting() {
 }
 
 function jumpToMonthlyReporting() {
+  if (typeof window.showDashboardSection === 'function') window.showDashboardSection();
   const el = document.getElementById('monthlyReportingSection');
   if(!el) return;
   // Make sure it's expanded
