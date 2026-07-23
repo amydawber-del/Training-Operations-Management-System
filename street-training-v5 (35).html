@@ -1,0 +1,2965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Street Training Planner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #5B4BE7;
+      --purple-light: #F0EFFE;
+      --purple-border: #C9C4F8;
+      --navy: #12152A;
+      --dark: #1C1F3A;
+      --mid: #4A4E72;
+      --muted: #8E93BB;
+      --soft: #C5C8E0;
+      --bg: #F6F7FB;
+      --white: #FFFFFF;
+      --border: #E4E6F2;
+      --green: #1B6B42;
+      --green-bg: #EDFAF4;
+      --amber: #9A5000;
+      --amber-bg: #FFF3E0;
+      --font-display: 'Fraunces', Georgia, serif;
+      --font-body: 'DM Sans', system-ui, sans-serif;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--dark);
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root { height: 100%; }
+    input, textarea, select, button { font-family: var(--font-body); }
+    ::placeholder { color: var(--soft); }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--purple-border); border-radius: 8px; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .anim-fade-up { animation: fadeUp 0.4s ease both; }
+    .anim-fade-in { animation: fadeIn 0.3s ease both; }
+
+    .wizard-input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 15px;
+      color: var(--dark);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .wizard-input:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(91,75,231,0.10);
+    }
+    .wizard-input::placeholder { color: var(--soft); }
+    textarea.wizard-input { resize: vertical; min-height: 96px; line-height: 1.6; }
+
+    .pill-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--mid);
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .pill-select:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-light); }
+    .pill-select.active { border-color: var(--purple); background: var(--purple); color: #fff; }
+
+    .area-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 24px 20px;
+      border-radius: 16px;
+      border: 2px solid var(--border);
+      background: var(--white);
+      cursor: pointer;
+      transition: all 0.18s;
+      text-align: center;
+      min-height: 110px;
+      user-select: none;
+    }
+    .area-card:hover { border-color: var(--purple); box-shadow: 0 4px 20px rgba(91,75,231,0.10); transform: translateY(-2px); }
+    .area-card.active { border-color: var(--purple); background: var(--purple-light); }
+    .area-card.active .area-icon { background: var(--purple); color: #fff; }
+
+    .area-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      transition: all 0.18s;
+    }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px;
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 4px 16px rgba(91,75,231,0.25);
+    }
+    .btn-primary:hover { background: #4938D4; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(91,75,231,0.35); }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 12px 20px;
+      background: transparent;
+      color: var(--mid);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-ghost:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-light); }
+
+    .time-input {
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      color: var(--dark);
+      background: var(--white);
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100px;
+    }
+    .time-input:focus { border-color: var(--purple); }
+
+    .topic-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 6px;
+      cursor: grab;
+      transition: all 0.15s;
+    }
+    .topic-row:hover { border-color: var(--purple-border); box-shadow: 0 2px 8px rgba(91,75,231,0.08); }
+    .topic-row.dragging { opacity: 0.5; cursor: grabbing; }
+
+    /* ── Section group reorder ──────────────────────────────────────────────── */
+    .section-group {
+      border-radius: 10px;
+      transition: opacity 0.15s, box-shadow 0.15s;
+    }
+    .section-group.dragging-section { opacity: 0.4; }
+    .section-group.drop-above { box-shadow: 0 -3px 0 var(--purple); }
+    .section-group.drop-below { box-shadow: 0 3px 0 var(--purple); }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      cursor: grab;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .section-header:hover { filter: brightness(0.97); }
+    .section-header.dragging { cursor: grabbing; }
+    .section-handle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      opacity: 0.45;
+    }
+    .section-arrows {
+      display: inline-flex;
+      gap: 2px;
+      margin-left: 6px;
+    }
+    .section-arrow-btn {
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: inherit;
+      opacity: 0.55;
+      padding: 0;
+      transition: all 0.12s;
+    }
+    .section-arrow-btn:hover:not(:disabled) { opacity: 1; background: rgba(0,0,0,0.06); }
+    .section-arrow-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+    .ref-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .ref-value { font-size: 13px; color: var(--dark); font-weight: 500; line-height: 1.4; }
+
+    .step-num {
+      display: inline-flex;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--purple-light);
+      color: var(--purple);
+      flex-shrink: 0;
+    }
+    .step-num.done { background: var(--purple); color: #fff; }
+    .step-num.active { background: var(--purple); color: #fff; box-shadow: 0 0 0 3px rgba(91,75,231,0.15); }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple), #8B7EF8);
+      border-radius: 99px;
+      transition: width 0.4s cubic-bezier(.25,.8,.25,1);
+    }
+
+    .client-card {
+      background: var(--white);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .client-card:hover { border-color: var(--purple-border); }
+
+    label.field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .day-pill {
+      padding: 8px 18px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--mid);
+    }
+    .day-pill:hover, .day-pill.active { border-color: var(--purple); background: var(--purple); color: #fff; }
+
+    .success-check {
+      width: 64px; height: 64px;
+      background: var(--green-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    /* ── RUN-SHEET PREVIEW (operational agenda) ─────────────────────────── */
+    .run-sheet {
+      background: var(--white);
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      overflow: hidden;
+      font-feature-settings: "tnum" 1, "ss01" 1;
+    }
+    .rs-day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, #FAFAFE 0%, #F6F7FB 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .rs-day-title {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 17px;
+      color: var(--navy);
+      letter-spacing: -0.01em;
+    }
+    .rs-day-meta {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--purple);
+      font-variant-numeric: tabular-nums;
+    }
+    .rs-pacing {
+      display: flex;
+      gap: 14px;
+      padding: 10px 18px;
+      background: var(--purple-light);
+      border-bottom: 1px solid var(--purple-border);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--purple);
+      letter-spacing: 0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .rs-pacing strong { color: var(--navy); font-weight: 700; }
+    .rs-blocks { padding: 0; }
+    .rs-section {
+      position: relative;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rs-section:last-child { border-bottom: 0; }
+    .rs-section::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--rs-accent, var(--purple));
+    }
+    .rs-sec-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .rs-sec-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--rs-accent-dark, var(--navy));
+    }
+    .rs-sec-emoji {
+      font-size: 14px;
+      line-height: 1;
+    }
+    .rs-sec-time {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--mid);
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .rs-sec-time .dot { color: var(--soft); margin: 0 6px; }
+    .rs-sec-time .dur { color: var(--rs-accent-dark, var(--purple)); }
+    .rs-items {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .rs-item {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      align-items: baseline;
+      gap: 12px;
+      padding: 4px 0 4px 6px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .rs-item-time {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--rs-accent-dark, var(--purple));
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .rs-item-title { color: var(--dark); font-weight: 500; }
+    .rs-item-dur {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .rs-item-note {
+      grid-column: 2 / 4;
+      font-size: 11.5px;
+      color: var(--mid);
+      background: var(--bg);
+      border-radius: 6px;
+      padding: 5px 9px;
+      margin-top: 3px;
+      line-height: 1.45;
+      border-left: 2px solid var(--purple-border);
+    }
+    .rs-break {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 18px;
+      background: repeating-linear-gradient(
+        135deg,
+        #F6F7FB,
+        #F6F7FB 6px,
+        #FFFFFF 6px,
+        #FFFFFF 12px
+      );
+      border-top: 1px dashed var(--border);
+      border-bottom: 1px dashed var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+    }
+    .rs-break-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-style: normal;
+      font-size: 11px;
+      color: var(--mid);
+    }
+    .rs-break.lunch { background: #FFF8E6; border-color: #F0DBA0; color: #7A5A00; }
+    .rs-break.lunch .rs-break-label { color: #7A5A00; }
+    .rs-break.qa { background: var(--purple-light); border-color: var(--purple-border); color: var(--purple); }
+    .rs-break.qa .rs-break-label { color: var(--purple); }
+    .rs-break-time {
+      font-size: 11.5px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: inherit;
+    }
+    .rs-empty {
+      padding: 50px 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Sticky timeline rail (Step 4) */
+    .rs-rail {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+
+    /* Day tabs (preview) */
+    .rs-day-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .rs-day-tab {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--white);
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--mid);
+      transition: all 0.15s;
+      font-family: var(--font-body);
+    }
+    .rs-day-tab:hover { border-color: var(--purple-border); color: var(--purple); }
+    .rs-day-tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+    @media print {
+      body { background: #fff; }
+      .run-sheet { border: 1px solid #999; box-shadow: none; }
+      .rs-section, .rs-day-header { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+// ─── ENDPOINTS ───────────────────────────────────────────────────────────────
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzCvBhFSPyyoaVsui0DCxvGQQa0V7e_UCJ5LfqvcSysTHTFlNRcx4ewlET5TyouJ0ZYow/exec";
+const AGENDA_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjm9SZ2nPEl_4H5Y2djxFxEzBo0nMJzKErQ4ppm_kHFOifE_tCV7z01K00K4XdReMON9VwvRaCx2fH/pub?gid=1813598208&single=true&output=csv";
+
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+const MOCK_ROWS = [
+  {
+    company: "Ashtons Estate Agents",
+    status: "Confirmed",
+    trainer: "James Walker",
+    trainingDate: "12th March 2025",
+    goLive: "1st April 2025",
+    stakeholder: "Sarah Mitchell",
+    stakeholderPhone: "07712 334 891",
+    email: "sarah@ashtons.co.uk",
+    attendees: "8 — mixed sales and lettings team, 2 senior negotiators, 1 office manager",
+    familiar: "Some familiarity — been using for 6 months but not consistently",
+    trainingType: "Full system refresh + lettings workflow deep dive",
+    areas: "Lettings, Accounting, Reporting",
+    features: "Invoice allocation, aged debt reporting, split landlord setup",
+    priorities: "1. Lettings progression clarity\n2. Accounting confidence\n3. Reporting for management",
+    followUp: "Email recap + 30-day follow-up call",
+    location: "Ashtons Head Office, 14 High Street, Guildford, GU1 3AA",
+    parking: "NCP car park across the road — ask reception for a permit",
+    venueSetup: "Yes — projector and screen confirmed",
+    anything: "Team has had previous negative experience with onboarding — wants a fresh start",
+    invoice: "1200",
+  },
+  {
+    company: "Paramount Properties",
+    status: "Pending",
+    trainer: "Laura Chen",
+    trainingDate: "19th March 2025",
+    goLive: "15th April 2025",
+    stakeholder: "David Park",
+    stakeholderPhone: "07800 112 445",
+    email: "david@paramountprop.co.uk",
+    attendees: "5 — sales team only",
+    familiar: "New users — just migrated from competitor CRM",
+    trainingType: "Full onboarding — sales focus",
+    areas: "Sales, Pipeline Management, Applicants",
+    features: "Offer management, sales memo generation, solicitor chasing",
+    priorities: "1. Sales pipeline confidence\n2. Offer workflow\n3. Applicant management",
+    followUp: "Dedicated Slack channel for 30 days",
+    location: "Street HQ",
+    parking: "—",
+    venueSetup: "Confirmed",
+    anything: "Team is very motivated — came from a poor CRM experience",
+    invoice: "950",
+  },
+  {
+    company: "Newton Fallowell Oadby",
+    status: "Booked",
+    trainer: "Amy Dawber",
+    trainingDate: "5 May 2026",
+    goLive: "27 April 2026",
+    stakeholder: "Remi Mowla",
+    stakeholderPhone: "0116 3660990",
+    email: "remi.mowla@newtonfallowell.co.uk",
+    attendees: "4 Sales Attendees. 3 Lettings Attendees. 1 Accounting",
+    familiar: "Complete Beginners",
+    trainingType: "Face-to-Face Training",
+    areas: "Sales, Lettings Front End, Accounting, Property Management",
+    features: "",
+    priorities: "",
+    followUp: "",
+    location: "Newton Fallowell Estate Agency, Oadby, Leicester - 2 Brooksby Dr, Oadby, Leicester LE2 5AA",
+    parking: "",
+    venueSetup: "",
+    anything: "",
+    invoice: "£3,850.00",
+    trainingDays: 4,
+    splitDates: ["2026-05-05","2026-05-06","2026-05-12","2026-05-13"],
+    _trainingDays: 4,
+    _dayDates: ["2026-05-05","2026-05-06","2026-05-12","2026-05-13",""],
+  },
+];
+
+// ─── AGENDA ENGINE ─────────────────────────────────────────────────────────────
+// Each topic has: id, title, dur (minutes), phase (position weight for ordering),
+// section (visual grouping label), area (parent area key), note (optional trainer tip)
+//
+// OPERATIONAL FLOW PRINCIPLES:
+//  • Settings & platform foundation always come first — you can't train a workflow
+//    on a system that isn't configured correctly.
+//  • Within each department, topics follow the natural working-day sequence an
+//    agent would encounter: instruction → marketing → enquiry → qualification →
+//    offer → progression → completion / renewal / end-of-tenancy.
+//  • Accounting flows from go-live setup through money-in → allocation →
+//    money-out → statements → reporting → compliance. Never jump mid-flow.
+//  • Property Management bridges naturally after Lettings (tenancy exists → PM begins).
+//  • Reporting & Integrations are always end-of-day / end-of-training topics —
+//    they are "power user" layers on top of core workflows.
+//  • Q&A slots are injected automatically after heavy sections.
+//  • Morning = foundational/setup; afternoon = operational depth/advanced.
+
+const TOPIC_LIBRARY = {
+
+  // ── PLATFORM FOUNDATIONS (always first, always together) ──────────────────
+  "pf1": { title: "Welcome, agenda overview & training objectives", dur: 15, phase: 1, section: "Opening", area: "Settings & Core Platform", note: "Set expectations. Confirm go-live date and key outcomes." },
+  "pf2": { title: "Platform orientation — navigating Street confidently", dur: 15, phase: 2, section: "Opening", area: "Settings & Core Platform", note: "Mouse tour. Where everything lives. Common shortcuts." },
+  "pf3": { title: "Company & branch general settings", dur: 20, phase: 3, section: "Platform Setup", area: "Settings & Core Platform", note: "Get this right before anything else — it underpins everything." },
+  "pf4": { title: "User accounts, roles & permissions", dur: 20, phase: 4, section: "Platform Setup", area: "Settings & Core Platform", note: "Who can see what. Admin vs negotiator vs read-only." },
+  "pf5": { title: "Brand templates & email notification preferences", dur: 20, phase: 5, section: "Platform Setup", area: "Settings & Core Platform", note: "Branded comms from day one. Don't skip." },
+  "pf6": { title: "Portal feeds — Rightmove, Zoopla, OnTheMarket", dur: 20, phase: 6, section: "Platform Setup", area: "Settings & Core Platform", note: "Critical for agents. Confirm feeds are live before training." },
+  "pf7": { title: "Calendar, working hours & diary management", dur: 15, phase: 7, section: "Platform Setup", area: "Settings & Core Platform", note: "Shared diaries, out-of-office, bank holidays." },
+  "pf8": { title: "StreetWise video library & self-serve training resources", dur: 10, phase: 8, section: "Platform Setup", area: "Settings & Core Platform", note: "Show this early — reduces post-training support calls." },
+
+  // ── PROPERTIES (shared foundation for both Sales and Lettings) ────────────
+  "prop1": { title: "Adding a property — the single source of truth", dur: 20, phase: 10, section: "Properties", area: "Settings & Core Platform", note: "Core concept: one property record feeds everything." },
+  "prop2": { title: "Property descriptions, photos & media management", dur: 20, phase: 11, section: "Properties", area: "Settings & Core Platform", note: "Get them practising on a real property if possible." },
+  "prop3": { title: "Listing performance, sole agency tracking & portal preview", dur: 15, phase: 12, section: "Properties", area: "Settings & Core Platform", note: "Agents love seeing live Rightmove previews." },
+  "prop4": { title: "Property activity stream — full audit trail", dur: 10, phase: 13, section: "Properties", area: "Settings & Core Platform", note: "Builds confidence in the platform as a single record." },
+
+  // ── VALUATIONS & VIEWINGS (pre-instruction funnel, shared) ────────────────
+  "vv1": { title: "Booking valuations & the online booking widget", dur: 20, phase: 15, section: "Valuations", area: "Settings & Core Platform", note: "Show the widget live. High wow-factor for clients." },
+  "vv2": { title: "Valuation workflow, follow-up & converting to instruction", dur: 20, phase: 16, section: "Valuations", area: "Settings & Core Platform" },
+  "vv3": { title: "Sending a branded valuation report", dur: 15, phase: 17, section: "Valuations", area: "Settings & Core Platform", note: "One of the strongest first impressions Street makes." },
+  "vv4": { title: "Booking viewings — manual, online self-booking & feedback", dur: 20, phase: 18, section: "Viewings", area: "Settings & Core Platform" },
+  "vv5": { title: "Viewing notifications, additional questions & applicant auto-match", dur: 15, phase: 19, section: "Viewings", area: "Settings & Core Platform" },
+
+  // ── SALES WORKFLOW (instruction → applicants → offer → progression → done) ─
+  "sa1": { title: "Sales applicants — creation, criteria & auto-matching", dur: 25, phase: 21, section: "Sales Pipeline", area: "Sales", note: "Demo auto-match from a just-added valuation. Logical flow." },
+  "sa2": { title: "AML identity checks for vendors & buyers", dur: 15, phase: 22, section: "Sales Pipeline", area: "Sales", note: "Legal requirement — flag this clearly. Show the workflow end-to-end." },
+  "sa3": { title: "Sales pipeline — overview, statuses & board view", dur: 20, phase: 23, section: "Sales Pipeline", area: "Sales", note: "The bird's-eye view every negotiator needs every morning." },
+  "sa4": { title: "Recording & managing offers", dur: 20, phase: 24, section: "Offers & Sales Progression", area: "Sales", note: "Walk through: offer in → vendor notified → counter offer → accepted." },
+  "sa5": { title: "Memorandum of sale — generation & distribution", dur: 20, phase: 25, section: "Offers & Sales Progression", area: "Sales", note: "One click from accepted offer. Solicitors get it instantly." },
+  "sa6": { title: "Sales progression milestones, checklists & solicitor chasing", dur: 25, phase: 26, section: "Offers & Sales Progression", area: "Sales" },
+  "sa7": { title: "Buyer Ready — completing and notifying the sales progressor", dur: 15, phase: 27, section: "Offers & Sales Progression", area: "Sales" },
+  "sa8": { title: "Completing a sale & updating the correspondence address", dur: 15, phase: 28, section: "Offers & Sales Progression", area: "Sales", note: "The satisfying end of the pipeline. Walk it through as a full story." },
+  "sa9": { title: "Vendor & buyer consumer app — what the client sees", dur: 15, phase: 29, section: "Client Experience", area: "Sales", note: "Show the app from the vendor's perspective. Strong differentiator." },
+
+  // ── Q&A BREAK (auto-injected after Sales or after Lettings heavy sections) ─
+  // These are not injected as topics — the engine inserts them by position.
+
+  // ── LETTINGS WORKFLOW (applicant → offer → application → tenancy → renewal) ─
+  "l1":  { title: "Lettings applicants — registering, criteria & auto-matching", dur: 20, phase: 31, section: "Lettings Applications", area: "Lettings", note: "Mirrors Sales applicant flow — good bridge if Sales was covered first." },
+  "l2":  { title: "Lettings AML checks for applicants", dur: 15, phase: 32, section: "Lettings Applications", area: "Lettings" },
+  "l3":  { title: "Lettings offers & progressing to full application", dur: 20, phase: 33, section: "Lettings Applications", area: "Lettings" },
+  "l4":  { title: "Full lettings application workflow — all checklist tiles", dur: 35, phase: 34, section: "Lettings Applications", area: "Lettings", note: "This is the core. Allow time for questions after each tile." },
+  "l5":  { title: "Creating the tenancy record & assigning a service level", dur: 20, phase: 35, section: "Tenancy Management", area: "Lettings", note: "Service level drives what accounting features are visible — crucial." },
+  "l6":  { title: "Tenancy table, pipeline filters & upcoming renewals view", dur: 15, phase: 36, section: "Tenancy Management", area: "Lettings" },
+  "l7":  { title: "Processing renewals — fixed term & periodic tenancies", dur: 20, phase: 37, section: "Tenancy Management", area: "Lettings" },
+  "l8":  { title: "Move-out workflow, deposit handling & end of tenancy", dur: 25, phase: 38, section: "Tenancy Management", area: "Lettings", note: "Emotionally significant for teams. Common pain point — give it time." },
+  "l9":  { title: "Landlord & tenant consumer app — what your clients see", dur: 20, phase: 39, section: "Client Experience", area: "Lettings", note: "Powerful differentiator. Landlords love the payment breakdown view." },
+
+  // ── PROPERTY MANAGEMENT (flows naturally after tenancy creation) ──────────
+  "pm1": { title: "Logging maintenance requests — manual entry & tenant app", dur: 20, phase: 42, section: "Maintenance", area: "Property Management", note: "Start with the tenant app submission — it's the most common trigger." },
+  "pm2": { title: "Assigning jobs to contractors & quote management", dur: 15, phase: 43, section: "Maintenance", area: "Property Management" },
+  "pm3": { title: "Landlord approval workflow & available balance view", dur: 15, phase: 44, section: "Maintenance", area: "Property Management", note: "Show the 'available balance' — prevents overspending on repairs." },
+  "pm4": { title: "Raising maintenance invoices & outstanding invoices view", dur: 20, phase: 45, section: "Maintenance", area: "Property Management" },
+  "pm5": { title: "Property inspections — scheduling, recording & uploading reports", dur: 20, phase: 46, section: "Compliance & Certificates", area: "Property Management" },
+  "pm6": { title: "Certificates (EPC, Gas Safety, EICR) — upload, expiry filters & exempt properties", dur: 20, phase: 47, section: "Compliance & Certificates", area: "Property Management", note: "Compliance risk is real. Flag the expiry filter as a daily-use feature." },
+  "pm7": { title: "Property keys — check in/out, expected return dates & overdue view", dur: 15, phase: 48, section: "Compliance & Certificates", area: "Property Management" },
+
+  // ── ACCOUNTING (always runs as a complete, unbroken workflow block) ────────
+  "ac0": { title: "Accounting go-live preparation & settings overview", dur: 25, phase: 51, section: "Accounting Setup", area: "Accounting", note: "Do NOT skip this. A misconfigured account causes months of problems." },
+  "ac1": { title: "Invoice settings — numbering sequences, VAT & templates", dur: 20, phase: 52, section: "Accounting Setup", area: "Accounting" },
+  "ac2": { title: "Receipting rent — bank transfer, DD & part payments", dur: 25, phase: 53, section: "Money In", area: "Accounting", note: "This is the first thing they'll do on go-live day. Practise it." },
+  "ac3": { title: "Allocating payments & the Tenancies in Credit table", dur: 20, phase: 54, section: "Money In", area: "Accounting" },
+  "ac4": { title: "Suspense account — unidentified funds & resolution workflow", dur: 20, phase: 55, section: "Money In", area: "Accounting", note: "Common panic point. Normalise it — show the resolution flow clearly." },
+  "ac5": { title: "Charges & recurring charges — setup and management", dur: 20, phase: 56, section: "Money Out", area: "Accounting" },
+  "ac6": { title: "Payments to Make — deductions, payment advice & zero-value PA", dur: 25, phase: 57, section: "Money Out", area: "Accounting", note: "The most complex section. Break it into: calculate → approve → pay." },
+  "ac7": { title: "Contractor payments & outstanding invoices view", dur: 15, phase: 58, section: "Money Out", area: "Accounting" },
+  "ac8": { title: "Tenancy ledger — reading it & generating PDF statements", dur: 15, phase: 59, section: "Statements & Reporting", area: "Accounting", note: "Show them how to read a ledger. It's not intuitive at first." },
+  "ac9": { title: "Monthly landlord statements — schedule, notes & attachments", dur: 20, phase: 60, section: "Statements & Reporting", area: "Accounting" },
+  "ac10":{ title: "Arrears management — identifying, charging & chasing", dur: 20, phase: 61, section: "Statements & Reporting", area: "Accounting", note: "High value for lettings PM teams. Show the arrears table filters." },
+  "ac11":{ title: "Reconciliation & client account balance reporting", dur: 20, phase: 62, section: "Statements & Reporting", area: "Accounting" },
+  "ac12":{ title: "NRL Tax — setup, quarterly allocation & HMRC certificates", dur: 20, phase: 63, section: "Advanced Accounting", area: "Accounting", note: "Only include if they have non-resident landlords. Flag as optional otherwise." },
+  "ac13":{ title: "Dormant funds management", dur: 15, phase: 64, section: "Advanced Accounting", area: "Accounting" },
+  "ac14":{ title: "Client payments — requesting & tracking from within Street", dur: 15, phase: 65, section: "Advanced Accounting", area: "Accounting" },
+
+  // ── REPORTING (end-of-day, always after core workflows) ───────────────────
+  "rp1": { title: "Reporting dashboard overview — your daily command centre", dur: 20, phase: 71, section: "Reporting", area: "Reporting & Analytics", note: "Position as: 'now you know how to do everything, here's how to track it.'" },
+  "rp2": { title: "Key performance metrics — pipeline, conversion & activity", dur: 20, phase: 72, section: "Reporting", area: "Reporting & Analytics" },
+  "rp3": { title: "Accounting & financial reports for management", dur: 20, phase: 73, section: "Reporting", area: "Reporting & Analytics", note: "If accounting was covered, show these reports as the output layer." },
+  "rp4": { title: "Scheduling & exporting reports", dur: 15, phase: 74, section: "Reporting", area: "Reporting & Analytics" },
+
+  // ── INTEGRATIONS (always last — power-user layer) ─────────────────────────
+  "in1": { title: "Integrations overview & the partner platform", dur: 20, phase: 81, section: "Integrations", area: "Integrations" },
+  "in2": { title: "Agent Connect — WhatsApp messaging & telephony", dur: 20, phase: 82, section: "Integrations", area: "Integrations", note: "Huge engagement spike. Demo a real WhatsApp send if possible." },
+  "in3": { title: "Goodlord & referencing platform integration", dur: 20, phase: 83, section: "Integrations", area: "Integrations" },
+  "in4": { title: "Smart Compliance AML integration", dur: 15, phase: 84, section: "Integrations", area: "Integrations" },
+  "in5": { title: "Street Insights — market data & competitor analysis", dur: 15, phase: 85, section: "Integrations", area: "Integrations" },
+};
+
+// ── AREA → TOPIC MEMBERSHIP ─────────────────────────────────────────────────
+// Each area declares which topics it contributes, in operational order.
+// Topics shared between areas (pf*, prop*, vv*) are always included when
+// either area is selected — but deduplication prevents double-counting.
+
+const AREA_TOPIC_KEYS = {
+  "Settings & Core Platform": ["pf1","pf2","pf3","pf4","pf5","pf6","pf7","pf8","prop1","prop2","prop3","prop4","vv1","vv2","vv3","vv4","vv5"],
+  "Sales":                    ["pf1","pf2","pf3","pf4","pf5","pf6","prop1","prop2","prop3","vv1","vv2","vv3","vv4","vv5","sa1","sa2","sa3","sa4","sa5","sa6","sa7","sa8","sa9"],
+  "Lettings":                 ["pf1","pf2","pf3","pf4","pf5","pf6","prop1","prop2","vv4","vv5","l1","l2","l3","l4","l5","l6","l7","l8","l9"],
+  "Property Management":      ["pm1","pm2","pm3","pm4","pm5","pm6","pm7"],
+  "Accounting":               ["ac0","ac1","ac2","ac3","ac4","ac5","ac6","ac7","ac8","ac9","ac10","ac11","ac12","ac13","ac14"],
+  "Reporting & Analytics":    ["rp1","rp2","rp3","rp4"],
+  "Integrations":             ["in1","in2","in3","in4","in5"],
+};
+
+// Q&A / consolidation slots injected by the engine (not user-editable topics)
+const QA_SLOT = (id, label="Q&A & open discussion", dur=15) => ({
+  id, title: label, dur, phase: 0, section: "Q&A", area: "QA", isQA: true,
+});
+const BREAK_SLOT = (id, label="Short comfort break", dur=10) => ({
+  id, title: label, dur, phase: 0, section: "Break", area: "Break", isBreak: true,
+});
+
+// ── SMART AGENDA BUILDER ─────────────────────────────────────────────────────
+// Input:  selectedAreas (string[]), familiarity, days, startTimes, endTimes, lunchStart, lunchDur
+// Output: { day1: Topic[], day2: Topic[], ..., warnings: string[], totalMins: number }
+
+function buildSmartAgenda({ selectedAreas, familiarity, days, structure }) {
+  const areas = selectedAreas || [];
+  if (areas.length === 0) return { days: {}, warnings: [], totalMins: 0 };
+
+  // 1. Collect all topic keys, deduplicating shared ones (e.g. pf1 appears in Sales + Lettings)
+  const seen = new Set();
+  const allKeys = [];
+  areas.forEach(area => {
+    (AREA_TOPIC_KEYS[area] || []).forEach(k => {
+      if (!seen.has(k)) { seen.add(k); allKeys.push(k); }
+    });
+  });
+
+  // 2. Fetch topic objects, filter by area selection, sort by phase
+  let allTopics = allKeys
+    .map(k => TOPIC_LIBRARY[k] ? { id: k, ...TOPIC_LIBRARY[k] } : null)
+    .filter(Boolean)
+    .filter(t => {
+      // Only include if the topic's area is selected, or if it's a shared foundation
+      const sharedAreas = ["Settings & Core Platform"];
+      return areas.includes(t.area) || sharedAreas.includes(t.area) ||
+        (areas.some(a => ["Sales","Lettings"].includes(a)) && ["pf1","pf2","prop1","prop2","prop3","vv1","vv4"].includes(t.id));
+    })
+    .sort((a, b) => a.phase - b.phase);
+
+  // 3. For Power Users / Regular Users: remove slow foundational items
+  if (familiarity === "Power users") {
+    allTopics = allTopics.filter(t => !["pf1","pf2","pf7","pf8","prop4","vv5"].includes(t.id));
+    allTopics = allTopics.map(t => ({ ...t, dur: Math.round(t.dur * 0.8) }));
+  } else if (familiarity === "Regular users") {
+    allTopics = allTopics.filter(t => !["pf8"].includes(t.id));
+    allTopics = allTopics.map(t => ({ ...t, dur: Math.round(t.dur * 0.9) }));
+  }
+
+  // 4. Calculate available minutes per day
+  const dayMins = Array.from({ length: days }).map((_, i) => {
+    const times = structure.dayTimes?.[i] || {};
+    const start = times.start || "10:30";
+    const end   = times.end   || "16:30";
+    const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+    const lunchMins = parseInt(structure.lunchDur) || 30;
+    return Math.max(0, toMin(end) - toMin(start) - lunchMins);
+  });
+
+  // Reserve ~10% of each day for Q&A / breaks naturally
+  const usableMins = dayMins.map(m => Math.floor(m * 0.88));
+  const totalUsable = usableMins.reduce((a,b) => a+b, 0);
+  const totalContent = allTopics.reduce((a, t) => a + t.dur, 0);
+
+  const warnings = [];
+  if (totalContent > totalUsable) {
+    const overBy = totalContent - totalUsable;
+    const extraDaysNeeded = Math.ceil(overBy / (usableMins[0] || 300));
+    warnings.push(`⚠️ The selected areas contain approximately ${totalContent} minutes of content — ${overBy} minutes more than fits in ${days} training day${days>1?"s":""}. Consider adding ${extraDaysNeeded} more day${extraDaysNeeded>1?"s":""}, or deselecting lower-priority areas.`);
+
+    // Suggest deprioritisation based on phase order (highest phase = most optional)
+    const optional = [...allTopics].sort((a,b) => b.phase - a.phase).slice(0, 3);
+    if (optional.length) {
+      warnings.push(`💡 To reduce load, consider removing: ${optional.map(t => `"${t.title}" (${t.dur} min)`).join(", ")}.`);
+    }
+  }
+
+  // 5. Assign topics to days, keeping sections unbroken where possible
+  const dayTopics = Array.from({ length: days }, () => []);
+  let dayIdx = 0;
+  let dayUsed = 0;
+
+  // Group topics by section to avoid splitting them mid-section where possible
+  const sections = [];
+  let curSec = null;
+  allTopics.forEach(t => {
+    const secKey = t.area + ":::" + t.section;
+    if (!curSec || curSec.key !== secKey) {
+      curSec = { key: secKey, area: t.area, section: t.section, topics: [] };
+      sections.push(curSec);
+    }
+    curSec.topics.push(t);
+  });
+
+  sections.forEach(sec => {
+    const secMins = sec.topics.reduce((a,t) => a+t.dur, 0);
+    // If section fits in current day, add it; otherwise start a new day
+    const remaining = usableMins[dayIdx] - dayUsed;
+    if (dayIdx < days - 1 && remaining < secMins * 0.5) {
+      // Less than half the section fits — push to next day
+      dayIdx = Math.min(dayIdx + 1, days - 1);
+      dayUsed = 0;
+    }
+    sec.topics.forEach(t => {
+      dayTopics[dayIdx].push(t);
+      dayUsed += t.dur;
+      if (dayUsed >= usableMins[dayIdx] && dayIdx < days - 1) {
+        dayIdx++;
+        dayUsed = 0;
+      }
+    });
+  });
+
+  // 6. Inject Q&A slots naturally after heavy sections
+  const HEAVY_SECTION_THRESHOLD = 40; // minutes
+  const finalDays = {};
+  dayTopics.forEach((topics, di) => {
+    const enriched = [];
+    let sectionMins = 0;
+    let prevSection = null;
+    let qaCount = 0;
+
+    topics.forEach((t, ti) => {
+      const sectionChanged = prevSection && prevSection !== (t.area + t.section);
+      if (sectionChanged && sectionMins >= HEAVY_SECTION_THRESHOLD) {
+        enriched.push(QA_SLOT(`qa_${di}_${qaCount++}`, "Q&A — questions on what we've covered", 10));
+        sectionMins = 0;
+      }
+      if (sectionChanged) sectionMins = 0;
+      enriched.push(t);
+      sectionMins += t.dur;
+      prevSection = t.area + t.section;
+    });
+
+    // Add closing Q&A to every day
+    enriched.push(QA_SLOT(`qa_${di}_close`, "Open Q&A, recap & agreed next steps", 20));
+    finalDays[`day${di+1}`] = enriched;
+  });
+
+  return {
+    days: finalDays,
+    warnings,
+    totalMins: totalContent,
+    totalUsable,
+  };
+}
+
+const FAMILIARITY_LEVELS = ["New to Street", "Some familiarity", "Regular users", "Power users"];
+
+const STEPS = [
+  { id: "client",    title: "Client Overview",    icon: "👤" },
+  { id: "structure", title: "Training Structure",  icon: "📅" },
+  { id: "areas",     title: "Areas to Cover",      icon: "🗂️" },
+  { id: "agenda",    title: "Agenda Builder",      icon: "⏱️" },
+  { id: "logistics", title: "Logistics",            icon: "📍" },
+  { id: "generate",  title: "Generate Document",   icon: "✨" },
+];
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map(line => {
+    const cols = []; let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+    cols.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (cols[i] || "").replace(/^"|"$/g, ""); });
+    return obj;
+  });
+}
+
+function addMinutes(timeStr, mins) {
+  if (!timeStr) return "";
+  const [h, m] = timeStr.split(":").map(Number);
+  const total = h * 60 + m + mins;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function buildTimeline(topics, startTime, lunchStart, lunchDur) {
+  const items = [];
+  let cur = startTime || "10:30";
+  const ls = lunchStart || "12:30";
+  let lunchInserted = false;
+
+  for (const t of topics) {
+    if (!lunchInserted && cur >= ls) {
+      items.push({ id: "lunch", title: "Lunch break", dur: parseInt(lunchDur) || 30, time: cur, isLunch: true });
+      cur = addMinutes(cur, parseInt(lunchDur) || 30);
+      lunchInserted = true;
+    }
+    items.push({ ...t, time: cur });
+    cur = addMinutes(cur, t.dur || 30);
+  }
+  if (!lunchInserted) {
+    items.push({ id: "lunch", title: "Lunch break", dur: parseInt(lunchDur) || 30, time: cur, isLunch: true });
+  }
+  return items;
+}
+
+// ─── RUN-SHEET HELPERS (shared between on-screen preview + DOCX) ───────────────
+// Section emojis used in the on-screen preview. The DOCX generator has its own
+// copy because it lives inside generateDocx().
+const SECTION_EMOJI_MAP = {
+  "Opening":                   "▶",
+  "Platform Setup":            "⚙",
+  "Properties":                "🏠",
+  "Valuations":                "💷",
+  "Viewings":                  "🚪",
+  "Sales Pipeline":            "📈",
+  "Offers & Sales Progression":"🤝",
+  "Client Experience":         "📱",
+  "Lettings Applications":     "🔑",
+  "Tenancy Management":        "📋",
+  "Maintenance":               "🔧",
+  "Compliance & Certificates": "✅",
+  "Accounting Setup":          "💼",
+  "Money In":                  "💰",
+  "Money Out":                 "💸",
+  "Statements & Reporting":    "📊",
+  "Advanced Accounting":       "📑",
+  "Reporting":                 "📊",
+  "Integrations":              "🔗",
+  "General":                   "▪",
+  "Custom":                    "📌",
+};
+
+function fmtDuration(mins) {
+  if (!mins) return "0m";
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// Group timeline items into operational blocks. Section blocks contain consecutive
+// same-section items; lunch / break / Q&A items become their own standalone blocks.
+function groupTimelineBlocks(timeline) {
+  const blocks = [];
+  let curSection = null;
+  timeline.forEach(item => {
+    if (item.isLunch) {
+      blocks.push({ type: "lunch", label: "Lunch break", startTime: item.time, dur: item.dur || 30 });
+      curSection = null; return;
+    }
+    if (item.isBreak) {
+      blocks.push({ type: "break", label: item.title || "Short comfort break", startTime: item.time, dur: item.dur || 10 });
+      curSection = null; return;
+    }
+    if (item.isQA) {
+      blocks.push({ type: "qa", label: item.title || "Q&A", startTime: item.time, dur: item.dur || 15 });
+      curSection = null; return;
+    }
+    const sec = item.section || "General";
+    if (curSection && curSection.label === sec) {
+      curSection.items.push(item);
+      curSection.dur += (item.dur || 0);
+    } else {
+      curSection = { type: "section", label: sec, startTime: item.time, dur: item.dur || 0, items: [item] };
+      blocks.push(curSection);
+    }
+  });
+  return blocks;
+}
+
+// ─── DOCX GENERATION — matches Product_Training_Agenda_Blank_x_Street_Group template ──
+function generateDocx(wizard) {
+  const { client, structure, selectedAreas, agenda, logistics } = wizard;
+  const areas = selectedAreas?.selected || [];
+  const dayAssignment = selectedAreas?.dayAssignment || {};
+  const days = structure.days || 1;
+
+  const escXml = s => (s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/\u2019/g, "&#x2019;")
+    .replace(/\u2018/g, "&#x2018;")
+    .replace(/\u201C/g, "&#x201C;")
+    .replace(/\u201D/g, "&#x201D;");
+
+  // ── Shared cell/para builders ────────────────────────────────────────────────
+  const cellPara = (text, bold = false, color = "") => {
+    const rPr = [
+      bold ? "<w:b/><w:bCs/>" : "",
+      color ? `<w:color w:val="${color}"/>` : "",
+      `<w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>`,
+    ].filter(Boolean).join("");
+    return `<w:p>
+      <w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="0" w:firstLine="0"/></w:pPr>
+      <w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r>
+    </w:p>`;
+  };
+
+  const tableRow = (labelText, valueContent, labelBold = true) => `
+    <w:tr>
+      <w:trPr><w:cantSplit w:val="0"/></w:trPr>
+      <w:tc>
+        <w:tcPr>
+          <w:tcW w:w="3795" w:type="dxa"/>
+          <w:shd w:fill="auto" w:val="clear"/>
+          <w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>
+        </w:tcPr>
+        ${cellPara(labelText, labelBold)}
+      </w:tc>
+      <w:tc>
+        <w:tcPr>
+          <w:tcW w:w="7320" w:type="dxa"/>
+          <w:shd w:fill="auto" w:val="clear"/>
+          <w:tcMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>
+        </w:tcPr>
+        ${valueContent}
+      </w:tc>
+    </w:tr>`;
+
+  const simpleRow = (label, value) => tableRow(label, cellPara(value || "—"), true);
+
+  // ── Format date for display ─────────────────────────────────────────────────
+  const fmtDate = raw => {
+    if (!raw) return "—";
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      try {
+        return new Date(raw + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      } catch (_) { return raw; }
+    }
+    return raw;
+  };
+
+  // ── Build date display ──────────────────────────────────────────────────────
+  const dayDates = structure.dayDates || [];
+  let dateDisplay = "";
+  if (days === 1) {
+    dateDisplay = fmtDate(dayDates[0]) || fmtDate(client.trainingDate) || "—";
+  } else {
+    dateDisplay = Array.from({ length: days }, (_, i) => {
+      const d = fmtDate(dayDates[i]);
+      return d && d !== "—" ? `Day ${i+1}: ${d}` : `Day ${i+1}`;
+    }).join("\n");
+  }
+
+  // ── Build session timing ────────────────────────────────────────────────────
+  const dayTimes = structure.dayTimes || [];
+  const t0 = dayTimes[0] || { start: "10:30", end: "16:30" };
+  const timingDisplay = days > 1
+    ? Array.from({ length: days }, (_, i) => {
+        const t = dayTimes[i] || { start: "10:30", end: "16:30" };
+        return `Day ${i+1}: ${t.start} – ${t.end}`;
+      }).join("  |  ")
+    : `${t0.start} – ${t0.end}`;
+
+  // ── Areas/modules section ───────────────────────────────────────────────────
+  const AREA_EMOJI = {
+    "Settings & Core Platform": "⚙️",
+    "Sales": "🏡",
+    "Lettings": "🔑",
+    "Property Management": "🔧",
+    "Accounting": "📊",
+    "Reporting & Analytics": "📈",
+    "Integrations": "🔗",
+  };
+
+  // Build areas value — if multi-day, group by day
+  let areasValueXml = "";
+  if (days > 1 && Object.keys(dayAssignment).length > 0) {
+    // Group by day
+    const byDay = {};
+    areas.forEach(area => {
+      const d = dayAssignment[area] || 0;
+      if (!byDay[d]) byDay[d] = [];
+      byDay[d].push(area);
+    });
+    const sortedDays = Object.keys(byDay).sort((a,b) => Number(a) - Number(b));
+    areasValueXml = sortedDays.map(d => {
+      const label = d === "0" ? "All days" : `Day ${d}`;
+      const areaList = byDay[d].map(a => `${AREA_EMOJI[a] || ""} ${a}`).join(", ");
+      return cellPara(`${label}: ${areaList}`);
+    }).join("");
+  } else {
+    areasValueXml = areas.map(a => cellPara(`${AREA_EMOJI[a] || ""} ${a}`)).join("") || cellPara("—");
+  }
+
+  // ── Agenda section per day — RUN-SHEET STYLE ────────────────────────────────
+  // Section emojis give trainers a fast visual anchor as they glance through the day
+  const SECTION_EMOJI = {
+    "Opening":                   "▶",
+    "Platform Setup":            "⚙",
+    "Properties":                "🏠",
+    "Valuations":                "💷",
+    "Viewings":                  "🚪",
+    "Sales Pipeline":            "📈",
+    "Offers & Sales Progression":"🤝",
+    "Client Experience":         "📱",
+    "Lettings Applications":     "🔑",
+    "Tenancy Management":        "📋",
+    "Maintenance":               "🔧",
+    "Compliance & Certificates": "✅",
+    "Accounting Setup":          "💼",
+    "Money In":                  "💰",
+    "Money Out":                 "💸",
+    "Statements & Reporting":    "📊",
+    "Advanced Accounting":       "📑",
+    "Reporting":                 "📊",
+    "Integrations":              "🔗",
+    "General":                   "▪",
+    "Custom":                    "📌",
+  };
+
+  const fmtDur = mins => {
+    if (!mins) return "0m";
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins/60);
+    const m = mins % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  };
+
+  // Flexible paragraph builder for agenda body — supports indent, spacing, italics, font size, shading
+  const agendaPara = (text, opts = {}) => {
+    const { bold = false, color = "", indent = 0, before = 0, after = 0, italic = false, fontSize = 0, shade = "" } = opts;
+    const sizeXml = fontSize ? `<w:sz w:val="${fontSize * 2}"/><w:szCs w:val="${fontSize * 2}"/>` : "";
+    const rPr = [
+      bold ? "<w:b/><w:bCs/>" : "",
+      italic ? "<w:i/><w:iCs/>" : "",
+      color ? `<w:color w:val="${color}"/>` : "",
+      sizeXml,
+      `<w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>`,
+    ].filter(Boolean).join("");
+    const shadingXml = shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>` : "";
+    return `<w:p>
+      <w:pPr>
+        <w:spacing w:before="${before}" w:after="${after}" w:line="276" w:lineRule="auto"/>
+        <w:ind w:left="${indent}" w:firstLine="0"/>
+        ${shadingXml}
+      </w:pPr>
+      <w:r><w:rPr>${rPr}</w:rPr><w:t xml:space="preserve">${escXml(text)}</w:t></w:r>
+    </w:p>`;
+  };
+
+  // Render the agenda as full-width body content (NOT inside a table cell) so each
+  // day has the entire page width to breathe.
+  const agendaSectionsXml = Object.keys(agenda).filter(k => k.startsWith("day")).sort().map((dayKey, di) => {
+    const dayTopics = agenda[dayKey] || [];
+    const startTime = dayTimes[di]?.start || "10:30";
+    const endTime   = dayTimes[di]?.end   || "16:30";
+    const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 30);
+    const dayLabel = days > 1 ? `Day ${di + 1} Agenda` : "Session Agenda";
+    const dayDateStr = fmtDate(dayDates[di]);
+    const headerLabel = dayDateStr && dayDateStr !== "—" ? `${dayLabel}  —  ${dayDateStr}` : dayLabel;
+
+    // Group consecutive same-section items into "blocks" — section blocks read like
+    // modules, while breaks/lunch/Q&A appear as their own standalone rows so trainers
+    // never lose visibility of pacing milestones.
+    const blocks = [];
+    let curSection = null;
+    timeline.forEach(item => {
+      if (item.isLunch) {
+        blocks.push({ type: "lunch", label: "Lunch", startTime: item.time, dur: item.dur || 30 });
+        curSection = null; return;
+      }
+      if (item.isBreak) {
+        blocks.push({ type: "break", label: item.title || "Short comfort break", startTime: item.time, dur: item.dur || 10 });
+        curSection = null; return;
+      }
+      if (item.isQA) {
+        blocks.push({ type: "qa", label: item.title || "Q&A", startTime: item.time, dur: item.dur || 15 });
+        curSection = null; return;
+      }
+      const sec = item.section || "General";
+      if (curSection && curSection.label === sec) {
+        curSection.items.push(item);
+        curSection.dur += (item.dur || 0);
+      } else {
+        curSection = { type: "section", label: sec, startTime: item.time, dur: item.dur || 0, items: [item] };
+        blocks.push(curSection);
+      }
+    });
+
+    // Day pacing summary
+    const totalContent = blocks.filter(b => b.type === "section").reduce((a,b) => a + b.dur, 0);
+    const totalBreaks  = blocks.filter(b => b.type !== "section").reduce((a,b) => a + b.dur, 0);
+    const sectionCount = blocks.filter(b => b.type === "section").length;
+
+    const lines = [];
+    // Big day heading
+    lines.push(agendaPara(
+      `📋  ${headerLabel}`,
+      { bold: true, color: "12152A", fontSize: 18, before: di === 0 ? 0 : 480, after: 80 }
+    ));
+    // Pacing summary line
+    lines.push(agendaPara(
+      `🕘  ${startTime} – ${endTime}    ·    ${sectionCount} module${sectionCount === 1 ? "" : "s"}    ·    ${fmtDur(totalContent)} content + ${fmtDur(totalBreaks)} breaks`,
+      { color: "5B4BE7", bold: true, after: 200 }
+    ));
+
+    blocks.forEach((b, bi) => {
+      const blockEnd = addMinutes(b.startTime, b.dur);
+      const isFirst = bi === 0;
+
+      if (b.type === "section") {
+        const emoji = SECTION_EMOJI[b.label] || "▪";
+        // Bold section header: e.g. "⚙  PLATFORM SETUP — 11:00–12:30  ·  1h 30m"
+        lines.push(agendaPara(
+          `${emoji}  ${b.label.toUpperCase()}  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { bold: true, color: "12152A", before: isFirst ? 0 : 200, after: 60 }
+        ));
+        // Bullet item lines: time + topic + duration
+        b.items.forEach(it => {
+          lines.push(agendaPara(
+            `      •  ${it.time}    ${it.title}    (${fmtDur(it.dur)})`,
+            { color: "4A4E72", indent: 80, before: 0, after: 0 }
+          ));
+        });
+      } else if (b.type === "lunch") {
+        lines.push(agendaPara(
+          `🍽  LUNCH BREAK  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { bold: true, italic: true, color: "8E93BB", before: 200, after: 60 }
+        ));
+      } else if (b.type === "break") {
+        lines.push(agendaPara(
+          `☕  ${b.label}  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { italic: true, color: "8E93BB", before: 160, after: 60 }
+        ));
+      } else if (b.type === "qa") {
+        lines.push(agendaPara(
+          `💬  ${b.label}  —  ${b.startTime}–${blockEnd}  ·  ${fmtDur(b.dur)}`,
+          { italic: true, bold: true, color: "5B4BE7", before: 160, after: 60 }
+        ));
+      }
+    });
+
+    return lines.length > 0 ? lines.join("") : agendaPara("Agenda to be confirmed", { color: "8E93BB", italic: true });
+  }).join("");
+
+  // ── Logistics ───────────────────────────────────────────────────────────────
+  const locationText = logistics.location || client.location || "—";
+  const logisticsContent = [
+    logistics.parking && `🅿️ Parking: ${logistics.parking}`,
+    logistics.wifi && `📶 Wi-Fi: ${logistics.wifi}`,
+    logistics.equipment && `💻 Equipment: ${logistics.equipment}`,
+    logistics.followup && `📋 Follow-up: ${logistics.followup}`,
+    client.venueSetup && `✅ Venue setup: ${client.venueSetup}`,
+  ].filter(Boolean);
+  const logisticsValueXml = logisticsContent.length
+    ? logisticsContent.map(l => cellPara(l)).join("")
+    : cellPara(locationText);
+
+  // ── Attendees — parse to list ───────────────────────────────────────────────
+  const attendeesRaw = client.attendees || "";
+  const attendeesValueXml = cellPara(attendeesRaw || "—");
+
+  // ── Priorities ──────────────────────────────────────────────────────────────
+  const priorityLines = (client.priorities || "").split("\n").filter(Boolean);
+  const prioritiesXml = priorityLines.length
+    ? priorityLines.map(p => cellPara(p.replace(/^\d+\.\s*/, ""))).join("")
+    : cellPara("—");
+
+  // ── Cover table — only the 7 key fields, kept compact on the first page ─────
+  // Note: literal "&" in label strings — escXml will handle escaping. Don't pre-escape
+  // (pre-escaping caused "&amp;" to appear as "&amp;amp;" in the rendered document).
+  const tblXml = `
+  <w:tbl>
+    <w:tblPr>
+      <w:tblW w:w="11115" w:type="dxa"/>
+      <w:jc w:val="left"/>
+      <w:tblInd w:w="-900" w:type="dxa"/>
+      <w:tblBorders>
+        <w:top w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:left w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:bottom w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:right w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:insideH w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+        <w:insideV w:color="000000" w:space="0" w:sz="8" w:val="single"/>
+      </w:tblBorders>
+      <w:tblLayout w:type="fixed"/>
+    </w:tblPr>
+    <w:tblGrid>
+      <w:gridCol w:w="3795"/>
+      <w:gridCol w:w="7320"/>
+    </w:tblGrid>
+    ${simpleRow("📅 Date(s) of training", dateDisplay)}
+    ${simpleRow("⏰ Session timing", timingDisplay)}
+    ${tableRow("📍 Location & Logistics", logisticsValueXml, true)}
+    ${simpleRow("📍 Client / Company", client.company || "—")}
+    ${simpleRow("Stakeholder (Authorising Training)", [client.stakeholder, client.stakeholderPhone].filter(Boolean).join(" — ") || "—")}
+    ${tableRow("Attendees & Roles", attendeesValueXml, true)}
+    ${tableRow("Topics & Modules to Cover", areasValueXml, true)}
+  </w:tbl>`;
+
+  // ── Trailing context — rendered as full-width labelled sections AFTER the agenda ──
+  const ctxHeading = (text) => agendaPara(text, { bold: true, color: "12152A", fontSize: 13, before: 320, after: 80 });
+  const ctxBody    = (text) => agendaPara(text || "—", { color: "4A4E72", after: 0 });
+
+  const contextSectionsXml = (() => {
+    const out = [];
+    if (priorityLines.length) {
+      out.push(ctxHeading("Training Context & Goals"));
+      priorityLines.forEach(p => {
+        out.push(agendaPara(`•  ${p.replace(/^\d+\.\s*/, "")}`, { color: "4A4E72", indent: 80, after: 0 }));
+      });
+    }
+    if (client.familiar) { out.push(ctxHeading("Familiarity with Street")); out.push(ctxBody(client.familiar)); }
+    if (client.features) { out.push(ctxHeading("Specific workflows / features")); out.push(ctxBody(client.features)); }
+    if (client.followUp) { out.push(ctxHeading("Post-training support")); out.push(ctxBody(client.followUp)); }
+    if (client.anything) { out.push(ctxHeading("Additional notes")); out.push(ctxBody(client.anything)); }
+    return out.join("");
+  })();
+
+  // Page break between the cover table and the agenda — keeps the cover sheet clean
+  const pageBreak = `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+
+  // ── Full document XML ───────────────────────────────────────────────────────
+  const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+  xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+  <w:body>
+    <w:p>
+      <w:pPr><w:pStyle w:val="Title"/></w:pPr>
+      <w:r><w:t xml:space="preserve">${escXml(client.company || "Client Name")} x Street Group</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr><w:spacing w:after="120"/></w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+          <w:color w:val="666666"/>
+          <w:sz w:val="32"/>
+        </w:rPr>
+        <w:t>Training Agenda</w:t>
+      </w:r>
+    </w:p>
+    ${tblXml}
+    ${pageBreak}
+    ${agendaSectionsXml}
+    ${contextSectionsXml}
+    <w:p>
+      <w:pPr><w:spacing w:before="240" w:after="0"/></w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+          <w:color w:val="888888"/>
+          <w:sz w:val="16"/>
+          <w:i/>
+        </w:rPr>
+        <w:t xml:space="preserve">Please note: Whilst we always aim to cover all areas outlined within this agenda, training sessions are designed to remain flexible and collaborative based on the needs of the team on the day. Client questions, workflow discussions, and unique business scenarios may naturally result in additional areas being explored outside of the planned agenda. The agenda should therefore be considered a guide and base structure for the session rather than a fixed schedule. Where possible, all planned topics will still be covered; however, depending on the level of discussion and interaction throughout the day, some areas may require follow-up sessions to explore further. Additional sessions may be recommended where appropriate. Refunds or partial refunds will not be issued where agenda items are not fully completed during the scheduled training session.</w:t>
+      </w:r>
+    </w:p>
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1134" w:right="845" w:bottom="1134" w:left="1701"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr>
+      <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+      <w:sz w:val="22"/>
+    </w:rPr></w:rPrDefault>
+  </w:docDefaults>
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:rPr><w:sz w:val="22"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title"/>
+    <w:basedOn w:val="Normal"/>
+    <w:pPr><w:spacing w:after="80"/></w:pPr>
+    <w:rPr>
+      <w:rFonts w:ascii="Questrial" w:hAnsi="Questrial" w:cs="Questrial"/>
+      <w:b/>
+      <w:sz w:val="52"/>
+    </w:rPr>
+  </w:style>
+</w:styles>`;
+
+  const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const appRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`;
+
+  return { docXml, stylesXml, relsXml, appRels, contentTypes };
+}
+
+async function downloadDocx(wizard) {
+  const { JSZip } = window;
+  if (!JSZip) { alert("JSZip not loaded"); return; }
+  const { docXml, stylesXml, relsXml, appRels, contentTypes } = generateDocx(wizard);
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", contentTypes);
+  zip.folder("_rels").file(".rels", appRels);
+  const word = zip.folder("word");
+  word.file("document.xml", docXml);
+  word.file("styles.xml", stylesXml);
+  word.folder("_rels").file("document.xml.rels", relsXml);
+  const blob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${(wizard.client.company || "Training").replace(/\s+/g, "_")}_x_Street_Group_Training_Agenda.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+// ─── COMPONENTS ──────────────────────────────────────────────────────────────
+
+function StreetLogo() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <svg width="28" height="28" viewBox="0 0 26 26" fill="none">
+        <rect width="26" height="26" rx="7" fill="#5B4BE7"/>
+        <path d="M7 10.5C7 9.12 8.12 8 9.5 8H16.5C17.88 8 19 9.12 19 10.5C19 11.88 17.88 13 16.5 13H9.5C8.12 13 7 14.12 7 15.5C7 16.88 8.12 18 9.5 18H16.5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+      </svg>
+      <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 15, color: "var(--navy)", letterSpacing: "0.01em" }}>street</span>
+      <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--muted)", fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>Training Planner</span>
+    </div>
+  );
+}
+
+function ProgressStepper({ currentStep, steps }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+      {steps.map((s, i) => {
+        const done = i < currentStep;
+        const active = i === currentStep;
+        return (
+          <React.Fragment key={s.id}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 60 }}>
+              <div className={`step-num ${done ? "done" : active ? "active" : ""}`}>
+                {done ? (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ) : i + 1}
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.04em", color: active ? "var(--purple)" : done ? "var(--muted)" : "var(--soft)", whiteSpace: "nowrap", textAlign: "center" }}>
+                {s.title}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div style={{ flex: 1, height: 1.5, background: done ? "var(--purple)" : "var(--border)", transition: "background 0.3s", marginBottom: 18, minWidth: 12 }} />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReferencePanel({ wizard, visible }) {
+  const { client, structure, selectedAreas } = wizard;
+  if (!visible || !client.company) return null;
+  return (
+    <div style={{ width: 240, flexShrink: 0, background: "var(--white)", borderLeft: "1.5px solid var(--border)", padding: "24px 20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }}>
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 12 }}>Session Reference</div>
+        <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 14 }}>
+          {[
+            ["Client", client.company],
+            ["Trainer", client.trainer],
+            ["Date(s)", client.trainingDate],
+            ["Attendees", client.attendees],
+            ["Familiarity", client.familiar],
+            ["Location", client.location],
+          ].filter(([, v]) => v && v !== "—").map(([label, val]) => (
+            <div key={label}>
+              <div className="ref-label">{label}</div>
+              <div className="ref-value">{val}</div>
+            </div>
+          ))}
+          {selectedAreas?.length > 0 && (
+            <div>
+              <div className="ref-label">Areas</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+                {selectedAreas.map(a => (
+                  <span key={a} style={{ fontSize: 11, background: "var(--purple-light)", color: "var(--purple)", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>{a}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {client.priorities && client.priorities !== "—" && (
+            <div>
+              <div className="ref-label">Priorities</div>
+              <div className="ref-value" style={{ fontSize: 12 }}>{client.priorities}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── STEP 1: CLIENT OVERVIEW ──────────────────────────────────────────────────
+function StepClient({ data, onChange, rows, loading }) {
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = rows.filter(r => (r.company || "").toLowerCase().includes(search.toLowerCase()));
+
+  const normaliseFamiliar = raw => {
+    if (!raw || raw === "—") return "";
+    const r = raw.toLowerCase();
+    if (r.includes("complete beginner") || r.includes("new") || r.includes("just migrated") || r.includes("brand new")) return "New to Street";
+    if (r.includes("power") || r.includes("advanced") || r.includes("heavy user")) return "Power users";
+    if (r.includes("regular") || r.includes("consistent") || r.includes("daily")) return "Regular users";
+    return "Some familiarity";
+  };
+
+  const selectRow = row => {
+    setSelectedRow(row.company);
+    // row._dayDates and row._trainingDays are pre-computed in mapRow (live data)
+    // or built inline here for mock data rows
+    const splitDates = (row.splitDates || []).filter(Boolean);
+    const numDays = row._trainingDays || row.trainingDays || (splitDates.length > 1 ? splitDates.length : 1);
+    const dayDatesArr = row._dayDates || Array.from({ length: 5 }, (_, i) => {
+      if (splitDates[i]) return splitDates[i].slice(0, 10);
+      return "";
+    });
+    onChange({
+      company:          row.company || "",
+      trainer:          row.trainer || "",
+      stakeholder:      row.stakeholder || "",
+      stakeholderPhone: row.stakeholderPhone || "",
+      email:            row.email || "",
+      attendees:        row.attendees || "",
+      familiar:         normaliseFamiliar(row.familiar),
+      trainingType:     row.trainingType || "",
+      trainingDate:     row.trainingDate || "",
+      goLive:           row.goLive || "",
+      location:         row.location || "",
+      priorities:       row.priorities || "",
+      features:         row.features || "",
+      areas:            row.areas || "",
+      followUp:         row.followUp || "",
+      parking:          row.parking || "",
+      venueSetup:       row.venueSetup || "",
+      anything:         row.anything || "",
+      _trainingDays:    numDays,
+      _dayDates:        dayDatesArr,
+    });
+  };
+
+  const set = (k, v) => onChange({ ...data, [k]: v });
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 1 of 6</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          Who are we training today?
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Select a client from your dashboard, or fill in the details manually.</p>
+      </div>
+
+      {/* Client picker */}
+      {rows.length > 0 && (
+        <div>
+          <label className="field-label">Select from dashboard</label>
+          <div style={{ position: "relative", marginBottom: 10 }}>
+            <input className="wizard-input" placeholder="Search clients…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 42 }} />
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }}>
+              <circle cx="7" cy="7" r="5" stroke="#C5C8E0" strokeWidth="1.5"/>
+              <path d="M11 11l3 3" stroke="#C5C8E0" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+            {filtered.map(row => (
+              <button key={row.company} onClick={() => selectRow(row)} style={{
+                textAlign: "left", padding: "12px 16px", borderRadius: 12,
+                border: `1.5px solid ${selectedRow === row.company ? "var(--purple)" : "var(--border)"}`,
+                background: selectedRow === row.company ? "var(--purple-light)" : "var(--white)",
+                cursor: "pointer", transition: "all 0.15s",
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--dark)", marginBottom: 2 }}>{row.company}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{row.trainer} · {row.trainingDate}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {loading && <p style={{ color: "var(--muted)", fontSize: 14 }}>Loading clients…</p>}
+
+      {/* Editable fields */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {[
+          ["company", "Company name", "e.g. Ashtons Estate Agents"],
+          ["trainer", "Assigned trainer", "e.g. James Walker"],
+          ["stakeholder", "Stakeholder name", "e.g. Sarah Mitchell"],
+          ["trainingDate", "Training date(s)", "e.g. 12th March 2025"],
+        ].map(([k, label, ph]) => (
+          <div key={k}>
+            <label className="field-label">{label}</label>
+            <input className="wizard-input" placeholder={ph} value={data[k] || ""} onChange={e => set(k, e.target.value)} />
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <label className="field-label">Attendees</label>
+        <textarea className="wizard-input" placeholder="e.g. 8 — mixed sales and lettings team, 2 senior negotiators, 1 office manager"
+          value={data.attendees || ""} onChange={e => set("attendees", e.target.value)} style={{ minHeight: 72 }} />
+      </div>
+
+      <div>
+        <label className="field-label">Team familiarity with Street</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {FAMILIARITY_LEVELS.map(level => (
+            <button key={level} className={`pill-select ${data.familiar === level ? "active" : ""}`} onClick={() => set("familiar", level)}>
+              {level}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="field-label">Top priorities (from onboarding form)</label>
+        <textarea className="wizard-input" placeholder="e.g. 1. Lettings progression clarity&#10;2. Accounting confidence&#10;3. Reporting for management"
+          value={data.priorities || ""} onChange={e => set("priorities", e.target.value)} />
+      </div>
+    </div>
+  );
+}
+
+// ─── STEP 2: TRAINING STRUCTURE ───────────────────────────────────────────────
+function StepStructure({ data, onChange, clientData }) {
+  const set = (k, v) => onChange({ ...data, [k]: v });
+  const DEFAULT_TIMES = () => Array.from({ length: 5 }, () => ({ start: "10:30", end: "16:30" }));
+  const days = data.days || 1;
+  const dayDates = data.dayDates || Array(5).fill("");
+  const dayTimes = data.dayTimes || DEFAULT_TIMES();
+
+  // On first render, pre-fill from client data if present
+  useEffect(() => {
+    const preDays = clientData?._trainingDays;
+    const preDates = clientData?._dayDates;
+    if (preDays && data.days === 1 && !data._prefilled) {
+      onChange({ ...data, days: preDays, dayDates: preDates || Array(5).fill(""), _prefilled: true });
+    }
+  }, [clientData?._trainingDays]);
+
+  const setDayDate = (i, v) => {
+    const a = Array.from({ length: 5 }, (_, j) => dayDates[j] || "");
+    a[i] = v;
+    set("dayDates", a);
+  };
+  const setDayTime = (i, f, v) => {
+    const a = Array.from({ length: 5 }, (_, j) => ({ ...(dayTimes[j] || { start: "10:30", end: "16:30" }) }));
+    a[i] = { ...a[i], [f]: v };
+    set("dayTimes", a);
+  };
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 2 of 6</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          How is the training structured?
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Training days, timings, and location.</p>
+      </div>
+
+      <div>
+        <label className="field-label">Number of training days</label>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {[1, 2, 3, 4, 5].map(n => (
+            <button key={n} className={`day-pill ${days === n ? "active" : ""}`} onClick={() => set("days", n)}>
+              {n} {n === 1 ? "day" : "days"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {Array.from({ length: days }).map((_, i) => (
+          <div key={i} className="client-card">
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--purple)", marginBottom: 14 }}>Day {i + 1}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: 12, alignItems: "end" }}>
+              <div>
+                <label className="field-label">Date</label>
+                <input className="wizard-input" type="date" value={dayDates[i] || ""} onChange={e => setDayDate(i, e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Start</label>
+                <input className="time-input" type="time" value={dayTimes[i]?.start || "10:30"} onChange={e => setDayTime(i, "start", e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Finish</label>
+                <input className="time-input" type="time" value={dayTimes[i]?.end || "16:30"} onChange={e => setDayTime(i, "end", e.target.value)} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div>
+          <label className="field-label">Lunch break start</label>
+          <input className="time-input" type="time" value={data.lunchStart || "12:30"} onChange={e => set("lunchStart", e.target.value)} style={{ width: "100%" }} />
+        </div>
+        <div>
+          <label className="field-label">Lunch duration (minutes)</label>
+          <input className="wizard-input" type="number" min="30" max="120" step="15" value={data.lunchDur || 30} onChange={e => set("lunchDur", e.target.value)} />
+        </div>
+      </div>
+
+      <div>
+        <label className="field-label">Delivery method</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          {["On-site", "Remote", "Hybrid"].map(opt => (
+            <button key={opt} className={`pill-select ${data.remote === opt ? "active" : ""}`} onClick={() => set("remote", opt)}>
+              {opt === "On-site" ? "🏢" : opt === "Remote" ? "💻" : "🔀"} {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── STEP 3: AREAS ────────────────────────────────────────────────────────────
+function StepAreas({ data, onChange, clientData, structure }) {
+  const areas = data.selected || [];
+  const days = structure?.days || 1;
+  const dayAssignment = data.dayAssignment || {}; // { "Sales": 1, "Lettings": 2, ... }
+
+  const toggle = area => {
+    const next = areas.includes(area) ? areas.filter(a => a !== area) : [...areas, area];
+    // Clean up day assignment if area removed
+    const newDA = { ...dayAssignment };
+    if (!next.includes(area)) delete newDA[area];
+    onChange({ ...data, selected: next, dayAssignment: newDA });
+  };
+
+  const setDay = (area, day) => {
+    onChange({ ...data, dayAssignment: { ...dayAssignment, [area]: day } });
+  };
+
+  // Pre-suggest based on client areas string
+  useEffect(() => {
+    if (clientData.areas && clientData.areas !== "—" && (!data.selected || data.selected.length === 0)) {
+      const raw = clientData.areas.toLowerCase();
+      const suggested = Object.keys(AREA_TOPIC_KEYS).filter(area => {
+        const aLow = area.toLowerCase();
+        return raw.includes(aLow.split(" ")[0]) || raw.includes(aLow);
+      });
+      if (suggested.length) onChange({ ...data, selected: suggested });
+    }
+  }, [clientData.areas]);
+
+  const AREA_LIST = [
+    { key: "Settings & Core Platform", emoji: "⚙️", desc: "Users, brands, portals, valuations" },
+    { key: "Sales", emoji: "🏡", desc: "Applicants, offers, progression" },
+    { key: "Lettings", emoji: "🔑", desc: "Applications, tenancies, renewals" },
+    { key: "Property Management", emoji: "🔧", desc: "Maintenance, certificates, keys" },
+    { key: "Accounting", emoji: "📊", desc: "Receipting, ledgers, statements" },
+    { key: "Reporting & Analytics", emoji: "📈", desc: "Dashboards & financial reports" },
+    { key: "Integrations", emoji: "🔗", desc: "Portals, WhatsApp, Goodlord" },
+  ];
+
+  const formatDayDate = (i) => {
+    const dates = structure?.dayDates || [];
+    const d = dates[i];
+    if (!d) return `Day ${i + 1}`;
+    // Convert yyyy-mm-dd to readable
+    try {
+      const dt = new Date(d + "T12:00:00");
+      return `Day ${i + 1} — ${dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
+    } catch (_) { return `Day ${i + 1}`; }
+  };
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 3 of 6</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          What are we covering?
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Select the areas to include.{days > 1 ? " Then assign each to a training day." : ""} Pre-filled from the onboarding form.</p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+        {AREA_LIST.map(({ key, emoji, desc }) => (
+          <div key={key} className={`area-card ${areas.includes(key) ? "active" : ""}`} onClick={() => toggle(key)}>
+            <div className="area-icon">{emoji}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--dark)", lineHeight: 1.3 }}>{key}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>{desc}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Day assignment — only shown when multiple days selected */}
+      {days > 1 && areas.length > 0 && (
+        <div>
+          <label className="field-label" style={{ marginBottom: 12 }}>Assign areas to training days</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {areas.map(area => (
+              <div key={area} className="client-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: "var(--dark)" }}>{area}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {Array.from({ length: days }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setDay(area, i + 1)}
+                      style={{
+                        padding: "6px 14px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                        border: `1.5px solid ${dayAssignment[area] === i + 1 ? "var(--purple)" : "var(--border)"}`,
+                        background: dayAssignment[area] === i + 1 ? "var(--purple)" : "var(--white)",
+                        color: dayAssignment[area] === i + 1 ? "#fff" : "var(--mid)",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {formatDayDate(i)}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setDay(area, 0)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                      border: `1.5px solid ${!dayAssignment[area] ? "var(--purple-border)" : "var(--border)"}`,
+                      background: !dayAssignment[area] ? "var(--purple-light)" : "var(--white)",
+                      color: !dayAssignment[area] ? "var(--purple)" : "var(--muted)",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    All days
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {areas.length > 0 && (
+        <div style={{ background: "var(--purple-light)", borderRadius: 12, padding: "14px 18px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ marginTop: 2, flexShrink: 0 }}>
+            <circle cx="8" cy="8" r="7" stroke="#5B4BE7" strokeWidth="1.5"/>
+            <path d="M8 5v4M8 11v.5" stroke="#5B4BE7" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span style={{ fontSize: 13, color: "var(--purple)", fontWeight: 500 }}>
+            {areas.length} area{areas.length > 1 ? "s" : ""} selected — the agenda builder will auto-populate topics for each.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── STEP 4: AGENDA BUILDER ───────────────────────────────────────────────────
+const SECTION_COLORS = {
+  "Opening":                   { bg: "#EEF0FE", color: "#3D30D0", dot: "#5B4BE7" },
+  "Platform Setup":            { bg: "#EEF0FE", color: "#3D30D0", dot: "#5B4BE7" },
+  "Properties":                { bg: "#EDF8FF", color: "#1565A6", dot: "#2196F3" },
+  "Valuations":                { bg: "#EDF8FF", color: "#1565A6", dot: "#2196F3" },
+  "Viewings":                  { bg: "#EDF8FF", color: "#1565A6", dot: "#2196F3" },
+  "Sales Pipeline":            { bg: "#FFF4EC", color: "#8B3A00", dot: "#F37726" },
+  "Offers & Sales Progression":{ bg: "#FFF4EC", color: "#8B3A00", dot: "#F37726" },
+  "Client Experience":         { bg: "#F4FCF7", color: "#1B6B42", dot: "#34C472" },
+  "Lettings Applications":     { bg: "#F5F0FF", color: "#5B3CA8", dot: "#9C6FE4" },
+  "Tenancy Management":        { bg: "#F5F0FF", color: "#5B3CA8", dot: "#9C6FE4" },
+  "Maintenance":               { bg: "#FFF8E6", color: "#7A5A00", dot: "#E0AC1C" },
+  "Compliance & Certificates": { bg: "#FFF8E6", color: "#7A5A00", dot: "#E0AC1C" },
+  "Accounting Setup":          { bg: "#F0FDF8", color: "#0D5C37", dot: "#1DB36A" },
+  "Money In":                  { bg: "#F0FDF8", color: "#0D5C37", dot: "#1DB36A" },
+  "Money Out":                 { bg: "#FDF0F0", color: "#8B1C1C", dot: "#E05252" },
+  "Statements & Reporting":    { bg: "#F0F6FF", color: "#1A3F8B", dot: "#4B82E8" },
+  "Advanced Accounting":       { bg: "#F0F6FF", color: "#1A3F8B", dot: "#4B82E8" },
+  "Reporting":                 { bg: "#F3F0FF", color: "#4A30B8", dot: "#7B5FE8" },
+  "Integrations":              { bg: "#F0F9FF", color: "#0D5173", dot: "#1AA8D6" },
+  "Q&A":                       { bg: "#F6F7FB", color: "#8E93BB", dot: "#C5C8E0" },
+  "Break":                     { bg: "#F6F7FB", color: "#8E93BB", dot: "#E4E6F2" },
+};
+
+function getSectionStyle(section) {
+  return SECTION_COLORS[section] || { bg: "#F6F7FB", color: "#4A4E72", dot: "#8E93BB" };
+}
+
+// ─── RUN-SHEET PREVIEW COMPONENT ──────────────────────────────────────────────
+// The single source of truth for how the operational agenda *looks on screen*.
+// Used in Step 4 (Agenda Builder, right column) and Step 6 (Generate, full-width preview).
+function RunSheet({ wizard, dayKey = null, showNotes = false, dayLabel = null, dateLabel = null }) {
+  const { structure, agenda } = wizard;
+  const days = structure.days || 1;
+  const dayKeys = dayKey ? [dayKey] : Array.from({ length: days }, (_, i) => `day${i + 1}`);
+  const dayTimes = structure.dayTimes || [];
+  const lunchStart = structure.lunchStart || "12:30";
+  const lunchDur = structure.lunchDur || 30;
+
+  return (
+    <div className="run-sheet">
+      {dayKeys.map((k, di) => {
+        const idx = parseInt(k.replace("day", "")) - 1;
+        const topics = agenda[k] || [];
+        const startTime = dayTimes[idx]?.start || "10:30";
+        const endTime = dayTimes[idx]?.end || "16:30";
+        const timeline = buildTimeline(topics, startTime, lunchStart, lunchDur);
+        const blocks = groupTimelineBlocks(timeline);
+
+        const totalContent = blocks.filter(b => b.type === "section").reduce((a, b) => a + b.dur, 0);
+        const totalBreaks  = blocks.filter(b => b.type !== "section").reduce((a, b) => a + b.dur, 0);
+        const sectionCount = blocks.filter(b => b.type === "section").length;
+
+        const headerLabel = dayLabel || (days > 1 ? `Day ${idx + 1}` : "Session Agenda");
+        const showHeader = !dayKey || dayKey === k;
+
+        if (timeline.length === 0) {
+          return (
+            <div key={k}>
+              {showHeader && (
+                <div className="rs-day-header">
+                  <span className="rs-day-title">{headerLabel}</span>
+                  <span className="rs-day-meta">{startTime} – {endTime}</span>
+                </div>
+              )}
+              <div className="rs-empty">No topics yet — head back to Step 4 to build the agenda.</div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={k}>
+            {showHeader && (
+              <div className="rs-day-header">
+                <span className="rs-day-title">
+                  {headerLabel}
+                  {dateLabel && <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--muted)", marginLeft: 10, letterSpacing: 0 }}>· {dateLabel}</span>}
+                </span>
+                <span className="rs-day-meta">{startTime} – {endTime}</span>
+              </div>
+            )}
+            <div className="rs-pacing">
+              <span><strong>{sectionCount}</strong> module{sectionCount === 1 ? "" : "s"}</span>
+              <span style={{ color: "var(--purple-border)" }}>·</span>
+              <span><strong>{fmtDuration(totalContent)}</strong> content</span>
+              <span style={{ color: "var(--purple-border)" }}>·</span>
+              <span><strong>{fmtDuration(totalBreaks)}</strong> breaks &amp; Q&amp;A</span>
+            </div>
+            <div className="rs-blocks">
+              {blocks.map((b, bi) => {
+                const blockEnd = addMinutes(b.startTime, b.dur);
+                if (b.type === "lunch") {
+                  return (
+                    <div key={bi} className="rs-break lunch">
+                      <span className="rs-break-label">🍽 Lunch break</span>
+                      <span className="rs-break-time">{b.startTime} – {blockEnd} · {fmtDuration(b.dur)}</span>
+                    </div>
+                  );
+                }
+                if (b.type === "break") {
+                  return (
+                    <div key={bi} className="rs-break">
+                      <span className="rs-break-label">☕ {b.label}</span>
+                      <span className="rs-break-time">{b.startTime} – {blockEnd} · {fmtDuration(b.dur)}</span>
+                    </div>
+                  );
+                }
+                if (b.type === "qa") {
+                  return (
+                    <div key={bi} className="rs-break qa">
+                      <span className="rs-break-label">💬 {b.label}</span>
+                      <span className="rs-break-time">{b.startTime} – {blockEnd} · {fmtDuration(b.dur)}</span>
+                    </div>
+                  );
+                }
+                // section
+                const style = getSectionStyle(b.label);
+                const emoji = SECTION_EMOJI_MAP[b.label] || "▪";
+                return (
+                  <div
+                    key={bi}
+                    className="rs-section"
+                    style={{ "--rs-accent": style.dot, "--rs-accent-dark": style.color }}
+                  >
+                    <div className="rs-sec-head">
+                      <span className="rs-sec-label">
+                        <span className="rs-sec-emoji">{emoji}</span>
+                        {b.label}
+                      </span>
+                      <span className="rs-sec-time">
+                        {b.startTime} – {blockEnd}
+                        <span className="dot">·</span>
+                        <span className="dur">{fmtDuration(b.dur)}</span>
+                      </span>
+                    </div>
+                    <div className="rs-items">
+                      {b.items.map((it, ii) => (
+                        <div key={it.id + ii} className="rs-item">
+                          <span className="rs-item-time">{it.time}</span>
+                          <span className="rs-item-title">{it.title}</span>
+                          <span className="rs-item-dur">{fmtDuration(it.dur)}</span>
+                          {showNotes && it.note && (
+                            <div className="rs-item-note">💡 {it.note}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DayLoadBar({ topics, usableMins }) {
+  const contentMins = topics.filter(t => !t.isQA && !t.isBreak).reduce((a,t) => a+t.dur, 0);
+  const qaMins = topics.filter(t => t.isQA || t.isBreak).reduce((a,t) => a+t.dur, 0);
+  const totalMins = usableMins || 330;
+  const contentPct = Math.min(100, (contentMins / totalMins) * 100);
+  const qaPct = Math.min(100 - contentPct, (qaMins / totalMins) * 100);
+  const overloaded = contentMins + qaMins > totalMins;
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: overloaded ? "#8B1C1C" : "var(--muted)" }}>
+          Day capacity
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: overloaded ? "#E05252" : "var(--purple)" }}>
+          {contentMins + qaMins}m / {totalMins}m
+          {overloaded && " ⚠️ over"}
+        </span>
+      </div>
+      <div style={{ height: 6, background: "var(--border)", borderRadius: 99, overflow: "hidden", display: "flex" }}>
+        <div style={{ width: `${contentPct}%`, background: overloaded ? "#E05252" : "var(--purple)", borderRadius: "99px 0 0 99px", transition: "width 0.3s" }} />
+        <div style={{ width: `${qaPct}%`, background: "#C5C8E0", transition: "width 0.3s" }} />
+      </div>
+      <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+        <span style={{ fontSize: 10, color: "var(--muted)" }}>● Content: {contentMins}m</span>
+        <span style={{ fontSize: 10, color: "#C5C8E0" }}>● Q&A/Breaks: {qaMins}m</span>
+      </div>
+    </div>
+  );
+}
+
+function StepAgenda({ data, onChange, wizard }) {
+  const { structure, selectedAreas, client } = wizard;
+  const days = structure.days || 1;
+  const areas = selectedAreas?.selected || [];
+  const familiarity = client?.familiar || "New to Street";
+
+  const [newTopic, setNewTopic] = useState({});
+  const [dragging, setDragging] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+  const [draggingSection, setDraggingSection] = useState(null);
+  const [dragOverSection, setDragOverSection] = useState(null); // { gi, position: 'above'|'below' }
+  const [activeDay, setActiveDay] = useState("day1");
+  const [showNotes, setShowNotes] = useState({});
+  const [agendaBuilt, setAgendaBuilt] = useState(false);
+  const [warnings, setWarnings] = useState([]);
+  const [dismissedWarnings, setDismissedWarnings] = useState(false);
+
+  // Build smart agenda on first entry or when areas/days change
+  useEffect(() => {
+    if (areas.length === 0) return;
+    const result = buildSmartAgenda({ selectedAreas: areas, familiarity, days, structure });
+    setWarnings(result.warnings || []);
+    // Only auto-build if no manual edits have been made yet
+    const hasManualData = Object.keys(data).some(k => k.startsWith("day") && data[k]?.length > 0);
+    if (!hasManualData || !agendaBuilt) {
+      onChange({ ...data, ...result.days });
+      setAgendaBuilt(true);
+    }
+  }, [areas.join(","), days, familiarity]);
+
+  const dayKey = activeDay;
+  const dayIdx = parseInt(activeDay.replace("day", "")) - 1;
+  const dayTopics = data[dayKey] || [];
+  const startTime = structure.dayTimes?.[dayIdx]?.start || "10:30";
+  const endTime = structure.dayTimes?.[dayIdx]?.end || "16:30";
+  const toMin = t => { const [h,m] = (t||"10:30").split(":").map(Number); return h*60+m; };
+  const usableMins = Math.max(0, toMin(endTime) - toMin(startTime) - (parseInt(structure.lunchDur)||30));
+  const timeline = buildTimeline(dayTopics, startTime, structure.lunchStart || "12:30", structure.lunchDur || 30);
+
+  const removeTopic = (id) => onChange({ ...data, [dayKey]: dayTopics.filter(t => t.id !== id) });
+
+  const addTopic = () => {
+    const text = (newTopic[dayKey] || "").trim();
+    if (!text) return;
+    const id = "custom_" + Date.now();
+    onChange({ ...data, [dayKey]: [...dayTopics, { id, title: text, dur: 30, section: "Custom", area: "Custom" }] });
+    setNewTopic(prev => ({ ...prev, [dayKey]: "" }));
+  };
+
+  const moveTopic = (fromIdx, toIdx) => {
+    const arr = [...dayTopics];
+    const [item] = arr.splice(fromIdx, 1);
+    arr.splice(toIdx, 0, item);
+    onChange({ ...data, [dayKey]: arr });
+  };
+
+  // Move an entire section (group) to a new position. Items within the section
+  // keep their relative order; this just rearranges the chunks in dayTopics.
+  const moveSection = (fromGi, toGi, position = "above") => {
+    if (fromGi == null || toGi == null) return;
+    if (fromGi === toGi) return;
+    const fromGroup = groupedTopics[fromGi];
+    const toGroup = groupedTopics[toGi];
+    if (!fromGroup || !toGroup) return;
+
+    const fromIds = new Set(fromGroup.topics.map(t => t.id));
+    const fromItems = fromGroup.topics.map(t => dayTopics[t._idx]);
+    const remaining = dayTopics.filter(t => !fromIds.has(t.id));
+
+    let insertAt;
+    if (position === "below") {
+      const toLastId = toGroup.topics[toGroup.topics.length - 1].id;
+      insertAt = remaining.findIndex(t => t.id === toLastId) + 1;
+    } else {
+      const toFirstId = toGroup.topics[0].id;
+      insertAt = remaining.findIndex(t => t.id === toFirstId);
+    }
+    if (insertAt < 0) insertAt = remaining.length;
+
+    const next = [...remaining.slice(0, insertAt), ...fromItems, ...remaining.slice(insertAt)];
+    onChange({ ...data, [dayKey]: next });
+  };
+
+  const moveSectionUp   = (gi) => { if (gi > 0) moveSection(gi, gi - 1, "above"); };
+  const moveSectionDown = (gi) => { if (gi < groupedTopics.length - 1) moveSection(gi, gi + 1, "below"); };
+
+  const updateDur = (id, val) => {
+    onChange({ ...data, [dayKey]: dayTopics.map(t => t.id === id ? { ...t, dur: Math.max(5, parseInt(val) || 30) } : t) });
+  };
+
+  const rebuildAgenda = () => {
+    const result = buildSmartAgenda({ selectedAreas: areas, familiarity, days, structure });
+    setWarnings(result.warnings || []);
+    onChange({ ...data, ...result.days });
+    setDismissedWarnings(false);
+  };
+
+  // Group consecutive topics by section for the editor view
+  const groupedTopics = useMemo(() => {
+    const groups = [];
+    let cur = null;
+    dayTopics.forEach((t, idx) => {
+      const label = t.isQA ? "Q&A" : t.isBreak ? "Break" : (t.section || "General");
+      if (!cur || cur.label !== label) {
+        cur = { label, topics: [], startIdx: idx };
+        groups.push(cur);
+      }
+      cur.topics.push({ ...t, _idx: idx });
+    });
+    return groups;
+  }, [dayTopics]);
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 4 of 6</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          Build the agenda
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>
+          Auto-built in operational flow order — the way an estate agent actually uses the system.
+          Reorder, remove, adjust timings, or add custom topics.
+        </p>
+      </div>
+
+      {/* Warnings */}
+      {warnings.length > 0 && !dismissedWarnings && (
+        <div style={{ background: "#FFF8E6", border: "1.5px solid #E0AC1C", borderRadius: 14, padding: "16px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {warnings.map((w, i) => (
+            <div key={i} style={{ fontSize: 13, color: "#7A5A00", lineHeight: 1.5 }}>{w}</div>
+          ))}
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <button className="btn-ghost" style={{ padding: "8px 16px", fontSize: 12 }} onClick={() => setDismissedWarnings(true)}>Dismiss</button>
+          </div>
+        </div>
+      )}
+
+      {/* Day tabs + rebuild */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {Array.from({ length: days }).map((_, i) => {
+            const k = `day${i + 1}`;
+            const topicCount = (data[k] || []).filter(t => !t.isQA && !t.isBreak).length;
+            return (
+              <button key={k} className={`pill-select ${activeDay === k ? "active" : ""}`} onClick={() => setActiveDay(k)}>
+                Day {i + 1}
+                <span style={{ fontSize: 11, opacity: 0.75 }}>· {topicCount} topics</span>
+              </button>
+            );
+          })}
+        </div>
+        <button className="btn-ghost" onClick={rebuildAgenda} style={{ padding: "8px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <path d="M12 7A5 5 0 112 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M12 3v4h-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Rebuild from scratch
+        </button>
+      </div>
+
+      {/* Day load bar */}
+      <DayLoadBar topics={dayTopics} usableMins={usableMins} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+
+        {/* Left: grouped topic editor */}
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 12 }}>
+            Drag sections or topics to reorder · use ↑ ↓ on a section to move it
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {groupedTopics.map((group, gi) => {
+              const style = getSectionStyle(group.label);
+              const isDraggingSec = draggingSection === gi;
+              const dropAbove = dragOverSection?.gi === gi && dragOverSection?.position === "above";
+              const dropBelow = dragOverSection?.gi === gi && dragOverSection?.position === "below";
+              return (
+                <div
+                  key={gi}
+                  className={`section-group ${isDraggingSec ? "dragging-section" : ""} ${dropAbove ? "drop-above" : ""} ${dropBelow ? "drop-below" : ""}`}
+                  onDragOver={e => {
+                    if (draggingSection === null || draggingSection === gi) return;
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const position = (e.clientY - rect.top) < rect.height / 2 ? "above" : "below";
+                    setDragOverSection({ gi, position });
+                  }}
+                  onDrop={e => {
+                    if (draggingSection !== null && draggingSection !== gi) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      moveSection(draggingSection, gi, dragOverSection?.position || "above");
+                    }
+                    setDraggingSection(null);
+                    setDragOverSection(null);
+                  }}
+                >
+                  {/* Section header — draggable for whole-section reorder */}
+                  <div
+                    className={`section-header ${isDraggingSec ? "dragging" : ""}`}
+                    style={{ background: style.bg }}
+                    draggable
+                    onDragStart={e => {
+                      setDraggingSection(gi);
+                      // Prevent topic-level drag handlers from firing on the children
+                      e.stopPropagation();
+                      try { e.dataTransfer.effectAllowed = "move"; } catch (_) {}
+                    }}
+                    onDragEnd={() => { setDraggingSection(null); setDragOverSection(null); }}
+                    title="Drag to move this whole section"
+                  >
+                    <span className="section-handle" aria-hidden="true">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                        <circle cx="2" cy="2" r="1" fill={style.color}/>
+                        <circle cx="2" cy="5" r="1" fill={style.color}/>
+                        <circle cx="2" cy="8" r="1" fill={style.color}/>
+                        <circle cx="6" cy="2" r="1" fill={style.color}/>
+                        <circle cx="6" cy="5" r="1" fill={style.color}/>
+                        <circle cx="6" cy="8" r="1" fill={style.color}/>
+                      </svg>
+                    </span>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: style.dot, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: style.color }}>{group.label}</span>
+                    <span style={{ fontSize: 10, color: style.color, opacity: 0.6, marginLeft: "auto" }}>
+                      {group.topics.reduce((a,t) => a+t.dur, 0)}m
+                    </span>
+                    <span className="section-arrows" style={{ color: style.color }} onMouseDown={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="section-arrow-btn"
+                        disabled={gi === 0}
+                        onClick={e => { e.stopPropagation(); moveSectionUp(gi); }}
+                        title="Move section up"
+                        aria-label="Move section up"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 6l3-3 3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="section-arrow-btn"
+                        disabled={gi === groupedTopics.length - 1}
+                        onClick={e => { e.stopPropagation(); moveSectionDown(gi); }}
+                        title="Move section down"
+                        aria-label="Move section down"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </span>
+                  </div>
+                  {/* Topics */}
+                  {group.topics.map((topic) => (
+                    <div
+                      key={topic.id}
+                      className={`topic-row ${dragging === topic._idx ? "dragging" : ""}`}
+                      draggable
+                      onDragStart={e => { if (draggingSection !== null) { e.preventDefault(); return; } setDragging(topic._idx); }}
+                      onDragOver={e => { if (draggingSection !== null) return; e.preventDefault(); setDragOver(topic._idx); }}
+                      onDrop={() => { if (dragging !== null && dragging !== topic._idx) moveTopic(dragging, topic._idx); setDragging(null); setDragOver(null); }}
+                      onDragEnd={() => { setDragging(null); setDragOver(null); }}
+                      style={{
+                        borderColor: dragOver === topic._idx ? "var(--purple)" : topic.isQA ? "var(--border)" : topic.isBreak ? "var(--border)" : "var(--border)",
+                        background: topic.isQA || topic.isBreak ? "var(--bg)" : "var(--white)",
+                        opacity: topic.isQA || topic.isBreak ? 0.8 : 1,
+                        marginBottom: 4,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, opacity: 0.25 }}>
+                        <rect x="3" y="3" width="8" height="1.5" rx="1" fill="#12152A"/>
+                        <rect x="3" y="6.25" width="8" height="1.5" rx="1" fill="#12152A"/>
+                        <rect x="3" y="9.5" width="8" height="1.5" rx="1" fill="#12152A"/>
+                      </svg>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, color: topic.isQA ? "var(--muted)" : "var(--dark)", fontWeight: topic.isQA ? 400 : 500, fontStyle: topic.isQA || topic.isBreak ? "italic" : "normal" }}>
+                          {topic.title}
+                        </div>
+                        {topic.note && (
+                          <button
+                            onClick={() => setShowNotes(prev => ({ ...prev, [topic.id]: !prev[topic.id] }))}
+                            style={{ fontSize: 10, color: "var(--purple)", background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 2, fontFamily: "var(--font-body)" }}
+                          >
+                            {showNotes[topic.id] ? "▲ Hide trainer note" : "▼ Trainer note"}
+                          </button>
+                        )}
+                        {showNotes[topic.id] && topic.note && (
+                          <div style={{ fontSize: 12, color: "var(--mid)", marginTop: 4, lineHeight: 1.5, background: "var(--purple-light)", borderRadius: 6, padding: "6px 10px" }}>
+                            💡 {topic.note}
+                          </div>
+                        )}
+                      </div>
+                      {!topic.isQA && !topic.isBreak && (
+                        <input
+                          type="number" min="5" max="180" step="5"
+                          value={topic.dur || 30}
+                          onChange={e => updateDur(topic.id, e.target.value)}
+                          style={{ width: 50, padding: "4px 6px", border: "1.5px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 700, color: "var(--purple)", textAlign: "center", outline: "none", background: "var(--white)" }}
+                          title="Duration in minutes"
+                        />
+                      )}
+                      {(topic.isQA || topic.isBreak) && (
+                        <span style={{ fontSize: 12, color: "var(--muted)", minWidth: 30, textAlign: "right" }}>{topic.dur}m</span>
+                      )}
+                      {!topic.isQA && !topic.isBreak && <span style={{ fontSize: 10, color: "var(--soft)", flexShrink: 0 }}>min</span>}
+                      <button onClick={() => removeTopic(topic.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--soft)", fontSize: 18, padding: "0 2px", lineHeight: 1, flexShrink: 0 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add custom topic */}
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <input
+              className="wizard-input"
+              placeholder="Add a custom topic…"
+              value={newTopic[dayKey] || ""}
+              onChange={e => setNewTopic(prev => ({ ...prev, [dayKey]: e.target.value }))}
+              onKeyDown={e => { if (e.key === "Enter") addTopic(); }}
+              style={{ flex: 1, padding: "10px 14px", fontSize: 14 }}
+            />
+            <button className="btn-ghost" onClick={addTopic} style={{ padding: "10px 18px" }}>+ Add</button>
+          </div>
+        </div>
+
+        {/* Right: run-sheet preview (operational view) */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)" }}>
+              Trainer run-sheet · live preview
+            </div>
+            <div style={{ fontSize: 11, color: "var(--soft)", fontVariantNumeric: "tabular-nums" }}>
+              {startTime} → {endTime}
+            </div>
+          </div>
+          <div className="rs-rail">
+            {timeline.length === 0 ? (
+              <div className="run-sheet">
+                <div className="rs-empty">
+                  Select areas in Step 3 to auto-build your agenda.
+                </div>
+              </div>
+            ) : (
+              <RunSheet
+                wizard={wizard}
+                dayKey={dayKey}
+                showNotes={false}
+                dayLabel={days > 1 ? `Day ${dayIdx + 1}` : "Session Agenda"}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── STEP 5: GOALS ────────────────────────────────────────────────────────────
+function StepGoals({ data, onChange }) {
+  const set = (k, v) => onChange({ ...data, [k]: v });
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 5 of 7 (removed)</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          What does success look like?
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>These prompts shape the opening section of the client document.</p>
+      </div>
+
+      {[
+        ["objectives", "What should the team feel confident with after training?", "e.g. The team should be able to manage their full lettings workflow end-to-end without needing to call support…"],
+        ["pain", "What workflows are currently painful or inefficient?", "e.g. Accounting allocations take too long, team isn't using automated reminders…"],
+        ["success", "What does success look like 30 days after training?", "e.g. The team is self-sufficient, accounting is live, no backlog of unallocated payments…"],
+      ].map(([k, label, ph]) => (
+        <div key={k}>
+          <label className="field-label">{label}</label>
+          <textarea className="wizard-input" placeholder={ph} value={data[k] || ""} onChange={e => set(k, e.target.value)} style={{ minHeight: 100 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── STEP 6: LOGISTICS ────────────────────────────────────────────────────────
+function StepLogistics({ data, onChange, clientData }) {
+  const set = (k, v) => onChange({ ...data, [k]: v });
+
+  useEffect(() => {
+    if (clientData.location && !data.location) set("location", clientData.location);
+    if (clientData.parking && !data.parking) set("parking", clientData.parking);
+    if (clientData.followUp && !data.followup) set("followup", clientData.followUp);
+  }, [clientData]);
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 5 of 6</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          Logistics & follow-up
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Final details for the client document.</p>
+      </div>
+
+      {[
+        ["location", "🏢", "Venue / training location", "e.g. Ashtons Head Office, 14 High Street, Guildford"],
+        ["parking", "🅿️", "Parking instructions", "e.g. NCP car park across the road — ask reception for a permit"],
+        ["wifi", "📶", "Wi-Fi / connectivity", "e.g. Connect to GuestWifi — password: training2025"],
+        ["equipment", "💻", "Equipment needed", "e.g. Projector, screen confirmed. Bring HDMI adapter."],
+        ["followup", "📋", "Follow-up plan", "e.g. Email recap within 48h + 30-day review call"],
+      ].map(([k, icon, label, ph]) => (
+        <div key={k}>
+          <label className="field-label">{icon} {label}</label>
+          <input className="wizard-input" placeholder={ph} value={data[k] || ""} onChange={e => set(k, e.target.value)} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── STEP 7: GENERATE ─────────────────────────────────────────────────────────
+function StepGenerate({ wizard, onReset }) {
+  const [jsZipLoaded, setJsZipLoaded] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState("");
+  const [previewDay, setPreviewDay] = useState("day1");
+  const [showTrainerNotes, setShowTrainerNotes] = useState(true);
+
+  useEffect(() => {
+    if (!window.JSZip) {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+      s.onload = () => setJsZipLoaded(true);
+      s.onerror = () => setError("Could not load JSZip. Please check your connection.");
+      document.head.appendChild(s);
+    } else {
+      setJsZipLoaded(true);
+    }
+  }, []);
+
+  const handleDownload = async () => {
+    setGenerating(true);
+    setError("");
+    try {
+      await downloadDocx(wizard);
+      setDone(true);
+    } catch (e) {
+      setError(e.message || "Something went wrong generating the document.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const { client, structure, selectedAreas, agenda } = wizard;
+  const areas = selectedAreas?.selected || [];
+  const dayCount = structure.days || 1;
+  const totalTopics = Object.values(agenda).reduce((acc, arr) => acc + (arr?.length || 0), 0);
+
+  if (done) {
+    return (
+      <div className="anim-fade-up" style={{ textAlign: "center", padding: "40px 0" }}>
+        <div className="success-check">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+            <path d="M6 15l7 7 11-11" stroke="#1B6B42" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 30, color: "var(--navy)", marginBottom: 12 }}>Document downloaded</h2>
+        <p style={{ color: "var(--muted)", marginBottom: 32 }}>Your training plan for <strong>{client.company}</strong> is ready to review, edit, and send.</p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <button className="btn-ghost" onClick={handleDownload}>⬇ Download again</button>
+          <button className="btn-primary" onClick={onReset}>Start a new session</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Date label for the currently-previewed day
+  const previewIdx = parseInt(previewDay.replace("day", "")) - 1;
+  const dayDates = structure.dayDates || [];
+  const fmtDateShort = raw => {
+    if (!raw) return "";
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+      try {
+        return new Date(raw + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      } catch (_) { return raw; }
+    }
+    return raw;
+  };
+  const previewDateLabel = fmtDateShort(dayDates[previewIdx]);
+
+  return (
+    <div className="anim-fade-up" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--purple)", marginBottom: 8 }}>Step 6 of 6</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 400, fontSize: 34, lineHeight: 1.2, color: "var(--navy)", marginBottom: 12 }}>
+          Ready to generate
+        </h2>
+        <p style={{ color: "var(--muted)", fontSize: 16 }}>Review the run-sheet below, then download your Street-branded training document.</p>
+      </div>
+
+      {/* Summary */}
+      <div className="client-card" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        {[
+          ["Client", client.company],
+          ["Trainer", client.trainer],
+          ["Date(s)", client.trainingDate],
+          ["Training days", `${dayCount} day${dayCount > 1 ? "s" : ""}`],
+          ["Delivery", structure.remote || "On-site"],
+          ["Topics total", `${totalTopics} topics across ${dayCount} day${dayCount > 1 ? "s" : ""}`],
+        ].map(([label, val]) => (
+          <div key={label}>
+            <div className="ref-label">{label}</div>
+            <div className="ref-value">{val || "—"}</div>
+          </div>
+        ))}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <div className="ref-label">Areas covered</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+            {areas.map(a => (
+              <span key={a} style={{ fontSize: 12, background: "var(--purple-light)", color: "var(--purple)", borderRadius: 8, padding: "3px 10px", fontWeight: 600 }}>{a}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Run-sheet preview — what trainers will follow on the day */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "var(--muted)" }}>
+            Trainer run-sheet preview
+          </div>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--mid)", cursor: "pointer", userSelect: "none" }}>
+            <input
+              type="checkbox"
+              checked={showTrainerNotes}
+              onChange={e => setShowTrainerNotes(e.target.checked)}
+              style={{ accentColor: "var(--purple)", width: 14, height: 14 }}
+            />
+            Show trainer notes &amp; reminders
+          </label>
+        </div>
+        {dayCount > 1 && (
+          <div className="rs-day-tabs">
+            {Array.from({ length: dayCount }).map((_, i) => {
+              const k = `day${i + 1}`;
+              const dateStr = fmtDateShort(dayDates[i]);
+              return (
+                <button
+                  key={k}
+                  className={`rs-day-tab ${previewDay === k ? "active" : ""}`}
+                  onClick={() => setPreviewDay(k)}
+                  type="button"
+                >
+                  Day {i + 1}{dateStr ? ` · ${dateStr.split(",")[0]}` : ""}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <RunSheet
+          wizard={wizard}
+          dayKey={previewDay}
+          showNotes={showTrainerNotes}
+          dayLabel={dayCount > 1 ? `Day ${previewIdx + 1}` : "Session Agenda"}
+          dateLabel={previewDateLabel}
+        />
+        <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M6 4v3M6 8v.01" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          The downloaded .docx mirrors this layout — section headers, time blocks, durations and breaks all preserved.
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ background: "#FDEAED", border: "1.5px solid #f9b4bc", borderRadius: 12, padding: "12px 16px", fontSize: 14, color: "#9B1C2E" }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <button className="btn-primary" onClick={handleDownload} disabled={generating || !jsZipLoaded} style={{ opacity: generating || !jsZipLoaded ? 0.7 : 1 }}>
+          {generating ? (
+            <>
+              <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
+              Generating…
+            </>
+          ) : (
+            <>⬇ Download training plan (.docx)</>
+          )}
+        </button>
+        {!jsZipLoaded && !error && <span style={{ fontSize: 13, color: "var(--muted)" }}>Loading document tools…</span>}
+      </div>
+
+      <p style={{ fontSize: 13, color: "var(--muted)" }}>
+        The document is fully editable in Microsoft Word or Google Docs. Perfect for sending directly to your client.
+      </p>
+    </div>
+  );
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+function App() {
+  const [step, setStep] = useState(0);
+  const [rows, setRows] = useState(MOCK_ROWS);
+  const [loading, setLoading] = useState(false);
+  const [usingMock, setUsingMock] = useState(true);
+
+  const [wizard, setWizard] = useState({
+    client: {},
+    structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 30, remote: "On-site" },
+    selectedAreas: { selected: [] },
+    agenda: {},
+    logistics: {},
+  });
+
+  const setSection = (key) => (data) => setWizard(prev => ({ ...prev, [key]: data }));
+
+  // Try to load live data
+  useEffect(() => {
+    if (!SHEET_URL || SHEET_URL.includes("YOUR_")) return;
+    setLoading(true);
+    fetch(SHEET_URL + "?action=getData")
+      .then(r => r.json())
+      .then(resp => {
+        // The Apps Script getData returns: { success: true, data: [[row0],[row1],...] }
+        // Row 0 is the header row, rows 1+ are data rows
+        const raw2d = resp?.data;
+        if (!Array.isArray(raw2d) || raw2d.length < 2) return;
+
+        const mapRow = r => {
+          // Safely get a string value from a column index
+          const g = i => String(r[i] ?? "").trim();
+
+          const company = g(13);
+          if (!company) return null;
+
+          // Stakeholder (col 3): formats vary — "Name — Phone", "Name Phone", "Name"
+          const stakeholderRaw = g(3);
+          let stakeholderName = stakeholderRaw;
+          let stakeholderPhone = "";
+          if (stakeholderRaw.includes("—")) {
+            const parts = stakeholderRaw.split("—");
+            stakeholderName = parts[0].trim();
+            stakeholderPhone = parts.slice(1).join("—").trim();
+          } else if (/\d{4,}/.test(stakeholderRaw)) {
+            // Has digits that look like a phone number — split on last word-boundary before digits
+            const m = stakeholderRaw.match(/^(.*?)\s+(\d[\d\s]{6,})$/);
+            if (m) { stakeholderName = m[1].trim(); stakeholderPhone = m[2].trim(); }
+          }
+
+          // Training date display: prefer Booked On Date (col 22), then Preferred Date (col 4)
+          // Both may be dd/mm/yyyy or ISO
+          const bookedRaw    = g(22);
+          const preferredRaw = g(4);
+          const trainingDate = bookedRaw || preferredRaw;
+
+          // Human-readable date for display in the client picker and Step 1 field
+          const fmtForDisplay = raw => {
+            if (!raw) return "";
+            // dd/mm/yyyy
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
+              try {
+                const [d, m, y] = raw.split("/");
+                const dt = new Date(`${y}-${m}-${d}T12:00:00`);
+                return dt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+              } catch (_) { return raw; }
+            }
+            // ISO
+            if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+              try {
+                const dt = new Date(raw.slice(0, 10) + "T12:00:00");
+                return dt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+              } catch (_) { return raw; }
+            }
+            return raw;
+          };
+
+          // Convert raw date to yyyy-mm-dd for <input type="date">
+          const toInputDate = raw => {
+            if (!raw) return "";
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
+              const [d, m, y] = raw.split("/");
+              return `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+            }
+            if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+            return "";
+          };
+
+          // Split dates (col 24) — JSON array of ISO strings e.g. ["2026-05-05","2026-05-06",...]
+          let splitDates = [];
+          try { const p = JSON.parse(g(24)); if (Array.isArray(p)) splitDates = p.filter(Boolean); } catch(_) {}
+
+          const numDays = parseInt(g(23)) || (splitDates.length > 1 ? splitDates.length : 1);
+
+          // Build dayDates for the structure step: use splitDates if present, else use booked date for day 1
+          const dayDatesArr = Array.from({ length: 5 }, (_, i) => {
+            if (splitDates[i]) return toInputDate(splitDates[i]);
+            if (i === 0) return toInputDate(bookedRaw || preferredRaw);
+            return "";
+          });
+
+          return {
+            company,
+            status:          g(0),
+            trainer:         g(21),
+            trainingDate:    fmtForDisplay(trainingDate),
+            trainingDateRaw: trainingDate,
+            preferredDate:   fmtForDisplay(preferredRaw),
+            goLive:          fmtForDisplay(g(18)),
+            stakeholder:     stakeholderName,
+            stakeholderPhone,
+            email:           g(2),
+            attendees:       g(8),
+            familiar:        g(14),
+            trainingType:    g(5),
+            areas:           g(6),
+            features:        g(7),
+            priorities:      g(15),
+            followUp:        g(16),
+            location:        g(9),
+            parking:         g(10),
+            venueSetup:      g(11),
+            anything:        g(17),
+            invoice:         g(20),
+            trainingDays:    numDays,
+            splitDates,
+            _trainingDays:   numDays,
+            _dayDates:       dayDatesArr,
+          };
+        };
+
+        const mapped = raw2d.slice(1).map(mapRow).filter(Boolean);
+        if (mapped.length) {
+          // Sort: Booked/Confirmed first, then by company name
+          mapped.sort((a, b) => {
+            const statusOrder = { "Booked": 0, "Confirmed": 0, "Unassigned": 1, "Pending": 2, "Cancelled": 3 };
+            const sa = statusOrder[a.status] ?? 1;
+            const sb = statusOrder[b.status] ?? 1;
+            if (sa !== sb) return sa - sb;
+            return a.company.localeCompare(b.company);
+          });
+          setRows(mapped);
+          setUsingMock(false);
+        }
+      })
+      .catch(err => {
+        console.warn("Live data fetch failed:", err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const canProceed = () => {
+    if (step === 0) return !!wizard.client.company;
+    if (step === 1) return wizard.structure.days > 0;
+    if (step === 2) return (wizard.selectedAreas.selected || []).length > 0;
+    return true;
+  };
+
+  const resetWizard = () => {
+    setStep(0);
+    setWizard({
+      client: {},
+      structure: { days: 1, dayDates: [], dayTimes: Array.from({length:5}, () => ({start:"10:30",end:"16:30"})), lunchStart: "12:30", lunchDur: 30, remote: "On-site" },
+      selectedAreas: { selected: [] },
+      agenda: {},
+      logistics: {},
+    });
+  };
+
+  const STEP_COMPONENTS = [
+    <StepClient key="c" data={wizard.client} onChange={setSection("client")} rows={rows} loading={loading} />,
+    <StepStructure key="s" data={wizard.structure} onChange={setSection("structure")} clientData={wizard.client} />,
+    <StepAreas key="a" data={wizard.selectedAreas} onChange={setSection("selectedAreas")} clientData={wizard.client} structure={wizard.structure} />,
+    <StepAgenda key="ag" data={wizard.agenda} onChange={setSection("agenda")} wizard={wizard} />,
+    <StepLogistics key="l" data={wizard.logistics} onChange={setSection("logistics")} clientData={wizard.client} />,
+    <StepGenerate key="gen" wizard={wizard} onReset={resetWizard} />,
+  ];
+
+  const showRef = step > 0 && !!wizard.client.company;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      {/* Header */}
+      <header style={{
+        background: "var(--white)",
+        borderBottom: "1.5px solid var(--border)",
+        padding: "0 32px",
+        height: 60,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        boxShadow: "0 1px 12px rgba(18,21,42,0.06)",
+      }}>
+        <StreetLogo />
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {usingMock && (
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", color: "var(--muted)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "3px 10px" }}>
+              PREVIEW DATA
+            </span>
+          )}
+          {step > 0 && step < 5 && (
+            <button className="btn-ghost" onClick={resetWizard} style={{ padding: "8px 16px", fontSize: 13 }}>
+              ✕ Start over
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Progress */}
+      {step < 6 && (
+        <div style={{ background: "var(--white)", borderBottom: "1.5px solid var(--border)", padding: "16px 32px" }}>
+          <div style={{ maxWidth: 900, margin: "0 auto" }}>
+            <ProgressStepper currentStep={step} steps={STEPS} />
+            <div className="progress-bar" style={{ marginTop: 16 }}>
+              <div className="progress-fill" style={{ width: `${((step) / (STEPS.length - 1)) * 100}%` }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Body */}
+      <div style={{ display: "flex", flex: 1 }}>
+        {/* Main content */}
+        <main style={{ flex: 1, padding: "52px 48px", maxWidth: showRef ? "calc(100% - 240px)" : "none", overflowY: "auto" }}>
+          <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            {STEP_COMPONENTS[step]}
+
+            {/* Navigation */}
+            {step < 5 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 48, paddingTop: 32, borderTop: "1.5px solid var(--border)" }}>
+                <button className="btn-ghost" onClick={() => setStep(s => Math.max(0, s - 1))} style={{ visibility: step === 0 ? "hidden" : "visible" }}>
+                  ← Back
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => setStep(s => s + 1)}
+                  disabled={!canProceed()}
+                  style={{ opacity: canProceed() ? 1 : 0.45 }}
+                >
+                  {step === 4 ? "Review & generate →" : "Continue →"}
+                </button>
+              </div>
+            )}
+            {step === 5 && (
+              <div style={{ marginTop: 48, paddingTop: 32, borderTop: "1.5px solid var(--border)" }}>
+                <button className="btn-ghost" onClick={() => setStep(4)}>← Back to logistics</button>
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Reference panel */}
+        <ReferencePanel wizard={wizard} visible={showRef} />
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
