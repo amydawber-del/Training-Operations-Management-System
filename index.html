@@ -10417,11 +10417,23 @@ function calculateMonthlyTrainingReport(rows, selectedMonth) {
     const days     = getTrainingDays(r);
 
     // Date priorities ------------------------------------------------------------
-    const bookedDate    = getBestDate(r, ['bookedOn', 'trainingDate', 'preferredDate']);
-    const completedDate = getBestDate(r, ['trainingDate', 'bookedOn', 'preferredDate']);
-    const cancelDate    = getBestDate(r, ['bookedOn', 'trainingDate', 'preferredDate']);
-    const referralDate  = getBestDate(r, ['ts', 'submitted', 'createdAt', 'bookedOn']);
-    const revenueDate   = getBestDate(r, ['bookedOn', 'trainingDate', 'ts']);
+    // IMPORTANT: "Booked On Date" (bookedOn) is the only trusted date for what
+    // was actually booked. "Preferred Training Date(s)" (preferredDate) is a
+    // messy free-text field that does not reliably reflect reality and must
+    // never be used here — it previously produced a wrong "Completed" figure,
+    // and was silently reintroduced into Cancelled/Forward Booked/Referrals/
+    // Revenue via fallback chains. Do not add preferredDate back into any of
+    // the fields below.
+    const bookedDate    = getBestDate(r, ['bookedOn']);
+    const completedDate = getBestDate(r, ['trainingDate', 'bookedOn']);
+    // Cancelled must reflect when the cancellation happened, not when the
+    // booking was originally for — use the actual Status Changed date.
+    const cancelDate    = getBestDate(r, ['statusChangedAt']);
+    // Referrals and Revenue are scoped to "Booked, in the reporting month",
+    // so they use the same date as the Booked training-days figure — not the
+    // original form submission timestamp.
+    const referralDate  = bookedDate;
+    const revenueDate   = bookedDate;
 
     // A "treat as completed" check: status maps to completed OR (status maps to
     // booked AND the booked/training date is strictly before today).
@@ -10458,7 +10470,7 @@ function calculateMonthlyTrainingReport(rows, selectedMonth) {
       contributes = true; contributionKind = contributionKind || 'Forward Booked';
     }
 
-    // Cancelled — cancelled bucket, date in selected month
+    // Cancelled — cancelled bucket, Status Changed date in selected month
     if(bucket === 'cancelled' && isDateInSelectedMonth(cancelDate, selectedMonth)) {
       report.trainingDays.cancelled += days;
       if(cat) cat.trainingDays.cancelled += days;
@@ -10466,17 +10478,21 @@ function calculateMonthlyTrainingReport(rows, selectedMonth) {
     }
 
     // --- Referrals -------------------------------------------------------------
+    // Must be Booked (not just any status with a referrer name) and dated by
+    // Booked On Date, matching the Booked training-days definition above.
     const refName = mtrReferralName(r);
-    if(refName && category && isDateInSelectedMonth(referralDate, selectedMonth)) {
+    if(bucket === 'booked' && refName && category && isDateInSelectedMonth(referralDate, selectedMonth)) {
       report.referrals[category] = (report.referrals[category] || 0) + 1;
       if(cat) cat.referrals += 1;
       contributes = true; contributionKind = contributionKind || 'Referral';
     }
 
     // --- Revenue ---------------------------------------------------------------
+    // Must be Booked specifically (not just "not cancelled") and dated by
+    // Booked On Date, per the reporting definition.
     const inv = Number(r.invoiceValue);
     const hasRevenue = !isNaN(inv) && inv > 0;
-    if(hasRevenue && category && bucket !== 'cancelled' &&
+    if(hasRevenue && category && bucket === 'booked' &&
        isDateInSelectedMonth(revenueDate, selectedMonth)) {
       report.revenue[category] = (report.revenue[category] || 0) + inv;
       if(cat) cat.revenue += inv;
