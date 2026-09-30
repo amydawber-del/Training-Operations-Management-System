@@ -10434,6 +10434,15 @@ function calculateMonthlyTrainingReport(rows, selectedMonth) {
     // original form submission timestamp.
     const referralDate  = bookedDate;
     const revenueDate   = bookedDate;
+    // Forward Booked needs to know when the booking was actually REFERRED
+    // (the original form submission), so that picking a past reporting month
+    // only counts bookings that had already been referred by the end of that
+    // month — not every booking currently on the books dated after it,
+    // regardless of when it was added. Without this, "Forward Booked" for a
+    // past month silently includes bookings referred long after that month
+    // had already ended, which overstates what was actually on the books at
+    // that point in time.
+    const referredOnDate = getBestDate(r, ['ts', 'submitted', 'createdAt']);
 
     // A "treat as completed" check: status maps to completed OR (status maps to
     // booked AND the booked/training date is strictly before today).
@@ -10463,8 +10472,15 @@ function calculateMonthlyTrainingReport(rows, selectedMonth) {
       contributes = true; contributionKind = contributionKind || 'Completed';
     }
 
-    // Forward Booked — booked-bucket and date strictly after end of selected month
-    if(bucket === 'booked' && isDateAfterSelectedMonth(bookedDate, selectedMonth)) {
+    // Forward Booked — booked-bucket, training date strictly after end of
+    // selected month, AND it must have actually been referred by the end of
+    // that month (otherwise it couldn't have been "on the books" yet as of
+    // that point in time). A missing referred-on date is let through rather
+    // than silently dropped, so old/incomplete rows don't just disappear.
+    const wasReferredBySelectedMonth =
+      !referredOnDate || !isDateAfterSelectedMonth(referredOnDate, selectedMonth);
+    if(bucket === 'booked' && isDateAfterSelectedMonth(bookedDate, selectedMonth) &&
+       wasReferredBySelectedMonth) {
       report.trainingDays.forwardBooked += days;
       if(cat) cat.trainingDays.forwardBooked += days;
       contributes = true; contributionKind = contributionKind || 'Forward Booked';
