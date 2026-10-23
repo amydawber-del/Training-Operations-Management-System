@@ -9500,11 +9500,12 @@ const BOOKING_PAYMENT_DETAILS = [
 ];
 
 const BOOKING_CANCELLATION_POLICY = [
-  'If Street Group has to cancel this contract for reasons beyond their control, such as death, injury, sickness, etc., then the client shall be limited to a full refund of all monies paid.',
-  'If the client or agent choose to cancel the booking after the confirmation has been sent, there will be a cancellation fee of 50% of the balance to cover potential loss and expenses where travel has been confirmed.',
-  'If the training day is booked within one month of the day, 100% of the balance is to be paid. This is due to turning away other clients for training and cannot be rebooked.',
-  'The booking, however, can be rearranged at no additional cost to the agent as long as there are no charges applied to Street Group for the rearrangement of any hotels or travel bookings.',
-  'If you need to cancel your booking, please give us at least 14 working days\' notice before the training day.'
+  'If Street Group has to cancel for reasons beyond our control, such as illness or injury, we will offer you a full refund of all monies paid, or rearrange your training at no extra cost, whichever you prefer.',
+  '- One month\'s notice or more: no cancellation fee. You will receive a full refund of any payment made, less any non-refundable travel and accommodation costs we\'ve already committed to on your behalf.',
+  '- Less than one month\'s notice, but 10 days\' notice or more: a cancellation fee of 50% of the training cost applies.',
+  '- Fewer than 10 days\' notice: the full training cost is payable, as we are unlikely to be able to offer the day to another client.',
+  'You can move your training date at no extra cost with at least 14 days\' notice, subject to trainer availability and provided we do not incur any non-refundable travel or accommodation charges.',
+  'If you need to cancel or rearrange, please let us know as soon as possible by replying to this email.'
 ];
 
 // £ amount with pence only when needed, e.g. £1,850 or £2,220.50
@@ -9580,7 +9581,7 @@ function buildBookingConfirmationEmail(r) {
   body += `\n\n`;
 
   body += `Cancellation policy\n\n`;
-  body += BOOKING_CANCELLATION_POLICY.join('\n\n');
+  body += BOOKING_CANCELLATION_POLICY.map((l, k, a) => l + ((l.startsWith('- ') && a[k + 1] && a[k + 1].startsWith('- ')) ? '\n' : '\n\n')).join('').trim();
   body += `\n\n`;
 
   body += `If you have any questions, please don't hesitate to get in touch by replying to this email.\n\n`;
