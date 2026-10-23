@@ -3261,7 +3261,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
 <div class="modal-overlay" id="draftEmailOverlay" onclick="if(event.target===this)closeDraftEmailModal()">
   <div class="modal modal-lg" style="width:640px;">
     <div class="modal-header" style="background:#166534;">
-      <div><div class="modal-title">✉️ Draft Email</div><div class="modal-subtitle" id="draftEmailCompany">&#8212;</div></div>
+      <div><div class="modal-title" id="draftEmailTitle">✉️ Draft Email</div><div class="modal-subtitle" id="draftEmailCompany">&#8212;</div></div>
       <button class="modal-close" onclick="closeDraftEmailModal()">&#10005;</button>
     </div>
     <div class="modal-body">
@@ -5893,6 +5893,7 @@ function renderActionNeeded() {
       <td>${reassignTrainerDropdown(r)}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${canDo('confirmBooking') ? `<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm Booking</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openDraftEmailModal(${r._idx})" title="Generate a client-facing email about this request" style="border-color:#86efac;color:#166534;">✉️ Draft Email</button>
         <button class="btn btn-ghost btn-sm" onclick="openProvisionalModal(${r._idx})" title="Set a provisional discussion date" style="border-color:#f59e0b;color:#92400e;">📅 ${provisionalDates[r._rowNum] ? '<span style="font-weight:700;">'+provisionalDates[r._rowNum].date+'</span>' : 'Provisional'}</button>
         ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
       </td>
@@ -5972,6 +5973,8 @@ function bookingRow(r) {
   if(canDo('editBooking') && r.status === 'Booked') actions.push(`<button class="btn btn-edit btn-sm" onclick="openEditBookingModal(${r._idx})">✎ Edit</button>`);
   // Confirm: upcoming Pending/Unassigned
   if(canDo('confirmBooking') && (r.status === 'Pending' || r.status === 'Unassigned')) actions.push(`<button class="btn btn-success btn-sm" onclick="openBookModal(${r._idx})">Confirm</button>`);
+  // Draft Email: booking confirmation email for any Booked row
+  if(r.status === 'Booked') actions.push(`<button class="btn btn-ghost btn-sm" onclick="openDraftEmailModal(${r._idx})" title="Generate a booking confirmation email for the client" style="border-color:#86efac;color:#166534;">✉️ Draft Email</button>`);
   // Cancel: only on upcoming non-Cancelled rows
   if(canDo('cancelBooking') && !completed && r.status !== 'Cancelled') actions.push(`<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>`);
   return `<tr>
@@ -9488,13 +9491,113 @@ function buildDraftEmail(r) {
   return { subject: draftSubjectLine(r), body };
 }
 
+// ── Booking confirmation email (used for Booked rows) ──────────────────
+const BOOKING_PAYMENT_DETAILS = [
+  ['Bank', 'Barclays'],
+  ['Account Name', 'Street Systems Ltd'],
+  ['Account Number', '43899519'],
+  ['Sort Code', '20-54-58']
+];
+
+const BOOKING_CANCELLATION_POLICY = [
+  'If Street Group has to cancel this contract for reasons beyond their control, such as death, injury, sickness, etc., then the client shall be limited to a full refund of all monies paid.',
+  'If the client or agent choose to cancel the booking after the confirmation has been sent, there will be a cancellation fee of 50% of the balance to cover potential loss and expenses where travel has been confirmed.',
+  'If the training day is booked within one month of the day, 100% of the balance is to be paid. This is due to turning away other clients for training and cannot be rebooked.',
+  'The booking, however, can be rearranged at no additional cost to the agent as long as there are no charges applied to Street Group for the rearrangement of any hotels or travel bookings.',
+  'If you need to cancel your booking, please give us at least 14 working days\' notice before the training day.'
+];
+
+// £ amount with pence only when needed, e.g. £1,850 or £2,220.50
+function draftMoney(v) {
+  const n = Number(v);
+  if (isNaN(n)) return '—';
+  const hasPence = Math.abs(n - Math.round(n)) > 0.004;
+  return '£' + n.toLocaleString('en-GB', { minimumFractionDigits: hasPence ? 2 : 0, maximumFractionDigits: 2 });
+}
+
+// e.g. "Tuesday 4 November 2026"
+function draftLongDate(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function draftBookingDateLines(r) {
+  const isos = getBookingDates(r);
+  const topics = Array.isArray(r.splitTopics) ? r.splitTopics : [];
+  if (!isos.length) return [];
+  if (isos.length === 1) {
+    const t = topics[0] ? ` (${topics[0]})` : '';
+    return [draftLongDate(new Date(isos[0] + 'T12:00:00')) + t];
+  }
+  return isos.filter(Boolean).map((iso, i) => {
+    const t = topics[i] ? ` (${topics[i]})` : '';
+    return `Day ${i + 1}: ${draftLongDate(new Date(iso + 'T12:00:00'))}${t}`;
+  });
+}
+
+function draftCostLines(r) {
+  if (draftFieldMissing(r.invoiceValue)) return ['Training cost: [cost to be confirmed]'];
+  const total = Number(r.invoiceValue);
+  const days = r.trainingDays || 1;
+  const vat = Math.round(total * 0.2 * 100) / 100;
+  const inc = Math.round((total + vat) * 100) / 100;
+  const lines = [];
+  lines.push(`Training cost: ${draftMoney(total)} plus VAT`);
+  lines.push('');
+  lines.push('Cost breakdown:');
+  if (days > 1) lines.push(`- ${days} training days at ${draftMoney(total / days)} per day: ${draftMoney(total)}`);
+  else lines.push(`- 1 training day: ${draftMoney(total)}`);
+  lines.push(`- VAT (20%): ${draftMoney(vat)}`);
+  lines.push(`- Total including VAT: ${draftMoney(inc)}`);
+  return lines;
+}
+
+function buildBookingConfirmationEmail(r) {
+  const firstName = draftFirstName(r.contact);
+  const company = draftFieldMissing(r.company) ? 'your business' : r.company.trim();
+  const days = r.trainingDays || 1;
+  const dateLines = draftBookingDateLines(r);
+
+  let body = `Hi ${firstName},\n\nThank you for booking your Street training with us.\n\n`;
+  body += `Booking summary\n\n`;
+  body += `Company: ${company}\n`;
+  if (!draftFieldMissing(r.trainingOption)) body += `Training type: ${r.trainingOption.trim()}\n`;
+  body += `Number of training days: ${days}\n`;
+  if (dateLines.length === 1) body += `Training date: ${dateLines[0]}\n`;
+  else if (dateLines.length > 1) body += `Training dates:\n${dateLines.map(l => '- ' + l).join('\n')}\n`;
+  else body += `Training date: [date to be confirmed]\n`;
+  if (!draftFieldMissing(r.trainer)) body += `Trainer: ${r.trainer.trim()}\n`;
+  if (!draftFieldMissing(r.locationRaw)) body += `Location: ${r.locationRaw.trim()}\n`;
+  body += `\n${draftCostLines(r).join('\n')}\n\n`;
+
+  body += `Payment is required to secure your booking\n\n`;
+  body += `This email is to let you know that your training has been added to our diary. Please note that the booking is not officially confirmed until payment has been received, and we will not proceed with the booking until then. Payment is required in order to secure your booking date.\n\n`;
+
+  body += `Payment details\n\n`;
+  body += `Please submit all payments to the account details below, including your company name as reference wherever possible.\n\n`;
+  body += BOOKING_PAYMENT_DETAILS.map(([k, v]) => `${k}: ${v}`).join('\n');
+  body += `\n\n`;
+
+  body += `Cancellation policy\n\n`;
+  body += BOOKING_CANCELLATION_POLICY.join('\n\n');
+  body += `\n\n`;
+
+  body += `If you have any questions, please don't hesitate to get in touch by replying to this email.\n\n`;
+  body += `Kind regards,\nAmy`;
+
+  return { subject: `Booking Confirmation – ${company}`, body };
+}
+
 let currentDraftEmailRow = null;
 
 function openDraftEmailModal(idx) {
   const r = allData.find(x => x._idx === idx);
   if (!r) return;
   currentDraftEmailRow = r;
-  const { subject, body } = buildDraftEmail(r);
+  const isBooked = r.status === 'Booked';
+  const { subject, body } = isBooked ? buildBookingConfirmationEmail(r) : buildDraftEmail(r);
+  document.getElementById('draftEmailTitle').textContent = isBooked ? '✉️ Draft Booking Confirmation' : '✉️ Draft Email';
   document.getElementById('draftEmailCompany').textContent = getCompanyName(r);
   document.getElementById('draftEmailSubject').value = subject;
   document.getElementById('draftEmailBody').value = body;
