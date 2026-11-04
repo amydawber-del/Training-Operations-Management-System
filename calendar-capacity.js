@@ -303,14 +303,15 @@
   .calx-sec{margin-bottom:14px;}
   .calx-sec h4{margin:0 0 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--s-text-muted);}
   .calx-namechips{display:flex;flex-wrap:wrap;gap:5px;}
-  .calx-toprow{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:4px;}
+  .calx-toprow{display:grid;grid-template-columns:1.7fr 1fr;gap:20px;margin-bottom:4px;align-items:start;}
   @media (max-width:560px){.calx-toprow{grid-template-columns:1fr;}}
-  .calx-freeitem{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f3f4f6;}
-  .calx-freeitem:last-child{border-bottom:0;}
-  .calx-freeitem .nm{font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:#E8F9F3;color:#047857;white-space:nowrap;}
+  .calx-freeitem{padding:8px 0;border-bottom:1px solid #f3f4f6;}
+  .calx-freeitem:first-of-type{padding-top:2px;}
+  .calx-freeitem:last-of-type{border-bottom:0;}
+  .calx-freeitem .nm{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:#E8F9F3;color:#047857;margin-bottom:5px;}
   .calx-freeitem.no .nm{background:#f3f4f6;color:#6b7280;}
-  .calx-freeitem .what{font-size:12px;line-height:1.35;color:var(--s-text-primary);}
-  .calx-freeitem .what small{display:block;font-size:11px;color:var(--s-text-muted);margin-top:1px;}
+  .calx-freeitem .what{font-size:12.5px;line-height:1.4;color:var(--s-text-primary);padding-left:2px;}
+  .calx-freeitem .what small{display:block;font-size:11.5px;color:var(--s-text-muted);margin-top:2px;}
   .calx-notice{font-size:11px;color:#92400e;background:#FEF3CD;border-radius:6px;padding:5px 8px;margin-top:6px;}
   .calx-namechips span{font-size:11px;font-weight:600;padding:3px 9px;border-radius:100px;}
   .calx-panel-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--s-border);background:var(--s-surface);}
@@ -1426,7 +1427,7 @@
     h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free plus an admin day after each block. "Us coming to you" also needs a travel day before each block and never starts on a Monday (Monday is the travel day), so away blocks are Tuesday to Thursday. An admin day can double up as a travel day. Back-to-back days stay with one trainer. Trainer names aren't included in the copied text.</div>
       <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
     document.getElementById('calxAvailBody').innerHTML = h;
-    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04d</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
+    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04e</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
   }
   window.calxAvailTab = function (t) { availTab = t; renderAvail(); };
   window.calxCustomSet = function (k, v) {
