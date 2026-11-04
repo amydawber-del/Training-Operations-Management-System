@@ -523,7 +523,12 @@
         const off = !isWork(d);
         let c = '';
         if (b && prefs.types.blocked) c += `<span class="calx-blk" style="background:#fee2e6;color:#9f1239">🔒 ${esc(b.reason || 'Blocked')}</span>`;
+        const _tr = mine.filter(e => e.type === 'travel' && e.sub === 'Travel'), _ad = mine.filter(e => e.type === 'travel' && e.sub === 'Admin');
+        if (_tr.length && _ad.length) {
+          c += `<span class="calx-blk click" style="background:#fef3c7;color:#92400e" onclick="openCalEventModal(${_tr[0].rowIdx})">📝 Admin + ✈ Travel<small>${esc(company(_ad[0].r))} → ${esc(company(_tr[0].r))}</small></span>`;
+        }
         mine.forEach(e => {
+          if (e.type === 'travel' && _tr.length && _ad.length) return;   // shown as one combined block above
           if (e.type === 'training') {
             rowBooked++;
             c += `<span class="calx-blk click" style="background:color-mix(in srgb,${colour} 14%,#fff);border-left:3px solid ${colour};color:var(--s-text-primary)" onclick="openCalEventModal(${e.rowIdx})">${esc(e.label)}<small>${e.dayTotal > 1 ? 'Day ' + e.dayNo + ' of ' + e.dayTotal : 'Training'}${e.r && e.r.trainingOption ? ' · ' + esc(e.r.trainingOption) : ''}</small></span>`;
@@ -752,8 +757,8 @@
       res.available++; W.available++;
       if (mine.some(e => e.type === 'training')) { res.training++; W.committed++; seq.push('busy'); }
       else if (mine.some(e => e.type === 'travel')) {
-        if (o.travelAdmin) { res.travelAdmin++; W.committed++; seq.push('busy'); }
-        else { res.free++; seq.push('busy'); }
+        if (o.travelAdmin) { res.travelAdmin++; W.committed++; } else { res.free++; }
+        seq.push('buffer');   // can double up as a new booking's travel or admin day
       }
       else if (mine.some(e => e.type === 'provisional')) { res.held++; seq.push('busy'); }
       else {
@@ -766,7 +771,7 @@
     // How many N-day bookings still fit: N free Mon–Thu days in a row, an admin
     // day after (free day or a Friday), plus a travel day before if needed.
     const L = Math.max(1, o.length);
-    const bufferOk = v => v === 'free' || v === 'fri' || v === undefined; // undefined = just outside the period
+    const bufferOk = v => v === 'free' || v === 'fri' || v === 'buffer' || v === undefined; // undefined = just outside the period
     for (let i = 0; i < seq.length; i++) {
       let ok = true;
       for (let j = 0; j < L; j++) if (seq[i + j] !== 'free') { ok = false; break; }
@@ -774,10 +779,10 @@
       if (o.newTravel && !bufferOk(i > 0 ? seq[i - 1] : undefined)) continue;
       if (!bufferOk(seq[i + L])) continue;
       res.fits++;
-      if (o.newTravel && i > 0 && seq[i - 1] === 'free') seq[i - 1] = 'busy';
+      if (o.newTravel && i > 0 && seq[i - 1] === 'free') seq[i - 1] = 'buffer';
       for (let j = 0; j < L; j++) seq[i + j] = 'busy';
-      if (seq[i + L] === 'free') seq[i + L] = 'busy';
-      i += L;
+      if (seq[i + L] === 'free') seq[i + L] = 'buffer';   // admin day can still be the next booking's travel day
+      i += L - 1;
     }
     res.committed = res.training + res.travelAdmin;
     res.util = res.available ? Math.round((res.committed / res.available) * 100) : 0;
@@ -914,7 +919,7 @@
       <div class="cap-legend"><span><i style="background:#F0FDF4;border:1px solid #d1fae5"></i>0%</span><span><i style="background:#DCFCE7"></i>1–39%</span><span><i style="background:#BBF7D0"></i>40–69%</span><span><i style="background:#FDE68A"></i>70–89%</span><span><i style="background:#FECACA"></i>90%+</span></div></div>`;
     }
 
-    h += `<div class="cap-note"><strong>How this is worked out.</strong> Available = Monday to Thursday in the period (Fridays are admin days for everyone), minus bank holidays, Humaans leave and blocked days. Committed = booked training days${capState.travelAdmin ? ', plus their travel and admin days (travel only where the booking needs it: not for Street HQ or hosted events)' : ''}. Provisional holds aren't counted as booked but aren't free either. "Could still fit" looks for ${L} free day${L > 1 ? 's' : ''} in a row with an admin day after${capState.newTravel ? ' and a travel day before' : ''} (a Friday can be used for either)${capState.notice ? ', starting at least 14 working days from today' : ''}.</div>`;
+    h += `<div class="cap-note"><strong>How this is worked out.</strong> Available = Monday to Thursday in the period (Fridays are admin days for everyone), minus bank holidays, Humaans leave and blocked days. Committed = booked training days${capState.travelAdmin ? ', plus their travel and admin days (travel only where the booking needs it: not for Street HQ or hosted events)' : ''}. Provisional holds aren't counted as booked but aren't free either. "Could still fit" looks for ${L} free day${L > 1 ? 's' : ''} in a row with an admin day after${capState.newTravel ? ' and a travel day before' : ''} (a Friday, or an existing admin/travel day, can be used for these, as admin and travel can overlap)${capState.notice ? ', starting at least 14 working days from today' : ''}.</div>`;
     root.innerHTML = h;
     window._calxLastCap = { rows, from, to, util, avail, committed, free, fits, L, target, headroom };
   }
@@ -1026,7 +1031,11 @@
     const k = keyOf(d);
     if (blockFor(k, name)) return 'busy';
     const mine = (evMap[k] || []).filter(e => e.trainer === name);
-    return mine.length ? 'busy' : 'free';   // training, travel, admin, leave, provisional, Google all count as busy
+    if (!mine.length) return 'free';
+    // Only travel/admin on this day: it can double up as another booking's
+    // travel or admin day (e.g. admin in the morning, travel in the afternoon)
+    if (mine.every(e => e.type === 'travel')) return 'buffer';
+    return 'busy';   // training, leave, provisional, Google
   }
 
   function computeAvailability() {
@@ -1036,7 +1045,7 @@
     const evMap = buildEvents(addDays(start, -7), addDays(end, 7));
     let pool = calTrainers().filter(t => counted(t.name) && !isShadowing(t.name));
     if (availState.trainer) pool = pool.filter(t => t.name === availState.trainer);
-    const okBuffer = st => st === 'free' || st === 'fri';
+    const okBuffer = st => st === 'free' || st === 'fri' || st === 'buffer';
     const res = { hq1: [], away1: [], hq2: [], away2: [], start, end };
     for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
       if (!isBookable(d)) continue;
@@ -1120,7 +1129,7 @@
         (list.length ? '<div class="calx-namechips">' + list.map(x => `<span style="background:#E8F9F3;color:#047857" title="${esc('Free: ' + x.who.join(', '))}">${esc(two ? pairTxt(x.d, x.d2) : dayTxt(x.d))}</span>`).join('') + '</div>'
           : '<div style="font-size:12px;color:var(--s-text-muted)">No availability in this period</div>') + '</div>';
     });
-    h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free that day plus an admin day after. "Us coming to you" also needs a free travel day before. Two-day dates are back-to-back days with the same trainer. Hover a date to see who's free (trainer names aren't included in the copied text).</div>
+    h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free that day plus an admin day after. "Us coming to you" also needs a travel day before. An admin day can double up as a travel day (admin in the morning, travel in the afternoon), so these can overlap. Two-day dates are back-to-back days with the same trainer. Hover a date to see who's free (trainer names aren't included in the copied text).</div>
       <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
     document.getElementById('calxAvailBody').innerHTML = h;
     document.getElementById('calxAvailFoot').innerHTML = `<button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
