@@ -10,7 +10,9 @@
  *       • List       – chronological agenda for the month, with search.
  *     Plus show/hide chips per event type (remembered per browser).
  *
- *  2. CAPACITY PLANNER — a day-based capacity calculator (new page):
+ *  2. CAPACITY PLANNER — a day-based capacity calculator (new page).
+ *     Uses trainerDay() and blockFits(), the same day rules as the
+ *     calendar and Copy availability, so the numbers always agree:
  *       working days − bank holidays − leave − blocked days = available
  *       available − training − travel/admin − provisional    = free
  *     Shows bookings that could still fit, utilisation vs target, and a
@@ -161,18 +163,48 @@
   const blockLabel = b => (b.fullReason || b.reason || 'Blocked') +
     (b.scope === 'select' && b.trainers && b.trainers.length ? ' (' + b.trainers.join(', ') + ')' : '');
 
-  // Who is busy / free on a day (busy = training, travel/admin, leave, or blocked)
+  // ── ONE shared answer to "what is this trainer doing on this day?" ──
+  // Used by the month/week calendar, Copy availability AND the Capacity
+  // Planner, so all three always agree. Reads the same data: bookings,
+  // provisional holds, Humaans leave, Google Calendar and blocked days.
+  //   'off'      weekend or bank holiday
+  //   'fri'      Friday team admin day (can host travel/admin, never training)
+  //   'blocked'  blocked day (whole team, or this trainer)
+  //   'leave'    Humaans leave
+  //   'training' booked training
+  //   'buffer'   only travel/admin for a booking (can double up as another
+  //              booking's travel or admin day, never a training day)
+  //   'held'     provisional hold
+  //   'google'   something in their Google Calendar
+  //   'free'     nothing on
+  function trainerDay(name, d, evMap) {
+    if (!isWork(d)) return 'off';
+    if (isFri(d)) return 'fri';
+    const k = keyOf(d);
+    if (blockFor(k, name)) return 'blocked';
+    const mine = (evMap[k] || []).filter(e => e.trainer === name);
+    if (!mine.length) return 'free';
+    if (mine.some(e => e.type === 'leave')) return 'leave';
+    if (mine.some(e => e.type === 'training')) return 'training';
+    if (mine.every(e => e.type === 'travel')) return 'buffer';
+    if (mine.some(e => e.type === 'provisional')) return 'held';
+    return 'google';
+  }
+  // Trainers counted for capacity/availability: not shadowing, not the manager
+  const availPool = () => calTrainers().filter(t => !isShadowing(t.name) && counted(t.name));
+
+  // Who is busy / free on a day, for the calendar's "x free" chips and day panel
   function dayAvailability(k, evs) {
-    if (isFri(fromKey(k))) return { free: [], busy: [], held: [], total: 0, friday: true };
-    const pool = calTrainers().filter(t => !isShadowing(t.name) && counted(t.name));
+    const date = fromKey(k);
+    if (isFri(date)) return { free: [], busy: [], held: [], total: 0, friday: true };
+    const pool = availPool();
+    const evMap = { [k]: evs };
     const free = [], busy = [], held = [];
     pool.forEach(t => {
-      const mine = evs.filter(e => e.trainer === t.name);
-      const b = blockFor(k, t.name);
-      const fullyBlocked = b && (!b.scope || b.scope === 'all' || (b.trainers || []).includes(t.name));
-      if (fullyBlocked || mine.some(e => e.type === 'training' || e.type === 'travel' || e.type === 'leave')) busy.push(t.name);
-      else if (mine.some(e => e.type === 'provisional')) held.push(t.name);
-      else free.push(t.name);
+      const st = trainerDay(t.name, date, evMap);
+      if (st === 'free') free.push(t.name);
+      else if (st === 'held') held.push(t.name);
+      else busy.push(t.name);
     });
     return { free, busy, held, total: pool.length };
   }
@@ -748,59 +780,56 @@
     }
   }
 
-  // Core calculation for one trainer.
+  // Earliest day a new booking could start: same rule as Copy availability
+  function earliestStart(notice) {
+    return notice && typeof addWorkingDays === 'function' ? addWorkingDays(todayDate(), 14) : addDays(todayDate(), 1);
+  }
+
+  // Core calculation for one trainer. Day statuses come from trainerDay()
+  // and "could still fit" uses blockFits(), exactly like Copy availability.
   function capacityFor(name, from, to, evMap, opts) {
     const o = Object.assign({ travelAdmin: true, newTravel: true, notice: true, length: 1 }, opts || {});
-    const earliest = o.notice && typeof addWorkingDays === 'function' ? addWorkingDays(todayDate(), 14) : todayDate();
-    const res = { name, working: 0, bankHols: 0, fridays: 0, leave: 0, blocked: 0, available: 0, training: 0, travelAdmin: 0, held: 0, free: 0, freeBookable: 0, fits: 0, weeks: {} };
-    // Working-day sequence for the "could still fit" scan:
-    //   'free'   = bookable (Mon–Thu), nothing on, past the notice period
-    //   'fri'    = Friday admin day (can host a travel or admin buffer, never training)
-    //   'busy'   = anything else
-    const seq = [], seqDow = [];
+    const earliest = earliestStart(o.notice);
+    const res = { name, working: 0, bankHols: 0, fridays: 0, leave: 0, blocked: 0, available: 0, training: 0, travelAdmin: 0, held: 0, other: 0, free: 0, freeBookable: 0, fits: 0, weeks: {} };
     for (let d = new Date(from); d <= to; d = addDays(d, 1)) {
       if (isWeekend(d)) continue;
-      if (!isHol(d)) seqDow.push(d.getDay());
       const wk = keyOf(mondayOf(d));
       const W = res.weeks[wk] = res.weeks[wk] || { available: 0, committed: 0, leave: 0 };
-      if (isHol(d)) { res.bankHols++; continue; }
+      const st = trainerDay(name, d, evMap);
+      if (st === 'off') { res.bankHols++; continue; }
       res.working++;
-      if (isFri(d)) { res.fridays++; seq.push('fri'); continue; }   // team admin day, not training capacity
-      const k = keyOf(d);
-      const b = blockFor(k, name);
-      const mine = (evMap[k] || []).filter(e => e.trainer === name);
-      if (b) { res.blocked++; seq.push('busy'); continue; }
-      if (mine.some(e => e.type === 'leave')) { res.leave++; W.leave++; seq.push('busy'); continue; }
+      if (st === 'fri') { res.fridays++; continue; }   // team admin day, not training capacity
+      if (st === 'blocked') { res.blocked++; continue; }
+      if (st === 'leave') { res.leave++; W.leave++; continue; }
       res.available++; W.available++;
-      if (mine.some(e => e.type === 'training')) { res.training++; W.committed++; seq.push('busy'); }
-      else if (mine.some(e => e.type === 'travel')) {
+      if (st === 'training') { res.training++; W.committed++; }
+      else if (st === 'buffer') {
         if (o.travelAdmin) { res.travelAdmin++; W.committed++; } else { res.free++; }
-        seq.push('buffer');   // can double up as a new booking's travel or admin day
       }
-      else if (mine.some(e => e.type === 'provisional')) { res.held++; seq.push('busy'); }
+      else if (st === 'held') res.held++;
+      else if (st === 'google') res.other++;
       else {
         res.free++;
-        const ok = d >= earliest;
-        if (ok) res.freeBookable++;
-        seq.push(ok ? 'free' : 'busy');
+        if (d >= earliest) res.freeBookable++;
       }
     }
-    // How many N-day bookings still fit: N free Mon–Thu days in a row, an admin
-    // day after (free day or a Friday), plus a travel day before if needed.
+    // How many N-day bookings still fit, using the same rules as Copy
+    // availability: N back-to-back Mon–Thu days, an admin day after, a travel
+    // day before when we go to the client (never starting on a Monday), and
+    // admin/travel days allowed to overlap. Bookings found are pencilled in
+    // so the next one can't reuse the same days.
     const L = Math.max(1, o.length);
-    const bufferOk = v => v === 'free' || v === 'fri' || v === 'buffer' || v === undefined; // undefined = just outside the period
-    for (let i = 0; i < seq.length; i++) {
-      let ok = true;
-      for (let j = 0; j < L; j++) if (seq[i + j] !== 'free') { ok = false; break; }
-      if (!ok) continue;
-      if (o.newTravel && seqDow[i] === 1) continue;   // Monday is a travel day for away training
-      if (o.newTravel && !bufferOk(i > 0 ? seq[i - 1] : undefined)) continue;
-      if (!bufferOk(seq[i + L])) continue;
-      res.fits++;
-      if (o.newTravel && i > 0 && seq[i - 1] === 'free') seq[i - 1] = 'buffer';
-      for (let j = 0; j < L; j++) seq[i + j] = 'busy';
-      if (seq[i + L] === 'free') seq[i + L] = 'buffer';   // admin day can still be the next booking's travel day
-      i += L - 1;
+    if (L <= maxBlock(o.newTravel)) {
+      const occ = new Map();
+      const scanFrom = earliest > from ? earliest : from;
+      for (let d = new Date(scanFrom); d <= to; d = addDays(d, 1)) {
+        if (!isBookable(d)) continue;
+        const blk = blockFits(name, d, L, o.newTravel, evMap, occ, to);
+        if (!blk) continue;
+        res.fits++;
+        occupy(occ, blk);
+        d = addDays(blk.days[blk.days.length - 1], 0);
+      }
     }
     res.committed = res.training + res.travelAdmin;
     res.util = res.available ? Math.round((res.committed / res.available) * 100) : 0;
@@ -843,14 +872,16 @@
     const root = document.getElementById('capRoot');
     if (!root) return;
     const [from, to] = capRange();
-    const evMap = buildEvents(from, to);
+    const evMap = buildEvents(addDays(from, -7), addDays(to, 7));
     const notCounted = calTrainers().filter(t => !counted(t.name)).map(t => t.name);
     let people = calTrainers().filter(t => counted(t.name));
     if (!capState.includeShadow) people = people.filter(t => !isShadowing(t.name));
     const chosen = people.filter(t => !(capState.excluded || []).includes(t.name));
-    const L = +capState.length || 1;
+    const maxL = maxBlock(capState.newTravel);
+    const L = Math.min(+capState.length || 1, maxL);
     const rows = chosen.map(t => capacityFor(t.name, from, to, evMap, { travelAdmin: capState.travelAdmin, newTravel: capState.newTravel, notice: capState.notice, length: L }));
     const sum = k => rows.reduce((s, r) => s + r[k], 0);
+    const showOther = rows.some(r => r.other);
     const avail = sum('available'), committed = sum('committed'), held = sum('held'), free = sum('free'), fits = sum('fits');
     const util = avail ? Math.round(committed / avail * 100) : 0;
     const target = Math.max(1, Math.min(100, +capState.target || 80));
@@ -872,7 +903,7 @@
         <div class="cap-controls">
           <div><label class="cap-l" for="capPeriod">Period</label><select id="capPeriod" onchange="calxCapSet('period',this.value)">${opt('next4w', 'Next 4 weeks')}${opt('next8w', 'Next 8 weeks')}${opt('thisMonth', 'Rest of this month')}${opt('nextMonth', 'Next month')}${opt('next3m', 'Next 3 months')}${opt('custom', 'Custom dates')}</select></div>
           ${capState.period === 'custom' ? `<div><label class="cap-l" for="capFrom">From</label><input type="date" id="capFrom" value="${keyOf(from)}" onchange="calxCapSet('from',this.value)"></div><div><label class="cap-l" for="capTo">To</label><input type="date" id="capTo" value="${keyOf(to)}" onchange="calxCapSet('to',this.value)"></div>` : ''}
-          <div><label class="cap-l" for="capLen">Typical booking length</label><select id="capLen" onchange="calxCapSet('length',+this.value)">${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${L === n ? 'selected' : ''}>${n} day${n > 1 ? 's' : ''}</option>`).join('')}</select></div>
+          <div><label class="cap-l" for="capLen">Typical booking length</label><select id="capLen" onchange="calxCapSet('length',+this.value)">${Array.from({ length: maxL }, (_, i) => i + 1).map(n => `<option value="${n}" ${L === n ? 'selected' : ''}>${n} day${n > 1 ? 's' : ''}</option>`).join('')}</select></div>
           <div><label class="cap-l" for="capTarget">Target booked %</label><input type="number" id="capTarget" min="10" max="100" step="5" value="${target}" onchange="calxCapSet('target',+this.value)"></div>
           <div style="display:flex;flex-direction:column;gap:6px">
             <label class="cap-check"><input type="checkbox" ${capState.travelAdmin ? 'checked' : ''} onchange="calxCapSet('travelAdmin',this.checked)"> Count booked travel &amp; admin days</label>
@@ -887,19 +918,19 @@
       <div class="cap-kpis">
         <div class="cap-kpi"><div class="lbl">Team utilisation</div><div class="val">${util}%</div><div class="sub"><span class="cap-badge" style="background:${st.bg};color:${st.fg}">${st.label}</span> target ${target}%</div></div>
         <div class="cap-kpi"><div class="lbl">Available trainer-days</div><div class="val">${avail}</div><div class="sub">${workingDays - (rows.length ? rows[0].fridays : 0)} Mon–Thu days × ${rows.length} trainer${rows.length === 1 ? '' : 's'}, after leave &amp; blocks (Fridays are admin)</div></div>
-        <div class="cap-kpi"><div class="lbl">Already committed</div><div class="val">${committed}</div><div class="sub">${sum('training')} training${capState.travelAdmin ? ' + ' + sum('travelAdmin') + ' travel/admin' : ''}${held ? ' · ' + held + ' on hold' : ''}</div></div>
+        <div class="cap-kpi"><div class="lbl">Already committed</div><div class="val">${committed}</div><div class="sub">${sum('training')} training${capState.travelAdmin ? ' + ' + sum('travelAdmin') + ' travel/admin' : ''}${held ? ' · ' + held + ' on hold' : ''}${sum('other') ? ' · ' + sum('other') + ' other' : ''}</div></div>
         <div class="cap-kpi"><div class="lbl">Free days</div><div class="val">${free}</div><div class="sub">${sum('freeBookable')} bookable${capState.notice ? ' after notice period' : ''}</div></div>
         <div class="cap-kpi"><div class="lbl">Could still fit</div><div class="val">${fits}</div><div class="sub">${L}-day booking${fits === 1 ? '' : 's'} that fit the calendar</div></div>
         <div class="cap-kpi"><div class="lbl">Headroom to target</div><div class="val">${headroom}</div><div class="sub">trainer-days before hitting ${target}%</div></div>
       </div>
       <div class="cap-card">
         <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px"><strong style="font-size:14px;color:var(--s-text-primary)">By trainer</strong><span style="font-size:12px;color:var(--s-text-muted)">${rangeTxt}</span></div>
-        <div style="overflow-x:auto"><table class="cap-t"><thead><tr><th>Trainer</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Training</th>${capState.travelAdmin ? '<th class="num">Travel/admin</th>' : ''}<th class="num">On hold</th><th class="num">Free</th><th class="num">Fits</th><th>Booked</th><th>Status</th></tr></thead><tbody>
+        <div style="overflow-x:auto"><table class="cap-t"><thead><tr><th>Trainer</th><th class="num">Available</th><th class="num">Leave</th><th class="num">Training</th>${capState.travelAdmin ? '<th class="num">Travel/admin</th>' : ''}<th class="num">On hold</th>${showOther ? '<th class="num" title="Days with something in their Google Calendar">Other</th>' : ''}<th class="num">Free</th><th class="num">Fits</th><th>Booked</th><th>Status</th></tr></thead><tbody>
         ${rows.sort((a, b) => b.util - a.util).map(r => {
           const s = statusFor(r.util, target);
           const pct = n => r.available ? (n / r.available * 100) : 0;
           return `<tr><td class="name"><i style="background:${trainerColour(r.name)}"></i>${esc(r.name)}</td>
-            <td class="num">${r.available}</td><td class="num">${r.leave || '–'}</td><td class="num">${r.training}</td>${capState.travelAdmin ? `<td class="num">${r.travelAdmin}</td>` : ''}<td class="num">${r.held || '–'}</td><td class="num"><strong>${r.free}</strong></td><td class="num"><strong>${r.fits}</strong></td>
+            <td class="num">${r.available}</td><td class="num">${r.leave || '–'}</td><td class="num">${r.training}</td>${capState.travelAdmin ? `<td class="num">${r.travelAdmin}</td>` : ''}<td class="num">${r.held || '–'}</td>${showOther ? `<td class="num">${r.other || '–'}</td>` : ''}<td class="num"><strong>${r.free}</strong></td><td class="num"><strong>${r.fits}</strong></td>
             <td><div style="display:flex;align-items:center;gap:8px"><div class="cap-bar" title="${r.util}% committed"><span style="width:${pct(r.training)}%;background:${trainerColour(r.name)}"></span><span style="width:${pct(r.travelAdmin)}%;background:#FBBF24"></span><span style="width:${pct(r.held)}%;background:repeating-linear-gradient(-45deg,#F59E0B,#F59E0B 3px,#FDE68A 3px,#FDE68A 6px)"></span></div><span style="font-weight:700;color:var(--s-text-primary);min-width:36px">${r.util}%</span></div></td>
             <td><span class="cap-badge" style="background:${s.bg};color:${s.fg}">${s.label}</span></td></tr>`;
         }).join('') || '<tr><td colspan="10" class="calx-empty">Pick at least one trainer.</td></tr>'}
@@ -937,9 +968,9 @@
       <div class="cap-legend"><span><i style="background:#F0FDF4;border:1px solid #d1fae5"></i>0%</span><span><i style="background:#DCFCE7"></i>1–39%</span><span><i style="background:#BBF7D0"></i>40–69%</span><span><i style="background:#FDE68A"></i>70–89%</span><span><i style="background:#FECACA"></i>90%+</span></div></div>`;
     }
 
-    h += `<div class="cap-note"><strong>How this is worked out.</strong> Available = Monday to Thursday in the period (Fridays are admin days for everyone), minus bank holidays, Humaans leave and blocked days. Committed = booked training days${capState.travelAdmin ? ', plus their travel and admin days (travel only where the booking needs it: not for Street HQ or hosted events)' : ''}. Provisional holds aren't counted as booked but aren't free either. "Could still fit" looks for ${L} free day${L > 1 ? 's' : ''} in a row with an admin day after${capState.newTravel ? ' and a travel day before (never starting on a Monday, as Monday is the travel day)' : ''} (a Friday, or an existing admin/travel day, can be used for these, as admin and travel can overlap)${capState.notice ? ', starting at least 14 working days from today' : ''}.</div>`;
+    h += `<div class="cap-note"><strong>How this is worked out.</strong> Available = Monday to Thursday in the period (Fridays are admin days for everyone), minus bank holidays, Humaans leave and blocked days. Committed = booked training days${capState.travelAdmin ? ', plus their travel and admin days (travel only where the booking needs it: not for Street HQ or hosted events)' : ''}. Provisional holds and days with something in a trainer's Google Calendar aren't counted as booked, but aren't free either. "Could still fit" uses exactly the same rules as <strong>Copy availability</strong> on the Training Calendar: ${L} back-to-back Monday to Thursday day${L > 1 ? 's' : ''} with an admin day after${capState.newTravel ? ' and a travel day before (never starting on a Monday, as Monday is the travel day)' : ''}. A Friday, or an existing admin/travel day, can be used for these, as admin and travel can overlap${capState.notice ? '. It only looks from 14 working days from today' : ''}. The longest block is 3 days when we travel to the client and 4 at Street HQ.</div>`;
     root.innerHTML = h;
-    window._calxLastCap = { rows, from, to, util, avail, committed, free, fits, L, target, headroom };
+    window._calxLastCap = { rows, from, to, util, avail, committed, free, fits, L, target, headroom, newTravel: capState.newTravel };
   }
   window.renderCapacityPlanner = renderCapacityPlanner;
 
@@ -958,10 +989,13 @@
     const c = window._calxLastCap;
     if (!c) return;
     const lines = [
-      `*Training capacity: ${fmtShort(c.from)} – ${fmtShort(c.to)}*`,
-      `Team is ${c.util}% booked (target ${c.target}%). ${c.free} free trainer-days, room for about ${c.fits} more ${c.L}-day booking${c.fits === 1 ? '' : 's'}.`,
+      `Training capacity (${dayTxt(c.from)} to ${dayTxt(c.to)})`,
+      '',
+      `Team is ${c.util}% booked (target ${c.target}%). ${c.free} free trainer-day${c.free === 1 ? '' : 's'}, room for about ${c.fits} more ${c.L}-day booking${c.fits === 1 ? '' : 's'}${c.newTravel ? ' (us going to the client, with travel and admin days)' : ' (at Street HQ, with admin days)'}.`,
       '',
       ...c.rows.map(r => `• ${r.name}: ${r.util}% booked, ${r.free} free day${r.free === 1 ? '' : 's'}, fits ${r.fits}`),
+      '',
+      'Worked out from the same calendar as Copy availability. Check with the Product Trainers before offering dates.',
     ];
     const text = lines.join('\n');
     const done = () => { if (typeof showToast === 'function') showToast('Capacity summary copied', 'success'); };
@@ -1044,16 +1078,8 @@
 
   // Day status for one trainer: 'free' | 'fri' (admin Friday) | 'busy'
   function trainerDayStatus(name, d, evMap) {
-    if (!isWork(d)) return 'off';
-    if (isFri(d)) return 'fri';
-    const k = keyOf(d);
-    if (blockFor(k, name)) return 'busy';
-    const mine = (evMap[k] || []).filter(e => e.trainer === name);
-    if (!mine.length) return 'free';
-    // Only travel/admin on this day: it can double up as another booking's
-    // travel or admin day (e.g. admin in the morning, travel in the afternoon)
-    if (mine.every(e => e.type === 'travel')) return 'buffer';
-    return 'busy';   // training, leave, provisional, Google
+    const st = trainerDay(name, d, evMap);
+    return (st === 'off' || st === 'fri' || st === 'free' || st === 'buffer') ? st : 'busy';
   }
 
   function computeAvailability() {
@@ -1328,7 +1354,7 @@
     h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free plus an admin day after each block. "Us coming to you" also needs a travel day before each block and never starts on a Monday (Monday is the travel day), so away blocks are Tuesday to Thursday. An admin day can double up as a travel day. Back-to-back days stay with one trainer. Trainer names aren't included in the copied text.</div>
       <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
     document.getElementById('calxAvailBody').innerHTML = h;
-    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-05a</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
+    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04b</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
   }
   window.calxAvailTab = function (t) { availTab = t; renderAvail(); };
   window.calxCustomSet = function (k, v) {
