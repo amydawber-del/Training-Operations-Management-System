@@ -303,6 +303,15 @@
   .calx-sec{margin-bottom:14px;}
   .calx-sec h4{margin:0 0 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--s-text-muted);}
   .calx-namechips{display:flex;flex-wrap:wrap;gap:5px;}
+  .calx-toprow{display:grid;grid-template-columns:1.6fr 1fr;gap:14px;margin-bottom:4px;}
+  @media (max-width:560px){.calx-toprow{grid-template-columns:1fr;}}
+  .calx-freeitem{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #f3f4f6;}
+  .calx-freeitem:last-child{border-bottom:0;}
+  .calx-freeitem .nm{font-size:11px;font-weight:700;padding:3px 9px;border-radius:100px;background:#E8F9F3;color:#047857;white-space:nowrap;}
+  .calx-freeitem.no .nm{background:#f3f4f6;color:#6b7280;}
+  .calx-freeitem .what{font-size:12px;line-height:1.35;color:var(--s-text-primary);}
+  .calx-freeitem .what small{display:block;font-size:11px;color:var(--s-text-muted);margin-top:1px;}
+  .calx-notice{font-size:11px;color:#92400e;background:#FEF3CD;border-radius:6px;padding:5px 8px;margin-top:6px;}
   .calx-namechips span{font-size:11px;font-weight:600;padding:3px 9px;border-radius:100px;}
   .calx-panel-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--s-border);background:var(--s-surface);}
 
@@ -704,10 +713,46 @@
     return o;
   }
   window.calxCloseDay = function () { const o = document.getElementById('calxDayOverlay'); if (o) o.classList.remove('open'); };
+  // What can a free trainer actually take on, starting on this day?
+  // Same rules as Copy availability (blockFits): back-to-back Mon–Thu,
+  // admin day after, travel day before when we go to the client.
+  function freeFor(name, date, evMap) {
+    const far = addDays(date, 21);
+    let hq = 0, away = 0;
+    for (let L = 1; L <= maxBlock(false); L++) { if (blockFits(name, date, L, false, evMap, new Map(), far)) hq = L; else break; }
+    for (let L = 1; L <= maxBlock(true); L++) { if (blockFits(name, date, L, true, evMap, new Map(), far)) away = L; else break; }
+    return { hq, away };
+  }
+  const daysTxt = n => n === 1 ? '1 day' : '1–' + n + ' days';
+  function freeForHtml(name, date, evMap) {
+    const f = freeFor(name, date, evMap);
+    let what, why = '', ok = true;
+    if (!f.hq && !f.away) {
+      ok = false;
+      what = 'Free, but can’t take a booking starting today';
+      why = 'No free day after for the admin day';
+    } else if (f.hq && !f.away) {
+      what = `<strong>Street HQ training only</strong> · ${daysTxt(f.hq)} (client comes to us)`;
+      why = date.getDay() === 1 ? 'Monday is the travel day, so we can’t go to the client' : 'No free day before for travel, so we can’t go to the client';
+    } else if (f.hq === f.away) {
+      what = `<strong>${daysTxt(f.hq)}</strong> · at Street HQ or at the client`;
+    } else {
+      what = `<strong>Street HQ: ${daysTxt(f.hq)}</strong> · At the client: ${daysTxt(f.away)}`;
+    }
+    if (ok && Math.max(f.hq, f.away) === 1 && !why) {
+      const nx = addDays(date, 1);
+      why = isHol(nx) ? 'Next day is a bank holiday, so 1 day only'
+        : isFri(nx) ? 'Next day is Friday (admin), so 1 day only'
+        : 'Not free the next day, so 1 day only';
+    }
+    return `<div class="calx-freeitem${ok ? '' : ' no'}"><span class="nm">${esc(name)}</span><div class="what">${what}${why ? `<small>${why}</small>` : ''}</div></div>`;
+  }
+
   window.calxOpenDay = function (k) {
     const o = ensureOverlay();
     const date = fromKey(k);
-    const all = buildEvents(date, date)[k] || [];
+    const evMap = buildEvents(addDays(date, -7), addDays(date, 21));
+    const all = evMap[k] || [];
     const tf = trainerFilterVal();
     const evs = all.filter(e => matchesTrainer(e, tf));
     const hol = isHol(date) ? holName(date) : null;
@@ -730,15 +775,26 @@
 
     let body = '';
     if (b) body += sec('Blocked', `<div class="calx-list-item"><span class="bar" style="background:#e11d48"></span><div class="calx-main"><strong>🔒 ${esc(blockLabel(b))}</strong><div>Blocked by ${esc(b.blockedBy || 'Admin')}</div></div></div>`);
+
+    // Top row: who's free (and for what) next to who's on leave
+    const leaveHtml = chips(leaveNames, '#eef0f3', '#4b5563');
+    let freeHtml = '';
+    if (isBookable(date)) {
+      const names = tf ? a.free.filter(n => n === tf) : a.free;
+      freeHtml = names.length
+        ? names.map(n => freeForHtml(n, date, evMap)).join('')
+        : '<div style="font-size:12px;color:var(--s-text-muted)">Nobody free</div>';
+      const earliest = typeof addWorkingDays === 'function' ? addWorkingDays(todayDate(), 14) : null;
+      if (names.length && earliest && date < earliest && date >= todayDate()) freeHtml += '<div class="calx-notice">⏱ Inside the 14 working days’ notice period, so check before offering this date</div>';
+    }
+    if (freeHtml || leaveHtml) {
+      body += `<div class="calx-toprow">${freeHtml ? `<div class="calx-sec"><h4>Free for training</h4>${freeHtml}</div>` : '<div></div>'}<div class="calx-sec"><h4>On leave</h4>${leaveHtml || '<div style="font-size:12px;color:var(--s-text-muted)">Nobody on leave</div>'}</div></div>`;
+    }
+    if (isBookable(date) && a.held.length) body += sec('On hold (provisional)', chips(a.held, '#FEF3CD', '#92400e'));
     body += sec('Training sessions', train);
     body += sec('Provisional holds', prov);
     body += sec('Travel & admin days', trav);
-    body += sec('On leave', chips(leaveNames, '#eef0f3', '#4b5563'));
     body += sec('Google Calendar', goog);
-    if (isBookable(date)) {
-      body += sec('Free', chips(tf ? a.free.filter(n => n === tf) : a.free, '#E8F9F3', '#047857') || '<div style="font-size:12px;color:var(--s-text-muted)">Nobody free</div>');
-      if (a.held.length) body += sec('On hold (provisional)', chips(a.held, '#FEF3CD', '#92400e'));
-    }
     if (!body) body = '<div class="calx-empty">Nothing on this day.</div>';
     document.getElementById('calxDayBody').innerHTML = body;
 
@@ -1370,7 +1426,7 @@
     h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free plus an admin day after each block. "Us coming to you" also needs a travel day before each block and never starts on a Monday (Monday is the travel day), so away blocks are Tuesday to Thursday. An admin day can double up as a travel day. Back-to-back days stay with one trainer. Trainer names aren't included in the copied text.</div>
       <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
     document.getElementById('calxAvailBody').innerHTML = h;
-    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04c</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
+    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04d</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
   }
   window.calxAvailTab = function (t) { availTab = t; renderAvail(); };
   window.calxCustomSet = function (k, v) {
