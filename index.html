@@ -2021,7 +2021,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
 
   <div class="side-group">
     <button class="side-icon active" id="sideBtn-dashboard" onclick="showPage('dashboard')" data-tip="Training Dashboard" aria-label="Training Dashboard"><span>&#128202;</span></button>
-    <button class="side-icon" id="sideBtn-trainerWorkload" onclick="scrollToDashboardSection('trainerWorkloadSection')" data-tip="Trainer Workload" aria-label="Trainer Workload"><span>&#128100;</span></button>
     <button class="side-icon" id="sideBtn-calendar" onclick="scrollToDashboardSection('calendarSection')" data-tip="Training Calendar" aria-label="Training Calendar"><span>&#128197;</span></button>
     <button class="side-icon" id="sideBtn-monthlyReporting" onclick="showPage('monthlyReporting')" data-tip="Monthly Reporting" aria-label="Monthly Reporting"><span>&#128200;</span></button>
     <button class="side-icon" id="sideBtn-allBookings" onclick="showPage('allBookings')" data-tip="All Bookings" aria-label="All Bookings"><span>&#128203;</span></button>
@@ -2167,14 +2166,6 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
 
 <div id="dashboardSection" class="app-page">
 
-<div id="trainerWorkloadSection" style="margin-bottom:24px;">
-    <div class="section-header">
-      <div class="section-title">&#128100; Trainer Workload</div>
-      <span style="font-size:11px;color:var(--text--dark--30);">Last 30 days + upcoming &middot; Next free = 14 working days min</span>
-    </div>
-    <div class="trainer-grid" id="trainerGrid"><div class="kpi-card" style="text-align:center;color:var(--text--dark--30);font-size:12px;grid-column:1/-1;">Loading&#8230;</div></div>
-  </div>
-
 <div id="unassignedSection" style="margin-bottom:24px;">
     <div class="section-header">
       <div class="section-title">&#128276; Unassigned Requests<span class="badge" id="unassignedBadge">0</span></div>
@@ -2185,8 +2176,8 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
         <span style="font-size:11px;color:var(--text--dark--30);">Click company name to view full enquiry profile</span>
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Suggested</th><th>Actions</th></tr></thead>
-        <tbody id="unassignedBody"><tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
+        <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Flags</th><th>Actions</th></tr></thead>
+        <tbody id="unassignedBody"><tr><td colspan="7" style="padding:20px;text-align:center;color:var(--text--dark--30);">Connecting&#8230;</td></tr></tbody></table>
       </div>
     </div>
   </div>
@@ -5670,6 +5661,9 @@ function computeTrainerStats() {
 
 function renderTrainerWorkload() {
   const grid = document.getElementById('trainerGrid');
+  // Trainer Workload cards removed from the dashboard (Nov 2026). Function kept
+  // so the patch scripts that wrap it still load cleanly.
+  if(!grid) return;
   const trainerUsers = trainers.filter(u => (u.role === 'trainer' || u.role === 'admin') && isCountedTrainer(u.name));
   if(!trainerUsers.length) { grid.innerHTML = '<div style="padding:16px;color:var(--text--dark--30);">No trainers found.</div>'; return; }
 
@@ -5940,15 +5934,8 @@ function renderUnassigned() {
   if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No unassigned requests</div></div></td></tr>'; return; }
   const today = new Date(); today.setHours(0,0,0,0);
   tbody.innerHTML = rows.map((r) => {
-    const suggested = suggestTrainer(r);
     const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
     const isStale = r.ts && (Date.now() - r.ts) >= STALE_DAYS*86400000;
-    const suggColor = suggested ? (suggested.color || '#5B4BE7') : '#5B4BE7';
-    const suggDistance = (suggested && suggested.distanceMiles !== null && suggested.distanceMiles !== undefined)
-      ? ` · ${suggested.distanceMiles.toFixed(1)}mi` : '';
-    const suggChip = suggested
-      ? `<span title="${suggested.nextFree || ''}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:${suggColor}18;color:${suggColor};border:1px solid ${suggColor}33;">💡 ${escHtml(suggested.name)}${suggDistance}</span>`
-      : '';
     const skippedFlags = skippedFlagHtml(r);
     return `<tr class="${isStale?'row-stale':''}">
       <td>${fmtDate(r.ts)} ${staleBadge(r)}</td>
@@ -5956,7 +5943,7 @@ function renderUnassigned() {
       <td><span style="font-size:11px;">${escHtml(r.contact)}</span></td>
       <td>${optionBadge(r.trainingOption)}</td>
       <td>${pref}</td>
-      <td>${skippedFlags ? skippedFlags : suggChip}</td>
+      <td>${skippedFlags}</td>
       <td style="white-space:nowrap;display:flex;gap:6px;flex-wrap:wrap;">
         ${canDo('assignTrainer') ? `<button class="btn btn-primary btn-sm" onclick="openAssignModal(${r._idx})">Assign</button>` : ''}
         ${canDo('cancelBooking') ? `<button class="btn btn-danger btn-sm" onclick="openCancelModal(${r._idx})">Cancel</button>` : ''}
@@ -7707,28 +7694,13 @@ function openAssignModal(idx) {
   document.getElementById('assignModalCompany').textContent = getCompanyName(r);
   document.getElementById('assignModalContact').textContent = r.contact + ' · ' + r.email;
   document.getElementById('assignModalOption').innerHTML = optionBadge(r.trainingOption) + ' ' + (r.preferredDate ? '· Preferred: ' + fmtDate(new Date(r.preferredDate)) : '');
-  const suggested = suggestTrainer(r);
   const sel = document.getElementById('assignTrainerSel');
   sel.innerHTML = '<option value="">— Select trainer —</option>';
   trainers.filter(u => (u.role === 'trainer' || u.role === 'admin') && !getTrainerMeta(u.name).shadowing).forEach(t => {
-    const isSugg = suggested && t.name === suggested.name;
-    sel.innerHTML += `<option value="${t.name}" ${isSugg ? 'selected' : ''}>${t.name}${isSugg ? ' 💡 Suggested' : ''}</option>`;
+    sel.innerHTML += `<option value="${t.name}">${t.name}</option>`;
   });
-  // Show suggestion callout inside modal
   const existingCallout = document.getElementById('assignSuggCallout');
   if (existingCallout) existingCallout.remove();
-  if (suggested) {
-    const callout = document.createElement('div');
-    callout.id = 'assignSuggCallout';
-    callout.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:6px;background:' + (suggested.color||'#5B4BE7') + '12;border:1px solid ' + (suggested.color||'#5B4BE7') + '30;font-size:12px;font-weight:600;color:' + (suggested.color||'#5B4BE7') + ';margin-bottom:12px;';
-    const basisText = suggested.usedProximity
-      ? 'Suggested based on proximity (' + suggested.distanceMiles.toFixed(1) + 'mi) &amp; workload'
-      : 'Suggested based on workload';
-    const nextFreeText = suggested.nextFree ? ' &middot; ' + escHtml(suggested.nextFree) : '';
-    callout.innerHTML = '<span style="font-size:15px;">💡</span><span>' + basisText + ': <strong>' + escHtml(suggested.name) + '</strong>' + nextFreeText + '</span>';
-    const formRow = document.querySelector('#assignOverlay .form-row');
-    if (formRow) formRow.parentNode.insertBefore(callout, formRow);
-  }
   document.getElementById('assignOverlay').classList.add('open');
 }
 
