@@ -92,6 +92,8 @@
   // ── Build every event between two dates (inclusive) ───────────────
   // Returns { 'YYYY-MM-DD': [ {type, trainer, label, rowIdx, r, ...} ] }
   // Unfiltered: views apply the trainer / type filters themselves.
+  // Lower-case, letters and numbers only: '&' vs 'and', dashes, emoji etc. don't matter
+  const normName = t => String(t || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '');
   function buildEvents(from, to) {
     const fromK = keyOf(from), toK = keyOf(to);
     const map = {};
@@ -144,7 +146,13 @@
       const st = new Date(ev.start); st.setHours(0, 0, 0, 0);
       const en = ev.end ? new Date(ev.end) : addDays(st, 1); en.setHours(0, 0, 0, 0);
       if (en <= st) en.setTime(addDays(st, 1).getTime());
-      for (let d = new Date(st); d < en; d.setDate(d.getDate() + 1)) add(keyOf(d), { type: 'google', trainer: who ? who.name : '', label: ev.summary || 'Event' });
+      for (let d = new Date(st); d < en; d.setDate(d.getDate() + 1)) {
+        const k = keyOf(d);
+        // Skip the Google copy of a booking we already show (confirmed
+        // bookings are synced to the team calendar), so it only appears once
+        const dup = (map[k] || []).some(x => x.type === 'training' && normName(x.label).length >= 3 && normName(s).includes(normName(x.label)));
+        if (!dup) add(k, { type: 'google', trainer: who ? who.name : '', label: ev.summary || 'Event' });
+      }
     });
     return map;
   }
@@ -1427,7 +1435,7 @@
     h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free plus an admin day after each block. "Us coming to you" also needs a travel day before each block and never starts on a Monday (Monday is the travel day), so away blocks are Tuesday to Thursday. An admin day can double up as a travel day. Back-to-back days stay with one trainer. Trainer names aren't included in the copied text.</div>
       <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
     document.getElementById('calxAvailBody').innerHTML = h;
-    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04e</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
+    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04f</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
   }
   window.calxAvailTab = function (t) { availTab = t; renderAvail(); };
   window.calxCustomSet = function (k, v) {
