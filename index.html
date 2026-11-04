@@ -3205,6 +3205,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
     <div class="modal-header"><div><div class="modal-title">&#10007; Cancel Enquiry</div><div class="modal-subtitle" id="cancelModalCompany">&#8212;</div></div><button class="modal-close" onclick="closeCancelModal()">&#10005;</button></div>
     <div class="modal-body">
       <div class="warning-box warn" style="margin-bottom:16px;"><span>&#9888;&#65039;</span><span>This will move the enquiry to Completed. Undoable by an admin.</span></div>
+      <div class="warning-box warn" id="cancelValueNote" style="display:none;margin-bottom:16px;"><span>&#163;</span><span id="cancelValueText"></span></div>
       <div class="form-row">
         <label class="form-label required">Cancelled By</label>
         <input type="text" class="form-input" id="cancelledBy" placeholder="Who is cancelling this booking?" />
@@ -8599,6 +8600,13 @@ function openCancelModal(idx) {
   document.getElementById('cancelModalCompany').textContent = getCompanyName(r);
   document.getElementById('cancelReason').value = '';
   document.getElementById('cancelledBy').value  = currentUser?.name || '';
+  // Heads-up when there's an invoice value that will be cleared
+  const valNote = document.getElementById('cancelValueNote');
+  if(valNote) {
+    const hasVal = r.invoiceValue !== null && r.invoiceValue !== undefined && r.invoiceValue !== 0;
+    valNote.style.display = hasVal ? '' : 'none';
+    if(hasVal) document.getElementById('cancelValueText').textContent = 'This booking has an invoice value of ' + fmtMoney(r.invoiceValue) + '. It will be set to £0 in the spreadsheet so it no longer counts towards revenue.';
+  }
   document.getElementById('cancelOverlay').classList.add('open');
 }
 
@@ -8698,9 +8706,15 @@ async function confirmCancel() {
   if(!cancelledBy) { showToast('Please confirm who is cancelling this booking', 'error'); return; }
   if(!reason)      { showToast('Please enter a cancellation reason',            'error'); return; }
 
+  // Any invoice value on the booking is cleared (set to £0) on cancellation.
+  // The original amount is kept in the cancellation note for the record.
+  const oldValue = currentCancelRow.invoiceValue;
+  const clearValue = oldValue !== null && oldValue !== undefined && oldValue !== 0;
+  const valueNote = clearValue ? ' · Invoice value ' + fmtMoney(oldValue) + ' removed' : '';
+
   // Auto-save cancellation reason into profile progress notes
   if(!currentCancelRow.notes) currentCancelRow.notes = [];
-  const cancelText = 'Cancellation: ' + reason + ' (Cancelled by: ' + cancelledBy + ')';
+  const cancelText = 'Cancellation: ' + reason + ' (Cancelled by: ' + cancelledBy + ')' + valueNote;
   const cancelNote = { text: cancelText, author: cancelledBy, ts: Date.now() };
   currentCancelRow.notes.push(cancelNote);
   writeNoteToSheet(currentCancelRow._rowNum, getCompanyName(currentCancelRow), cancelText, 'Cancellation');
@@ -8712,6 +8726,7 @@ async function confirmCancel() {
     cancelledBy:  cancelledBy,
     cancelReason: reason,
   });
+  if(clearValue) params.set('value', '0');
   try {
     await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     logActivity(cancelledBy, 'Cancelled enquiry', getCompanyName(currentCancelRow), reason);
@@ -8722,13 +8737,13 @@ async function confirmCancel() {
       module:      'Dashboard',
       recordType:  'Enquiry',
       recordId:    String(currentCancelRow._rowNum),
-      before:      currentCancelRow.status || 'Active',
-      after:       'Cancelled',
+      before:      (currentCancelRow.status || 'Active') + (clearValue ? ' · ' + fmtMoney(oldValue) : ''),
+      after:       'Cancelled' + (clearValue ? ' · £0' : ''),
       reason:      reason,
       source:      'Dashboard Button',
       company:     getCompanyName(currentCancelRow),
       trainer:     currentCancelRow.trainer || '',
-      notes:       'Cancelled by ' + cancelledBy + ': ' + reason,
+      notes:       'Cancelled by ' + cancelledBy + ': ' + reason + valueNote,
     });
     removeProvisionalForRow(currentCancelRow._rowNum);
     showToast('Enquiry cancelled — Slack notified', 'success');
