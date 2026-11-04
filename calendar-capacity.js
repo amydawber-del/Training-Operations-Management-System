@@ -282,6 +282,22 @@
   .calx-avail-controls select{border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 9px;font:13px 'DM Sans',sans-serif;}
   .calx-avail-confirm{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;font-weight:600;color:var(--s-text-primary);cursor:pointer;}
   #calxAvailCopyBtn:disabled{opacity:.45;cursor:not-allowed;}
+  .calx-avail-tabs{display:inline-flex;background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:3px;margin-bottom:12px;}
+  .calx-avail-tabs.sm{margin-bottom:0;}
+  .calx-avail-tabs button{background:none;border:0;font:600 12.5px 'DM Sans',sans-serif;color:var(--s-text-secondary);padding:6px 12px;border-radius:6px;cursor:pointer;}
+  .calx-avail-tabs button[aria-pressed="true"]{background:#fff;color:var(--s-purple);box-shadow:var(--s-shadow-sm);}
+  .calx-custom{border:1px solid var(--s-border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;}
+  .calx-custom-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--s-text-secondary);}
+  .calx-custom-row .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--s-text-muted);min-width:150px;}
+  .calx-custom-row input[type=number],.calx-custom-row select{border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 9px;font:13px 'DM Sans',sans-serif;}
+  .calx-custom-row .chk{display:flex;align-items:center;gap:6px;}
+  .calx-split{font:600 12px 'DM Sans',sans-serif;padding:5px 11px;border-radius:100px;border:1.5px solid var(--s-border-mid);background:#fff;color:var(--s-text-secondary);cursor:pointer;}
+  .calx-split.on{border-color:var(--s-purple);background:var(--s-lavender);color:var(--s-purple);}
+  .calx-opts{display:flex;flex-direction:column;gap:6px;}
+  .calx-opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:8px;font-size:13px;}
+  .calx-opt .n{font-weight:700;color:#047857;min-width:62px;}
+  .calx-opt .d{flex:1;color:var(--s-text-primary);font-weight:600;}
+  .calx-opt .w{font-size:11px;color:var(--s-text-muted);}
   /* Capacity planner */
   #page-capacity .cap-wrap{max-width:1180px;margin:0 auto;font-family:'DM Sans',sans-serif;}
   #page-capacity .cap-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
@@ -1114,34 +1130,231 @@
   }
   window.calxCloseAvail = function () { const o = document.getElementById('calxAvailOverlay'); if (o) o.classList.remove('open'); };
 
+  // ── Custom availability: any number of days, at HQ or away, optionally split ──
+  const customState = Object.assign({ away: true, total: 3, pattern: [3], gapWeeks: 2, sameTrainer: true },
+    lsGet('calxAvailCustom_v1', {}));
+  const saveCustom = () => lsSet('calxAvailCustom_v1', customState);
+  let availTab = 'standard';
+
+  // Longest back-to-back block: Mon–Thu at HQ (4), Tue–Thu away (3)
+  const maxBlock = away => (away ? 3 : 4);
+
+  // All ways of splitting N days into ordered blocks (max 3 blocks)
+  function splitOptions(n, away) {
+    const mx = maxBlock(away), out = [];
+    const rec = (left, acc) => {
+      if (acc.length > 3) return;
+      if (left === 0) { out.push(acc.slice()); return; }
+      for (let k = Math.min(mx, left); k >= 1; k--) { acc.push(k); rec(left - k, acc); acc.pop(); }
+    };
+    rec(n, []);
+    return out.sort((x, y) => x.length - y.length);
+  }
+  function patternLabel(pat) {
+    if (pat.length === 1) return pat[0] === 1 ? '1 day' : pat[0] + ' days back-to-back';
+    return pat.map((n, i) => (i === 0 ? '' : 'then ') + (n === 1 ? '1 day' : n + ' days back-to-back')).join(', ');
+  }
+  function parsePattern(txt) {
+    const parts = String(txt || '').split(/[^0-9]+/).filter(Boolean).map(Number).filter(n => n > 0);
+    return parts.length ? parts : null;
+  }
+
+  // Status of a day for a trainer, including days already taken by earlier
+  // blocks in the same suggestion (occ: iso -> 'train' | 'buffer')
+  function statusWithOcc(name, d, evMap, occ) {
+    const o = occ && occ.get(keyOf(d));
+    if (o === 'train') return 'busy';
+    const base = trainerDayStatus(name, d, evMap);
+    if (o === 'buffer') return base === 'busy' ? 'busy' : (base === 'fri' ? 'fri' : 'buffer');
+    return base;
+  }
+  // Can trainer do a block of L days starting on `start`?
+  function blockFits(name, start, L, away, evMap, occ, end) {
+    if (away && start.getDay() === 1) return null;                // Monday = travel day
+    const days = [];
+    for (let j = 0; j < L; j++) {
+      const d = addDays(start, j);
+      if (!isBookable(d) || d > end) return null;                   // back-to-back Mon–Thu only
+      if (statusWithOcc(name, d, evMap, occ) !== 'free') return null;
+      days.push(d);
+    }
+    const okB = st => st === 'free' || st === 'fri' || st === 'buffer';
+    const admin = nextWorkingDay(days[days.length - 1]);
+    if (!okB(statusWithOcc(name, admin, evMap, occ))) return null;
+    let travel = null;
+    if (away) { travel = prevWorkingDay(start); if (!okB(statusWithOcc(name, travel, evMap, occ))) return null; }
+    return { days, admin, travel, trainer: name };
+  }
+  const occupy = (occ, blk) => {
+    blk.days.forEach(d => occ.set(keyOf(d), 'train'));
+    occ.set(keyOf(blk.admin), 'buffer');
+    if (blk.travel) occ.set(keyOf(blk.travel), 'buffer');
+  };
+
+  function computeCustom() {
+    const today = todayDate();
+    const start = availState.notice && typeof addWorkingDays === 'function' ? addWorkingDays(today, 14) : addDays(today, 1);
+    const end = addDays(today, availState.weeks * 7);
+    const evMap = buildEvents(addDays(start, -7), addDays(end, 14));
+    let pool = calTrainers().filter(t => counted(t.name) && !isShadowing(t.name)).map(t => t.name);
+    if (availState.trainer) pool = pool.filter(n => n === availState.trainer);
+    const pat = customState.pattern, away = customState.away;
+    const res = { start, end, pat, away, options: [], error: '' };
+    if (pat.some(n => n > maxBlock(away))) {
+      res.error = away
+        ? 'When we travel to the client, the longest back-to-back block is 3 days (Tuesday to Thursday). Try splitting the days.'
+        : 'At Street HQ the longest back-to-back block is 4 days (Monday to Thursday). Try splitting the days.';
+      return res;
+    }
+    const gapDays = customState.gapWeeks ? customState.gapWeeks * 7 : 9999;
+    const seen = new Set();
+    const tryFrom = (d0, trainersForBlock) => {
+      // trainersForBlock(i) returns the list of trainers allowed for block i
+      const occs = {};
+      const blocks = [];
+      let prevEnd = null;
+      for (let i = 0; i < pat.length; i++) {
+        let found = null;
+        const from = i === 0 ? d0 : addDays(prevEnd, 1);
+        const lastStart = i === 0 ? d0 : addDays(prevEnd, gapDays);
+        for (let d = new Date(from); d <= lastStart && d <= end && !found; d = addDays(d, 1)) {
+          for (const n of trainersForBlock(i, blocks)) {
+            const occ = occs[n] = occs[n] || new Map();
+            const blk = blockFits(n, d, pat[i], away, evMap, occ, end);
+            if (blk) { found = blk; occupy(occ, blk); break; }
+          }
+        }
+        if (!found) return null;
+        blocks.push(found);
+        prevEnd = found.days[found.days.length - 1];
+      }
+      return blocks;
+    };
+    for (let d = new Date(start); d <= end && res.options.length < 8; d = addDays(d, 1)) {
+      if (!isBookable(d)) continue;
+      let blocks = null;
+      if (customState.sameTrainer) {
+        for (const n of pool) { blocks = tryFrom(d, () => [n]); if (blocks) break; }
+      } else {
+        blocks = tryFrom(d, () => pool);
+      }
+      if (!blocks) continue;
+      const sig = blocks.map(b => keyOf(b.days[0])).join('|');
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      res.options.push(blocks);
+    }
+    return res;
+  }
+  const blockTxt = b => b.days.length === 1 ? dayTxt(b.days[0]) : pairTxt(b.days[0], b.days[b.days.length - 1]);
+  const optionTxt = blocks => blocks.map(blockTxt).join(', then ');
+  function customHeading(res) {
+    const total = res.pat.reduce((a, b) => a + b, 0);
+    const where = res.away ? 'based on us coming to you' : 'based on coming to Street';
+    const how = res.pat.length > 1 ? ' (' + patternLabel(res.pat) + ')' : (total > 1 ? ' (back-to-back)' : '');
+    return 'If you’re looking for ' + total + '-day training ' + where + how + ', these dates are available' + (res.away ? ' (taking into account travel and admin days)' : '') + ':';
+  }
+  function customText(res) {
+    const lines = ['Training availability (' + dayTxt(res.start) + ' to ' + dayTxt(res.end) + ')', '', customHeading(res)];
+    if (!res.options.length) lines.push('• No availability in this period');
+    else res.options.forEach((o, i) => lines.push('• Option ' + (i + 1) + ': ' + optionTxt(o)));
+    lines.push('', 'All dates are subject to confirmation.');
+    return lines.join('\n');
+  }
+
   function renderAvail() {
-    const res = computeAvailability();
-    window._calxAvail = res;
     const people = calTrainers().filter(t => counted(t.name) && !isShadowing(t.name));
     const checked = !!window._calxAvailConfirmed;
+    const tabBtn = (k, l) => `<button type="button" aria-pressed="${availTab === k ? 'true' : 'false'}" onclick="calxAvailTab('${k}')">${l}</button>`;
     let h = `
       <div class="calx-avail-warn"><strong>⚠️ Always check with the Product Trainers first</strong> before sending any availability to a client. These dates come from the calendar and can change quickly (new bookings, leave, holds).</div>
+      <div class="calx-avail-tabs" role="group" aria-label="Availability type">${tabBtn('standard', 'Standard (1 &amp; 2 days)')}${tabBtn('custom', 'Custom')}</div>
       <div class="calx-avail-controls">
-        <label>Look ahead<select onchange="calxAvailSet('weeks',+this.value)">${[2, 4, 6, 8, 12].map(w => `<option value="${w}" ${availState.weeks === w ? 'selected' : ''}>${w} weeks</option>`).join('')}</select></label>
+        <label>Look ahead<select onchange="calxAvailSet('weeks',+this.value)">${[2, 4, 6, 8, 12, 16].map(w => `<option value="${w}" ${availState.weeks === w ? 'selected' : ''}>${w} weeks</option>`).join('')}</select></label>
         <label>Trainer<select onchange="calxAvailSet('trainer',this.value)"><option value="">Any trainer</option>${people.map(t => `<option value="${esc(t.name)}" ${availState.trainer === t.name ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
         <label class="chk"><input type="checkbox" ${availState.notice ? 'checked' : ''} onchange="calxAvailSet('notice',this.checked)"> Start after 14 working days' notice</label>
       </div>`;
-    AVAIL_SECTIONS.forEach(([key, heading, two]) => {
-      const list = res[key];
-      h += `<div class="calx-sec"><h4 style="text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--s-text-primary)">${esc(heading)}</h4>` +
-        (list.length ? '<div class="calx-namechips">' + list.map(x => `<span style="background:#E8F9F3;color:#047857" title="${esc('Free: ' + x.who.join(', '))}">${esc(two ? pairTxt(x.d, x.d2) : dayTxt(x.d))}</span>`).join('') + '</div>'
-          : '<div style="font-size:12px;color:var(--s-text-muted)">No availability in this period</div>') + '</div>';
-    });
-    h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free that day plus an admin day after. "Us coming to you" also needs a travel day before and never starts on a Monday (Monday is the travel day), so it's Tuesday to Thursday only. An admin day can double up as a travel day (admin in the morning, travel in the afternoon), so these can overlap. Two-day dates are back-to-back days with the same trainer. Hover a date to see who's free (trainer names aren't included in the copied text).</div>
+
+    if (availTab === 'standard') {
+      const res = computeAvailability();
+      window._calxAvail = { kind: 'standard', res };
+      AVAIL_SECTIONS.forEach(([key, heading, two]) => {
+        const list = res[key];
+        h += `<div class="calx-sec"><h4 style="text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--s-text-primary)">${esc(heading)}</h4>` +
+          (list.length ? '<div class="calx-namechips">' + list.map(x => `<span style="background:#E8F9F3;color:#047857" title="${esc('Free: ' + x.who.join(', '))}">${esc(two ? pairTxt(x.d, x.d2) : dayTxt(x.d))}</span>`).join('') + '</div>'
+            : '<div style="font-size:12px;color:var(--s-text-muted)">No availability in this period</div>') + '</div>';
+      });
+    } else {
+      const cs = customState;
+      const splits = splitOptions(cs.total, cs.away);
+      const patKey = cs.pattern.join('+');
+      h += `<div class="calx-custom">
+        <div class="calx-custom-row">
+          <span class="lbl">Where?</span>
+          <div class="calx-avail-tabs sm">
+            <button type="button" aria-pressed="${!cs.away}" onclick="calxCustomSet('away',false)">🏢 Coming to Street HQ</button>
+            <button type="button" aria-pressed="${cs.away}" onclick="calxCustomSet('away',true)">🚗 We travel to them</button>
+          </div>
+        </div>
+        <div class="calx-custom-row">
+          <span class="lbl">How many days?</span>
+          <input type="number" min="1" max="10" value="${cs.total}" onchange="calxCustomSet('total',this.value)" style="width:80px">
+        </div>
+        <div class="calx-custom-row" style="align-items:flex-start">
+          <span class="lbl" style="padding-top:6px">How should the days be split?</span>
+          <div style="flex:1;min-width:0">
+            <div class="calx-namechips">${splits.map(sp => {
+              const k = sp.join('+');
+              return `<button type="button" class="calx-split ${k === patKey ? 'on' : ''}" onclick="calxCustomSet('pattern','${k}')" title="${esc(patternLabel(sp))}">${sp.length === 1 ? (sp[0] === 1 ? '1 day' : sp[0] + ' in a row') : sp.join(' + ')}</button>`;
+            }).join('') || '<span style="font-size:12px;color:var(--s-text-muted)">Pick a number of days</span>'}</div>
+            <div style="font-size:11.5px;color:var(--s-text-muted);margin-top:6px">Selected: <strong style="color:var(--s-text-primary)">${esc(patternLabel(cs.pattern))}</strong>. Or type your own order, e.g. 2+1+1: <input type="text" value="${esc(patKey)}" onchange="calxCustomSet('pattern',this.value)" style="width:90px;border:1.5px solid var(--s-border-mid);border-radius:6px;padding:3px 7px;font:12px 'DM Sans',sans-serif"></div>
+          </div>
+        </div>
+        ${cs.pattern.length > 1 ? `<div class="calx-custom-row">
+          <span class="lbl">Max gap between blocks</span>
+          <select onchange="calxCustomSet('gapWeeks',+this.value)">${[[1, '1 week'], [2, '2 weeks'], [3, '3 weeks'], [4, '4 weeks'], [0, 'Any time in the look-ahead']].map(([v, l]) => `<option value="${v}" ${cs.gapWeeks === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <label class="chk" style="margin-left:6px"><input type="checkbox" ${cs.sameTrainer ? 'checked' : ''} onchange="calxCustomSet('sameTrainer',this.checked)"> Same trainer for every block</label>
+        </div>` : ''}
+      </div>`;
+      const res = computeCustom();
+      window._calxAvail = { kind: 'custom', res };
+      h += `<div class="calx-sec"><h4 style="text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--s-text-primary)">${esc(customHeading(res))}</h4>`;
+      if (res.error) h += `<div class="calx-avail-warn" style="margin:0">${esc(res.error)}</div>`;
+      else if (!res.options.length) h += '<div style="font-size:12px;color:var(--s-text-muted)">No dates fit in this period. Try a longer look-ahead, a bigger gap between blocks, a different split, or untick "Same trainer".</div>';
+      else h += '<div class="calx-opts">' + res.options.map((o, i) => `<div class="calx-opt"><span class="n">Option ${i + 1}</span><span class="d">${esc(optionTxt(o))}</span><span class="w">${esc([...new Set(o.map(b => b.trainer))].join(' & '))}</span></div>`).join('') + '</div>';
+      h += '</div>';
+    }
+
+    h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free plus an admin day after each block. "Us coming to you" also needs a travel day before each block and never starts on a Monday (Monday is the travel day), so away blocks are Tuesday to Thursday. An admin day can double up as a travel day. Back-to-back days stay with one trainer. Trainer names aren't included in the copied text.</div>
       <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
     document.getElementById('calxAvailBody').innerHTML = h;
-    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-04c</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
+    document.getElementById('calxAvailFoot').innerHTML = `<span style="margin-right:auto;align-self:center;font-size:10.5px;color:var(--s-text-faint)">Version 2026-11-05a</span><button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
   }
+  window.calxAvailTab = function (t) { availTab = t; renderAvail(); };
+  window.calxCustomSet = function (k, v) {
+    if (k === 'total') {
+      const n = Math.max(1, Math.min(10, parseInt(v, 10) || 1));
+      customState.total = n;
+      const sp = splitOptions(n, customState.away);
+      customState.pattern = sp.length ? sp[0] : [n];
+    } else if (k === 'pattern') {
+      const p = parsePattern(v);
+      if (p) { customState.pattern = p; customState.total = p.reduce((a, b) => a + b, 0); }
+    } else if (k === 'away') {
+      customState.away = !!v;
+      if (customState.pattern.some(n => n > maxBlock(customState.away))) {
+        const sp = splitOptions(customState.total, customState.away);
+        if (sp.length) customState.pattern = sp[0];
+      }
+    } else customState[k] = v;
+    saveCustom(); renderAvail();
+  };
   window.calxAvailSet = function (k, v) { availState[k] = v; saveAvail(); renderAvail(); };
   window.calxOpenAvail = function () { window._calxAvailConfirmed = false; ensureAvailOverlay().classList.add('open'); renderAvail(); };
   window.calxAvailCopy = function () {
-    if (!window._calxAvailConfirmed || !window._calxAvail) return;
-    const text = availText(window._calxAvail);
+    const a = window._calxAvail;
+    if (!window._calxAvailConfirmed || !a) return;
+    const text = a.kind === 'custom' ? customText(a.res) : availText(a.res);
     const done = () => { if (typeof showToast === 'function') showToast('Availability copied, ready to paste', 'success'); };
     try { navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done)); } catch (e) { fallbackCopy(text, done); }
   };
