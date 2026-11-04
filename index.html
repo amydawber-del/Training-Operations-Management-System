@@ -2190,6 +2190,12 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
     <div class="requests-panel" style="border-color:var(--brand-accent--mandarin-light);">
       <div class="requests-panel-header" style="background:var(--brand-accent--cream);">
         <div style="display:flex;align-items:center;gap:8px;"><div class="alert-dot" id="actionDot" style="display:none;background:#f59e0b;"></div><span style="font-size:12px;font-weight:600;color:var(--text--dark--40);">Pending bookings awaiting confirmation</span></div>
+        <div class="filter-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <select class="filter-select" id="actionFilterOption" onchange="renderActionNeeded()" aria-label="Filter by training type"><option value="">All training types</option></select>
+          <select class="filter-select" id="actionFilterTrainer" onchange="renderActionNeeded()" aria-label="Filter by trainer"><option value="">All trainers</option></select>
+          <button class="btn btn-ghost btn-sm" id="actionFilterClear" onclick="clearActionFilters()" style="display:none;">&#10005; Clear</button>
+          <span id="actionFilterCount" style="font-size:11px;color:var(--text--dark--30);"></span>
+        </div>
       </div>
       <div class="table-wrap">
         <table><thead><tr><th>Submitted</th><th>Company</th><th>Contact</th><th>Option</th><th>Preferred Date</th><th>Trainer</th><th>Actions</th></tr></thead>
@@ -3961,7 +3967,7 @@ const PERM_LABELS = {
   viewPending:         { label:'View Needs Action',          sub:'Pending bookings awaiting confirmation' },
   viewAllBookings:     { label:'View All Bookings',          sub:'Upcoming + completed bookings table' },
   viewReferrals:       { label:'View Referral Leaderboard',  sub:'Referral stats by team member' },
-  viewTrainerWorkload: { label:'View Trainer Workload',      sub:'Trainer capacity cards' },
+  viewTrainerWorkload: { label:'View Capacity Planner',      sub:'Trainer workload & availability page' },
   viewTrainerProfile:  { label:'View Trainer Profile',       sub:'Full trainer profile panel with 1:1 prep & settings' },
   // ── Booking actions ──────────────────────────────────────────
   assignTrainer:       { label:'Assign Trainer',             sub:'Assign button on unassigned requests' },
@@ -3973,7 +3979,7 @@ const PERM_LABELS = {
   requestTraining:     { label:'Request Training',           sub:'Submit a training request form' },
   addNotes:            { label:'Add Notes',                  sub:'Add progress notes on client profiles' },
   viewActivityFeed:    { label:'View Notifications',         sub:'Bell icon & activity feed' },
-  viewTilTracker:      { label:'View TiL Tracker',           sub:'Time in Lieu balance on trainer cards' },
+  viewTilTracker:      { label:'View TiL Tracker',           sub:'Time in Lieu tracker link & balances' },
   manageUsers:         { label:'Manage Users & Permissions', sub:'Add, edit & configure user access' },
 };
 
@@ -4733,7 +4739,6 @@ function applyPermVisibility() {
     actionSection:             p('viewPending'),
     allBookingsSection:        p('viewAllBookings'),
     referralLeaderboardSection:p('viewReferrals'),
-    trainerWorkloadSection:    p('viewTrainerWorkload'),
   };
   Object.entries(sectionMap).forEach(([id, show]) => {
     const el = document.getElementById(id);
@@ -4744,7 +4749,6 @@ function applyPermVisibility() {
   const sideBtnMap = {
     'sideBtn-calendar':        sectionMap.calendarSection,
     'sideBtn-allBookings':     sectionMap.allBookingsSection,
-    'sideBtn-trainerWorkload': sectionMap.trainerWorkloadSection,
   };
   Object.entries(sideBtnMap).forEach(([btnId, show]) => {
     const btn = document.getElementById(btnId);
@@ -5953,14 +5957,80 @@ function renderUnassigned() {
   }).join('');
 }
 
+// ── Needs Action filters ─────────────────────────────────────
+// Training type + trainer dropdowns above the Pending table. Trainers
+// land on their own jobs by default; admins start on "All trainers".
+let _actionFilterDefaultFor = null;
+
+function optionShortLabel(opt) {
+  const raw = (opt || '').trim();
+  return (TRAINING_OPTIONS[raw] && TRAINING_OPTIONS[raw].short) || raw;
+}
+
+function populateActionFilters(pendingRows) {
+  const optSel = document.getElementById('actionFilterOption');
+  const trSel  = document.getElementById('actionFilterTrainer');
+  if(!optSel || !trSel) return;
+
+  // Training types: only the ones actually sitting in Pending
+  const curOpt = optSel.value;
+  const types = [...new Set(pendingRows.map(r => (r.trainingOption || '').trim()).filter(Boolean))]
+    .sort((a, b) => optionShortLabel(a).localeCompare(optionShortLabel(b)));
+  optSel.innerHTML = '<option value="">All training types</option>' +
+    types.map(t => `<option value="${escHtml(t)}">${escHtml(optionShortLabel(t))}</option>`).join('');
+  optSel.value = types.includes(curOpt) ? curOpt : '';
+
+  // Trainers: active trainers plus anyone already assigned to a pending job
+  const curTr = trSel.value;
+  const names = new Set(trainers.filter(u => u.role === 'trainer' || u.role === 'admin').map(u => u.name));
+  pendingRows.forEach(r => { if(r.trainer) names.add(r.trainer); });
+  const sorted = [...names].sort();
+  const me = currentUser && currentUser.name;
+  trSel.innerHTML = '<option value="">All trainers</option>' +
+    (me && names.has(me) ? `<option value="${escHtml(me)}">My jobs (${escHtml(me)})</option>` : '') +
+    '<option value="__unassigned">No trainer assigned</option>' +
+    sorted.filter(n => n !== me).map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+
+  // First render for this login: trainers default to their own jobs
+  if(me && _actionFilterDefaultFor !== me) {
+    _actionFilterDefaultFor = me;
+    trSel.value = (currentUser.role === 'trainer' && names.has(me)) ? me : '';
+  } else {
+    trSel.value = [...trSel.options].some(o => o.value === curTr) ? curTr : '';
+  }
+}
+
+function clearActionFilters() {
+  const optSel = document.getElementById('actionFilterOption');
+  const trSel  = document.getElementById('actionFilterTrainer');
+  if(optSel) optSel.value = '';
+  if(trSel) trSel.value = '';
+  renderActionNeeded();
+}
+
 function renderActionNeeded() {
-  const rows = allData.filter(r => r.status === 'Pending');
+  const allPending = allData.filter(r => r.status === 'Pending');
   const badge = document.getElementById('actionBadge');
   const dot = document.getElementById('actionDot');
-  badge.textContent = rows.length;
-  dot.style.display = rows.length ? 'block' : 'none';
+  badge.textContent = allPending.length;
+  dot.style.display = allPending.length ? 'block' : 'none';
+  populateActionFilters(allPending);
+  const fOpt = document.getElementById('actionFilterOption')?.value || '';
+  const fTr  = document.getElementById('actionFilterTrainer')?.value || '';
+  const rows = allPending.filter(r => {
+    if(fOpt && (r.trainingOption || '').trim() !== fOpt) return false;
+    if(fTr === '__unassigned') return !r.trainer;
+    if(fTr && r.trainer !== fTr) return false;
+    return true;
+  });
+  const filtering = !!(fOpt || fTr);
+  const clearBtn = document.getElementById('actionFilterClear');
+  if(clearBtn) clearBtn.style.display = filtering ? '' : 'none';
+  const countEl = document.getElementById('actionFilterCount');
+  if(countEl) countEl.textContent = filtering ? `Showing ${rows.length} of ${allPending.length}` : '';
   const tbody = document.getElementById('actionBody');
-  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; return; }
+  if(!allPending.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><div class="empty-state-text">No pending bookings</div></div></td></tr>'; return; }
+  if(!rows.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No pending bookings match these filters</div><button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="clearActionFilters()">Clear filters</button></div></td></tr>'; return; }
   tbody.innerHTML = rows.map(r => {
     const pref = r.preferredDate ? fmtDate(new Date(r.preferredDate)) : '—';
     // Flag anything that's been sat in Pending for longer than STALE_DAYS (5 days).
