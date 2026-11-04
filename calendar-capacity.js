@@ -41,6 +41,8 @@
   const isHol = d => (typeof isBankHoliday === 'function' ? isBankHoliday(d) : false);
   const holName = d => (typeof getBankHolidayName === 'function' ? getBankHolidayName(d) : null);
   const isWork = d => !isWeekend(d) && !isHol(d);
+  const isFri = d => d.getDay() === 5;
+  const isBookable = d => isWork(d) && !isFri(d);   // Fridays = team admin day
   const company = r => (typeof getCompanyName === 'function' ? getCompanyName(r) : (r.company || r.contact || '(Unknown)'));
   const initials = n => String(n || '?').split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
   const fmtShort = d => DOW_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MON_SHORT[d.getMonth()];
@@ -105,16 +107,13 @@
         type: 'training', trainer: r.trainer || '', label: company(r), rowIdx: r._idx, r,
         dayNo: i + 1, dayTotal: total,
       }));
-      let clusters = [];
-      try { clusters = dates.length ? clusterDates(dates) : [[keyOf(r.bookedOn)]]; } catch (e) { clusters = []; }
-      clusters.forEach(c => {
-        try {
-          const travel = prevWorkingDay(fromKey(c[0]));
-          const admin = nextWorkingDay(fromKey(c[c.length - 1]));
-          add(keyOf(travel), { type: 'travel', sub: 'Travel', trainer: r.trainer || '', label: 'Travel – ' + company(r), rowIdx: r._idx, r });
-          add(keyOf(admin), { type: 'travel', sub: 'Admin', trainer: r.trainer || '', label: 'Admin – ' + company(r), rowIdx: r._idx, r });
-        } catch (e) {}
-      });
+      // Travel day (only when the type/location needs one) + admin day (always)
+      let buffers = [];
+      try { buffers = typeof getBufferDays === 'function' ? getBufferDays(r) : []; } catch (e) { buffers = []; }
+      buffers.forEach(b => add(b.iso, {
+        type: 'travel', sub: b.kind === 'travel' ? 'Travel' : 'Admin', trainer: r.trainer || '',
+        label: (b.kind === 'travel' ? 'Travel – ' : 'Admin – ') + company(r), rowIdx: r._idx, r,
+      }));
     });
 
     // Team leave (trainers and admins only, matched by name in the summary)
@@ -164,6 +163,7 @@
 
   // Who is busy / free on a day (busy = training, travel/admin, leave, or blocked)
   function dayAvailability(k, evs) {
+    if (isFri(fromKey(k))) return { free: [], busy: [], held: [], total: 0, friday: true };
     const pool = calTrainers().filter(t => !isShadowing(t.name) && counted(t.name));
     const free = [], busy = [], held = [];
     pool.forEach(t => {
@@ -204,6 +204,10 @@
   .calx-free.ok{background:#E8F9F3;color:#047857;}
   .calx-free.low{background:#FEF3CD;color:#92400e;}
   .calx-free.none{background:#FDEAED;color:#b91c3c;}
+  .calx-free.admin{background:#E4E7FF;color:#3730a3;}
+  .cal-days .calx-day.calx-fri{background:#fafaff !important;}
+  .calx-week td.fri{background:#f6f7ff;}
+  .calx-admincell{display:block;font:600 10.5px 'DM Sans',sans-serif;color:#4338ca;opacity:.75;padding:4px 6px;}
   .calx-pill{display:flex;align-items:center;gap:5px;font:600 10.5px/1.25 'DM Sans',sans-serif;padding:3px 6px;border-radius:5px;background:color-mix(in srgb,var(--c) 12%,#fff);color:var(--s-text-primary);border-left:3px solid var(--c);white-space:nowrap;overflow:hidden;cursor:pointer;}
   .calx-pill:hover{background:color-mix(in srgb,var(--c) 22%,#fff);}
   .calx-pill span{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
@@ -270,6 +274,14 @@
   .calx-namechips span{font-size:11px;font-weight:600;padding:3px 9px;border-radius:100px;}
   .calx-panel-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--s-border);background:var(--s-surface);}
 
+  /* Copy availability */
+  .calx-avail-warn{background:#FEF3CD;border:1px solid #FDE68A;color:#92400e;border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;margin-bottom:12px;}
+  .calx-avail-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
+  .calx-avail-controls label{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--s-text-muted);}
+  .calx-avail-controls label.chk{flex-direction:row;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:500;color:var(--s-text-secondary);}
+  .calx-avail-controls select{border:1.5px solid var(--s-border-mid);border-radius:6px;padding:6px 9px;font:13px 'DM Sans',sans-serif;}
+  .calx-avail-confirm{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;font-weight:600;color:var(--s-text-primary);cursor:pointer;}
+  #calxAvailCopyBtn:disabled{opacity:.45;cursor:not-allowed;}
   /* Capacity planner */
   #page-capacity .cap-wrap{max-width:1180px;margin:0 auto;font-family:'DM Sans',sans-serif;}
   #page-capacity .cap-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
@@ -401,6 +413,7 @@
       const hol = isHol(date) ? holName(date) : null;
       let cls = 'cal-day calx-day';
       if (isWeekend(date)) cls += ' cal-day-weekend';
+      if (isWork(date) && isFri(date)) cls += ' calx-fri';
       if (date.getTime() === today.getTime()) cls += ' cal-day-today';
       if (date < today) cls += ' cal-day-past';
       if (hol) cls += ' cal-day-holiday';
@@ -408,7 +421,9 @@
 
       // Free indicator (future working days only)
       let freeHtml = '';
-      if (date >= today && isWork(date)) {
+      if (isWork(date) && isFri(date)) {
+        freeHtml = '<span class="calx-free admin" title="Fridays are admin days for the whole team">Admin day</span>';
+      } else if (date >= today && isBookable(date)) {
         const a = dayAvailability(k, all);
         if (tf) {
           const f = a.free.includes(tf), h = a.held.includes(tf);
@@ -477,7 +492,7 @@
     if (!people.length) { wrap.innerHTML = '<div class="calx-empty">No trainers to show.</div>'; return; }
 
     let h = '<div class="calx-week"><table><thead><tr><th>Trainer</th>';
-    days.forEach(d => { h += `<th class="${d.getTime() === today.getTime() ? 'today' : ''}">${DOW_SHORT[d.getDay()]} ${d.getDate()}<small>${MON_SHORT[d.getMonth()]}${d.getTime() === today.getTime() ? ' · Today' : ''}</small></th>`; });
+    days.forEach(d => { h += `<th class="${d.getTime() === today.getTime() ? 'today' : ''}">${DOW_SHORT[d.getDay()]} ${d.getDate()}<small>${MON_SHORT[d.getMonth()]}${d.getTime() === today.getTime() ? ' · Today' : ''}${isFri(d) && isWork(d) ? ' · Admin day' : ''}</small></th>`; });
     h += '</tr></thead><tbody>';
 
     // Team-wide row: bank holidays, whole-team blocks, unmatched Google events
@@ -522,8 +537,9 @@
             c += `<span class="calx-blk" style="background:#e0f2fe;color:#0369a1">🗓 ${esc(e.label)}</span>`;
           }
         });
-        if (!c && !off && d >= today && !shadow) c = '<span class="calx-freecell">Free</span>';
-        const tdCls = (off ? 'off ' : '') + (d.getTime() === today.getTime() ? 'todaycol' : '');
+        if (!c && !off && isFri(d)) c = '<span class="calx-admincell">Admin day</span>';
+        else if (!c && !off && d >= today && !shadow && counted(t.name)) c = '<span class="calx-freecell">Free</span>';
+        const tdCls = (off ? 'off ' : (isFri(d) ? 'fri ' : '')) + (d.getTime() === today.getTime() ? 'todaycol' : '');
         cells += `<td class="${tdCls}">${c}</td>`;
       });
       h += `<tr><td class="who"><i style="background:${colour}"></i>${esc(t.name)}<small>${shadow ? 'Shadowing' : rowBooked + ' training day' + (rowBooked === 1 ? '' : 's') + ' this week'}</small></td>${cells}</tr>`;
@@ -645,7 +661,7 @@
     const b = blockFor(k, tf);
     const a = dayAvailability(k, all);
     document.getElementById('calxDayTitle').textContent = fmtLong(date);
-    document.getElementById('calxDaySub').textContent = !isWork(date) ? (hol ? 'Bank holiday · ' + hol : 'Weekend') :
+    document.getElementById('calxDaySub').textContent = !isWork(date) ? (hol ? 'Bank holiday · ' + hol : 'Weekend') : isFri(date) ? 'Admin day for the whole team · no training bookings' :
       (a.total ? a.free.length + ' of ' + a.total + ' trainers free' + (tf ? ' · filtered to ' + tf : '') : '');
 
     const sec = (title, inner) => inner ? `<div class="calx-sec"><h4>${title}</h4>${inner}</div>` : '';
@@ -666,7 +682,7 @@
     body += sec('Travel & admin days', trav);
     body += sec('On leave', chips(leaveNames, '#eef0f3', '#4b5563'));
     body += sec('Google Calendar', goog);
-    if (isWork(date)) {
+    if (isBookable(date)) {
       body += sec('Free', chips(tf ? a.free.filter(n => n === tf) : a.free, '#E8F9F3', '#047857') || '<div style="font-size:12px;color:var(--s-text-muted)">Nobody free</div>');
       if (a.held.length) body += sec('On hold (provisional)', chips(a.held, '#FEF3CD', '#92400e'));
     }
@@ -691,7 +707,7 @@
   // 2. CAPACITY PLANNER
   // ═════════════════════════════════════════════════════════════════
   const capState = Object.assign({
-    period: 'next4w', from: '', to: '', length: 1, travelAdmin: true, notice: true, target: 80, includeShadow: false, excluded: [],
+    period: 'next4w', from: '', to: '', length: 1, travelAdmin: true, newTravel: true, notice: true, target: 80, includeShadow: false, excluded: [],
   }, lsGet('calxCapPrefs_v1', {}));
   const saveCap = () => lsSet('calxCapPrefs_v1', capState);
 
@@ -713,36 +729,56 @@
 
   // Core calculation for one trainer.
   function capacityFor(name, from, to, evMap, opts) {
-    const o = Object.assign({ travelAdmin: true, notice: true, length: 1 }, opts || {});
+    const o = Object.assign({ travelAdmin: true, newTravel: true, notice: true, length: 1 }, opts || {});
     const earliest = o.notice && typeof addWorkingDays === 'function' ? addWorkingDays(todayDate(), 14) : todayDate();
-    const res = { name, working: 0, bankHols: 0, leave: 0, blocked: 0, available: 0, training: 0, travelAdmin: 0, held: 0, free: 0, freeBookable: 0, fits: 0, weeks: {} };
-    const seq = []; // working-day sequence: true = free & bookable, false = not
+    const res = { name, working: 0, bankHols: 0, fridays: 0, leave: 0, blocked: 0, available: 0, training: 0, travelAdmin: 0, held: 0, free: 0, freeBookable: 0, fits: 0, weeks: {} };
+    // Working-day sequence for the "could still fit" scan:
+    //   'free'   = bookable (Mon–Thu), nothing on, past the notice period
+    //   'fri'    = Friday admin day (can host a travel or admin buffer, never training)
+    //   'busy'   = anything else
+    const seq = [];
     for (let d = new Date(from); d <= to; d = addDays(d, 1)) {
       if (isWeekend(d)) continue;
       const wk = keyOf(mondayOf(d));
       const W = res.weeks[wk] = res.weeks[wk] || { available: 0, committed: 0, leave: 0 };
       if (isHol(d)) { res.bankHols++; continue; }
       res.working++;
+      if (isFri(d)) { res.fridays++; seq.push('fri'); continue; }   // team admin day, not training capacity
       const k = keyOf(d);
       const b = blockFor(k, name);
       const mine = (evMap[k] || []).filter(e => e.trainer === name);
-      if (b) { res.blocked++; seq.push(false); continue; }
-      if (mine.some(e => e.type === 'leave')) { res.leave++; W.leave++; seq.push(false); continue; }
+      if (b) { res.blocked++; seq.push('busy'); continue; }
+      if (mine.some(e => e.type === 'leave')) { res.leave++; W.leave++; seq.push('busy'); continue; }
       res.available++; W.available++;
-      if (mine.some(e => e.type === 'training')) { res.training++; W.committed++; seq.push(false); }
-      else if (o.travelAdmin && mine.some(e => e.type === 'travel')) { res.travelAdmin++; W.committed++; seq.push(false); }
-      else if (mine.some(e => e.type === 'provisional')) { res.held++; seq.push(false); }
+      if (mine.some(e => e.type === 'training')) { res.training++; W.committed++; seq.push('busy'); }
+      else if (mine.some(e => e.type === 'travel')) {
+        if (o.travelAdmin) { res.travelAdmin++; W.committed++; seq.push('busy'); }
+        else { res.free++; seq.push('busy'); }
+      }
+      else if (mine.some(e => e.type === 'provisional')) { res.held++; seq.push('busy'); }
       else {
         res.free++;
         const ok = d >= earliest;
         if (ok) res.freeBookable++;
-        seq.push(ok);
+        seq.push(ok ? 'free' : 'busy');
       }
     }
-    // How many N-day bookings fit in the free runs (plus travel + admin days either side)
-    const need = Math.max(1, o.length) + (o.travelAdmin ? 2 : 0);
-    let run = 0;
-    seq.concat([false]).forEach(v => { if (v) run++; else { res.fits += Math.floor(run / need); run = 0; } });
+    // How many N-day bookings still fit: N free Mon–Thu days in a row, an admin
+    // day after (free day or a Friday), plus a travel day before if needed.
+    const L = Math.max(1, o.length);
+    const bufferOk = v => v === 'free' || v === 'fri' || v === undefined; // undefined = just outside the period
+    for (let i = 0; i < seq.length; i++) {
+      let ok = true;
+      for (let j = 0; j < L; j++) if (seq[i + j] !== 'free') { ok = false; break; }
+      if (!ok) continue;
+      if (o.newTravel && !bufferOk(i > 0 ? seq[i - 1] : undefined)) continue;
+      if (!bufferOk(seq[i + L])) continue;
+      res.fits++;
+      if (o.newTravel && i > 0 && seq[i - 1] === 'free') seq[i - 1] = 'busy';
+      for (let j = 0; j < L; j++) seq[i + j] = 'busy';
+      if (seq[i + L] === 'free') seq[i + L] = 'busy';
+      i += L;
+    }
     res.committed = res.training + res.travelAdmin;
     res.util = res.available ? Math.round((res.committed / res.available) * 100) : 0;
     res.utilWithHeld = res.available ? Math.round(((res.committed + res.held) / res.available) * 100) : 0;
@@ -790,7 +826,7 @@
     if (!capState.includeShadow) people = people.filter(t => !isShadowing(t.name));
     const chosen = people.filter(t => !(capState.excluded || []).includes(t.name));
     const L = +capState.length || 1;
-    const rows = chosen.map(t => capacityFor(t.name, from, to, evMap, { travelAdmin: capState.travelAdmin, notice: capState.notice, length: L }));
+    const rows = chosen.map(t => capacityFor(t.name, from, to, evMap, { travelAdmin: capState.travelAdmin, newTravel: capState.newTravel, notice: capState.notice, length: L }));
     const sum = k => rows.reduce((s, r) => s + r[k], 0);
     const avail = sum('available'), committed = sum('committed'), held = sum('held'), free = sum('free'), fits = sum('fits');
     const util = avail ? Math.round(committed / avail * 100) : 0;
@@ -816,7 +852,8 @@
           <div><label class="cap-l" for="capLen">Typical booking length</label><select id="capLen" onchange="calxCapSet('length',+this.value)">${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${L === n ? 'selected' : ''}>${n} day${n > 1 ? 's' : ''}</option>`).join('')}</select></div>
           <div><label class="cap-l" for="capTarget">Target booked %</label><input type="number" id="capTarget" min="10" max="100" step="5" value="${target}" onchange="calxCapSet('target',+this.value)"></div>
           <div style="display:flex;flex-direction:column;gap:6px">
-            <label class="cap-check"><input type="checkbox" ${capState.travelAdmin ? 'checked' : ''} onchange="calxCapSet('travelAdmin',this.checked)"> Count travel &amp; admin days</label>
+            <label class="cap-check"><input type="checkbox" ${capState.travelAdmin ? 'checked' : ''} onchange="calxCapSet('travelAdmin',this.checked)"> Count booked travel &amp; admin days</label>
+            <label class="cap-check"><input type="checkbox" ${capState.newTravel ? 'checked' : ''} onchange="calxCapSet('newTravel',this.checked)"> New bookings need a travel day</label>
             <label class="cap-check"><input type="checkbox" ${capState.notice ? 'checked' : ''} onchange="calxCapSet('notice',this.checked)"> 14 working days' notice</label>
             <label class="cap-check"><input type="checkbox" ${capState.includeShadow ? 'checked' : ''} onchange="calxCapSet('includeShadow',this.checked)"> Include shadowing trainers</label>
           </div>
@@ -826,7 +863,7 @@
       ${feedsMissing ? '<div class="cap-warn">⚠️ No team leave has loaded from Humaans, so leave isn\'t being taken off yet. Numbers may look more generous than they really are.</div>' : ''}
       <div class="cap-kpis">
         <div class="cap-kpi"><div class="lbl">Team utilisation</div><div class="val">${util}%</div><div class="sub"><span class="cap-badge" style="background:${st.bg};color:${st.fg}">${st.label}</span> target ${target}%</div></div>
-        <div class="cap-kpi"><div class="lbl">Available trainer-days</div><div class="val">${avail}</div><div class="sub">${workingDays} working days × ${rows.length} trainer${rows.length === 1 ? '' : 's'}, after leave &amp; blocks</div></div>
+        <div class="cap-kpi"><div class="lbl">Available trainer-days</div><div class="val">${avail}</div><div class="sub">${workingDays - (rows.length ? rows[0].fridays : 0)} Mon–Thu days × ${rows.length} trainer${rows.length === 1 ? '' : 's'}, after leave &amp; blocks (Fridays are admin)</div></div>
         <div class="cap-kpi"><div class="lbl">Already committed</div><div class="val">${committed}</div><div class="sub">${sum('training')} training${capState.travelAdmin ? ' + ' + sum('travelAdmin') + ' travel/admin' : ''}${held ? ' · ' + held + ' on hold' : ''}</div></div>
         <div class="cap-kpi"><div class="lbl">Free days</div><div class="val">${free}</div><div class="sub">${sum('freeBookable')} bookable${capState.notice ? ' after notice period' : ''}</div></div>
         <div class="cap-kpi"><div class="lbl">Could still fit</div><div class="val">${fits}</div><div class="sub">${L}-day booking${fits === 1 ? '' : 's'} that fit the calendar</div></div>
@@ -877,7 +914,7 @@
       <div class="cap-legend"><span><i style="background:#F0FDF4;border:1px solid #d1fae5"></i>0%</span><span><i style="background:#DCFCE7"></i>1–39%</span><span><i style="background:#BBF7D0"></i>40–69%</span><span><i style="background:#FDE68A"></i>70–89%</span><span><i style="background:#FECACA"></i>90%+</span></div></div>`;
     }
 
-    h += `<div class="cap-note"><strong>How this is worked out.</strong> Available = weekdays in the period, minus bank holidays, Humaans leave and blocked days. Committed = booked training days${capState.travelAdmin ? ', plus the travel day before and admin day after each block (same rule as the calendar)' : ''}. Provisional holds aren't counted as booked but aren't free either. "Could still fit" looks for gaps long enough for a ${L}-day booking${capState.travelAdmin ? ' plus travel and admin' : ''}${capState.notice ? ', starting at least 14 working days from today' : ''}.</div>`;
+    h += `<div class="cap-note"><strong>How this is worked out.</strong> Available = Monday to Thursday in the period (Fridays are admin days for everyone), minus bank holidays, Humaans leave and blocked days. Committed = booked training days${capState.travelAdmin ? ', plus their travel and admin days (travel only where the booking needs it: not for Street HQ or hosted events)' : ''}. Provisional holds aren't counted as booked but aren't free either. "Could still fit" looks for ${L} free day${L > 1 ? 's' : ''} in a row with an admin day after${capState.newTravel ? ' and a travel day before' : ''} (a Friday can be used for either)${capState.notice ? ', starting at least 14 working days from today' : ''}.</div>`;
     root.innerHTML = h;
     window._calxLastCap = { rows, from, to, util, avail, committed, free, fits, L, target, headroom };
   }
@@ -926,7 +963,7 @@
           if (card.querySelector('.calx-cardcap')) return;
           const name = card.getAttribute('data-trainer');
           if (!counted(name)) return;
-          const r = capacityFor(name, from, to, evMap, { travelAdmin: true, notice: false, length: 1 });
+          const r = capacityFor(name, from, to, evMap, { travelAdmin: true, newTravel: true, notice: false, length: 1 });
           const s = statusFor(r.util, capState.target || 80);
           const el = document.createElement('div');
           el.className = 'calx-cardcap';
@@ -973,10 +1010,149 @@
     }
   }
 
+
+  // ═════════════════════════════════════════════════════════════════
+  // 3. COPY AVAILABILITY — dates to offer a client (1-day / 2-day,
+  //    at Street HQ vs at their office). Always check with the Product
+  //    Trainers before sending.
+  // ═════════════════════════════════════════════════════════════════
+  const availState = Object.assign({ weeks: 4, trainer: '', notice: true }, lsGet('calxAvailPrefs_v1', {}));
+  const saveAvail = () => lsSet('calxAvailPrefs_v1', availState);
+
+  // Day status for one trainer: 'free' | 'fri' (admin Friday) | 'busy'
+  function trainerDayStatus(name, d, evMap) {
+    if (!isWork(d)) return 'off';
+    if (isFri(d)) return 'fri';
+    const k = keyOf(d);
+    if (blockFor(k, name)) return 'busy';
+    const mine = (evMap[k] || []).filter(e => e.trainer === name);
+    return mine.length ? 'busy' : 'free';   // training, travel, admin, leave, provisional, Google all count as busy
+  }
+
+  function computeAvailability() {
+    const today = todayDate();
+    const start = availState.notice && typeof addWorkingDays === 'function' ? addWorkingDays(today, 14) : addDays(today, 1);
+    const end = addDays(today, availState.weeks * 7);
+    const evMap = buildEvents(addDays(start, -7), addDays(end, 7));
+    let pool = calTrainers().filter(t => counted(t.name) && !isShadowing(t.name));
+    if (availState.trainer) pool = pool.filter(t => t.name === availState.trainer);
+    const okBuffer = st => st === 'free' || st === 'fri';
+    const res = { hq1: [], away1: [], hq2: [], away2: [], start, end };
+    for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+      if (!isBookable(d)) continue;
+      const prev = prevWorkingDay(d), next1 = nextWorkingDay(d);
+      const next2 = nextWorkingDay(next1);
+      const two = isBookable(next1) && keyOf(next1) === keyOf(addDays(d, 1)) && next1 <= end; // back-to-back Mon–Thu
+      let hq1 = [], away1 = [], hq2 = [], away2 = [];
+      pool.forEach(t => {
+        const s0 = trainerDayStatus(t.name, d, evMap);
+        if (s0 !== 'free') return;
+        const sPrev = trainerDayStatus(t.name, prev, evMap);
+        const sN1 = trainerDayStatus(t.name, next1, evMap);
+        if (okBuffer(sN1)) { hq1.push(t.name); if (okBuffer(sPrev)) away1.push(t.name); }
+        if (two && sN1 === 'free') {
+          const sN2 = trainerDayStatus(t.name, next2, evMap);
+          if (okBuffer(sN2)) { hq2.push(t.name); if (okBuffer(sPrev)) away2.push(t.name); }
+        }
+      });
+      if (hq1.length) res.hq1.push({ d, who: hq1 });
+      if (away1.length) res.away1.push({ d, who: away1 });
+      if (hq2.length) res.hq2.push({ d, d2: next1, who: hq2 });
+      if (away2.length) res.away2.push({ d, d2: next1, who: away2 });
+    }
+    return res;
+  }
+
+  const dayTxt = d => DOW_SHORT[d.getDay()] + ' ' + d.getDate() + ' ' + MON_SHORT[d.getMonth()];
+  const pairTxt = (a, b) => a.getMonth() === b.getMonth()
+    ? DOW_SHORT[a.getDay()] + ' ' + a.getDate() + ' – ' + DOW_SHORT[b.getDay()] + ' ' + b.getDate() + ' ' + MON_SHORT[b.getMonth()]
+    : dayTxt(a) + ' – ' + dayTxt(b);
+
+  const AVAIL_SECTIONS = [
+    ['hq1',   'If you’re looking for one-day training based on coming to Street, these days are available:', false],
+    ['away1', 'If you want one-day training based on us coming to you, these days are available (taking into account travel and admin days):', false],
+    ['hq2',   'If you’re looking for two-day training based on coming to Street, these dates are available:', true],
+    ['away2', 'If you want two-day training based on us coming to you, these dates are available (taking into account travel and admin days):', true],
+  ];
+
+  function availText(res) {
+    const lines = ['Training availability (' + dayTxt(res.start) + ' to ' + dayTxt(res.end) + ')', ''];
+    AVAIL_SECTIONS.forEach(([key, heading, two]) => {
+      lines.push(heading);
+      const list = res[key];
+      if (!list.length) lines.push('• No availability in this period');
+      else list.forEach(x => lines.push('• ' + (two ? pairTxt(x.d, x.d2) : dayTxt(x.d))));
+      lines.push('');
+    });
+    lines.push('All dates are subject to confirmation.');
+    return lines.join('\n');
+  }
+
+  function ensureAvailOverlay() {
+    let o = document.getElementById('calxAvailOverlay');
+    if (o) return o;
+    o = document.createElement('div');
+    o.id = 'calxAvailOverlay';
+    o.className = 'calx-overlay';
+    o.innerHTML = '<div class="calx-panel" role="dialog" aria-modal="true" aria-labelledby="calxAvailTitle" style="width:620px"><div class="calx-panel-head"><div><h3 id="calxAvailTitle">📋 Copy availability</h3><div>Dates you can offer a client, worked out from the training calendar</div></div><button class="calx-x" onclick="calxCloseAvail()" aria-label="Close">✕</button></div><div class="calx-panel-body" id="calxAvailBody"></div><div class="calx-panel-foot" id="calxAvailFoot"></div></div>';
+    o.addEventListener('click', e => { if (e.target === o) window.calxCloseAvail(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && o.classList.contains('open')) window.calxCloseAvail(); });
+    document.body.appendChild(o);
+    return o;
+  }
+  window.calxCloseAvail = function () { const o = document.getElementById('calxAvailOverlay'); if (o) o.classList.remove('open'); };
+
+  function renderAvail() {
+    const res = computeAvailability();
+    window._calxAvail = res;
+    const people = calTrainers().filter(t => counted(t.name) && !isShadowing(t.name));
+    const checked = !!window._calxAvailConfirmed;
+    let h = `
+      <div class="calx-avail-warn"><strong>⚠️ Always check with the Product Trainers first</strong> before sending any availability to a client. These dates come from the calendar and can change quickly (new bookings, leave, holds).</div>
+      <div class="calx-avail-controls">
+        <label>Look ahead<select onchange="calxAvailSet('weeks',+this.value)">${[2, 4, 6, 8, 12].map(w => `<option value="${w}" ${availState.weeks === w ? 'selected' : ''}>${w} weeks</option>`).join('')}</select></label>
+        <label>Trainer<select onchange="calxAvailSet('trainer',this.value)"><option value="">Any trainer</option>${people.map(t => `<option value="${esc(t.name)}" ${availState.trainer === t.name ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
+        <label class="chk"><input type="checkbox" ${availState.notice ? 'checked' : ''} onchange="calxAvailSet('notice',this.checked)"> Start after 14 working days' notice</label>
+      </div>`;
+    AVAIL_SECTIONS.forEach(([key, heading, two]) => {
+      const list = res[key];
+      h += `<div class="calx-sec"><h4 style="text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--s-text-primary)">${esc(heading)}</h4>` +
+        (list.length ? '<div class="calx-namechips">' + list.map(x => `<span style="background:#E8F9F3;color:#047857" title="${esc('Free: ' + x.who.join(', '))}">${esc(two ? pairTxt(x.d, x.d2) : dayTxt(x.d))}</span>`).join('') + '</div>'
+          : '<div style="font-size:12px;color:var(--s-text-muted)">No availability in this period</div>') + '</div>';
+    });
+    h += `<div class="cap-note" style="font-size:11.5px;color:var(--s-text-muted);background:var(--s-surface);border:1px solid var(--s-border);border-radius:8px;padding:9px 11px;line-height:1.5">Mondays to Thursdays only (Fridays are admin days). "Coming to Street" needs the trainer free that day plus an admin day after. "Us coming to you" also needs a free travel day before. Two-day dates are back-to-back days with the same trainer. Hover a date to see who's free (trainer names aren't included in the copied text).</div>
+      <label class="calx-avail-confirm"><input type="checkbox" id="calxAvailOk" ${checked ? 'checked' : ''} onchange="window._calxAvailConfirmed=this.checked;document.getElementById('calxAvailCopyBtn').disabled=!this.checked"> I've checked these dates with the Product Trainers</label>`;
+    document.getElementById('calxAvailBody').innerHTML = h;
+    document.getElementById('calxAvailFoot').innerHTML = `<button class="btn btn-ghost" onclick="calxCloseAvail()">Close</button><button class="btn btn-primary btn-sm" id="calxAvailCopyBtn" ${checked ? '' : 'disabled'} onclick="calxAvailCopy()">📋 Copy for client</button>`;
+  }
+  window.calxAvailSet = function (k, v) { availState[k] = v; saveAvail(); renderAvail(); };
+  window.calxOpenAvail = function () { window._calxAvailConfirmed = false; ensureAvailOverlay().classList.add('open'); renderAvail(); };
+  window.calxAvailCopy = function () {
+    if (!window._calxAvailConfirmed || !window._calxAvail) return;
+    const text = availText(window._calxAvail);
+    const done = () => { if (typeof showToast === 'function') showToast('Availability copied, ready to paste', 'success'); };
+    try { navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done)); } catch (e) { fallbackCopy(text, done); }
+  };
+
+  function installAvailButton() {
+    if (document.getElementById('calxAvailBtn')) return;
+    const right = document.querySelector('#calendarSection .calx-right');
+    if (!right) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'calxAvailBtn';
+    btn.className = 'cal-nav-btn calx-today';
+    btn.textContent = '📋 Copy availability';
+    btn.title = 'Dates you can offer a client. Check with the Product Trainers first.';
+    btn.onclick = () => window.calxOpenAvail();
+    right.insertBefore(btn, right.firstChild);
+  }
+
   function boot() {
     installCalendar();
     installCapacityPage();
     patchWorkloadCards();
+    installAvailButton();
     try { if (typeof allData !== 'undefined' && allData.length) { renderCalendarX(); window.renderTrainerWorkload(); } } catch (e) {}
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
