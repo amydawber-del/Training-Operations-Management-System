@@ -3119,7 +3119,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       <!-- Split dates grid — shown when training days > 1 -->
       <div id="bookSplitGrid" style="display:none;margin-bottom:12px;padding:12px 14px;background:#f8f9ff;border:1.5px solid #c7d2fe;border-radius:8px;">
         <div style="font-size:11px;font-weight:700;color:#3730a3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;display:flex;align-items:center;gap:6px;">📆 Individual Day Dates &amp; Topics</div>
-        <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.4;">Set the date and topic(s) for each day. Days booked back-to-back share one travel &amp; admin buffer. Gaps between days each get their own.</div>
+        <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.4;">Set the date and topic(s) for each day. Mondays to Thursdays only (Fridays are admin days). Back-to-back days share one admin day after (plus a travel day before, unless it's at Street HQ or a hosted event). Gaps each get their own.</div>
         <div id="bookSplitGridRows" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
       <div class="form-row"><label class="form-label required">Trainer</label><select class="form-select" id="bookTrainer" onchange="checkBookingWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select></div>
@@ -3191,7 +3191,7 @@ tr.ref-row:hover td, tr.ref-row:hover { background: var(--s-lavender) !important
       <!-- Split dates grid — shown when training days > 1 -->
       <div id="editSplitGrid" style="display:none;margin-bottom:12px;padding:12px 14px;background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:8px;">
         <div style="font-size:11px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">📆 Individual Day Dates &amp; Topics</div>
-        <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.4;">Set the date and topic(s) for each day. Back-to-back days share one travel &amp; admin buffer; gaps each get their own.</div>
+        <div style="font-size:11px;color:var(--s-text-muted);margin-bottom:10px;line-height:1.4;">Set the date and topic(s) for each day. Mondays to Thursdays only (Fridays are admin days). Back-to-back days share one admin day after (plus a travel day before, unless it's at Street HQ or a hosted event); gaps each get their own.</div>
         <div id="editSplitGridRows" style="display:flex;flex-direction:column;gap:8px;"></div>
       </div>
       <div class="form-row"><label class="form-label required">Trainer</label><select class="form-select" id="editBookTrainer" onchange="checkEditWarnings()"><option value="">&#8212; Select trainer &#8212;</option></select></div>
@@ -5065,6 +5065,49 @@ function skippedFlagHtml(r) {
   ).join(' ');
 }
 
+// ===================== BOOKABLE DAYS & TRAVEL/ADMIN RULES =====================
+// Fridays are admin days for all trainers and staff, so training can't be
+// booked on a Friday. Travel and admin days still use working days
+// (a Monday session's travel day falls on the Friday before).
+function isFriday(date) { return date.getDay() === 5; }
+function isBookableDay(date) { return isWorkingDay(date) && !isFriday(date); }
+window.isFriday = isFriday;
+window.isBookableDay = isBookableDay;
+
+// Travel day rule — based on training type + location:
+//   • No travel day: Street hosted training events, anything at Street HQ,
+//     and online / remote / self-led learning.
+//   • Travel day the day before: every other location.
+// Admin day after: always, whatever the training type.
+const STREET_HQ_LOCATION = /street\s*hq|north square|spear st|m1\s*1ju/i;
+const NO_TRAVEL_LOCATION = /^(online|remote|virtual|teams|zoom|google meet)\b/i;
+function needsTravelDay(r) {
+  const type = String((r && r.trainingOption) || '').toLowerCase();
+  const loc  = String((r && r.locationRaw) || '').trim();
+  if (/host/.test(type)) return false;                 // Street hosted training event
+  if (/\bhq\b/.test(type)) return false;              // Bespoke HQ training
+  if (/self[\s-]?led|remote|online/.test(type)) return false;
+  if (STREET_HQ_LOCATION.test(loc)) return false;      // e.g. Accounting training at HQ
+  if (NO_TRAVEL_LOCATION.test(loc)) return false;
+  return true;
+}
+window.needsTravelDay = needsTravelDay;
+
+// Travel/admin buffer days for a booking. Back-to-back days share one
+// buffer; gaps each get their own. Returns [{ iso, kind:'travel'|'admin' }].
+function getBufferDays(r) {
+  const dates = (getBookingDates(r) || []).filter(Boolean);
+  if (!dates.length) return [];
+  const travel = needsTravelDay(r);
+  const out = [];
+  clusterDates(dates).forEach(c => {
+    if (travel) out.push({ iso: localISODate(prevWorkingDay(new Date(c[0] + 'T12:00:00'))), kind: 'travel' });
+    out.push({ iso: localISODate(nextWorkingDay(new Date(c[c.length - 1] + 'T12:00:00'))), kind: 'admin' });
+  });
+  return out;
+}
+window.getBufferDays = getBufferDays;
+
 function addWorkingDays(fromDate, n) {
   const d = new Date(fromDate);
   let count = 0;
@@ -5674,13 +5717,7 @@ function getNextFreeDateObj(trainerName) {
   booked.forEach(r => {
     const bookingDates = getBookingDates(r);
     bookingDates.forEach(iso => busyDates.add(iso));
-    const clusters = bookingDates.length > 0 ? clusterDates(bookingDates) : [];
-    clusters.forEach(cluster => {
-      const clusterStart = new Date(cluster[0] + 'T12:00:00');
-      const clusterEnd   = new Date(cluster[cluster.length - 1] + 'T12:00:00');
-      busyDates.add(localISODate(prevWorkingDay(clusterStart)));
-      busyDates.add(localISODate(nextWorkingDay(clusterEnd)));
-    });
+    getBufferDays(r).forEach(b => busyDates.add(b.iso));
   });
 
   // Also treat leave days as busy
@@ -5689,7 +5726,7 @@ function getNextFreeDateObj(trainerName) {
 
   for (let i = 0; i < 90; i++) {
     const d = new Date(earliest); d.setDate(d.getDate() + i);
-    if (!isWorkingDay(d)) continue;
+    if (!isBookableDay(d)) continue;   // skips weekends, bank holidays and Fridays
     if (!busyDates.has(localISODate(d))) return d;
   }
   return null;
@@ -7470,14 +7507,10 @@ function renderCalendar() {
     // Travel & admin days — cluster-aware:
     // Back-to-back days share one travel day before the first and one admin day after the last.
     // Days with gaps each get their own travel and admin day.
-    const clusters = bookingDates.length > 0 ? clusterDates(bookingDates) : [[localISODate(r.bookedOn)]];
-    clusters.forEach(cluster => {
-      const clusterStart = new Date(cluster[0] + 'T12:00:00');
-      const clusterEnd   = new Date(cluster[cluster.length - 1] + 'T12:00:00');
-      const travel = prevWorkingDay(clusterStart);
-      addCalEvent(travel, { label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', type: 'travel', rowIdx: r._idx });
-      const admin = nextWorkingDay(clusterEnd);
-      addCalEvent(admin, { label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', type: 'admin', rowIdx: r._idx });
+    getBufferDays(r).forEach(b => {
+      const d = new Date(b.iso + 'T12:00:00');
+      if (b.kind === 'travel') addCalEvent(d, { label: 'Travel – ' + r.trainer, color: '#fef3c7', textColor: '#92400e', type: 'travel', rowIdx: r._idx });
+      else addCalEvent(d, { label: 'Admin – ' + r.trainer, color: '#e0e7ff', textColor: '#3730a3', type: 'admin', rowIdx: r._idx });
     });
   });
   // Bank holidays from ICS — show on each day within range
@@ -8034,6 +8067,31 @@ function checkBookingWarnings() {
   let warnings = [];
   let blocking  = false;
 
+  // 0. Fridays are admin days — training can't be booked on them (no override)
+  const fridayDates = datesToCheck.filter(iso => isFriday(new Date(iso + 'T12:00:00')));
+  if(fridayDates.length) {
+    warnEl.innerHTML = '<div class="warning-box warn" style="border-color:#DC2F4B;background:#FDEAED;"><span>🗓️</span><span><strong>' + fridayDates.map(iso => fmtDate(new Date(iso + 'T12:00:00'))).join(', ') + (fridayDates.length > 1 ? ' are Fridays' : ' is a Friday') + '.</strong> Fridays are admin days for the whole team, so training can\'t be booked. Please pick a Monday to Thursday.</span></div>';
+    blockMsg.textContent = '⚠️ Training can\'t be booked on a Friday.';
+    blockMsg.style.display = 'block';
+    btn.disabled = true;
+    return;
+  }
+
+  // Travel / admin days this booking will create (based on type + location)
+  const _locEl = document.getElementById('bookLocation');
+  const _probe = {
+    trainingOption: typeVal,
+    locationRaw: (tdPanel && tdPanel.style.display !== 'none' && _locEl && _locEl.value.trim()) || currentBookRow.locationRaw || '',
+    bookedOn: new Date(date + 'T12:00:00'), trainingDays: days,
+    splitDates: datesToCheck.length > 1 || days > 1 ? datesToCheck : null,
+  };
+  const _travelNeeded = needsTravelDay(_probe);
+  const _buffers = getBufferDays(_probe);
+  const _bufTxt = kind => _buffers.filter(b => b.kind === kind).map(b => fmtDate(new Date(b.iso + 'T12:00:00'))).join(', ');
+  warnings.push('<div class="warning-box info" style="border-color:#c7d2fe;background:#f5f6ff;"><span>' + (_travelNeeded ? '✈️' : '🏢') + '</span><span>'
+    + (_travelNeeded ? '<strong>Travel day:</strong> ' + _bufTxt('travel') + ' &nbsp;·&nbsp; ' : '<strong>No travel day needed</strong> (Street HQ / hosted event / online) &nbsp;·&nbsp; ')
+    + '<strong>Admin day:</strong> ' + _bufTxt('admin') + '</span></div>');
+
   // 1. Double-booking check — test each date against existing bookings
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentBookRow._idx);
   datesToCheck.forEach((iso, dayIdx) => {
@@ -8103,8 +8161,8 @@ function checkBookingWarnings() {
         return fmtDate(new Date(c[0]+'T12:00:00')) + ' – ' + fmtDate(new Date(c[c.length-1]+'T12:00:00'));
       }).join(', ');
       const bufferNote = clusters.length > 1
-        ? `${clusters.length} separate travel &amp; admin day buffers will appear on the calendar — one per gap.`
-        : 'One travel day before and one admin day after will be added to the calendar.';
+        ? `${clusters.length} separate ${_travelNeeded ? 'travel &amp; admin day buffers' : 'admin days'} will appear on the calendar — one per gap.`
+        : (_travelNeeded ? 'One travel day before and one admin day after will be added to the calendar.' : 'One admin day after will be added to the calendar.');
       warnings.push(`<div class="warning-box info" style="border-color:#93c5fd;background:#eff6ff;"><span>📆</span><span><strong>Split booking:</strong> ${escHtml(desc)}. ${bufferNote}</span></div>`);
     } else if(filled.length > 0 && filled.length < days) {
       warnings.push(`<div class="warning-box info" style="border-color:#fbbf24;background:#fffbeb;"><span>📋</span><span>${filled.length} of ${days} day dates filled in — you can confirm now, or fill all dates for precise calendar blocking.</span></div>`);
@@ -8129,6 +8187,7 @@ async function confirmBook() {
   const value     = document.getElementById('bookValue').value;
   const typeVal   = document.getElementById('bookTrainingType').value;
   if(!date || !trainer || !typeVal || !currentBookRow) return;
+  if(isFriday(new Date(date + 'T12:00:00'))) { showToast('Fridays are admin days, so training can\'t be booked on a Friday.', 'error'); return; }
 
   // Collect training detail fields if the panel was shown (skipped sections)
   const tdPanel    = document.getElementById('bookTrainingDetailsSection');
@@ -8309,6 +8368,16 @@ function checkEditWarnings() {
   let warnings = [];
   let blocking = false;
 
+  // Fridays are admin days — training can't be booked on them (no override)
+  const fridayDates = datesToCheck.filter(iso => isFriday(new Date(iso + 'T12:00:00')));
+  if(fridayDates.length) {
+    warnEl.innerHTML = '<div class="warning-box warn" style="border-color:#DC2F4B;background:#FDEAED;"><span>🗓️</span><span><strong>' + fridayDates.map(iso => fmtDate(new Date(iso + 'T12:00:00'))).join(', ') + (fridayDates.length > 1 ? ' are Fridays' : ' is a Friday') + '.</strong> Fridays are admin days for the whole team, so training can\'t be booked. Please pick a Monday to Thursday.</span></div>';
+    blockMsg.textContent = '⚠️ Training can\'t be booked on a Friday.';
+    blockMsg.style.display = 'block';
+    btn.disabled = true;
+    return;
+  }
+
   // 1. Double-booking check
   const conflicts = allData.filter(r => r.trainer === trainer && r.status === 'Booked' && r.bookedOn && r._idx !== currentEditRow._idx);
   datesToCheck.forEach((iso, dayIdx) => {
@@ -8347,6 +8416,7 @@ async function confirmEditBooking() {
   const value = document.getElementById('editBookValue').value;
   const reason = document.getElementById('editBookReason').value.trim();
   if(!date || !trainer || !currentEditRow) return;
+  if(isFriday(new Date(date + 'T12:00:00'))) { showToast('Fridays are admin days, so training can\'t be booked on a Friday.', 'error'); return; }
 
   const { dates: splitDates, topics: splitTopics } = readSplitGrid('editSplitGridRows', days);
   const hasSplitDates = days > 1 && splitDates.some(Boolean);
@@ -8444,6 +8514,7 @@ function saveProvisionalDate() {
   const trainer = document.getElementById('provisionalTrainer').value;
   const note    = document.getElementById('provisionalNote').value.trim();
   if(!date || !trainer) { showToast('Please select a date and trainer', 'error'); return; }
+  if(isFriday(new Date(date + 'T12:00:00'))) { showToast('Fridays are admin days, so training can\'t be held on a Friday. Please pick Monday to Thursday.', 'error'); return; }
   const rowNum  = currentProvisionalRow._rowNum;
   provisionalDates[rowNum] = {
     date, trainer, note,
